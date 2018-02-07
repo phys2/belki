@@ -47,8 +47,11 @@ MainWindow::MainWindow(QWidget *parent) :
 void MainWindow::loadDataset(QString filename)
 {
 	QFileInfo fi(filename);
-	//fileLabel->setText(QFileInfo(fi.canonicalFilePath()).completeBaseName());
-	fileLabel->setText(QDir(QFileInfo(fi.canonicalFilePath()).path()).dirName());
+	//auto title = QFileInfo(fi.canonicalFilePath()).completeBaseName();
+	auto title = QDir(QFileInfo(fi.canonicalFilePath()).path()).dirName();
+	setWindowTitle(QString("%1 – Belki").arg(title));
+	fileLabel->setText(title);
+
 	data = std::make_unique<Dataset>(filename);
 	chart->setLabels(&data->labelIndex, &data->indexLabel);
 	transformSelect->setCurrentIndex(1);
