@@ -22,6 +22,8 @@ public slots:
 	void updateCursorList(QStringList labels);
 
 protected:
+	void updateMarkerControls();
+
 	Chart *chart;
 	QtCharts::QChart *cursorChart;
 

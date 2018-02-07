@@ -6,6 +6,8 @@
 #include <QDir>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
+#include <QCompleter>
+#include <QAbstractProxyModel>
 
 #include <QtDebug>
 
@@ -30,8 +32,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	// signals
 	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
-	connect(protSearch, qOverload<const QString&>(&QComboBox::currentIndexChanged),
-	        chart, &Chart::addMarker);
 
 	connect(transformSelect, qOverload<const QString&>(&QComboBox::currentIndexChanged),
 	        [this] (const QString &name) {
@@ -60,21 +60,7 @@ void MainWindow::loadDataset(QString filename)
 	cursorChart->axisX()->setRange(0, data->dimensions.size());
 
 	/* set up marker controls */
-	protSearch->blockSignals(true);
-	// TODO: use QCompleter. Probably use a QTextEdit+QCompleter / QListWidget combo
-	auto items = data->labelIndex.keys();
-	/*auto m = new QStandardItemModel(items.size(), 1);
-	for (int i = 0; i < items.count(); i++)
-	{
-	    auto item = new QStandardItem;
-	    item->setText(items[i]);
-	    item->setCheckable(true);
-	    item->setCheckState(Qt::Unchecked);
-	    m->setItem(i, item);
-	}*/
-	//protSearch->setModel(m);
-	protSearch->addItems(items);
-	protSearch->blockSignals(false);
+	updateMarkerControls();
 }
 
 void MainWindow::updateCursorList(QStringList labels)
@@ -106,4 +92,63 @@ void MainWindow::updateCursorList(QStringList labels)
 	text = text.arg(labels.join("<br>"));
 	cursorList->setText(text);
 	cursorWidget->setEnabled(true);
+}
+
+void MainWindow::updateMarkerControls()
+{
+	/* create model for label list */
+	auto items = data->labelIndex.keys();
+
+	QMap<QString, QStandardItem*> ref; // back-reference for synchronization
+	auto m = new QStandardItemModel(items.size(), 1);
+	for (int i = 0; i < items.count(); i++)
+	{
+		auto item = new QStandardItem;
+		item->setText(items[i]);
+		item->setCheckable(true);
+		item->setCheckState(Qt::Unchecked);
+		m->setItem(i, item);
+		ref[item->text()] = item;
+	}
+
+	/* synchronize with chart */
+	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
+		if (i->checkState() == Qt::Checked)
+			chart->addMarker(i->text());
+		if (i->checkState() == Qt::Unchecked)
+			chart->removeMarker(i->text());
+	});
+	connect(chart, &Chart::markerRemoved, [ref] (const QString& idx) {
+		ref[idx]->setCheckState(Qt::Unchecked);
+	});
+
+	auto cpl = new QCompleter(m);
+	cpl->setCaseSensitivity(Qt::CaseInsensitive);
+	cpl->setModelSorting(QCompleter::CaseInsensitivelySortedModel);
+	cpl->setCompletionMode(QCompleter::InlineCompletion);
+	protSearch->setCompleter(cpl);
+	protList->setModel(cpl->completionModel());
+
+	/* Allow to toggle check state by click */
+	connect(protList, &QListView::clicked, [m] (QModelIndex i) {
+		if (!i.isValid())
+			return; // didn't click on a row, e.g. clicked on a checkmark
+		auto proxy = qobject_cast<const QAbstractProxyModel*>(i.model());
+		if (!proxy)
+			return; // sorry, can't do this!
+		auto item = m->itemFromIndex(proxy->mapToSource(i));
+		item->setCheckState(item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked);
+	});
+
+	/* Implement behavior such as updating the filter also when a character is removed.
+	 * It seems by default, QCompleter only updates when new characters are added. */
+	QString lastText;
+	connect(protSearch, &QLineEdit::textEdited, [cpl, lastText] (const QString &text) mutable {
+		if (text.length() < lastText.length()) {
+			cpl->setCompletionPrefix(text);
+		}
+		lastText = text;
+	});
+
+	markerWidget->setEnabled(true);
 }

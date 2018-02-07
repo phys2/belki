@@ -112,7 +112,7 @@ void Chart::trackCursor(const QPointF &pos)
 	emit cursorChanged(list);
 }
 
-void Chart::addMarker(QString label)
+void Chart::addMarker(const QString &label)
 {
 	if (markers.contains(label))
 		return; // already there
@@ -140,9 +140,16 @@ void Chart::addMarker(QString label)
 	s->setPointLabelsFont(f);
 
 	connect(legend()->markers(s)[0], &QtCharts::QLegendMarker::clicked, [this, label] {
-		removeSeries(markers[label]);
-		markers.remove(label);
+		removeMarker(label);
 	});
+	emit markerAdded(label);
+}
+
+void Chart::removeMarker(const QString &label)
+{
+	removeSeries(markers[label]);
+	markers.remove(label);
+	emit markerRemoved(label);
 }
 
 QColor Chart::tableau20(bool reset)

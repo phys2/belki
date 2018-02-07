@@ -74,12 +74,15 @@ public:
 
 	void display(QString name, const QVector<QPointF> &points);
 	void trackCursor(const QPointF &pos);
-	void addMarker(QString label);
+	void addMarker(const QString &label);
+	void removeMarker(const QString &label);
 
 	static QColor tableau20(bool reset = false);
 
 signals:
 	void cursorChanged(QStringList labels);
+	void markerAdded(const QString &label);
+	void markerRemoved(const QString &label);
 
 protected:
 	QtCharts::QScatterSeries *master;
