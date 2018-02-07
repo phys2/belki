@@ -23,6 +23,7 @@ public slots:
 
 protected:
 	Chart *chart;
+	QtCharts::QChart *cursorChart;
 
 	std::unique_ptr<Dataset> data;
 };

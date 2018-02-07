@@ -72,6 +72,7 @@ bool Dataset::readSource()
 	}
 
 	features.clear();
+	featurePoints.clear();
 	labelIndex.clear();
 
 	QTextStream in(&f);
@@ -86,9 +87,13 @@ bool Dataset::readSource()
 		name.remove(QRegularExpression("_HUMAN$|_RAT$"));
 
 		QVector<double> coeffs(len);
-		for (auto& c : coeffs)
-			in >> c;
+		QVector<QPointF> points(len);
+		for (int i = 0; i < len; ++i) {
+			in >> coeffs[i];
+			points[i] = {(qreal)i, coeffs[i]};
+		}
 		features.append(std::move(coeffs));
+		featurePoints.append(std::move(points));
 		indexLabel.append(name);
 		labelIndex[name] = index;
 		index++;

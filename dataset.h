@@ -25,7 +25,13 @@ public:
 
 	QMap<QString, int> labelIndex;
 	QVector<QString> indexLabel;
+
+	// original data
 	QVector<QVector<double>> features;
+	// pre-cached set of points
+	QVector<QVector<QPointF>> featurePoints;
+
+	// feature reduced point sets
 	QMap<QString, QVector<QPointF>> display;
 
 protected:
