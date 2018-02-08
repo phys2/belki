@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<RCC version="1.0">
+	<qresource prefix="icons/Breeze">
+		<file alias="index.theme">breeze/index.theme</file>
+		<file alias="actions/16/document-open.svg">breeze/actions/16/document-open.svg</file>
+		<file alias="actions/22/document-open.svg">breeze/actions/22/document-open.svg</file>
+		<file alias="actions/24/document-open.svg">breeze/actions/24/document-open.svg</file>
+		<file alias="actions/32/document-open.svg">breeze/actions/32/document-open.svg</file>
+		<file alias="actions/symbolic/document-open-symbolic.svg">breeze/actions/symbolic/document-open-symbolic.svg</file>
+	</qresource>
+</RCC>
