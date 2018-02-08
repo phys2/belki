@@ -3,6 +3,7 @@
 CONFIG += c++14
 win32 {
     CONFIG += static
+    QTPLUGIN += qsvgicon
     RC_ICONS += gfx/icon.ico
 }
 macx:ICON = gfx/icon.icns

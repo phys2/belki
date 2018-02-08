@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
 
 	// setup our custom icon theme if there is no system theme (e.g. OSX, Windows)
 	if (QIcon::themeName().isEmpty() || !QIcon::themeName().compare("hicolor"))
-	    QIcon::setThemeName("breeze");
+		QIcon::setThemeName("Breeze");
 
 	MainWindow window;
 	window.show();

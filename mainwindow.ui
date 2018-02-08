@@ -266,8 +266,7 @@
   </widget>
   <action name="actionLoadDataset">
    <property name="icon">
-    <iconset resource="resources.qrc">
-     <normaloff>:/icons/appicon</normaloff>:/icons/appicon</iconset>
+    <iconset theme="document-open"/>
    </property>
    <property name="text">
     <string>Load Dataset</string>
