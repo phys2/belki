@@ -28,6 +28,7 @@ Chart::Chart(QGraphicsItem *parent, Qt::WindowFlags wFlags):
 	this->addSeries(master);
 	master->attachAxis(axisX());
 	master->attachAxis(axisY());
+	master->setName("All proteins");
 
 	auto c = master->color();
 	master->setBorderColor(c);
@@ -52,19 +53,18 @@ Chart::~Chart()
 {
 }
 
-void Chart::display(QString name, const QVector<QPointF> &points)
+void Chart::display(const QVector<QPointF> &points, bool reset)
 {
-	qDeleteAll(items);
-	items.clear();
-
-	//setTitle(entry.name);
-
-	master->setName(name);
-	master->replace(points);
-
-	for (auto s : markers) {
-		s->replace(0, master->pointsVector()[(*labelIndex)[s->name()]]);
+	// reset if needed
+	if (reset) {
+		qDeleteAll(markers);
+		markers.clear();
+		qDeleteAll(items);
+		items.clear();
 	}
+
+	// update point set
+	master->replace(points);
 
 	// update ranges cheap & dirty
 	auto bbox = QPolygonF(points).boundingRect();
@@ -72,6 +72,11 @@ void Chart::display(QString name, const QVector<QPointF> &points)
 	bbox.adjust(-offset, -offset, offset, offset);
 	axisX()->setRange(bbox.left(), bbox.right());
 	axisY()->setRange(bbox.top(), bbox.bottom());
+
+	// update everything else (should do nothing on reset)
+	for (auto s : markers) {
+		s->replace(0, master->pointsVector()[(*labelIndex)[s->name()]]);
+	}
 }
 
 void Chart::trackCursor(const QPointF &pos)

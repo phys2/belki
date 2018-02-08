@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "dataset.h"
+#include "chart.h"
 
 #include <QFileInfo>
 #include <QStandardItemModel>
@@ -8,13 +9,22 @@
 #include <QtCharts/QValueAxis>
 #include <QCompleter>
 #include <QAbstractProxyModel>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QFileDialog>
 
 #include <QtDebug>
 
 MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent), chart(new Chart), cursorChart(new QtCharts::QChart)
+    QMainWindow(parent), chart(new Chart), cursorChart(new QtCharts::QChart),
+    fileLabel(new QLabel)
 {
 	setupUi(this);
+
+	// toolbar
+	fileLabel->setText("<i>No file selected</i>");
+	toolBar->addWidget(fileLabel);
+	toolBar->addSeparator();
+	toolBar->addWidget(topBar);
 
 	// main chart
 	chartView->setChart(chart);
@@ -31,16 +41,23 @@ MainWindow::MainWindow(QWidget *parent) :
 	cursorChart->axisX()->hide();
 
 	// signals
+	connect(actionLoadDataset, &QAction::triggered, [this] {
+		auto filename = QFileDialog::getOpenFileName(this, "Open Dataset",
+		{}, "Peak Volumnes Table (*.tsv)");
+		if (filename.size())
+			loadDataset(filename);
+	});
+
 	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
 
 	connect(transformSelect, qOverload<const QString&>(&QComboBox::currentIndexChanged),
 	        [this] (const QString &name) {
 		if (!data.get())
 			return;
-		chart->display("All proteins", data->display[name]);
+		chart->display(data->display[name]);
 	});
 
-	// TODO: buttons for file loading, screenshot.
+	// TODO: qactions, buttons+shortcuts for file loading, screenshot, etc.
 	// TODO: serialize markers
 }
 
@@ -50,17 +67,24 @@ void MainWindow::loadDataset(QString filename)
 	//auto title = QFileInfo(fi.canonicalFilePath()).completeBaseName();
 	auto title = QDir(QFileInfo(fi.canonicalFilePath()).path()).dirName();
 	setWindowTitle(QString("%1 – Belki").arg(title));
-	fileLabel->setText(title);
 
+	// TODO: asynchronous computation
+	fileLabel->setText(QString("<i>Calculating…</i>").arg(title));
+	repaint();
 	data = std::make_unique<Dataset>(filename);
+
 	chart->setLabels(&data->labelIndex, &data->indexLabel);
-	transformSelect->setCurrentIndex(1);
+	chart->display(data->display[transformSelect->currentText()], true);
+	fileLabel->setText(QString("<b>%1</b>").arg(title));
 
 	/* set up cursor chart */
 	cursorChart->axisX()->setRange(0, data->dimensions.size());
 
 	/* set up marker controls */
 	updateMarkerControls();
+
+	/* ready to go */
+	chartView->setEnabled(true);
 }
 
 void MainWindow::updateCursorList(QStringList labels)

@@ -72,7 +72,7 @@ public:
 	void setLabels(QMap<QString, int> *li, QVector<QString> *il)
 	{ labelIndex = li; indexLabel = il; }
 
-	void display(QString name, const QVector<QPointF> &points);
+	void display(const QVector<QPointF> &points, bool reset = false);
 	void trackCursor(const QPointF &pos);
 	void addMarker(const QString &label);
 	void removeMarker(const QString &label);

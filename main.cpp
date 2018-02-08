@@ -12,9 +12,6 @@ int main(int argc, char *argv[])
 	    QIcon::setThemeName("breeze");
 
 	MainWindow window;
-
-	window.loadDataset("data/input.tsv");
-
 	window.show();
 	return a.exec();
 }

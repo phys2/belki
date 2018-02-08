@@ -2,12 +2,17 @@
 #define MAINWINDOW_H
 
 #include "ui_mainwindow.h"
-#include "chart.h"
 #include "dataset.h"
 
 #include <QtWidgets/QMainWindow>
 
 #include <memory>
+
+class QLabel;
+class Chart;
+namespace QtCharts {
+class QChart;
+}
 
 class MainWindow : public QMainWindow, private Ui::MainWindow
 {
@@ -26,6 +31,7 @@ protected:
 
 	Chart *chart;
 	QtCharts::QChart *cursorChart;
+	QLabel *fileLabel;
 
 	std::unique_ptr<Dataset> data;
 };
