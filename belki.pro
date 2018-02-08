@@ -5,6 +5,7 @@ win32 {
     CONFIG += static
     RC_ICONS += gfx/icon.ico
 }
+macx:ICON = gfx/icon.icns
 
 QMAKE_CXXFLAGS_RELEASE = -O3 -march=nehalem
 
