@@ -73,7 +73,7 @@ void MainWindow::loadDataset(QString filename)
 	repaint();
 	data = std::make_unique<Dataset>(filename);
 
-	chart->setLabels(&data->labelIndex, &data->indexLabel);
+	chart->setMeta(&data->proteins, &data->protIndex);
 	chart->display(data->display[transformSelect->currentText()], true);
 	fileLabel->setText(QString("<b>%1</b>").arg(title));
 
@@ -103,7 +103,7 @@ void MainWindow::updateCursorList(QStringList labels)
 		cursorChart->addSeries(s);
 		s->attachAxis(cursorChart->axisX());
 		s->attachAxis(cursorChart->axisY());
-		s->replace(data->featurePoints[data->labelIndex[labels[i]]]);
+		s->replace(data->featurePoints[data->protIndex[labels[i]]]);
 	}
 
 	/* set up list */
@@ -121,17 +121,14 @@ void MainWindow::updateCursorList(QStringList labels)
 void MainWindow::updateMarkerControls()
 {
 	/* create model for label list */
-	auto items = data->labelIndex.keys();
-
 	QMap<QString, QStandardItem*> ref; // back-reference for synchronization
-	auto m = new QStandardItemModel(items.size(), 1);
-	for (int i = 0; i < items.count(); i++)
-	{
+	auto m = new QStandardItemModel;
+	for (auto i : data->protIndex)	{ // use index to have it sorted
 		auto item = new QStandardItem;
-		item->setText(items[i]);
+		item->setText(data->proteins[i].name);
 		item->setCheckable(true);
 		item->setCheckState(Qt::Unchecked);
-		m->setItem(i, item);
+		m->appendRow(item);
 		ref[item->text()] = item;
 	}
 
@@ -146,9 +143,10 @@ void MainWindow::updateMarkerControls()
 		ref[idx]->setCheckState(Qt::Unchecked);
 	});
 
+	/* setup completer */
 	auto cpl = new QCompleter(m);
 	cpl->setCaseSensitivity(Qt::CaseInsensitive);
-	cpl->setModelSorting(QCompleter::CaseInsensitivelySortedModel);
+	cpl->setModelSorting(QCompleter::CaseInsensitivelySortedModel); // see above
 	cpl->setCompletionMode(QCompleter::InlineCompletion);
 	protSearch->setCompleter(cpl);
 	protList->setModel(cpl->completionModel());

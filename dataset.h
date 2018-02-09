@@ -6,12 +6,22 @@
 #include <QVector>
 #include <QList>
 #include <QPointF>
-#include <QFile>
+
+class QFile;
 
 class Dataset
 {
 
 public:
+	struct Protein {
+		// <name>_<species> as read from the data, used as identifier
+		QString name;
+		// first part of protein name
+		QString firstName;
+		// last part of protein name
+		QString species;
+	};
+
 	Dataset(QString filename);
 	~Dataset();
 
@@ -23,8 +33,10 @@ public:
 
 	QStringList dimensions;
 
-	QMap<QString, int> labelIndex;
-	QVector<QString> indexLabel;
+	QMap<QString, int> protIndex; // map indentifiers to index in vectors
+
+	// meta data
+	QVector<Protein> proteins;
 
 	// original data
 	QVector<QVector<double>> features;
@@ -41,7 +53,7 @@ protected:
 
 	QString qvName();
 
-	static QByteArray fileChecksum(QFile &file);
+	static QByteArray fileChecksum(QFile *file);
 };
 
 #endif // DATASET_H

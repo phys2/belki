@@ -1,6 +1,8 @@
 #ifndef CHART_H
 #define CHART_H
 
+#include "dataset.h"
+
 #include <QtCharts/QChart>
 
 QT_CHARTS_BEGIN_NAMESPACE
@@ -15,8 +17,8 @@ public:
 	Chart(QGraphicsItem *parent = nullptr, Qt::WindowFlags wFlags = nullptr);
     virtual ~Chart();
 
-	void setLabels(QMap<QString, int> *li, QVector<QString> *il)
-	{ labelIndex = li; indexLabel = il; }
+	void setMeta(QVector<Dataset::Protein> *p, QMap<QString, int> *i)
+	{ proteins = p; protIndex = i; }
 
 	void display(const QVector<QPointF> &points, bool reset = false);
 	void trackCursor(const QPointF &pos);
@@ -37,8 +39,8 @@ protected:
 
 	QGraphicsEllipseItem *tracker;
 
-	QMap<QString, int> *labelIndex = nullptr;
-	QVector<QString> *indexLabel = nullptr;
+	QVector<Dataset::Protein> *proteins = nullptr;
+	QMap<QString, int> *protIndex = nullptr;
 };
 
 #endif /* CHART_H */

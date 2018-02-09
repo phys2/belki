@@ -1,6 +1,7 @@
 #include "dataset.h"
 #include "dimred.h"
 
+#include <QFile>
 #include <QFileInfo>
 #include <QTextStream>
 #include <QDataStream>
@@ -71,9 +72,10 @@ bool Dataset::readSource()
 		return false;
 	}
 
+	proteins.clear();
+	protIndex.clear();
 	features.clear();
 	featurePoints.clear();
-	labelIndex.clear();
 
 	QTextStream in(&f);
 	dimensions = in.readLine().split("\t", QString::SkipEmptyParts);
@@ -84,7 +86,8 @@ bool Dataset::readSource()
 		in >> name;
 		if (name.length() < 1)
 			break; // early EOF
-		name.remove(QRegularExpression("_HUMAN$|_RAT$"));
+		auto parts = name.split("_");
+		Protein p{name, parts.first(), parts.last()};
 
 		QVector<double> coeffs(len);
 		QVector<QPointF> points(len);
@@ -94,14 +97,14 @@ bool Dataset::readSource()
 		}
 		features.append(std::move(coeffs));
 		featurePoints.append(std::move(points));
-		indexLabel.append(name);
-		labelIndex[name] = index;
+		proteins.append(std::move(p));
+		protIndex[name] = index;
 		index++;
 	}
 	qDebug() << "read" << features.size() << "rows with" << len << "columns";
 
 	source.size = f.size();
-	source.checksum = fileChecksum(f);
+	source.checksum = fileChecksum(&f);
 
 	return true;
 }
@@ -122,10 +125,10 @@ QString Dataset::qvName()
 	return fi.path() + "/" + fi.baseName() + ".qv";
 }
 
-QByteArray Dataset::fileChecksum(QFile &file)
+QByteArray Dataset::fileChecksum(QFile *file)
 {
 	QCryptographicHash hash(QCryptographicHash::Sha256);
-	if (hash.addData(&file)) {
+	if (hash.addData(file)) {
 		return hash.result();
 	}
 	return QByteArray();

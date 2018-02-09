@@ -67,7 +67,7 @@ void Chart::display(const QVector<QPointF> &points, bool reset)
 
 	// update everything else (should do nothing on reset)
 	for (auto s : markers) {
-		s->replace(0, master->pointsVector()[(*labelIndex)[s->name()]]);
+		s->replace(0, master->pointsVector()[(*protIndex)[s->name()]]);
 	}
 }
 
@@ -103,7 +103,7 @@ void Chart::trackCursor(const QPointF &pos)
 	for (int i = 0; i < p.size(); ++i) {
 		auto diff = p[i] - center;
 		if (QPointF::dotProduct(diff, diff) < range) {
-			list << indexLabel->at(i);
+			list << proteins->at(i).name;
 		}
 	}
 	emit cursorChanged(list);
@@ -119,7 +119,7 @@ void Chart::addMarker(const QString &label)
 	auto s = new QtCharts::QScatterSeries;
 	s->setName(label);
 	s->setPointLabelsFormat(label);
-	s->append(master->pointsVector()[(*labelIndex)[label]]);
+	s->append(master->pointsVector()[(*protIndex)[label]]);
 	this->addSeries(s);
 	markers[label] = s;
 
