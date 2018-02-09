@@ -13,5 +13,9 @@ int main(int argc, char *argv[])
 
 	MainWindow window;
 	window.show();
+
+	if (argc == 2) // pass initial filename as single argument
+		window.loadDataset(argv[1]);
+
 	return a.exec();
 }
