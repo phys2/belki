@@ -32,6 +32,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	chartView->setRenderHint(QPainter::Antialiasing);
 
 	// cursor chart
+	auto p = cursorInlet->palette();
+	p.setColor(QPalette::Window, p.color(QPalette::Base));
+	cursorInlet->setPalette(p);
 	cursorPlot->setChart(cursorChart);
 	cursorPlot->setRenderHint(QPainter::Antialiasing);
 	cursorChart->legend()->hide();
