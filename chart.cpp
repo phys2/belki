@@ -73,7 +73,8 @@ void Chart::display(const QVector<QPointF> &points, bool reset)
 
 void Chart::trackCursor(const QPointF &pos)
 {
-	if (pos.isNull()) { // disable tracker
+	if (pos.isNull() || legend()->boundingRect().contains(pos)) {
+		 // disable tracker
 		tracker->hide();
 		emit cursorChanged({});
 		return;
