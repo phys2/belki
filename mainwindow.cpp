@@ -72,7 +72,7 @@ void MainWindow::loadDataset(QString filename)
 	setWindowTitle(QString("%1 – Belki").arg(title));
 
 	// TODO: asynchronous computation
-	fileLabel->setText(QString("<i>Calculating…</i>").arg(title));
+	fileLabel->setText(QString("<i>Calculating…</i>"));
 	repaint();
 	data = std::make_unique<Dataset>(filename);
 
@@ -110,10 +110,11 @@ void MainWindow::updateCursorList(QStringList labels)
 	}
 
 	/* set up list */
+	const int showMax = 25;
 	auto text = QString("<b>%1</b>");
-	if (labels.size() > 25) {
+	if (labels.size() > showMax) {
 		text.append(QString("<br>… (%1 total)").arg(labels.size()));
-		labels = labels.mid(0, 20);
+		labels = labels.mid(0, showMax - 1);
 	}
 	labels.sort();
 	text = text.arg(labels.join("<br>"));
