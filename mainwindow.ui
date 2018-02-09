@@ -222,18 +222,15 @@
              </layout>
             </item>
             <item>
-             <widget class="QTextEdit" name="cursorList">
-              <property name="autoFillBackground">
-               <bool>false</bool>
-              </property>
+             <widget class="QTextBrowser" name="cursorList">
               <property name="frameShape">
                <enum>QFrame::NoFrame</enum>
               </property>
               <property name="readOnly">
                <bool>true</bool>
               </property>
-              <property name="textInteractionFlags">
-               <set>Qt::TextBrowserInteraction</set>
+              <property name="openExternalLinks">
+               <bool>true</bool>
               </property>
              </widget>
             </item>

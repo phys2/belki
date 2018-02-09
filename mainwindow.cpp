@@ -76,7 +76,7 @@ void MainWindow::loadDataset(QString filename)
 	repaint();
 	data = std::make_unique<Dataset>(filename);
 
-	chart->setMeta(&data->proteins, &data->protIndex);
+	chart->setMeta(&data->proteins);
 	chart->display(data->display[transformSelect->currentText()], true);
 	fileLabel->setText(QString("<b>%1</b>").arg(title));
 
@@ -90,60 +90,72 @@ void MainWindow::loadDataset(QString filename)
 	chartView->setEnabled(true);
 }
 
-void MainWindow::updateCursorList(QStringList labels)
+void MainWindow::updateCursorList(QVector<int> samples)
 {
-	if (labels.empty()) {
+	cursorChart->removeAllSeries();
+	if (samples.empty()) {
 		cursorList->clear();
-		cursorChart->removeAllSeries();
 		cursorWidget->setDisabled(true);
 		return;
 	}
 
 	/* set up plot */
-	cursorChart->removeAllSeries();
-	for (int i = 0; i < labels.size(); ++i) {
+	for (auto i : samples) {
 		auto s = new QtCharts::QLineSeries;
 		cursorChart->addSeries(s);
 		s->attachAxis(cursorChart->axisX());
 		s->attachAxis(cursorChart->axisY());
-		s->replace(data->featurePoints[data->protIndex[labels[i]]]);
+		s->replace(data->featurePoints[i]);
 	}
 
 	/* set up list */
+
+	// reduce set
 	const int showMax = 25;
 	auto text = QString("<b>%1</b>");
-	if (labels.size() > showMax) {
-		text.append(QString("<br>… (%1 total)").arg(labels.size()));
-		labels = labels.mid(0, showMax - 1);
+	if (samples.size() > showMax) {
+		text.append(QString("… (%1 total)").arg(samples.size()));
+		samples.resize(showMax - 1);
 	}
-	labels.sort();
-	text = text.arg(labels.join("<br>"));
-	cursorList->setText(text);
+	// sort by name
+	qSort(samples.begin(), samples.end(), [this] (const int& a, const int& b) {
+		return data->proteins[a].firstName < data->proteins[b].firstName;
+	});
+	// compose list
+	QString content;
+	QString tpl("<a href='https://uniprot.org/uniprot/%2'>%1</a><br>");
+	for (auto i : samples) {
+		auto &p = data->proteins[i];
+		content.append(tpl.arg(p.firstName, p.name));
+	}
+
+	cursorList->setText(text.arg(content));
 	cursorWidget->setEnabled(true);
 }
 
 void MainWindow::updateMarkerControls()
 {
 	/* create model for label list */
-	QMap<QString, QStandardItem*> ref; // back-reference for synchronization
+	QMap<int, QStandardItem*> ref; // back-reference for synchronization
 	auto m = new QStandardItemModel;
 	for (auto i : data->protIndex)	{ // use index to have it sorted
 		auto item = new QStandardItem;
-		item->setText(data->proteins[i].name);
+		item->setText(data->proteins[i].firstName);
+		item->setData(i);
 		item->setCheckable(true);
 		item->setCheckState(Qt::Unchecked);
 		m->appendRow(item);
-		ref[item->text()] = item;
+		ref[i] = item;
 	}
 
 	/* synchronize with chart */
 	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
 		if (i->checkState() == Qt::Checked)
-			chart->addMarker(i->text());
+			chart->addMarker(i->data().toInt());
 		if (i->checkState() == Qt::Unchecked)
-			chart->removeMarker(i->text());
+			chart->removeMarker(i->data().toInt());
 	});
-	connect(chart, &Chart::markerToggled, [ref] (const QString& idx, bool present) {
+	connect(chart, &Chart::markerToggled, [ref] (int idx, bool present) {
 		ref[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 	});
 
@@ -155,8 +167,7 @@ void MainWindow::updateMarkerControls()
 	protSearch->setCompleter(cpl);
 	protList->setModel(cpl->completionModel());
 
-	/* Allow to toggle check state by click */
-	connect(protList, &QListView::clicked, [m] (QModelIndex i) {
+	auto toggler = [m] (QModelIndex i) {
 		if (!i.isValid())
 			return; // didn't click on a row, e.g. clicked on a checkmark
 		auto proxy = qobject_cast<const QAbstractProxyModel*>(i.model());
@@ -164,13 +175,15 @@ void MainWindow::updateMarkerControls()
 			return; // sorry, can't do this!
 		auto item = m->itemFromIndex(proxy->mapToSource(i));
 		item->setCheckState(item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked);
-	});
+	};
 
-	/* Allow to add protein by pressing enter in protSearch */
-	connect(protSearch, &QLineEdit::returnPressed, [this, cpl] {
-		auto target = cpl->currentCompletion();
-		if (target.size())
-			chart->addMarker(target);
+	/* Allow to toggle check state by click */
+	connect(protList, &QListView::clicked, toggler);
+
+	/* Allow to toggle by pressing <Enter> in protSearch */
+	connect(protSearch, &QLineEdit::returnPressed, [this, cpl, toggler] {
+		if (cpl->currentCompletion() == protSearch->text()) // still relevant
+			toggler(cpl->currentIndex());
 	});
 
 	/* Implement behavior such as updating the filter also when a character is removed.

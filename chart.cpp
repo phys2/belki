@@ -66,8 +66,8 @@ void Chart::display(const QVector<QPointF> &points, bool reset)
 	axisY()->setRange(bbox.top(), bbox.bottom());
 
 	// update everything else (should do nothing on reset)
-	for (auto s : markers) {
-		s->replace(0, master->pointsVector()[(*protIndex)[s->name()]]);
+	for (auto m : markers) {
+		m->replace(0, master->pointsVector()[m->sampleIndex]);
 	}
 }
 
@@ -100,57 +100,39 @@ void Chart::trackCursor(const QPointF &pos)
 
 	// determine all proteins that fall into the cursor
 	auto p = master->pointsVector();
-	QStringList list;
+	QVector<int> list;
 	for (int i = 0; i < p.size(); ++i) {
 		auto diff = p[i] - center;
 		if (QPointF::dotProduct(diff, diff) < range) {
-			list << proteins->at(i).name;
+			list << i;
 		}
 	}
 	emit cursorChanged(list);
 }
 
-void Chart::addMarker(const QString &label)
+void Chart::addMarker(int sampleIndex)
 {
-	if (markers.contains(label))
+	if (markers.contains(sampleIndex))
 		return; // already there
 
-	// TODO: use custom class that does the styling itself
+	markers[sampleIndex] = new Marker(sampleIndex, this);
+	emit markerToggled(sampleIndex, true);
 
-	auto s = new QtCharts::QScatterSeries;
-	s->setName(label);
-	s->setPointLabelsFormat(label);
-	s->append(master->pointsVector()[(*protIndex)[label]]);
-	this->addSeries(s);
-	markers[label] = s;
-
-	s->attachAxis(axisX());
-	s->attachAxis(axisY());
-
-	s->setBorderColor(Qt::black);
-	s->setColor(tableau20());
-	s->setMarkerShape(QtCharts::QScatterSeries::MarkerShapeRectangle);
-	s->setMarkerSize(20);
-	s->setPointLabelsVisible(true);
-	auto f = s->pointLabelsFont();
-	f.setBold(true);
-	f.setPointSizeF(f.pointSizeF() * 1.3);
-	s->setPointLabelsFont(f);
-
-	connect(legend()->markers(s)[0], &QtCharts::QLegendMarker::clicked, [this, label] {
-		removeMarker(label);
+	/* allow to remove marker by clicking its legend entry */
+	auto lm = legend()->markers(markers[sampleIndex])[0];
+	connect(lm, &QtCharts::QLegendMarker::clicked, [this, sampleIndex] {
+		removeMarker(sampleIndex);
 	});
-	emit markerToggled(label, true);
 }
 
-void Chart::removeMarker(const QString &label)
+void Chart::removeMarker(int sampleIndex)
 {
-	if (!markers.contains(label))
+	if (!markers.contains(sampleIndex))
 		return; // already gone
 
-	removeSeries(markers[label]);
-	markers.remove(label);
-	emit markerToggled(label, false);
+	delete markers[sampleIndex];
+	markers.remove(sampleIndex);
+	emit markerToggled(sampleIndex, false);
 }
 
 QColor Chart::tableau20(bool reset)
@@ -166,4 +148,27 @@ QColor Chart::tableau20(bool reset)
 	if (reset)
 		index = 1;
 	return tableau[index++ % tableau.size()];
+}
+
+Chart::Marker::Marker(int sampleIndex, Chart *chart)
+    : sampleIndex(sampleIndex)
+{
+	auto label = (*chart->proteins)[sampleIndex].firstName;
+	setName(label);
+	setPointLabelsFormat(label); // displays name over marker point
+	append(chart->master->pointsVector()[sampleIndex]);
+	chart->addSeries(this);
+
+	attachAxis(chart->axisX());
+	attachAxis(chart->axisY());
+
+	setBorderColor(Qt::black);
+	setColor(chart->tableau20());
+	setMarkerShape(QtCharts::QScatterSeries::MarkerShapeRectangle);
+	setMarkerSize(20);
+	setPointLabelsVisible(true);
+	auto f = pointLabelsFont();
+	f.setBold(true);
+	f.setPointSizeF(f.pointSizeF() * 1.3);
+	setPointLabelsFont(f);
 }

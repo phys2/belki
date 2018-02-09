@@ -24,7 +24,7 @@ public:
 	void loadDataset(QString filename);
 
 public slots:
-	void updateCursorList(QStringList labels);
+	void updateCursorList(QVector<int> samples);
 
 protected:
 	void updateMarkerControls();
