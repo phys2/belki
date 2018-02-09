@@ -29,8 +29,7 @@ public:
 
 signals:
 	void cursorChanged(QStringList labels);
-	void markerAdded(const QString &label);
-	void markerRemoved(const QString &label);
+	void markerToggled(const QString &label, bool present);
 
 protected:
 	QtCharts::QScatterSeries *master;

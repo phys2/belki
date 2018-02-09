@@ -139,8 +139,8 @@ void MainWindow::updateMarkerControls()
 		if (i->checkState() == Qt::Unchecked)
 			chart->removeMarker(i->text());
 	});
-	connect(chart, &Chart::markerRemoved, [ref] (const QString& idx) {
-		ref[idx]->setCheckState(Qt::Unchecked);
+	connect(chart, &Chart::markerToggled, [ref] (const QString& idx, bool present) {
+		ref[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 	});
 
 	/* setup completer */
@@ -160,6 +160,13 @@ void MainWindow::updateMarkerControls()
 			return; // sorry, can't do this!
 		auto item = m->itemFromIndex(proxy->mapToSource(i));
 		item->setCheckState(item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked);
+	});
+
+	/* Allow to add protein by pressing enter in protSearch */
+	connect(protSearch, &QLineEdit::returnPressed, [this, cpl] {
+		auto target = cpl->currentCompletion();
+		if (target.size())
+			chart->addMarker(target);
 	});
 
 	/* Implement behavior such as updating the filter also when a character is removed.

@@ -139,14 +139,17 @@ void Chart::addMarker(const QString &label)
 	connect(legend()->markers(s)[0], &QtCharts::QLegendMarker::clicked, [this, label] {
 		removeMarker(label);
 	});
-	emit markerAdded(label);
+	emit markerToggled(label, true);
 }
 
 void Chart::removeMarker(const QString &label)
 {
+	if (!markers.contains(label))
+		return; // already gone
+
 	removeSeries(markers[label]);
 	markers.remove(label);
-	emit markerRemoved(label);
+	emit markerToggled(label, false);
 }
 
 QColor Chart::tableau20(bool reset)
