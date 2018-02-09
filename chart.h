@@ -7,60 +7,6 @@ QT_CHARTS_BEGIN_NAMESPACE
 class QScatterSeries;
 QT_CHARTS_END_NAMESPACE
 
-struct DataMark {
-	QString label;
-	QPointF pos;
-};
-
-struct DataEllipse {
-	QPointF center;
-	qreal width, height;
-	qreal rotation;
-};
-
-class Chart;
-
-class ForeignObject
-{
-public:
-	ForeignObject(Chart *c) : holder(c) {}
-	virtual ~ForeignObject() {}
-
-	virtual void updateGeometry() = 0;
-
-protected:
-	Chart *holder;
-};
-
-class Marker: public ForeignObject
-{
-public:
-	Marker(Chart *c, const DataMark &source);
-	~Marker() { delete pointer; delete texter; }
-
-	void setChart(Chart *c);
-	void updateGeometry();
-
-protected:
-	QGraphicsEllipseItem *pointer;
-	QGraphicsSimpleTextItem *texter;
-	const DataMark &source;
-};
-
-class Ellipse: public ForeignObject
-{
-public:
-	Ellipse(Chart *c, const DataEllipse &source);
-	~Ellipse() { delete elli; }
-
-	void setChart(Chart *c);
-	void updateGeometry();
-
-protected:
-	QGraphicsEllipseItem *elli;
-	const DataEllipse &source;
-};
-
 class Chart: public QtCharts::QChart
 {
     Q_OBJECT
@@ -89,7 +35,6 @@ protected:
 	std::vector<QtCharts::QScatterSeries*> partitions;
 	QMap<QString, QtCharts::QScatterSeries*> markers;
 
-	std::vector<ForeignObject*> items;
 	QGraphicsEllipseItem *tracker;
 
 	QMap<QString, int> *labelIndex = nullptr;

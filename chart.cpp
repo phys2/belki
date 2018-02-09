@@ -41,12 +41,6 @@ Chart::Chart(QGraphicsItem *parent, Qt::WindowFlags wFlags):
 	tracker = new QGraphicsEllipseItem(this);
 	tracker->setPen({Qt::red});
 	tracker->setZValue(50);
-
-	// keep static objects in sync
-	connect(this, &QChart::plotAreaChanged, [this] {
-		for (auto& i : items)
-			i->updateGeometry();
-	});
 }
 
 Chart::~Chart()
@@ -59,8 +53,6 @@ void Chart::display(const QVector<QPointF> &points, bool reset)
 	if (reset) {
 		qDeleteAll(markers);
 		markers.clear();
-		qDeleteAll(items);
-		items.clear();
 	}
 
 	// update point set
@@ -170,60 +162,4 @@ QColor Chart::tableau20(bool reset)
 	if (reset)
 		index = 1;
 	return tableau[index++ % tableau.size()];
-}
-
-
-Marker::Marker(Chart *c, const DataMark &source)
-    : ForeignObject(c),
-      pointer(new QGraphicsEllipseItem(c)),
-      texter(new QGraphicsSimpleTextItem(c)),
-      source(source) {
-
-	pointer->setRect(0, 0, 11, 11);
-	pointer->setPen({Qt::red});
-	pointer->setZValue(99);
-
-	texter->setText(source.label);
-	auto f = texter->font();
-	f.setBold(true);
-	f.setPointSizeF(f.pointSizeF() * 1.3);
-	texter->setFont(f);
-	texter->setBrush(Qt::red);
-	texter->setPen({Qt::white});
-	texter->setZValue(100);
-
-	updateGeometry();
-	pointer->show();
-	texter->show();
-}
-
-void Marker::updateGeometry() {
-	auto p = source.pos;
-	pointer->setPos(holder->mapToPosition(p) - QPointF{pointer->rect().width()/2., pointer->rect().height()/2.});
-	texter->setPos(holder->mapToPosition(p));
-}
-
-Ellipse::Ellipse(Chart *c, const DataEllipse &source)
-    : ForeignObject(c),
-      elli(new QGraphicsEllipseItem(c)),
-      source(source) {
-
-	elli->setPen({Qt::blue});
-	elli->pen().setWidth(10);
-	elli->setZValue(50);
-
-	updateGeometry();
-	elli->show();
-}
-
-void Ellipse::updateGeometry() {
-	QPointF center(holder->mapToPosition(source.center));
-
-	QPointF offset(source.width/2., source.height/2.);
-	QPointF topLeft(holder->mapToPosition(source.center - offset));
-	QPointF botRight(holder->mapToPosition(source.center + offset));
-
-	elli->setRect({topLeft, botRight});
-	elli->setTransformOriginPoint(center);
-	elli->setRotation(-source.rotation);
 }
