@@ -24,11 +24,16 @@ public:
 	void setMeta(QVector<Dataset::Protein> *p) { proteins = p; }
 
 	void display(const QVector<QPointF> &points, bool reset = false);
-	void trackCursor(const QPointF &pos);
 	void addMarker(int sampleIndex);
 	void removeMarker(int sampleIndex);
 
 	static QColor tableau20(bool reset = false);
+
+	bool cursorLocked = false;
+
+public slots:
+	void resetCursor();
+	void updateCursor(const QPointF &pos = {});
 
 signals:
 	void cursorChanged(QVector<int> samples);

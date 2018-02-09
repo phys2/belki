@@ -1,12 +1,14 @@
 #include "chartview.h"
 #include "chart.h"
 
+#include <memory>
+
 #include <QtDebug>
 
 void ChartView::mouseMoveEvent(QMouseEvent *event)
 {
-	if (!rubberState && !cursorLocked) {
-		qobject_cast<Chart*>(chart())->trackCursor(event->pos());
+	if (!rubberState) {
+		qobject_cast<Chart*>(chart())->updateCursor(event->pos());
 	}
 
 	QChartView::mouseMoveEvent(event);
@@ -16,15 +18,34 @@ void ChartView::mouseMoveEvent(QMouseEvent *event)
 void ChartView::mousePressEvent(QMouseEvent *event)
 {
 	QChartView::mousePressEvent(event);
-	if (event->isAccepted())
+	if (event->isAccepted()) { // sadly always…
 		rubberState = true;
+		rubberPerformed = false;
+		/* terrible hack to find out if the plot changed between click press and
+		   release, which means, probably the rubber was active, and we should
+		   ignore the next release event */
+		auto conn = std::make_shared<QMetaObject::Connection>();
+		*conn = connect(qobject_cast<Chart*>(chart()), &Chart::cursorChanged, [this, conn] {
+			rubberPerformed = true;
+			disconnect(*conn);
+		});
+	}
 }
 
 void ChartView::mouseReleaseEvent(QMouseEvent *event)
 {
 	QChartView::mouseReleaseEvent(event);
-	if (event->isAccepted())
+	if (event->isAccepted()) { // sadly always…
 		rubberState = false;
+	}
+
+	if (rubberPerformed)
+		return;
+
+	if (event->button() == Qt::LeftButton) {
+		auto c = qobject_cast<Chart*>(chart());
+		c->cursorLocked = !c->cursorLocked;
+	}
 }
 
 void ChartView::enterEvent(QEvent *)
@@ -35,20 +56,19 @@ void ChartView::enterEvent(QEvent *)
 
 void ChartView::leaveEvent(QEvent *)
 {
-	if (!cursorLocked)
-		qobject_cast<Chart*>(chart())->trackCursor({});
+	qobject_cast<Chart*>(chart())->updateCursor();
 }
 
 void ChartView::keyReleaseEvent(QKeyEvent *event)
 {
-	bool taken = false;
-	if (event->key() == Qt::Key_Space) {
-		cursorLocked = !cursorLocked;
-		taken = true;
-	}
+	QChartView::keyReleaseEvent(event);
+	if (event->isAccepted())
+		return;
 
-	if (!taken)
-		QChartView::keyPressEvent(event);
+	if (event->key() == Qt::Key_Space) {
+		auto c = qobject_cast<Chart*>(chart());
+		c->cursorLocked = !c->cursorLocked;
+	}
 }
 
 void ChartView::wheelEvent(QWheelEvent *event)

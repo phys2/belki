@@ -18,7 +18,7 @@ protected:
 	void wheelEvent(QWheelEvent *event) override;
 
 	bool rubberState = false;
-	bool cursorLocked = false;
+	bool rubberPerformed;
 };
 
 #endif // CHARTVIEW_H

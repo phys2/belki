@@ -18,16 +18,18 @@ Chart::Chart(QGraphicsItem *parent, Qt::WindowFlags wFlags):
 	// set up general appearance
 	setAnimationOptions(QChart::NoAnimation);
 	legend()->setAlignment(Qt::AlignLeft);
-	setAxisX(new QtCharts::QValueAxis);
-	setAxisY(new QtCharts::QValueAxis);
-	axisX()->setTitleText("dim 1");
-	axisY()->setTitleText("dim 2");
+	auto axisX = new QtCharts::QValueAxis, axisY = new QtCharts::QValueAxis;
+
+	setAxisX(axisX);
+	setAxisY(axisY);
+	axisX->setTitleText("dim 1");
+	axisY->setTitleText("dim 2");
 
 	// set up master series
 	master = new QtCharts::QScatterSeries;
 	this->addSeries(master);
-	master->attachAxis(axisX());
-	master->attachAxis(axisY());
+	master->attachAxis(axisX);
+	master->attachAxis(axisY);
 	master->setName("All proteins");
 
 	auto c = master->color();
@@ -41,6 +43,8 @@ Chart::Chart(QGraphicsItem *parent, Qt::WindowFlags wFlags):
 	tracker = new QGraphicsEllipseItem(this);
 	tracker->setPen({Qt::red});
 	tracker->setZValue(50);
+	connect(axisX, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
+	connect(axisY, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
 }
 
 Chart::~Chart()
@@ -71,9 +75,12 @@ void Chart::display(const QVector<QPointF> &points, bool reset)
 	}
 }
 
-void Chart::trackCursor(const QPointF &pos)
+void Chart::updateCursor(const QPointF &pos)
 {
-	if (pos.isNull() || legend()->boundingRect().contains(pos)) {
+	if (cursorLocked)
+		return;
+
+	if (pos.isNull() || !plotArea().contains(pos)) {
 		 // disable tracker
 		tracker->hide();
 		emit cursorChanged({});
@@ -108,6 +115,12 @@ void Chart::trackCursor(const QPointF &pos)
 		}
 	}
 	emit cursorChanged(list);
+}
+
+void Chart::resetCursor()
+{
+	cursorLocked = false;
+	updateCursor();
 }
 
 void Chart::addMarker(int sampleIndex)
