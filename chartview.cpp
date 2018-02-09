@@ -5,7 +5,7 @@
 
 void ChartView::mouseMoveEvent(QMouseEvent *event)
 {
-	if (!rubberState) {
+	if (!rubberState && !cursorLocked) {
 		qobject_cast<Chart*>(chart())->trackCursor(event->pos());
 	}
 
@@ -27,7 +27,27 @@ void ChartView::mouseReleaseEvent(QMouseEvent *event)
 		rubberState = false;
 }
 
+void ChartView::enterEvent(QEvent *)
+{
+	// steal focus for the interactive cursor with keyboard events
+	setFocus(Qt::MouseFocusReason);
+}
+
 void ChartView::leaveEvent(QEvent *)
 {
-	qobject_cast<Chart*>(chart())->trackCursor({});
+	if (!cursorLocked)
+		qobject_cast<Chart*>(chart())->trackCursor({});
+}
+
+
+void ChartView::keyReleaseEvent(QKeyEvent *event)
+{
+	bool taken = false;
+	if (event->key() == Qt::Key_Space) {
+		cursorLocked = !cursorLocked;
+		taken = true;
+	}
+
+	if (!taken)
+		QChartView::keyPressEvent(event);
 }
