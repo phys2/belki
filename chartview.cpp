@@ -39,7 +39,6 @@ void ChartView::leaveEvent(QEvent *)
 		qobject_cast<Chart*>(chart())->trackCursor({});
 }
 
-
 void ChartView::keyReleaseEvent(QKeyEvent *event)
 {
 	bool taken = false;
@@ -50,4 +49,13 @@ void ChartView::keyReleaseEvent(QKeyEvent *event)
 
 	if (!taken)
 		QChartView::keyPressEvent(event);
+}
+
+void ChartView::wheelEvent(QWheelEvent *event)
+{
+	QChartView::wheelEvent(event);
+	if (event->isAccepted())
+		return;
+
+	chart()->zoom(1. + 0.001*event->delta());
 }

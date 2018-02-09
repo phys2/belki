@@ -15,6 +15,7 @@ protected:
 	void enterEvent(QEvent *event) override;
 	void leaveEvent(QEvent *event) override;
 	void keyReleaseEvent(QKeyEvent *event) override;
+	void wheelEvent(QWheelEvent *event) override;
 
 	bool rubberState = false;
 	bool cursorLocked = false;
