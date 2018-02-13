@@ -13,23 +13,23 @@
 #include <QtCore/QDebug>
 
 Chart::Chart(QGraphicsItem *parent, Qt::WindowFlags wFlags):
-    QChart(QChart::ChartTypeCartesian, parent, wFlags)
+    QChart(QChart::ChartTypeCartesian, parent, wFlags),
+    ax(new QtCharts::QValueAxis), ay(new QtCharts::QValueAxis)
 {
 	// set up general appearance
 	setAnimationOptions(QChart::NoAnimation);
 	legend()->setAlignment(Qt::AlignLeft);
-	auto axisX = new QtCharts::QValueAxis, axisY = new QtCharts::QValueAxis;
 
-	setAxisX(axisX);
-	setAxisY(axisY);
-	axisX->setTitleText("dim 1");
-	axisY->setTitleText("dim 2");
+	setAxisX(ax);
+	setAxisY(ay);
+	ax->setTitleText("dim 1");
+	ay->setTitleText("dim 2");
 
 	// set up master series
 	master = new QtCharts::QScatterSeries;
 	this->addSeries(master);
-	master->attachAxis(axisX);
-	master->attachAxis(axisY);
+	master->attachAxis(ax);
+	master->attachAxis(ay);
 	master->setName("All proteins");
 
 	auto c = master->color();
@@ -43,8 +43,8 @@ Chart::Chart(QGraphicsItem *parent, Qt::WindowFlags wFlags):
 	tracker = new QGraphicsEllipseItem(this);
 	tracker->setPen({Qt::red});
 	tracker->setZValue(50);
-	connect(axisX, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
-	connect(axisY, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
+	connect(ax, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
+	connect(ay, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
 }
 
 Chart::~Chart()
@@ -66,8 +66,8 @@ void Chart::display(const QVector<QPointF> &points, bool reset)
 	auto bbox = QPolygonF(points).boundingRect();
 	auto offset = bbox.width() * 0.05; // give some breathing space
 	bbox.adjust(-offset, -offset, offset, offset);
-	axisX()->setRange(bbox.left(), bbox.right());
-	axisY()->setRange(bbox.top(), bbox.bottom());
+	ax->setRange(bbox.left(), bbox.right());
+	ay->setRange(bbox.top(), bbox.bottom());
 
 	// update everything else (should do nothing on reset)
 	for (auto m : markers) {
@@ -115,6 +115,19 @@ void Chart::updateCursor(const QPointF &pos)
 		}
 	}
 	emit cursorChanged(list);
+}
+
+void Chart::zoomAt(const QPointF &pos, qreal factor)
+{
+	auto stretch = 1./factor;
+	auto center = mapToValue(pos);
+
+	// zoom in a way that point under the mouse stays fixed
+	auto dl = center.x() - ax->min(), dr = ax->max() - center.x();
+	ax->setRange(center.x() - dl*stretch, center.x() + dr*stretch);
+
+	auto dt = center.y() - ay->min(), db = ay->max() - center.y();
+	ay->setRange(center.y() - dt*stretch, center.y() + db*stretch);
 }
 
 void Chart::resetCursor()

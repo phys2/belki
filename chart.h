@@ -6,6 +6,10 @@
 #include <QtCharts/QChart>
 #include <QtCharts/QScatterSeries>
 
+namespace QtCharts {
+class QValueAxis;
+}
+
 class Chart: public QtCharts::QChart
 {
     Q_OBJECT
@@ -27,6 +31,8 @@ public:
 	void addMarker(int sampleIndex);
 	void removeMarker(int sampleIndex);
 
+	void zoomAt(const QPointF &pos, qreal factor);
+
 	static QColor tableau20(bool reset = false);
 
 	bool cursorLocked = false;
@@ -45,6 +51,7 @@ protected:
 	QMap<int, Marker*> markers;
 
 	QGraphicsEllipseItem *tracker;
+	QtCharts::QValueAxis *ax, *ay;
 
 	QVector<Dataset::Protein> *proteins = nullptr;
 };

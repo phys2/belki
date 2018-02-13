@@ -77,5 +77,6 @@ void ChartView::wheelEvent(QWheelEvent *event)
 	if (event->isAccepted())
 		return;
 
-	chart()->zoom(1. + 0.001*event->delta());
+	auto factor = 1. + 0.001*event->delta();
+	qobject_cast<Chart*>(chart())->zoomAt(mapToScene(event->pos()), factor);
 }
