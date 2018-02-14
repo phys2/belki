@@ -5,10 +5,15 @@
 
 #include <QtDebug>
 
+Chart *ChartView::chart()
+{
+	return qobject_cast<Chart*>(QChartView::chart());
+}
+
 void ChartView::mouseMoveEvent(QMouseEvent *event)
 {
 	if (!rubberState) {
-		qobject_cast<Chart*>(chart())->updateCursor(event->pos());
+		chart()->updateCursor(event->pos());
 	}
 
 	QChartView::mouseMoveEvent(event);
@@ -25,7 +30,7 @@ void ChartView::mousePressEvent(QMouseEvent *event)
 		   release, which means, probably the rubber was active, and we should
 		   ignore the next release event */
 		auto conn = std::make_shared<QMetaObject::Connection>();
-		*conn = connect(qobject_cast<Chart*>(chart()), &Chart::cursorChanged, [this, conn] {
+		*conn = connect(chart(), &Chart::cursorChanged, [this, conn] {
 			rubberPerformed = true;
 			disconnect(*conn);
 		});
@@ -43,8 +48,7 @@ void ChartView::mouseReleaseEvent(QMouseEvent *event)
 		return;
 
 	if (event->button() == Qt::LeftButton) {
-		auto c = qobject_cast<Chart*>(chart());
-		c->cursorLocked = !c->cursorLocked;
+		chart()->cursorLocked = !chart()->cursorLocked;
 	}
 }
 
@@ -56,7 +60,7 @@ void ChartView::enterEvent(QEvent *)
 
 void ChartView::leaveEvent(QEvent *)
 {
-	qobject_cast<Chart*>(chart())->updateCursor();
+	chart()->updateCursor();
 }
 
 void ChartView::keyReleaseEvent(QKeyEvent *event)
@@ -66,8 +70,7 @@ void ChartView::keyReleaseEvent(QKeyEvent *event)
 		return;
 
 	if (event->key() == Qt::Key_Space) {
-		auto c = qobject_cast<Chart*>(chart());
-		c->cursorLocked = !c->cursorLocked;
+		chart()->cursorLocked = !chart()->cursorLocked;
 	}
 }
 
@@ -78,5 +81,5 @@ void ChartView::wheelEvent(QWheelEvent *event)
 		return;
 
 	auto factor = 1. + 0.001*event->delta();
-	qobject_cast<Chart*>(chart())->zoomAt(mapToScene(event->pos()), factor);
+	chart()->zoomAt(mapToScene(event->pos()), factor);
 }
