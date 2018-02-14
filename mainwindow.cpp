@@ -11,6 +11,7 @@
 #include <QAbstractProxyModel>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QFileDialog>
+#include <QtWidgets/QMessageBox>
 
 #include <QtDebug>
 
@@ -20,21 +21,29 @@ MainWindow::MainWindow(QWidget *parent) :
 {
 	setupUi(this);
 
-	// toolbar
-	fileLabel->setText("<i>No file selected</i>");
-	toolBar->addWidget(fileLabel);
-	toolBar->addSeparator();
-	toolBar->addWidget(topBar);
+	/* actions */
+	// standard keys not available in UI Designer
+	actionLoadDataset->setShortcut(QKeySequence::StandardKey::Open);
+	actionHelp->setShortcut(QKeySequence::StandardKey::HelpContents);
 
-	// main chart
+	/* toolbar */
+	// put stuff before help button
+	auto anchor = actionHelp;
+	fileLabel->setText("<i>No file selected</i>");
+	toolBar->insertWidget(anchor, fileLabel);
+	toolBar->insertSeparator(anchor);
+	toolBar->insertWidget(anchor, topBar);
+	// right-align help button
+	auto* spacer = new QWidget();
+	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+	toolBar->insertWidget(actionHelp, spacer);
+
+	/* main chart */
 	chartView->setChart(chart);
 	chartView->setRubberBand(QtCharts::QChartView::RectangleRubberBand);
 	chartView->setRenderHint(QPainter::Antialiasing);
 
-	// cursor chart
-	auto p = cursorInlet->palette();
-	p.setColor(QPalette::Window, p.color(QPalette::Base));
-	cursorInlet->setPalette(p);
+	/* cursor chart */
 	cursorPlot->setChart(cursorChart);
 	cursorPlot->setRenderHint(QPainter::Antialiasing);
 	cursorChart->legend()->hide();
@@ -42,11 +51,16 @@ MainWindow::MainWindow(QWidget *parent) :
 	cursorChart->setAxisY(new QtCharts::QValueAxis);
 	cursorChart->axisY()->hide();
 	cursorChart->axisX()->hide();
+	// common background for plot and its container
+	auto p = cursorInlet->palette();
+	p.setColor(QPalette::Window, p.color(QPalette::Base));
+	cursorInlet->setPalette(p);
 
 	/* marker controls */
 	setupMarkerControls();
 
 	/* signals */
+	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 	connect(actionLoadDataset, &QAction::triggered, [this] {
 		auto filename = QFileDialog::getOpenFileName(this, "Open Dataset",
 		{}, "Peak Volumnes Table (*.tsv)");
@@ -93,12 +107,25 @@ void MainWindow::loadDataset(QString filename)
 	chartView->setEnabled(true);
 }
 
+void MainWindow::showHelp()
+{
+	QMessageBox box(this);
+	box.setWindowTitle("Help");
+	box.setIcon(QMessageBox::Information);
+	QFile helpText(":/help.html");
+	helpText.open(QIODevice::ReadOnly);
+	box.setText(helpText.readAll());
+	box.setWindowModality(Qt::WindowModality::WindowModal); // sheet in OS X
+	box.exec();
+}
+
 void MainWindow::updateCursorList(QVector<int> samples)
 {
 	cursorChart->removeAllSeries();
 	if (samples.empty()) {
 		cursorList->clear();
-		cursorWidget->setDisabled(true);
+		// only change title to avoid geometry change under Windows
+		cursorWidgetCaption->setDisabled(true);
 		return;
 	}
 

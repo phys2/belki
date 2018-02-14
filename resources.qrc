@@ -2,4 +2,7 @@
     <qresource prefix="/icons">
         <file alias="appicon">gfx/icon.ico</file>
     </qresource>
+    <qresource prefix="/">
+        <file>help.html</file>
+    </qresource>
 </RCC>

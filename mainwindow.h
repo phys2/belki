@@ -25,6 +25,7 @@ public:
 	void loadDataset(QString filename);
 
 public slots:
+	void showHelp();
 	void updateCursorList(QVector<int> samples);
 
 protected:
