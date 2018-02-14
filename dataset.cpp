@@ -159,7 +159,7 @@ void Dataset::write()
 QString Dataset::qvName()
 {
 	QFileInfo fi(source.filename);
-	return fi.path() + "/" + fi.baseName() + ".qv";
+	return fi.path() + "/" + fi.completeBaseName() + ".qv";
 }
 
 QByteArray Dataset::fileChecksum(QFile *file)
