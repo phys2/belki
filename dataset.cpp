@@ -10,7 +10,7 @@
 
 #include <QDebug>
 
-Dataset::Dataset(QString filename)
+Dataset::Dataset(const QString &filename)
     : source({filename, {}, {}})
 {
 	read(); // obtain data and interim results
@@ -30,6 +30,43 @@ Dataset::Dataset(QString filename)
 Dataset::~Dataset()
 {
 	write(); // save interim results
+}
+
+QVector<int> Dataset::loadMarkers(const QString &filename)
+{
+	QFile f(filename);
+	if (!f.open(QIODevice::ReadOnly)) {
+		qDebug() << "Could not open marker file";
+		return {};
+	}
+
+	QVector<int> ret;
+	QTextStream in(&f);
+	while (!in.atEnd()) {
+		QString name;
+		in >> name;
+
+		auto it = protIndex.find(name);
+		if (it == protIndex.end()) {
+			qDebug() << "Ignored" << name << "(unknown)";
+			continue;
+		}
+		ret.append(it.value());
+	}
+	return ret;
+}
+
+void Dataset::saveMarkers(const QString &filename, const QVector<int> indices)
+{
+	QFile f(filename);
+	if (!f.open(QIODevice::WriteOnly)) {
+		qDebug() << "Could not write marker file";
+		return;
+	}
+	QTextStream out(&f);
+	for (auto i : indices) {
+		out << proteins[i].name << endl;
+	}
 }
 
 void Dataset::read()

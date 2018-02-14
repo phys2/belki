@@ -22,8 +22,11 @@ public:
 		QString species;
 	};
 
-	Dataset(QString filename);
+	Dataset(const QString &filename);
 	~Dataset();
+
+	QVector<int> loadMarkers(const QString &filename);
+	void saveMarkers(const QString &filename, const QVector<int> indices);
 
 	struct {
 		QString filename;

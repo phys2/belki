@@ -64,8 +64,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(actionLoadDataset, &QAction::triggered, [this] {
 		auto filename = QFileDialog::getOpenFileName(this, "Open Dataset",
 		{}, "Peak Volumnes Table (*.tsv)");
-		if (filename.size())
-			loadDataset(filename);
+		if (filename.isEmpty())
+			return;
+		loadDataset(filename);
 	});
 
 	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
@@ -77,8 +78,7 @@ MainWindow::MainWindow(QWidget *parent) :
 		chart->display(data->display[name]);
 	});
 
-	// TODO: qactions, buttons+shortcuts for file loading, screenshot, etc.
-	// TODO: serialize markers
+	// TODO: qactions, buttons+shortcuts for screenshot, etc.
 }
 
 void MainWindow::loadDataset(QString filename)
@@ -219,6 +219,32 @@ void MainWindow::setupMarkerControls()
 		lastText = text;
 	});
 
+	/* setup buttons / actions, TODO move to more appropriate place */
+	loadMarkersButton->setDefaultAction(actionLoadMarkers);
+	saveMarkersButton->setDefaultAction(actionSaveMarkers);
+	clearMarkersButton->setDefaultAction(actionClearMarkers);
+	connect(actionLoadMarkers, &QAction::triggered, [this] {
+		auto filename = QFileDialog::getOpenFileName(this, "Open Markers File",
+		{}, "List of markers (*.txt);; All Files (*)");
+		if (filename.isEmpty())
+			return;
+		if (QFileInfo(filename).suffix().isEmpty())
+			filename.append(".txt");
+		for (auto i : data->loadMarkers(filename))
+			chart->addMarker(i);
+	});
+	connect(actionSaveMarkers, &QAction::triggered, [this] {
+		auto filename = QFileDialog::getSaveFileName(this, "Save Markers to File",
+		{}, "List of markers (*.txt)");
+		if (filename.isEmpty())
+			return;
+		QVector<int> indices;
+		for (auto m : this->markerItems)
+			if (m->checkState() == Qt::Checked)
+				indices.append(m->data().toInt());
+		data->saveMarkers(filename, indices);
+	});
+	connect(actionClearMarkers, &QAction::triggered, chart, &Chart::clearMarkers);
 }
 
 void MainWindow::updateMarkerControls()
