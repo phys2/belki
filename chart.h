@@ -5,6 +5,7 @@
 
 #include <QtCharts/QChart>
 #include <QtCharts/QScatterSeries>
+#include <QStack>
 
 namespace QtCharts {
 class QValueAxis;
@@ -20,7 +21,6 @@ public:
 		Marker(int sampleIndex, Chart* chart);
 		int sampleIndex;
 	};
-
 
 	Chart(QGraphicsItem *parent = nullptr, Qt::WindowFlags wFlags = nullptr);
     virtual ~Chart();
@@ -41,6 +41,7 @@ public:
 public slots:
 	void resetCursor();
 	void updateCursor(const QPointF &pos = {});
+	void undoZoom();
 
 signals:
 	void cursorChanged(QVector<int> samples);
@@ -54,6 +55,8 @@ protected:
 
 	QGraphicsEllipseItem *tracker;
 	QtCharts::QValueAxis *ax, *ay;
+
+	QStack<QRectF> zoomHistory;
 
 	QVector<Dataset::Protein> *proteins = nullptr;
 };
