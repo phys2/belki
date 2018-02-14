@@ -30,6 +30,7 @@ public:
 	void display(const QVector<QPointF> &points, bool reset = false);
 	void addMarker(int sampleIndex);
 	void removeMarker(int sampleIndex);
+	void clearMarkers();
 
 	void zoomAt(const QPointF &pos, qreal factor);
 
@@ -44,6 +45,7 @@ public slots:
 signals:
 	void cursorChanged(QVector<int> samples);
 	void markerToggled(int sampleIndex, bool present);
+	void markersCleared();
 
 protected:
 	QtCharts::QScatterSeries *master;

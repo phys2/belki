@@ -10,6 +10,7 @@
 
 class QLabel;
 class Chart;
+class QStandardItem;
 namespace QtCharts {
 class QChart;
 }
@@ -27,12 +28,14 @@ public slots:
 	void updateCursorList(QVector<int> samples);
 
 protected:
+	void setupMarkerControls();
 	void updateMarkerControls();
 
 	Chart *chart;
 	QtCharts::QChart *cursorChart;
 	QLabel *fileLabel;
 
+	QMap<int, QStandardItem*> markerItems;
 	std::unique_ptr<Dataset> data;
 };
 

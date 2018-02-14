@@ -55,8 +55,7 @@ void Chart::display(const QVector<QPointF> &points, bool reset)
 {
 	// reset if needed
 	if (reset) {
-		qDeleteAll(markers);
-		markers.clear();
+		clearMarkers();
 	}
 
 	// update point set
@@ -159,6 +158,13 @@ void Chart::removeMarker(int sampleIndex)
 	delete markers[sampleIndex];
 	markers.remove(sampleIndex);
 	emit markerToggled(sampleIndex, false);
+}
+
+void Chart::clearMarkers()
+{
+	qDeleteAll(markers);
+	markers.clear();
+	emit markersCleared();
 }
 
 QColor Chart::tableau20(bool reset)

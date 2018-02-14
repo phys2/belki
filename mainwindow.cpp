@@ -43,7 +43,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	cursorChart->axisY()->hide();
 	cursorChart->axisX()->hide();
 
-	// signals
+	/* marker controls */
+	setupMarkerControls();
+
+	/* signals */
 	connect(actionLoadDataset, &QAction::triggered, [this] {
 		auto filename = QFileDialog::getOpenFileName(this, "Open Dataset",
 		{}, "Peak Volumnes Table (*.tsv)");
@@ -128,44 +131,37 @@ void MainWindow::updateCursorList(QVector<int> samples)
 		auto &p = data->proteins[i];
 		content.append(tpl.arg(p.firstName, p.name));
 	}
-
 	cursorList->setText(text.arg(content));
-	cursorWidget->setEnabled(true);
+
+	cursorWidgetCaption->setEnabled(true);
 }
 
-void MainWindow::updateMarkerControls()
+void MainWindow::setupMarkerControls()
 {
-	/* create model for label list */
-	QMap<int, QStandardItem*> ref; // back-reference for synchronization
+	/* setup completer with empty model */
 	auto m = new QStandardItemModel;
-	for (auto i : data->protIndex)	{ // use index to have it sorted
-		auto item = new QStandardItem;
-		item->setText(data->proteins[i].firstName);
-		item->setData(i);
-		item->setCheckable(true);
-		item->setCheckState(Qt::Unchecked);
-		m->appendRow(item);
-		ref[i] = item;
-	}
+	auto cpl = new QCompleter(m);
+	cpl->setCaseSensitivity(Qt::CaseInsensitive);
+	// we expect model entries to be sorted
+	cpl->setModelSorting(QCompleter::CaseInsensitivelySortedModel);
+	cpl->setCompletionMode(QCompleter::InlineCompletion);
+	protSearch->setCompleter(cpl);
+	protList->setModel(cpl->completionModel());
 
 	/* synchronize with chart */
+	connect(chart, &Chart::markerToggled, [this] (int idx, bool present) {
+		this->markerItems[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
+	});
+	connect(chart, &Chart::markersCleared, [this] () {
+		for (auto m : this->markerItems)
+			m->setCheckState(Qt::Unchecked);
+	});
 	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
 		if (i->checkState() == Qt::Checked)
 			chart->addMarker(i->data().toInt());
 		if (i->checkState() == Qt::Unchecked)
 			chart->removeMarker(i->data().toInt());
 	});
-	connect(chart, &Chart::markerToggled, [ref] (int idx, bool present) {
-		ref[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
-	});
-
-	/* setup completer */
-	auto cpl = new QCompleter(m);
-	cpl->setCaseSensitivity(Qt::CaseInsensitive);
-	cpl->setModelSorting(QCompleter::CaseInsensitivelySortedModel); // see above
-	cpl->setCompletionMode(QCompleter::InlineCompletion);
-	protSearch->setCompleter(cpl);
-	protList->setModel(cpl->completionModel());
 
 	auto toggler = [m] (QModelIndex i) {
 		if (!i.isValid())
@@ -195,6 +191,24 @@ void MainWindow::updateMarkerControls()
 		}
 		lastText = text;
 	});
+
+}
+
+void MainWindow::updateMarkerControls()
+{
+	/* re-fill model */
+	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
+	m->clear();
+	markerItems.clear();
+	for (auto i : data->protIndex)	{ // use index to have it sorted (required!)
+		auto item = new QStandardItem;
+		item->setText(data->proteins[i].firstName);
+		item->setData(i);
+		item->setCheckable(true);
+		item->setCheckState(Qt::Unchecked);
+		m->appendRow(item);
+		markerItems[i] = item;
+	}
 
 	markerWidget->setEnabled(true);
 }
