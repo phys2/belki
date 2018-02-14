@@ -56,6 +56,7 @@ void Chart::display(const QVector<QPointF> &points, bool reset)
 	// reset if needed
 	if (reset) {
 		clearMarkers();
+		resetCursor();
 	}
 
 	// update point set
