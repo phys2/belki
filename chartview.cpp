@@ -69,9 +69,11 @@ void ChartView::keyReleaseEvent(QKeyEvent *event)
 	if (event->isAccepted())
 		return;
 
-	if (event->key() == Qt::Key_Space) {
+	if (event->key() == Qt::Key_Space)
 		chart()->cursorLocked = !chart()->cursorLocked;
-	}
+
+	if (event->key() == Qt::Key_Z)
+		chart()->undoZoom();
 }
 
 void ChartView::wheelEvent(QWheelEvent *event)

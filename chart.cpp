@@ -45,6 +45,12 @@ Chart::Chart(QGraphicsItem *parent, Qt::WindowFlags wFlags):
 	tracker->setZValue(50);
 	connect(ax, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
 	connect(ay, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
+
+	// setup zoom history (HACK: we expect ay to always update last, and always be part of it
+	connect(ay, &QtCharts::QValueAxis::rangeChanged, [this] {
+		QRectF newRange{{ax->min(), ay->min()}, QPointF{ax->max(), ay->max()}};
+		zoomHistory.push(newRange);
+	});
 }
 
 Chart::~Chart()
@@ -57,6 +63,7 @@ void Chart::display(const QVector<QPointF> &points, bool reset)
 	if (reset) {
 		clearMarkers();
 		resetCursor();
+		zoomHistory.clear();
 	}
 
 	// update point set
@@ -115,6 +122,19 @@ void Chart::updateCursor(const QPointF &pos)
 		}
 	}
 	emit cursorChanged(list);
+}
+
+void Chart::undoZoom()
+{
+	if (zoomHistory.empty())
+		return;
+	zoomHistory.pop(); // current
+	if (zoomHistory.empty())
+		return;
+
+	auto range = zoomHistory.pop();
+	axisX()->setRange(range.left(), range.right());
+	axisY()->setRange(range.top(), range.bottom());
 }
 
 void Chart::zoomAt(const QPointF &pos, qreal factor)
