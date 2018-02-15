@@ -16,7 +16,7 @@ Chart::Chart(QGraphicsItem *parent, Qt::WindowFlags wFlags):
     QChart(QChart::ChartTypeCartesian, parent, wFlags),
     ax(new QtCharts::QValueAxis), ay(new QtCharts::QValueAxis)
 {
-	// set up general appearance
+	/* set up general appearance */
 	setAnimationOptions(QChart::NoAnimation);
 	legend()->setAlignment(Qt::AlignLeft);
 
@@ -25,7 +25,7 @@ Chart::Chart(QGraphicsItem *parent, Qt::WindowFlags wFlags):
 	ax->setTitleText("dim 1");
 	ay->setTitleText("dim 2");
 
-	// set up master series
+	/* set up master series */
 	master = new QtCharts::QScatterSeries;
 	this->addSeries(master);
 	master->attachAxis(ax);
@@ -39,17 +39,19 @@ Chart::Chart(QGraphicsItem *parent, Qt::WindowFlags wFlags):
 
 	legend()->markers(master)[0]->setShape(QtCharts::QLegend::MarkerShapeCircle);
 
-	// set up tracker ellipse used in track()
+	/* set up tracker ellipse used in track() */
 	tracker = new QGraphicsEllipseItem(this);
 	tracker->setPen({Qt::red});
 	tracker->setZValue(50);
 	connect(ax, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
 	connect(ay, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
 
-	// setup zoom history (HACK: we expect ay to always update last, and always be part of it
+	/* setup zoom history */
+	// HACK: we expect ay to always be involved, and always update after ax!
 	connect(ay, &QtCharts::QValueAxis::rangeChanged, [this] {
-		QRectF newRange{{ax->min(), ay->min()}, QPointF{ax->max(), ay->max()}};
-		zoomHistory.push(newRange);
+		if (zoom.current.isValid())
+			zoom.history.push(zoom.current);
+		zoom.current = {{ax->min(), ay->min()}, QPointF{ax->max(), ay->max()}};
 	});
 }
 
@@ -57,14 +59,14 @@ Chart::~Chart()
 {
 }
 
-void Chart::display(const QVector<QPointF> &points, bool reset)
+void Chart::display(const QVector<QPointF> &points, bool fullReset)
 {
-	// reset if needed
-	if (reset) {
+	// reset state
+	if (fullReset) { // completely new data
 		clearMarkers();
-		resetCursor();
-		zoomHistory.clear();
 	}
+	resetCursor();
+	zoom = {};
 
 	// update point set
 	master->replace(points);
@@ -126,15 +128,14 @@ void Chart::updateCursor(const QPointF &pos)
 
 void Chart::undoZoom()
 {
-	if (zoomHistory.empty())
-		return;
-	zoomHistory.pop(); // current
-	if (zoomHistory.empty())
+	if (zoom.history.empty())
 		return;
 
-	auto range = zoomHistory.pop();
+	auto range = zoom.history.pop();
 	axisX()->setRange(range.left(), range.right());
 	axisY()->setRange(range.top(), range.bottom());
+	// undo triggered push
+	zoom.history.pop();
 }
 
 void Chart::zoomAt(const QPointF &pos, qreal factor)

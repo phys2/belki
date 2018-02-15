@@ -27,7 +27,7 @@ public:
 
 	void setMeta(QVector<Dataset::Protein> *p) { proteins = p; }
 
-	void display(const QVector<QPointF> &points, bool reset = false);
+	void display(const QVector<QPointF> &points, bool fullReset = false);
 	void addMarker(int sampleIndex);
 	void removeMarker(int sampleIndex);
 	void clearMarkers();
@@ -56,7 +56,10 @@ protected:
 	QGraphicsEllipseItem *tracker;
 	QtCharts::QValueAxis *ax, *ay;
 
-	QStack<QRectF> zoomHistory;
+	struct {
+		QRectF current;
+		QStack<QRectF> history;
+	} zoom;
 
 	QVector<Dataset::Protein> *proteins = nullptr;
 };
