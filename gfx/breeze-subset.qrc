@@ -7,6 +7,11 @@
 		<file alias="actions/24/document-open.svg">breeze/actions/24/document-open.svg</file>
 		<file alias="actions/32/document-open.svg">breeze/actions/32/document-open.svg</file>
 		<file alias="actions/symbolic/document-open-symbolic.svg">breeze/actions/symbolic/document-open-symbolic.svg</file>
+		<file alias="actions/16/document-save.svg">breeze/actions/16/document-save.svg</file>
+		<file alias="actions/22/document-save.svg">breeze/actions/22/document-save.svg</file>
+		<file alias="actions/24/document-save.svg">breeze/actions/24/document-save.svg</file>
+		<file alias="actions/32/document-save.svg">breeze/actions/32/document-save.svg</file>
+		<file alias="actions/symbolic/document-save-symbolic.svg">breeze/actions/symbolic/document-save-symbolic.svg</file>
 		<file alias="actions/16/help-about.svg">breeze/actions/16/help-about.svg</file>
 		<file alias="actions/22/help-about.svg">breeze/actions/22/help-about.svg</file>
 		<file alias="actions/24/help-about.svg">breeze/actions/24/help-about.svg</file>
