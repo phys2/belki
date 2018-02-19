@@ -130,7 +130,7 @@ void MainWindow::updateCursorList(QVector<int> samples)
 	}
 
 	/* set up plot */
-	for (auto i : samples) {
+	for (auto i : qAsConst(samples)) {
 		auto s = new QtCharts::QLineSeries;
 		cursorChart->addSeries(s);
 		s->attachAxis(cursorChart->axisX());
@@ -154,7 +154,7 @@ void MainWindow::updateCursorList(QVector<int> samples)
 	// compose list
 	QString content;
 	QString tpl("<a href='https://uniprot.org/uniprot/%2'>%1</a><br>");
-	for (auto i : samples) {
+	for (auto i : qAsConst(samples)) {
 		auto &p = data->proteins[i];
 		content.append(tpl.arg(p.firstName, p.name));
 	}
@@ -180,7 +180,7 @@ void MainWindow::setupMarkerControls()
 		this->markerItems[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 	});
 	connect(chart, &Chart::markersCleared, [this] () {
-		for (auto m : this->markerItems)
+		for (auto m : qAsConst(this->markerItems))
 			m->setCheckState(Qt::Unchecked);
 	});
 	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
@@ -239,7 +239,7 @@ void MainWindow::setupMarkerControls()
 		if (filename.isEmpty())
 			return;
 		QVector<int> indices;
-		for (auto m : this->markerItems)
+		for (auto m : qAsConst(this->markerItems))
 			if (m->checkState() == Qt::Checked)
 				indices.append(m->data().toInt());
 		data->saveMarkers(filename, indices);
@@ -253,7 +253,7 @@ void MainWindow::updateMarkerControls()
 	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
 	m->clear();
 	markerItems.clear();
-	for (auto i : data->protIndex)	{ // use index to have it sorted (required!)
+	for (auto i : qAsConst(data->protIndex)) { // use index to have it sorted (required!)
 		auto item = new QStandardItem;
 		item->setText(data->proteins[i].firstName);
 		item->setData(i);

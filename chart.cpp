@@ -79,7 +79,7 @@ void Chart::display(const QVector<QPointF> &points, bool fullReset)
 	ay->setRange(bbox.top(), bbox.bottom());
 
 	// update everything else (should do nothing on reset)
-	for (auto m : markers) {
+	for (auto m : qAsConst(markers)) {
 		m->replace(0, master->pointsVector()[m->sampleIndex]);
 	}
 }

@@ -18,7 +18,7 @@ Dataset::Dataset(const QString &filename)
 	// TODO: load cluster labels
 
 	// TODO: compute on-demand
-	std::vector<QString> available = {"PCA12", "PCA13", "PCA23", "tSNE"};
+	const std::vector<QString> available = {"PCA12", "PCA13", "PCA23", "tSNE"};
 	for (auto &m : available) {
 		if (!display.contains(m))
 			display[m] = dimred::compute(m, features);
