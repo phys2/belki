@@ -1,6 +1,11 @@
-# compiler config
+# general
 
 CONFIG += c++14
+CONFIG += link_pkgconfig
+QMAKE_CXXFLAGS_RELEASE = -O3 -march=nehalem
+
+# platform support
+
 win32 {
     CONFIG += static
     QTPLUGIN += qsvgicon
@@ -8,19 +13,17 @@ win32 {
 }
 macx:ICON = gfx/icon.icns
 
-QMAKE_CXXFLAGS_RELEASE = -O3 -march=nehalem
-
 # dependencies
 
 QT += gui charts
 
+# openmp, eigen, arpack for tapkee
 QMAKE_CXXFLAGS += -fopenmp
 LIBS += -fopenmp
-
-CONFIG += link_pkgconfig
 INCLUDEPATH += /usr/include/eigen3 #PKGCONFIG += eigen3 does not work with mingw
 PKGCONFIG += arpack
 
+# tapkee
 INCLUDEPATH += $$PWD/include
 
 HEADERS += \
