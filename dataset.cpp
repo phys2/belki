@@ -26,9 +26,8 @@ void Dataset::loadDataset(const QString &filename)
 	for (auto &m : available) {
 		if (!d.display.contains(m)) {
 			auto result = dimred::compute(m, d.features);
-			l.lockForWrite();
+			QWriteLocker _(&l);
 			d.display[m] = std::move(result);
-			l.unlock();
 		}
 	}
 
@@ -82,12 +81,11 @@ void Dataset::saveMarkers(const QString &filename, const QVector<unsigned> &indi
 	}
 
 	/* public method -> called from other thread -> we must lock! */
-	l.lockForRead();
+	QReadLocker _(&l);
 	QTextStream out(&f);
 	for (auto i : indices) {
 		out << d.proteins[i].name << endl;
 	}
-	l.unlock();
 }
 
 bool Dataset::read()
@@ -133,7 +131,7 @@ bool Dataset::readSource()
 		return false;
 	}
 
-	l.lockForWrite();
+	QWriteLocker _(&l);
 	d.proteins.clear();
 	d.protIndex.clear();
 	d.features.clear();
@@ -164,7 +162,6 @@ bool Dataset::readSource()
 		index++;
 	}
 	qDebug() << "read" << d.features.size() << "rows with" << len << "columns";
-	l.unlock();
 
 	source.size = f.size();
 	source.checksum = fileChecksum(&f);
