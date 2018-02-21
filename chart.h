@@ -40,6 +40,7 @@ public slots:
 	void resetCursor();
 	void updateCursor(const QPointF &pos = {});
 	void undoZoom();
+	void togglePartition(bool showPartition);
 
 signals:
 	void cursorChanged(QVector<unsigned> samples);

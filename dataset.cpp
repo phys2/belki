@@ -36,14 +36,56 @@ void Dataset::loadDataset(const QString &filename)
 
 void Dataset::loadAnnotations(const QString &filename)
 {
-	QFile f(source.filename);
+	QFile f(filename);
 	if (!f.open(QIODevice::ReadOnly)) {
 		emit ioError(QString("Could not read file %1!").arg(filename));
 		return;
 	}
 
 	QTextStream in(&f);
-	//dimensions = in.readLine().split("\t", QString::SkipEmptyParts);
+	// we use SkipEmptyParts for chomping, but dangerous…
+	auto header = in.readLine().split("\t", QString::SkipEmptyParts);
+	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
+	if (header.size() < 3 || !header[1].contains(re)) {
+		emit ioError("Could not parse file!<p>The second column must contain protein names.</p>");
+		return;
+	}
+
+	QWriteLocker _(&l);
+	header.removeFirst();
+	header.removeFirst();
+
+	/* setup clusters */
+	for (auto &p : d.proteins)
+		p.memberOf.clear();
+	d.clustering.resize((unsigned)header.size());
+	for (auto i = 0; i < header.size(); ++i) {
+		d.clustering[(unsigned)i] = {header[i], {}, {}};
+	}
+
+	/* associate to clusters */
+	while (!in.atEnd()) {
+		auto line = in.readLine().split("\t");
+		if (line.size() < 3)
+			continue;
+
+		auto name = line[1];
+		line.removeFirst();
+		line.removeFirst();
+		auto p = d.protIndex.find(name);
+		if (p == d.protIndex.end()) {
+			qDebug() << "Ignored" << name << "(unknown)";
+			continue;
+		}
+
+		for (auto i = 0; i < line.size(); ++i) {
+			if (line[i].isEmpty() || line[i].contains(QRegularExpression("^\\s*$")))
+				continue;
+			d.proteins[p.value()].memberOf.push_back((unsigned)i);
+		}
+	}
+
+	emit newClustering();
 }
 
 QVector<unsigned> Dataset::loadMarkers(const QString &filename)

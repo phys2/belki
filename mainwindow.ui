@@ -325,6 +325,8 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionLoadDataset"/>
+   <addaction name="actionLoadAnnotations"/>
+   <addaction name="actionShowPartition"/>
    <addaction name="actionHelp"/>
   </widget>
   <action name="actionLoadDataset">
@@ -382,6 +384,29 @@
    </property>
    <property name="toolTip">
     <string>Remove all current markers</string>
+   </property>
+  </action>
+  <action name="actionShowPartition">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Show Partition</string>
+   </property>
+   <property name="toolTip">
+    <string>Color samples by their partition/cluster</string>
+   </property>
+  </action>
+  <action name="actionLoadAnnotations">
+   <property name="icon">
+    <iconset theme="document-open">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>Load Annotations</string>
+   </property>
+   <property name="toolTip">
+    <string>Load a .tsv annotition file</string>
    </property>
   </action>
  </widget>

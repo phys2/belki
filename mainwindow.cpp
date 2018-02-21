@@ -30,12 +30,13 @@ MainWindow::MainWindow(QWidget *parent) :
 	actionHelp->setShortcut(QKeySequence::StandardKey::HelpContents);
 
 	/* toolbar */
-	// put stuff before help button
-	auto anchor = actionHelp;
+	// put stuff before other buttons
+	auto anchor = actionLoadAnnotations;
 	fileLabel->setText("<i>No file selected</i>");
 	toolBar->insertWidget(anchor, fileLabel);
 	toolBar->insertSeparator(anchor);
 	toolBar->insertWidget(anchor, topBar);
+	toolBar->insertSeparator(anchor);
 	// right-align help button
 	auto* spacer = new QWidget();
 	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -67,6 +68,13 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(this, &MainWindow::loadAnnotations, &data, &Dataset::loadAnnotations);
 	connect(&data, &Dataset::ioError, this, &MainWindow::displayError);
 	connect(&data, &Dataset::newData, this, &MainWindow::updateData);
+	connect(&data, &Dataset::newClustering, [this] {
+		if (actionShowPartition->isChecked()) {
+			chart->togglePartition(true); // manually trigger update
+		} else {
+			actionShowPartition->setChecked(true);
+		}
+	});
 
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 	connect(actionLoadDataset, &QAction::triggered, [this] {
@@ -77,13 +85,19 @@ MainWindow::MainWindow(QWidget *parent) :
 		fileLabel->setText(QString("<i>Calculating…</i>"));
 		emit loadDataset(filename);
 	});
+	connect(actionLoadAnnotations, &QAction::triggered, [this] {
+		auto filename = QFileDialog::getOpenFileName(this, "Open Annotations",
+		{}, "Annotation Table (*.tsv)");
+		if (filename.isEmpty())
+			return;
+		emit loadAnnotations(filename);
+	});
+	connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartition);
 
 	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
 
 	connect(transformSelect, qOverload<const QString&>(&QComboBox::currentIndexChanged),
 	        [this] (const QString &name) { chart->display(name); });
-
-	// TODO: qactions, buttons+shortcuts for screenshot, etc.
 }
 
 MainWindow::~MainWindow()

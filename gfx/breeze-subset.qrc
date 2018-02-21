@@ -22,5 +22,8 @@
 		<file alias="actions/24/edit-delete.svg">breeze/actions/24/edit-delete.svg</file>
 		<file alias="actions/32/edit-delete.svg">breeze/actions/32/edit-delete.svg</file>
 		<file alias="actions/symbolic/edit-delete-symbolic.svg">breeze/actions/symbolic/edit-delete-symbolic.svg</file>
+		<file alias="actions/16/colors-luma.svg">breeze/actions/16/colors-luma.svg</file>
+		<file alias="actions/22/colors-luma.svg">breeze/actions/22/colors-luma.svg</file>
+		<file alias="actions/32/colors-luma.svg">breeze/actions/32/colors-luma.svg</file>
 	</qresource>
 </RCC>

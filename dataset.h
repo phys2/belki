@@ -84,6 +84,7 @@ public:
 
 signals:
 	void newData(const QString &filename);
+	void newClustering();
 	void ioError(const QString &message);
 
 public slots: // Note: never call these directly! use signals for thread-affinity

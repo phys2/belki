@@ -138,6 +138,47 @@ void Chart::undoZoom()
 	zoom.history.pop();
 }
 
+void Chart::togglePartition(bool showPartition)
+{
+	if (!showPartition) {
+		for (auto s : partitions)
+			s->hide();
+		master->show();
+		return;
+	}
+
+	master->hide();
+	// TODO: only re-compose when necessary
+	qDeleteAll(partitions);
+	partitions.clear();
+
+	// TODO: write helper for setting sth like this up!
+	auto d = data.peek();
+	for (auto &c : d->clustering) {
+		auto part = new QtCharts::QScatterSeries;
+		partitions.push_back(part);
+		this->addSeries(part);
+		part->attachAxis(ax);
+		part->attachAxis(ay);
+		part->setName(c.name);
+
+		part->setPen(master->pen());
+		auto color = tableau20(); // TODO
+		part->setBorderColor(color);
+		color.setAlphaF(0.5);
+		part->setColor(color);
+
+		legend()->markers(part)[0]->setShape(QtCharts::QLegend::MarkerShapeCircle);
+	}
+	auto source = master->pointsVector();
+	for (unsigned i = 0; i < d->proteins.size(); ++i) {
+		auto &p = d->proteins[i];
+		if (p.memberOf.size() != 1)
+			continue; // TODO: grey or white set
+		(*partitions[p.memberOf[0]]) << source[(int)i];
+	}
+}
+
 void Chart::zoomAt(const QPointF &pos, qreal factor)
 {
 	auto stretch = 1./factor;
