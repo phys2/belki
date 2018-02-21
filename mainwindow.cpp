@@ -129,7 +129,7 @@ void MainWindow::displayError(const QString &message)
 	QMessageBox::critical(this, "An error occured", message);
 }
 
-void MainWindow::updateCursorList(QVector<int> samples)
+void MainWindow::updateCursorList(QVector<unsigned> samples)
 {
 	auto d = data.peek();
 	cursorChart->removeAllSeries();
@@ -159,7 +159,7 @@ void MainWindow::updateCursorList(QVector<int> samples)
 		samples.resize(showMax - 1);
 	}
 	// sort by name
-	qSort(samples.begin(), samples.end(), [&d] (const int& a, const int& b) {
+	qSort(samples.begin(), samples.end(), [&d] (const unsigned& a, const unsigned& b) {
 		return d->proteins[a].firstName < d->proteins[b].firstName;
 	});
 	// compose list
@@ -187,7 +187,7 @@ void MainWindow::setupMarkerControls()
 	protList->setModel(cpl->completionModel());
 
 	/* synchronize with chart */
-	connect(chart, &Chart::markerToggled, [this] (int idx, bool present) {
+	connect(chart, &Chart::markerToggled, [this] (unsigned idx, bool present) {
 		this->markerItems[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 	});
 	connect(chart, &Chart::markersCleared, [this] () {
@@ -249,10 +249,10 @@ void MainWindow::setupMarkerControls()
 		{}, "List of markers (*.txt)");
 		if (filename.isEmpty())
 			return;
-		QVector<int> indices;
+		QVector<unsigned> indices;
 		for (auto m : qAsConst(this->markerItems))
 			if (m->checkState() == Qt::Checked)
-				indices.append(m->data().toInt());
+				indices.append((unsigned)m->data().toInt());
 		data.saveMarkers(filename, indices);
 	});
 	connect(actionClearMarkers, &QAction::triggered, chart, &Chart::clearMarkers);

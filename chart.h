@@ -18,16 +18,16 @@ class Chart: public QtCharts::QChart
 public:
 
 	struct Marker : QtCharts::QScatterSeries {
-		Marker(int sampleIndex, Chart* chart);
-		int sampleIndex;
+		Marker(unsigned sampleIndex, Chart* chart);
+		unsigned sampleIndex;
 	};
 
 	Chart(Dataset &data);
     virtual ~Chart();
 
 	void display(const QString& set, bool fullReset = false);
-	void addMarker(int sampleIndex);
-	void removeMarker(int sampleIndex);
+	void addMarker(unsigned sampleIndex);
+	void removeMarker(unsigned sampleIndex);
 	void clearMarkers();
 
 	void zoomAt(const QPointF &pos, qreal factor);
@@ -42,8 +42,8 @@ public slots:
 	void undoZoom();
 
 signals:
-	void cursorChanged(QVector<int> samples);
-	void markerToggled(int sampleIndex, bool present);
+	void cursorChanged(QVector<unsigned> samples);
+	void markerToggled(unsigned sampleIndex, bool present);
 	void markersCleared();
 
 protected:
@@ -51,7 +51,7 @@ protected:
 
 	QtCharts::QScatterSeries *master;
 	std::vector<QtCharts::QScatterSeries*> partitions;
-	QMap<int, Marker*> markers;
+	QMap<unsigned, Marker*> markers;
 
 	QGraphicsEllipseItem *tracker;
 	QtCharts::QValueAxis *ax, *ay;

@@ -32,13 +32,13 @@ public slots:
 	void showHelp();
 	void displayError(const QString &message);
 	void updateData(const QString &filename);
-	void updateCursorList(QVector<int> samples);
+	void updateCursorList(QVector<unsigned> samples);
 
 protected:
 	void setupMarkerControls();
 	void updateMarkerControls();
 
-	QMap<int, QStandardItem*> markerItems;
+	QMap<unsigned, QStandardItem*> markerItems;
 	Dataset data;
 	QThread dataThread;
 

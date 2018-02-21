@@ -80,7 +80,7 @@ void Chart::display(const QString &set, bool fullReset)
 
 	// update everything else (should do nothing on reset)
 	for (auto m : qAsConst(markers)) {
-		m->replace(0, master->pointsVector()[m->sampleIndex]);
+		m->replace(0, master->pointsVector()[(int)m->sampleIndex]);
 	}
 }
 
@@ -116,11 +116,11 @@ void Chart::updateCursor(const QPointF &pos)
 
 	// determine all proteins that fall into the cursor
 	auto p = master->pointsVector();
-	QVector<int> list;
+	QVector<unsigned> list;
 	for (int i = 0; i < p.size(); ++i) {
 		auto diff = p[i] - center;
 		if (QPointF::dotProduct(diff, diff) < range) {
-			list << i;
+			list << (unsigned)i;
 		}
 	}
 	emit cursorChanged(list);
@@ -157,7 +157,7 @@ void Chart::resetCursor()
 	updateCursor();
 }
 
-void Chart::addMarker(int sampleIndex)
+void Chart::addMarker(unsigned sampleIndex)
 {
 	if (markers.contains(sampleIndex))
 		return; // already there
@@ -172,7 +172,7 @@ void Chart::addMarker(int sampleIndex)
 	});
 }
 
-void Chart::removeMarker(int sampleIndex)
+void Chart::removeMarker(unsigned sampleIndex)
 {
 	if (!markers.contains(sampleIndex))
 		return; // already gone
@@ -204,13 +204,13 @@ QColor Chart::tableau20(bool reset)
 	return tableau[index++ % tableau.size()];
 }
 
-Chart::Marker::Marker(int sampleIndex, Chart *chart)
+Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
     : sampleIndex(sampleIndex)
 {
 	auto label = chart->data.peek()->proteins[sampleIndex].firstName;
 	setName(label);
 	setPointLabelsFormat(label); // displays name over marker point
-	append(chart->master->pointsVector()[sampleIndex]);
+	append(chart->master->pointsVector()[(int)sampleIndex]);
 	chart->addSeries(this);
 
 	attachAxis(chart->axisX());

@@ -47,7 +47,7 @@ void Dataset::loadAnnotations(const QString &filename)
 	//dimensions = in.readLine().split("\t", QString::SkipEmptyParts);
 }
 
-QVector<int> Dataset::loadMarkers(const QString &filename)
+QVector<unsigned> Dataset::loadMarkers(const QString &filename)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::ReadOnly)) {
@@ -56,8 +56,8 @@ QVector<int> Dataset::loadMarkers(const QString &filename)
 	}
 
 	/* public method -> called from other thread -> we must lock! */
-	l.lockForRead();
-	QVector<int> ret;
+	QReadLocker _(&l);
+	QVector<unsigned> ret;
 	QTextStream in(&f);
 	while (!in.atEnd()) {
 		QString name;
@@ -70,11 +70,10 @@ QVector<int> Dataset::loadMarkers(const QString &filename)
 		}
 		ret.append(it.value());
 	}
-	l.unlock();
 	return ret;
 }
 
-void Dataset::saveMarkers(const QString &filename, const QVector<int> indices)
+void Dataset::saveMarkers(const QString &filename, const QVector<unsigned> &indices)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::WriteOnly)) {
@@ -143,7 +142,7 @@ bool Dataset::readSource()
 	QTextStream in(&f);
 	d.dimensions = in.readLine().split("\t", QString::SkipEmptyParts);
 	auto len = d.dimensions.size();
-	auto index = 0;
+	unsigned index = 0;
 	while (!in.atEnd()) {
 		QString name;
 		in >> name;
@@ -159,8 +158,8 @@ bool Dataset::readSource()
 			points[i] = {(qreal)i, coeffs[i]};
 		}
 		d.features.append(std::move(coeffs));
-		d.featurePoints.append(std::move(points));
-		d.proteins.append(std::move(p));
+		d.featurePoints.push_back(std::move(points));
+		d.proteins.push_back(std::move(p));
 		d.protIndex[name] = index;
 		index++;
 	}

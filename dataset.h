@@ -32,21 +32,21 @@ public:
 		// last part of protein name
 		QString species;
 		// annotations, if any
-		std::vector<Cluster*> memberOf;
+		std::vector<unsigned> memberOf;
 	};
 
 	struct Public {
 		QStringList dimensions;
 
-		QMap<QString, int> protIndex; // map indentifiers to index in vectors
+		QMap<QString, unsigned> protIndex; // map indentifiers to index in vectors
 
 		// meta data
-		QVector<Protein> proteins;
+		std::vector<Protein> proteins;
 
 		// original data
 		QVector<QVector<double>> features;
 		// pre-cached set of points
-		QVector<QVector<QPointF>> featurePoints;
+		std::vector<QVector<QPointF>> featurePoints;
 
 		// feature reduced point sets
 		QMap<QString, QVector<QPointF>> display;
@@ -73,8 +73,8 @@ public:
 
 	View peek() { return View(d, l); }
 
-	QVector<int> loadMarkers(const QString &filename);
-	void saveMarkers(const QString &filename, const QVector<int> indices);
+	QVector<unsigned> loadMarkers(const QString &filename);
+	void saveMarkers(const QString &filename, const QVector<unsigned> &indices);
 
 	struct {
 		QString filename;
