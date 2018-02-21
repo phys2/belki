@@ -5,6 +5,7 @@
 #include "dataset.h"
 
 #include <QtWidgets/QMainWindow>
+#include <QtCore/QThread>
 
 #include <memory>
 
@@ -21,23 +22,29 @@ class MainWindow : public QMainWindow, private Ui::MainWindow
 
 public:
 	explicit MainWindow(QWidget *parent = nullptr);
+	~MainWindow();
 
-	void loadDataset(QString filename);
+signals:
+	void loadDataset(const QString &filename);
+	void loadAnnotations(const QString &filename);
 
 public slots:
 	void showHelp();
+	void displayError(const QString &message);
+	void updateData(const QString &filename);
 	void updateCursorList(QVector<int> samples);
 
 protected:
 	void setupMarkerControls();
 	void updateMarkerControls();
 
-	Chart *chart;
+	QMap<int, QStandardItem*> markerItems;
+	Dataset data;
+	QThread dataThread;
+
+	Chart *chart; // initialize after data
 	QtCharts::QChart *cursorChart;
 	QLabel *fileLabel;
-
-	QMap<int, QStandardItem*> markerItems;
-	std::unique_ptr<Dataset> data;
 };
 
 #endif // MAINWINDOW_H

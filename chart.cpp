@@ -12,8 +12,8 @@
 
 #include <QtCore/QDebug>
 
-Chart::Chart(QGraphicsItem *parent, Qt::WindowFlags wFlags):
-    QChart(QChart::ChartTypeCartesian, parent, wFlags),
+Chart::Chart(Dataset &data) :
+    data(data),
     ax(new QtCharts::QValueAxis), ay(new QtCharts::QValueAxis)
 {
 	/* set up general appearance */
@@ -59,7 +59,7 @@ Chart::~Chart()
 {
 }
 
-void Chart::display(const QVector<QPointF> &points, bool fullReset)
+void Chart::display(const QString &set, bool fullReset)
 {
 	// reset state
 	if (fullReset) { // completely new data
@@ -69,10 +69,10 @@ void Chart::display(const QVector<QPointF> &points, bool fullReset)
 	zoom = {};
 
 	// update point set
-	master->replace(points);
+	master->replace(data.peek()->display[set]);
 
 	// update ranges cheap & dirty
-	auto bbox = QPolygonF(points).boundingRect();
+	auto bbox = QPolygonF(master->pointsVector()).boundingRect();
 	auto offset = bbox.width() * 0.05; // give some breathing space
 	bbox.adjust(-offset, -offset, offset, offset);
 	ax->setRange(bbox.left(), bbox.right());
@@ -207,7 +207,7 @@ QColor Chart::tableau20(bool reset)
 Chart::Marker::Marker(int sampleIndex, Chart *chart)
     : sampleIndex(sampleIndex)
 {
-	auto label = (*chart->proteins)[sampleIndex].firstName;
+	auto label = chart->data.peek()->proteins[sampleIndex].firstName;
 	setName(label);
 	setPointLabelsFormat(label); // displays name over marker point
 	append(chart->master->pointsVector()[sampleIndex]);

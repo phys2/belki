@@ -191,6 +191,9 @@
          </property>
          <item>
           <widget class="QLabel" name="cursorWidgetCaption">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="text">
             <string>Proteins under cursor:</string>
            </property>

@@ -16,9 +16,12 @@
 #include <QtDebug>
 
 MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent), chart(new Chart), cursorChart(new QtCharts::QChart),
+    QMainWindow(parent), chart(new Chart(data)), cursorChart(new QtCharts::QChart),
     fileLabel(new QLabel)
 {
+	data.moveToThread(&dataThread);
+	dataThread.start();
+
 	setupUi(this);
 
 	/* actions */
@@ -60,45 +63,47 @@ MainWindow::MainWindow(QWidget *parent) :
 	setupMarkerControls();
 
 	/* signals */
+	connect(this, &MainWindow::loadDataset, &data, &Dataset::loadDataset);
+	connect(this, &MainWindow::loadAnnotations, &data, &Dataset::loadAnnotations);
+	connect(&data, &Dataset::ioError, this, &MainWindow::displayError);
+	connect(&data, &Dataset::newData, this, &MainWindow::updateData);
+
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 	connect(actionLoadDataset, &QAction::triggered, [this] {
 		auto filename = QFileDialog::getOpenFileName(this, "Open Dataset",
 		{}, "Peak Volumnes Table (*.tsv)");
 		if (filename.isEmpty())
 			return;
-		loadDataset(filename);
+		fileLabel->setText(QString("<i>Calculating…</i>"));
+		emit loadDataset(filename);
 	});
 
 	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
 
 	connect(transformSelect, qOverload<const QString&>(&QComboBox::currentIndexChanged),
-	        [this] (const QString &name) {
-		if (!data.get())
-			return;
-		chart->display(data->display[name]);
-	});
+	        [this] (const QString &name) { chart->display(name); });
 
 	// TODO: qactions, buttons+shortcuts for screenshot, etc.
 }
 
-void MainWindow::loadDataset(QString filename)
+MainWindow::~MainWindow()
+{
+	dataThread.quit();
+	dataThread.wait();
+}
+
+void MainWindow::updateData(const QString &filename)
 {
 	QFileInfo fi(filename);
 	//auto title = QFileInfo(fi.canonicalFilePath()).completeBaseName();
 	auto title = QDir(QFileInfo(fi.canonicalFilePath()).path()).dirName();
 	setWindowTitle(QString("%1 – Belki").arg(title));
 
-	// TODO: asynchronous computation
-	fileLabel->setText(QString("<i>Calculating…</i>"));
-	repaint();
-	data = std::make_unique<Dataset>(filename);
-
-	chart->setMeta(&data->proteins);
-	chart->display(data->display[transformSelect->currentText()], true);
+	chart->display(transformSelect->currentText(), true);
 	fileLabel->setText(QString("<b>%1</b>").arg(title));
 
 	/* set up cursor chart */
-	cursorChart->axisX()->setRange(0, data->dimensions.size());
+	cursorChart->axisX()->setRange(0, data.peek()->dimensions.size());
 
 	/* set up marker controls */
 	updateMarkerControls();
@@ -119,8 +124,14 @@ void MainWindow::showHelp()
 	box.exec();
 }
 
+void MainWindow::displayError(const QString &message)
+{
+	QMessageBox::critical(this, "An error occured", message);
+}
+
 void MainWindow::updateCursorList(QVector<int> samples)
 {
+	auto d = data.peek();
 	cursorChart->removeAllSeries();
 	if (samples.empty()) {
 		cursorList->clear();
@@ -135,7 +146,7 @@ void MainWindow::updateCursorList(QVector<int> samples)
 		cursorChart->addSeries(s);
 		s->attachAxis(cursorChart->axisX());
 		s->attachAxis(cursorChart->axisY());
-		s->replace(data->featurePoints[i]);
+		s->replace(d->featurePoints[i]);
 	}
 
 	/* set up list */
@@ -148,14 +159,14 @@ void MainWindow::updateCursorList(QVector<int> samples)
 		samples.resize(showMax - 1);
 	}
 	// sort by name
-	qSort(samples.begin(), samples.end(), [this] (const int& a, const int& b) {
-		return data->proteins[a].firstName < data->proteins[b].firstName;
+	qSort(samples.begin(), samples.end(), [&d] (const int& a, const int& b) {
+		return d->proteins[a].firstName < d->proteins[b].firstName;
 	});
 	// compose list
 	QString content;
 	QString tpl("<a href='https://uniprot.org/uniprot/%2'>%1</a><br>");
 	for (auto i : qAsConst(samples)) {
-		auto &p = data->proteins[i];
+		auto &p = d->proteins[i];
 		content.append(tpl.arg(p.firstName, p.name));
 	}
 	cursorList->setText(text.arg(content));
@@ -230,7 +241,7 @@ void MainWindow::setupMarkerControls()
 			return;
 		if (QFileInfo(filename).suffix().isEmpty())
 			filename.append(".txt");
-		for (auto i : data->loadMarkers(filename))
+		for (auto i : data.loadMarkers(filename))
 			chart->addMarker(i);
 	});
 	connect(actionSaveMarkers, &QAction::triggered, [this] {
@@ -242,7 +253,7 @@ void MainWindow::setupMarkerControls()
 		for (auto m : qAsConst(this->markerItems))
 			if (m->checkState() == Qt::Checked)
 				indices.append(m->data().toInt());
-		data->saveMarkers(filename, indices);
+		data.saveMarkers(filename, indices);
 	});
 	connect(actionClearMarkers, &QAction::triggered, chart, &Chart::clearMarkers);
 }
@@ -253,9 +264,10 @@ void MainWindow::updateMarkerControls()
 	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
 	m->clear();
 	markerItems.clear();
-	for (auto i : qAsConst(data->protIndex)) { // use index to have it sorted (required!)
+	auto d = data.peek();
+	for (auto i : qAsConst(d->protIndex)) { // use index to have it sorted (required!)
 		auto item = new QStandardItem;
-		item->setText(data->proteins[i].firstName);
+		item->setText(d->proteins[i].firstName);
 		item->setData(i);
 		item->setCheckable(true);
 		item->setCheckState(Qt::Unchecked);

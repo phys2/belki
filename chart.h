@@ -22,12 +22,10 @@ public:
 		int sampleIndex;
 	};
 
-	Chart(QGraphicsItem *parent = nullptr, Qt::WindowFlags wFlags = nullptr);
+	Chart(Dataset &data);
     virtual ~Chart();
 
-	void setMeta(QVector<Dataset::Protein> *p) { proteins = p; }
-
-	void display(const QVector<QPointF> &points, bool fullReset = false);
+	void display(const QString& set, bool fullReset = false);
 	void addMarker(int sampleIndex);
 	void removeMarker(int sampleIndex);
 	void clearMarkers();
@@ -49,6 +47,8 @@ signals:
 	void markersCleared();
 
 protected:
+	Dataset &data;
+
 	QtCharts::QScatterSeries *master;
 	std::vector<QtCharts::QScatterSeries*> partitions;
 	QMap<int, Marker*> markers;
@@ -60,8 +60,6 @@ protected:
 		QRectF current;
 		QStack<QRectF> history;
 	} zoom;
-
-	QVector<Dataset::Protein> *proteins = nullptr;
 };
 
 #endif /* CHART_H */

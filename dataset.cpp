@@ -7,52 +7,70 @@
 #include <QDataStream>
 #include <QCryptographicHash>
 #include <QRegularExpression>
+#include <QMessageBox>
 
 #include <QDebug>
 
-Dataset::Dataset(const QString &filename)
-    : source({filename, {}, {}})
+void Dataset::loadDataset(const QString &filename)
 {
-	read(); // obtain data and interim results
+	write(); // save interim results on previous dataset
 
-	// TODO: load cluster labels
+	source = {filename, {}, {}};
+
+	auto success = read(); // obtain data and interim results
+	if (!success)
+		return;
 
 	// TODO: compute on-demand
 	const std::vector<QString> available = {"PCA12", "PCA13", "PCA23", "tSNE"};
 	for (auto &m : available) {
-		if (!display.contains(m))
-			display[m] = dimred::compute(m, features);
+		if (!d.display.contains(m)) {
+			auto result = dimred::compute(m, d.features);
+			l.lockForWrite();
+			d.display[m] = std::move(result);
+			l.unlock();
+		}
 	}
 
-	// TODO in MainWindow: also offer dim-wise scatter plots
+	emit newData(filename);
 }
 
-Dataset::~Dataset()
+void Dataset::loadAnnotations(const QString &filename)
 {
-	write(); // save interim results
+	QFile f(source.filename);
+	if (!f.open(QIODevice::ReadOnly)) {
+		emit ioError(QString("Could not read file %1!").arg(filename));
+		return;
+	}
+
+	QTextStream in(&f);
+	//dimensions = in.readLine().split("\t", QString::SkipEmptyParts);
 }
 
 QVector<int> Dataset::loadMarkers(const QString &filename)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::ReadOnly)) {
-		qDebug() << "Could not open marker file";
+		emit ioError(QString("Could not read file %1!").arg(filename));
 		return {};
 	}
 
+	/* public method -> called from other thread -> we must lock! */
+	l.lockForRead();
 	QVector<int> ret;
 	QTextStream in(&f);
 	while (!in.atEnd()) {
 		QString name;
 		in >> name;
 
-		auto it = protIndex.find(name);
-		if (it == protIndex.end()) {
+		auto it = d.protIndex.find(name);
+		if (it == d.protIndex.end()) {
 			qDebug() << "Ignored" << name << "(unknown)";
 			continue;
 		}
 		ret.append(it.value());
 	}
+	l.unlock();
 	return ret;
 }
 
@@ -60,27 +78,31 @@ void Dataset::saveMarkers(const QString &filename, const QVector<int> indices)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::WriteOnly)) {
-		qDebug() << "Could not write marker file";
+		emit ioError(QString("Could not write file %1!").arg(filename));
 		return;
 	}
+
+	/* public method -> called from other thread -> we must lock! */
+	l.lockForRead();
 	QTextStream out(&f);
 	for (auto i : indices) {
-		out << proteins[i].name << endl;
+		out << d.proteins[i].name << endl;
 	}
+	l.unlock();
 }
 
-void Dataset::read()
+bool Dataset::read()
 {
 	// get the source data
 	auto success = readSource();
 	if (!success)
-		return;
+		return false;
 
 	// try to read pre-computed results
 	QFile f(qvName());
 	if (!f.open(QIODevice::ReadOnly)) {
 		qDebug() << "No serialized interim results found";
-		return;
+		return true;
 	}
 
 	QDataStream in(&f);
@@ -88,35 +110,39 @@ void Dataset::read()
 	in >> size;
 	if (size != source.size) {
 		qDebug() << "Interim results not compatible with file (size)";
-		return;
+		return true;
 	}
 
 	QByteArray checksum;
 	in >> checksum;
 	if (checksum != source.checksum) {
 		qDebug() << "Interim results not compatible with file (checksum)";
-		return;
+		return true;
 	}
 
-	in >> display;
+	l.lockForWrite();
+	in >> d.display;
+	l.unlock();
+	return true;
 }
 
 bool Dataset::readSource()
 {
 	QFile f(source.filename);
 	if (!f.open(QIODevice::ReadOnly)) {
-		qWarning("Couldn't open TSV file.");
+		emit ioError(QString("Could not read file %1!").arg(source.filename));
 		return false;
 	}
 
-	proteins.clear();
-	protIndex.clear();
-	features.clear();
-	featurePoints.clear();
+	l.lockForWrite();
+	d.proteins.clear();
+	d.protIndex.clear();
+	d.features.clear();
+	d.featurePoints.clear();
 
 	QTextStream in(&f);
-	dimensions = in.readLine().split("\t", QString::SkipEmptyParts);
-	auto len = dimensions.size();
+	d.dimensions = in.readLine().split("\t", QString::SkipEmptyParts);
+	auto len = d.dimensions.size();
 	auto index = 0;
 	while (!in.atEnd()) {
 		QString name;
@@ -124,7 +150,7 @@ bool Dataset::readSource()
 		if (name.length() < 1)
 			break; // early EOF
 		auto parts = name.split("_");
-		Protein p{name, parts.first(), parts.last()};
+		Protein p{name, parts.first(), parts.last(), {}};
 
 		QVector<double> coeffs(len);
 		QVector<QPointF> points(len);
@@ -132,13 +158,14 @@ bool Dataset::readSource()
 			in >> coeffs[i];
 			points[i] = {(qreal)i, coeffs[i]};
 		}
-		features.append(std::move(coeffs));
-		featurePoints.append(std::move(points));
-		proteins.append(std::move(p));
-		protIndex[name] = index;
+		d.features.append(std::move(coeffs));
+		d.featurePoints.append(std::move(points));
+		d.proteins.append(std::move(p));
+		d.protIndex[name] = index;
 		index++;
 	}
-	qDebug() << "read" << features.size() << "rows with" << len << "columns";
+	qDebug() << "read" << d.features.size() << "rows with" << len << "columns";
+	l.unlock();
 
 	source.size = f.size();
 	source.checksum = fileChecksum(&f);
@@ -148,12 +175,16 @@ bool Dataset::readSource()
 
 void Dataset::write()
 {
+	if (source.filename.isEmpty() || !source.size)
+		return; // no data loaded
+
 	QFile f(qvName());
 	f.open(QIODevice::WriteOnly);
 	QDataStream out(&f);
 	out << source.size;
 	out << source.checksum;
-	out << display;
+	out << d.display;
+	qDebug() << "Saved interim results to" << f.fileName();
 }
 
 QString Dataset::qvName()
