@@ -82,12 +82,12 @@ public:
 		QByteArray checksum;
 	} source;
 
-signals:
+signals: // IMPORTANT: when connecting to lambda, use object pointer for thread-affinity
 	void newData(const QString &filename);
 	void newClustering();
 	void ioError(const QString &message);
 
-public slots: // Note: never call these directly! use signals for thread-affinity
+public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
 	void loadDataset(const QString &filename);
 	void loadAnnotations(const QString &filename);
 

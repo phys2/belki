@@ -68,12 +68,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(this, &MainWindow::loadAnnotations, &data, &Dataset::loadAnnotations);
 	connect(&data, &Dataset::ioError, this, &MainWindow::displayError);
 	connect(&data, &Dataset::newData, this, &MainWindow::updateData);
-	connect(&data, &Dataset::newClustering, [this] {
-		if (actionShowPartition->isChecked()) {
-			chart->togglePartition(true); // manually trigger update
-		} else {
-			actionShowPartition->setChecked(true);
-		}
+	connect(&data, &Dataset::newClustering, this, [this] {
+		chart->updatePartitions(true);
+		actionShowPartition->setChecked(true);
 	});
 
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
@@ -92,7 +89,7 @@ MainWindow::MainWindow(QWidget *parent) :
 			return;
 		emit loadAnnotations(filename);
 	});
-	connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartition);
+	connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartitions);
 
 	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
 
@@ -126,23 +123,6 @@ void MainWindow::updateData(const QString &filename)
 	chartView->setEnabled(true);
 }
 
-void MainWindow::showHelp()
-{
-	QMessageBox box(this);
-	box.setWindowTitle("Help");
-	box.setIcon(QMessageBox::Information);
-	QFile helpText(":/help.html");
-	helpText.open(QIODevice::ReadOnly);
-	box.setText(helpText.readAll());
-	box.setWindowModality(Qt::WindowModality::WindowModal); // sheet in OS X
-	box.exec();
-}
-
-void MainWindow::displayError(const QString &message)
-{
-	QMessageBox::critical(this, "An error occured", message);
-}
-
 void MainWindow::updateCursorList(QVector<unsigned> samples)
 {
 	auto d = data.peek();
@@ -167,7 +147,7 @@ void MainWindow::updateCursorList(QVector<unsigned> samples)
 
 	// reduce set
 	const int showMax = 25;
-	auto text = QString("<b>%1</b>");
+	auto text = QString("%1");
 	if (samples.size() > showMax) {
 		text.append(QString("… (%1 total)").arg(samples.size()));
 		samples.resize(showMax - 1);
@@ -178,10 +158,12 @@ void MainWindow::updateCursorList(QVector<unsigned> samples)
 	});
 	// compose list
 	QString content;
-	QString tpl("<a href='https://uniprot.org/uniprot/%2'>%1</a><br>");
+	QString tpl("<b><a href='https://uniprot.org/uniprot/%2'>%1</a></b> <small>%3</small><br>");
 	for (auto i : qAsConst(samples)) {
 		auto &p = d->proteins[i];
-		content.append(tpl.arg(p.firstName, p.name));
+		auto clusters = std::accumulate(p.memberOf.begin(), p.memberOf.end(), QStringList(),
+		    [&d] (QStringList a, unsigned b) { return a << d->clustering[b].name; });
+		content.append(tpl.arg(p.firstName, p.name, clusters.join(", ")));
 	}
 	cursorList->setText(text.arg(content));
 
@@ -290,4 +272,21 @@ void MainWindow::updateMarkerControls()
 	}
 
 	markerWidget->setEnabled(true);
+}
+
+void MainWindow::showHelp()
+{
+	QMessageBox box(this);
+	box.setWindowTitle("Help");
+	box.setIcon(QMessageBox::Information);
+	QFile helpText(":/help.html");
+	helpText.open(QIODevice::ReadOnly);
+	box.setText(helpText.readAll());
+	box.setWindowModality(Qt::WindowModality::WindowModal); // sheet in OS X
+	box.exec();
+}
+
+void MainWindow::displayError(const QString &message)
+{
+	QMessageBox::critical(this, "An error occured", message);
 }

@@ -12,6 +12,10 @@
 		<file alias="actions/24/document-save.svg">breeze/actions/24/document-save.svg</file>
 		<file alias="actions/32/document-save.svg">breeze/actions/32/document-save.svg</file>
 		<file alias="actions/symbolic/document-save-symbolic.svg">breeze/actions/symbolic/document-save-symbolic.svg</file>
+		<file alias="actions/16/document-preview.svg">breeze/actions/16/document-preview.svg</file>
+		<file alias="actions/22/document-preview.svg">breeze/actions/22/document-preview.svg</file>
+		<file alias="actions/24/document-preview.svg">breeze/actions/24/document-preview.svg</file>
+		<file alias="actions/32/document-preview.svg">breeze/actions/32/document-preview.svg</file>
 		<file alias="actions/16/help-about.svg">breeze/actions/16/help-about.svg</file>
 		<file alias="actions/22/help-about.svg">breeze/actions/22/help-about.svg</file>
 		<file alias="actions/24/help-about.svg">breeze/actions/24/help-about.svg</file>

@@ -5,9 +5,10 @@
 #include <QtCharts/QSplineSeries>
 #include <QtCharts/QValueAxis>
 #include <QtCharts/QLegendMarker>
-#include <QGraphicsScene>
-#include <QGraphicsSceneMouseEvent>
-#include <QPolygonF>
+#include <QtWidgets/QGraphicsScene>
+#include <QtWidgets/QGraphicsSceneMouseEvent>
+#include <QtGui/QPolygonF>
+#include <QtCore/QHash>
 #include <cmath>
 
 #include <QtCore/QDebug>
@@ -26,18 +27,7 @@ Chart::Chart(Dataset &data) :
 	ay->setTitleText("dim 2");
 
 	/* set up master series */
-	master = new QtCharts::QScatterSeries;
-	this->addSeries(master);
-	master->attachAxis(ax);
-	master->attachAxis(ay);
-	master->setName("All proteins");
-
-	auto c = master->color();
-	master->setBorderColor(c);
-	c.setAlphaF(0.5);
-	master->setColor(c);
-
-	legend()->markers(master)[0]->setShape(QtCharts::QLegend::MarkerShapeCircle);
+	master = new Proteins("All proteins", Qt::gray, this);
 
 	/* set up tracker ellipse used in track() */
 	tracker = new QGraphicsEllipseItem(this);
@@ -78,9 +68,48 @@ void Chart::display(const QString &set, bool fullReset)
 	ax->setRange(bbox.left(), bbox.right());
 	ay->setRange(bbox.top(), bbox.bottom());
 
-	// update everything else (should do nothing on reset)
+	updatePartitions(fullReset);
 	for (auto m : qAsConst(markers)) {
 		m->replace(0, master->pointsVector()[(int)m->sampleIndex]);
+	}
+}
+
+void Chart::updatePartitions(bool fullReset)
+{
+	if (fullReset) {
+		qDeleteAll(partitions);
+		partitions.clear();
+
+		if (data.peek()->clustering.empty())
+			return; // no clusters means nothing to do!
+
+		/* set up partition series */
+		partitions.push_back(new Proteins("Unlabeled", Qt::darkGray, this));
+		partitions.push_back(new Proteins("Mixed", Qt::gray, this));
+
+		auto d = data.peek();
+		for (auto &c : d->clustering) {
+			auto color = tableau20(partitions.size() - 2);
+			partitions.push_back(new Proteins(c.name, color, this));
+		}
+	} else {
+		for (auto s : partitions)
+			s->clear();
+	}
+
+	/* populate with proteins */
+	auto d = data.peek();
+	if (d->clustering.empty())
+		return; // no clusters means nothing to do!
+	auto source = master->pointsVector();
+	for (unsigned i = 0; i < d->proteins.size(); ++i) {
+		auto &p = d->proteins[i];
+		unsigned target = 0; // first series, unlabeled
+		if (p.memberOf.size() > 1)
+			target++; // second series, mixed
+		if (p.memberOf.size() == 1)
+			target = p.memberOf[0] + 2;
+		(*partitions[target]) << source[(int)i];
 	}
 }
 
@@ -138,45 +167,14 @@ void Chart::undoZoom()
 	zoom.history.pop();
 }
 
-void Chart::togglePartition(bool showPartition)
+void Chart::togglePartitions(bool showPartitions)
 {
-	if (!showPartition) {
-		for (auto s : partitions)
-			s->hide();
-		master->show();
+	if (master->isVisible() != showPartitions)
 		return;
-	}
 
-	master->hide();
-	// TODO: only re-compose when necessary
-	qDeleteAll(partitions);
-	partitions.clear();
-
-	// TODO: write helper for setting sth like this up!
-	auto d = data.peek();
-	for (auto &c : d->clustering) {
-		auto part = new QtCharts::QScatterSeries;
-		partitions.push_back(part);
-		this->addSeries(part);
-		part->attachAxis(ax);
-		part->attachAxis(ay);
-		part->setName(c.name);
-
-		part->setPen(master->pen());
-		auto color = tableau20(); // TODO
-		part->setBorderColor(color);
-		color.setAlphaF(0.5);
-		part->setColor(color);
-
-		legend()->markers(part)[0]->setShape(QtCharts::QLegend::MarkerShapeCircle);
-	}
-	auto source = master->pointsVector();
-	for (unsigned i = 0; i < d->proteins.size(); ++i) {
-		auto &p = d->proteins[i];
-		if (p.memberOf.size() != 1)
-			continue; // TODO: grey or white set
-		(*partitions[p.memberOf[0]]) << source[(int)i];
-	}
+	master->setVisible(!showPartitions);
+	for (auto s: partitions)
+		s->setVisible(showPartitions);
 }
 
 void Chart::zoomAt(const QPointF &pos, qreal factor)
@@ -230,7 +228,7 @@ void Chart::clearMarkers()
 	emit markersCleared();
 }
 
-QColor Chart::tableau20(bool reset)
+QColor Chart::tableau20(unsigned index)
 {
 	const std::vector<QColor> tableau = {
 	    {31, 119, 180}, {174, 199, 232}, {255, 127, 14}, {255, 187, 120},
@@ -239,10 +237,24 @@ QColor Chart::tableau20(bool reset)
 	    {227, 119, 194}, {247, 182, 210}, {127, 127, 127}, {199, 199, 199},
 	    {188, 189, 34}, {219, 219, 141}, {23, 190, 207}, {158, 218, 229}};
 
-	static unsigned index = 2;
-	if (reset)
-		index = 1;
-	return tableau[index++ % tableau.size()];
+	return tableau[index % tableau.size()];
+}
+
+Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)
+{
+	setName(label);
+	chart->addSeries(this);
+	attachAxis(chart->axisX());
+	attachAxis(chart->axisY());
+
+	QPen border(Qt::PenStyle::DotLine);
+	border.setColor(Qt::darkGray);
+	setPen(border);
+
+	color.setAlphaF(0.65);
+	setColor(color);
+
+	chart->legend()->markers(this)[0]->setShape(QtCharts::QLegend::MarkerShapeCircle);
 }
 
 Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
@@ -258,7 +270,7 @@ Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
 	attachAxis(chart->axisY());
 
 	setBorderColor(Qt::black);
-	setColor(chart->tableau20());
+	setColor(chart->tableau20(qHash(label)));
 	setMarkerShape(QtCharts::QScatterSeries::MarkerShapeRectangle);
 	setMarkerSize(20);
 	setPointLabelsVisible(true);
