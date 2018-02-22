@@ -42,7 +42,9 @@ void FileIO::renderToFile(QWidget *source, const QString &title, const QString &
 {
 	auto filename = chooseFile(SavePlot, source->window());
 	auto filetype = QFileInfo(filename).suffix();
-
+	if (filetype.isEmpty()) {
+		emit ioError("Please select a filename with suffix (e.g. .svg)!");
+	}
 
 	auto renderer = [source] (QPaintDevice *target) {
 		QPainter p;

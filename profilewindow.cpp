@@ -32,7 +32,7 @@ ProfileWindow::ProfileWindow(QtCharts::QChart *source, MainWindow *parent) :
 	ax->setLabelsAngle(-90);
 	ax->setLabelsPosition(QtCharts::QCategoryAxis::AxisLabelsPositionOnValue);
 	auto labels = qobject_cast<QtCharts::QBarCategoryAxis*>(source->axisX())->categories();
-	ax->setRange(0, labels.size());
+	ax->setRange(0, labels.size() - 1);
 	auto toggleLabels = [ax, labels] (bool on) {
 		/* QCategoryAxis does not adapt geometry when simply hiding labels. And
 		 * it makes it really complicated for us to replace them :/ */
@@ -67,6 +67,7 @@ ProfileWindow::ProfileWindow(QtCharts::QChart *source, MainWindow *parent) :
 		t->setBrush(ls->brush());
 		t->setPen(ls->pen());
 		t->replace(ls->pointsVector());
+		connect(actionShowIndividual, &QAction::toggled, t, &QtCharts::QLineSeries::setVisible);
 	}
 
 	// TODO setup QLineSeries for avg. here
@@ -81,6 +82,8 @@ ProfileWindow::ProfileWindow(QtCharts::QChart *source, MainWindow *parent) :
 		parent->getIo()->renderToFile(chartView, title, "Selected Profiles");
 	});
 	connect(actionShowLabels, &QAction::toggled, ax, toggleLabels);
+	actionShowIndividual->setChecked(true);
+	actionShowAverage->setChecked(false);
 
 	/* we are a single popup thingy: self-show and self-delete on close */
 	setAttribute(Qt::WidgetAttribute::WA_DeleteOnClose);
