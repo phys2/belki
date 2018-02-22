@@ -3,6 +3,7 @@
 
 #include "ui_mainwindow.h"
 #include "dataset.h"
+#include "fileio.h"
 
 #include <QtWidgets/QMainWindow>
 #include <QtCore/QThread>
@@ -45,6 +46,7 @@ protected:
 	Chart *chart; // initialize after data
 	QtCharts::QChart *cursorChart;
 	QLabel *fileLabel;
+	FileIO *io;
 };
 
 #endif // MAINWINDOW_H

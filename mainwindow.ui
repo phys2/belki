@@ -327,6 +327,7 @@
    <addaction name="actionLoadDataset"/>
    <addaction name="actionLoadAnnotations"/>
    <addaction name="actionShowPartition"/>
+   <addaction name="actionSavePlot"/>
    <addaction name="actionHelp"/>
   </widget>
   <action name="actionLoadDataset">
@@ -391,7 +392,8 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="document-preview"/>
+    <iconset theme="document-preview">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Show Partition</string>
@@ -410,6 +412,17 @@
    </property>
    <property name="toolTip">
     <string>Load a .tsv annotition file</string>
+   </property>
+  </action>
+  <action name="actionSavePlot">
+   <property name="icon">
+    <iconset theme="camera"/>
+   </property>
+   <property name="text">
+    <string>Save Plot</string>
+   </property>
+   <property name="toolTip">
+    <string>Save the plot to SVG or PNG</string>
    </property>
   </action>
  </widget>

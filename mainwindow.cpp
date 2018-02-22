@@ -10,14 +10,15 @@
 #include <QCompleter>
 #include <QAbstractProxyModel>
 #include <QtWidgets/QLabel>
-#include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
+#include <QtGui/QTextDocumentFragment>
 
 #include <QtDebug>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent), chart(new Chart(data)), cursorChart(new QtCharts::QChart),
-    fileLabel(new QLabel)
+    fileLabel(new QLabel),
+    io(new FileIO(this))
 {
 	data.moveToThread(&dataThread);
 	dataThread.start();
@@ -27,6 +28,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	/* actions */
 	// standard keys not available in UI Designer
 	actionLoadDataset->setShortcut(QKeySequence::StandardKey::Open);
+	actionSavePlot->setShortcut(QKeySequence::StandardKey::Print);
 	actionHelp->setShortcut(QKeySequence::StandardKey::HelpContents);
 
 	/* toolbar */
@@ -37,10 +39,15 @@ MainWindow::MainWindow(QWidget *parent) :
 	toolBar->insertSeparator(anchor);
 	toolBar->insertWidget(anchor, topBar);
 	toolBar->insertSeparator(anchor);
-	// right-align help button
+	// right-align screenshot & help button
 	auto* spacer = new QWidget();
 	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	toolBar->insertWidget(actionHelp, spacer);
+	toolBar->insertWidget(actionSavePlot, spacer);
+
+	/* other buttons to be wired to actions */
+	loadMarkersButton->setDefaultAction(actionLoadMarkers);
+	saveMarkersButton->setDefaultAction(actionSaveMarkers);
+	clearMarkersButton->setDefaultAction(actionClearMarkers);
 
 	/* main chart */
 	chartView->setChart(chart);
@@ -75,22 +82,41 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 	connect(actionLoadDataset, &QAction::triggered, [this] {
-		auto filename = QFileDialog::getOpenFileName(this, "Open Dataset",
-		{}, "Peak Volumnes Table (*.tsv)");
+		auto filename = io->chooseFile(FileIO::OpenDataset);
 		if (filename.isEmpty())
 			return;
 		fileLabel->setText(QString("<i>Calculating…</i>"));
 		emit loadDataset(filename);
 	});
 	connect(actionLoadAnnotations, &QAction::triggered, [this] {
-		auto filename = QFileDialog::getOpenFileName(this, "Open Annotations",
-		{}, "Annotation Table (*.tsv)");
+		auto filename = io->chooseFile(FileIO::Opennnotations);
 		if (filename.isEmpty())
 			return;
 		emit loadAnnotations(filename);
 	});
 	connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartitions);
-
+	connect(actionLoadMarkers, &QAction::triggered, [this] {
+		auto filename = io->chooseFile(FileIO::OpenMarkers);
+		if (filename.isEmpty())
+			return;
+		for (auto i : data.loadMarkers(filename))
+			chart->addMarker(i);
+	});
+	connect(actionSaveMarkers, &QAction::triggered, [this] {
+		auto filename = io->chooseFile(FileIO::SaveMarkers);
+		if (filename.isEmpty())
+			return;
+		QVector<unsigned> indices;
+		for (auto m : qAsConst(this->markerItems))
+			if (m->checkState() == Qt::Checked)
+				indices.append((unsigned)m->data().toInt());
+		data.saveMarkers(filename, indices);
+	});
+	connect(actionClearMarkers, &QAction::triggered, chart, &Chart::clearMarkers);
+	connect(actionSavePlot, &QAction::triggered, [this] {
+		auto title = QTextDocumentFragment::fromHtml(fileLabel->text()).toPlainText();
+		io->renderToFile(chartView, title, transformSelect->currentText());
+	});
 	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
 
 	connect(transformSelect, qOverload<const QString&>(&QComboBox::currentIndexChanged),
@@ -225,33 +251,6 @@ void MainWindow::setupMarkerControls()
 		}
 		lastText = text;
 	});
-
-	/* setup buttons / actions, TODO move to more appropriate place */
-	loadMarkersButton->setDefaultAction(actionLoadMarkers);
-	saveMarkersButton->setDefaultAction(actionSaveMarkers);
-	clearMarkersButton->setDefaultAction(actionClearMarkers);
-	connect(actionLoadMarkers, &QAction::triggered, [this] {
-		auto filename = QFileDialog::getOpenFileName(this, "Open Markers File",
-		{}, "List of markers (*.txt);; All Files (*)");
-		if (filename.isEmpty())
-			return;
-		if (QFileInfo(filename).suffix().isEmpty())
-			filename.append(".txt");
-		for (auto i : data.loadMarkers(filename))
-			chart->addMarker(i);
-	});
-	connect(actionSaveMarkers, &QAction::triggered, [this] {
-		auto filename = QFileDialog::getSaveFileName(this, "Save Markers to File",
-		{}, "List of markers (*.txt)");
-		if (filename.isEmpty())
-			return;
-		QVector<unsigned> indices;
-		for (auto m : qAsConst(this->markerItems))
-			if (m->checkState() == Qt::Checked)
-				indices.append((unsigned)m->data().toInt());
-		data.saveMarkers(filename, indices);
-	});
-	connect(actionClearMarkers, &QAction::triggered, chart, &Chart::clearMarkers);
 }
 
 void MainWindow::updateMarkerControls()

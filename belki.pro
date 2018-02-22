@@ -8,7 +8,7 @@ QMAKE_CXXFLAGS_RELEASE = -O3 -march=nehalem
 
 win32 {
     CONFIG += static
-    QTPLUGIN += qsvgicon
+    QTPLUGIN += qsvgicon # we use an SVG icon set
     RC_ICONS += gfx/icon.ico
 }
 macx:ICON = gfx/icon.icns
@@ -16,6 +16,8 @@ macx:ICON = gfx/icon.icns
 # dependencies
 
 QT += gui charts
+
+QT += svg printsupport # for plot export
 
 # openmp, eigen, arpack for tapkee
 QMAKE_CXXFLAGS += -fopenmp
@@ -31,7 +33,8 @@ HEADERS += \
     mainwindow.h \
     dataset.h \
     dimred.h \
-    chartview.h
+    chartview.h \
+    fileio.h
 
 SOURCES += \
     chart.cpp \
@@ -39,7 +42,8 @@ SOURCES += \
     mainwindow.cpp \
     dataset.cpp \
     dimred.cpp \
-    chartview.cpp
+    chartview.cpp \
+    fileio.cpp
 
 FORMS += \
     mainwindow.ui
