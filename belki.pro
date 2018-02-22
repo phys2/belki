@@ -34,7 +34,8 @@ HEADERS += \
     dataset.h \
     dimred.h \
     chartview.h \
-    fileio.h
+    fileio.h \
+    profilewindow.h
 
 SOURCES += \
     chart.cpp \
@@ -43,10 +44,12 @@ SOURCES += \
     dataset.cpp \
     dimred.cpp \
     chartview.cpp \
-    fileio.cpp
+    fileio.cpp \
+    profilewindow.cpp
 
 FORMS += \
-    mainwindow.ui
+    mainwindow.ui \
+    profilewindow.ui
 
 RESOURCES += \
     resources.qrc \

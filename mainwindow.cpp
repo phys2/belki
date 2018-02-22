@@ -1,17 +1,18 @@
 #include "mainwindow.h"
 #include "dataset.h"
 #include "chart.h"
+#include "profilewindow.h"
 
 #include <QFileInfo>
 #include <QStandardItemModel>
 #include <QDir>
 #include <QtCharts/QLineSeries>
+#include <QtCharts/QBarCategoryAxis>
 #include <QtCharts/QValueAxis>
 #include <QCompleter>
 #include <QAbstractProxyModel>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QMessageBox>
-#include <QtGui/QTextDocumentFragment>
 
 #include <QtDebug>
 
@@ -24,12 +25,6 @@ MainWindow::MainWindow(QWidget *parent) :
 	dataThread.start();
 
 	setupUi(this);
-
-	/* actions */
-	// standard keys not available in UI Designer
-	actionLoadDataset->setShortcut(QKeySequence::StandardKey::Open);
-	actionSavePlot->setShortcut(QKeySequence::StandardKey::Print);
-	actionHelp->setShortcut(QKeySequence::StandardKey::HelpContents);
 
 	/* toolbar */
 	// put stuff before other buttons
@@ -44,11 +39,6 @@ MainWindow::MainWindow(QWidget *parent) :
 	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	toolBar->insertWidget(actionSavePlot, spacer);
 
-	/* other buttons to be wired to actions */
-	loadMarkersButton->setDefaultAction(actionLoadMarkers);
-	saveMarkersButton->setDefaultAction(actionSaveMarkers);
-	clearMarkersButton->setDefaultAction(actionClearMarkers);
-
 	/* main chart */
 	chartView->setChart(chart);
 	chartView->setRubberBand(QtCharts::QChartView::RectangleRubberBand);
@@ -58,7 +48,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	cursorPlot->setChart(cursorChart);
 	cursorPlot->setRenderHint(QPainter::Antialiasing);
 	cursorChart->legend()->hide();
-	cursorChart->setAxisX(new QtCharts::QValueAxis);
+	cursorChart->setAxisX(new QtCharts::QBarCategoryAxis);
 	cursorChart->setAxisY(new QtCharts::QValueAxis);
 	cursorChart->axisY()->hide();
 	cursorChart->axisX()->hide();
@@ -71,14 +61,45 @@ MainWindow::MainWindow(QWidget *parent) :
 	setupMarkerControls();
 
 	/* signals */
+	connect(&data, &Dataset::ioError, this, &MainWindow::displayError);
+	connect(io, &FileIO::ioError, this, &MainWindow::displayError);
+
 	connect(this, &MainWindow::loadDataset, &data, &Dataset::loadDataset);
 	connect(this, &MainWindow::loadAnnotations, &data, &Dataset::loadAnnotations);
-	connect(&data, &Dataset::ioError, this, &MainWindow::displayError);
 	connect(&data, &Dataset::newData, this, &MainWindow::updateData);
 	connect(&data, &Dataset::newClustering, this, [this] {
 		chart->updatePartitions(true);
+		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
 	});
+
+	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
+
+	connect(transformSelect, qOverload<const QString&>(&QComboBox::currentIndexChanged),
+	        [this] (const QString &name) { chart->display(name); });
+
+	/* actions */
+	setupActions();
+}
+
+MainWindow::~MainWindow()
+{
+	dataThread.quit();
+	dataThread.wait();
+}
+
+void MainWindow::setupActions()
+{
+	/* Shortcuts (standard keys not available in UI Designer) */
+	actionLoadDataset->setShortcut(QKeySequence::StandardKey::Open);
+	actionSavePlot->setShortcut(QKeySequence::StandardKey::Print);
+	actionHelp->setShortcut(QKeySequence::StandardKey::HelpContents);
+
+	/* Buttons to be wired to actions */
+	loadMarkersButton->setDefaultAction(actionLoadMarkers);
+	saveMarkersButton->setDefaultAction(actionSaveMarkers);
+	clearMarkersButton->setDefaultAction(actionClearMarkers);
+	profileViewButton->setDefaultAction(actionProfileView);
 
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 	connect(actionLoadDataset, &QAction::triggered, [this] {
@@ -114,86 +135,12 @@ MainWindow::MainWindow(QWidget *parent) :
 	});
 	connect(actionClearMarkers, &QAction::triggered, chart, &Chart::clearMarkers);
 	connect(actionSavePlot, &QAction::triggered, [this] {
-		auto title = QTextDocumentFragment::fromHtml(fileLabel->text()).toPlainText();
 		io->renderToFile(chartView, title, transformSelect->currentText());
 	});
-	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
 
-	connect(transformSelect, qOverload<const QString&>(&QComboBox::currentIndexChanged),
-	        [this] (const QString &name) { chart->display(name); });
-}
-
-MainWindow::~MainWindow()
-{
-	dataThread.quit();
-	dataThread.wait();
-}
-
-void MainWindow::updateData(const QString &filename)
-{
-	QFileInfo fi(filename);
-	//auto title = QFileInfo(fi.canonicalFilePath()).completeBaseName();
-	auto title = QDir(QFileInfo(fi.canonicalFilePath()).path()).dirName();
-	setWindowTitle(QString("%1 – Belki").arg(title));
-
-	chart->display(transformSelect->currentText(), true);
-	fileLabel->setText(QString("<b>%1</b>").arg(title));
-
-	/* set up cursor chart */
-	cursorChart->axisX()->setRange(0, data.peek()->dimensions.size());
-
-	/* set up marker controls */
-	updateMarkerControls();
-
-	/* ready to go */
-	chartView->setEnabled(true);
-}
-
-void MainWindow::updateCursorList(QVector<unsigned> samples)
-{
-	auto d = data.peek();
-	cursorChart->removeAllSeries();
-	if (samples.empty()) {
-		cursorList->clear();
-		// only change title to avoid geometry change under Windows
-		cursorWidgetCaption->setDisabled(true);
-		return;
-	}
-
-	/* set up plot */
-	for (auto i : qAsConst(samples)) {
-		auto s = new QtCharts::QLineSeries;
-		cursorChart->addSeries(s);
-		s->attachAxis(cursorChart->axisX());
-		s->attachAxis(cursorChart->axisY());
-		s->replace(d->featurePoints[i]);
-	}
-
-	/* set up list */
-
-	// reduce set
-	const int showMax = 25;
-	auto text = QString("%1");
-	if (samples.size() > showMax) {
-		text.append(QString("… (%1 total)").arg(samples.size()));
-		samples.resize(showMax - 1);
-	}
-	// sort by name
-	qSort(samples.begin(), samples.end(), [&d] (const unsigned& a, const unsigned& b) {
-		return d->proteins[a].firstName < d->proteins[b].firstName;
+	connect(actionProfileView, &QAction::triggered, [this] {
+		auto window = new ProfileWindow(cursorChart, this);
 	});
-	// compose list
-	QString content;
-	QString tpl("<b><a href='https://uniprot.org/uniprot/%2'>%1</a></b> <small>%3</small><br>");
-	for (auto i : qAsConst(samples)) {
-		auto &p = d->proteins[i];
-		auto clusters = std::accumulate(p.memberOf.begin(), p.memberOf.end(), QStringList(),
-		    [&d] (QStringList a, unsigned b) { return a << d->clustering[b].name; });
-		content.append(tpl.arg(p.firstName, p.name, clusters.join(", ")));
-	}
-	cursorList->setText(text.arg(content));
-
-	cursorWidgetCaption->setEnabled(true);
 }
 
 void MainWindow::setupMarkerControls()
@@ -251,6 +198,77 @@ void MainWindow::setupMarkerControls()
 		}
 		lastText = text;
 	});
+}
+
+void MainWindow::updateData(const QString &filename)
+{
+	QFileInfo fi(filename);
+	//auto title = QFileInfo(fi.canonicalFilePath()).completeBaseName();
+	title = QDir(QFileInfo(fi.canonicalFilePath()).path()).dirName();
+	setWindowTitle(QString("%1 – Belki").arg(title));
+
+	chart->display(transformSelect->currentText(), true);
+	fileLabel->setText(QString("<b>%1</b>").arg(title));
+
+	/* set up cursor chart */
+	auto ax = qobject_cast<QtCharts::QBarCategoryAxis*>(cursorChart->axisX());
+	ax->setCategories(data.peek()->dimensions);
+
+	/* set up marker controls */
+	updateMarkerControls();
+
+	/* ready to go */
+	chartView->setEnabled(true);
+}
+
+void MainWindow::updateCursorList(QVector<unsigned> samples)
+{
+	auto d = data.peek();
+	cursorChart->removeAllSeries();
+	if (samples.empty()) {
+		cursorList->clear();
+		// only change title to avoid geometry change under Windows
+		cursorCaption->setDisabled(true);
+		actionProfileView->setDisabled(true);
+		return;
+	}
+
+	/* set up plot */
+	for (auto i : qAsConst(samples)) {
+		auto s = new QtCharts::QLineSeries;
+		cursorChart->addSeries(s);
+		s->attachAxis(cursorChart->axisX());
+		s->attachAxis(cursorChart->axisY());
+		s->replace(d->featurePoints[i]);
+		s->setName(d->proteins[i].firstName); // hidden here, but used by plot window
+	}
+
+	/* set up list */
+
+	// reduce set
+	const int showMax = 25;
+	auto text = QString("%1");
+	if (samples.size() > showMax) {
+		text.append(QString("… (%1 total)").arg(samples.size()));
+		samples.resize(showMax - 1);
+	}
+	// sort by name
+	qSort(samples.begin(), samples.end(), [&d] (const unsigned& a, const unsigned& b) {
+		return d->proteins[a].firstName < d->proteins[b].firstName;
+	});
+	// compose list
+	QString content;
+	QString tpl("<b><a href='https://uniprot.org/uniprot/%2'>%1</a></b> <small>%3</small><br>");
+	for (auto i : qAsConst(samples)) {
+		auto &p = d->proteins[i];
+		auto clusters = std::accumulate(p.memberOf.begin(), p.memberOf.end(), QStringList(),
+		    [&d] (QStringList a, unsigned b) { return a << d->clustering[b].name; });
+		content.append(tpl.arg(p.firstName, p.name, clusters.join(", ")));
+	}
+	cursorList->setText(text.arg(content));
+
+	cursorCaption->setEnabled(true);
+	actionProfileView->setEnabled(true);
 }
 
 void MainWindow::updateMarkerControls()

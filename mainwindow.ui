@@ -177,6 +177,9 @@
          </sizepolicy>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_3">
+         <property name="spacing">
+          <number>0</number>
+         </property>
          <property name="leftMargin">
           <number>0</number>
          </property>
@@ -190,13 +193,22 @@
           <number>0</number>
          </property>
          <item>
-          <widget class="QLabel" name="cursorWidgetCaption">
+          <widget class="QWidget" name="cursorCaption" native="true">
            <property name="enabled">
             <bool>false</bool>
            </property>
-           <property name="text">
-            <string>Proteins under cursor:</string>
-           </property>
+           <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <item>
+             <widget class="QLabel" name="label_2">
+              <property name="text">
+               <string>Proteins under cursor:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="profileViewButton"/>
+            </item>
+           </layout>
           </widget>
          </item>
          <item>
@@ -391,9 +403,8 @@
    <property name="checkable">
     <bool>true</bool>
    </property>
-   <property name="icon">
-    <iconset theme="document-preview">
-     <normaloff>.</normaloff>.</iconset>
+   <property name="enabled">
+    <bool>false</bool>
    </property>
    <property name="text">
     <string>Show Partition</string>
@@ -416,26 +427,45 @@
   </action>
   <action name="actionSavePlot">
    <property name="icon">
-    <iconset theme="camera"/>
+    <iconset theme="camera">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Save Plot</string>
    </property>
    <property name="toolTip">
-    <string>Save the plot to SVG or PNG</string>
+    <string>Save the plot to SVG or PDF</string>
+   </property>
+  </action>
+  <action name="actionProfileView">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="view-fullscreen">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>Open Full Plot</string>
+   </property>
+   <property name="toolTip">
+    <string>Show proteins under cursor in new window</string>
+   </property>
+   <property name="shortcut">
+    <string>V</string>
    </property>
   </action>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>ChartView</class>
-   <extends>QGraphicsView</extends>
-   <header>chartview.h</header>
-  </customwidget>
-  <customwidget>
    <class>QtCharts::QChartView</class>
    <extends>QGraphicsView</extends>
    <header location="global">QtCharts/QChartView</header>
+  </customwidget>
+  <customwidget>
+   <class>ChartView</class>
+   <extends>QGraphicsView</extends>
+   <header>chartview.h</header>
   </customwidget>
  </customwidgets>
  <resources>

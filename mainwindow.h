@@ -25,6 +25,9 @@ public:
 	explicit MainWindow(QWidget *parent = nullptr);
 	~MainWindow();
 
+	const QString& getTitle() { return title; }
+	FileIO *getIo() { return io; }
+
 signals:
 	void loadDataset(const QString &filename);
 	void loadAnnotations(const QString &filename);
@@ -36,12 +39,14 @@ public slots:
 	void updateCursorList(QVector<unsigned> samples);
 
 protected:
+	void setupActions();
 	void setupMarkerControls();
 	void updateMarkerControls();
 
 	QMap<unsigned, QStandardItem*> markerItems;
 	Dataset data;
 	QThread dataThread;
+	QString title;
 
 	Chart *chart; // initialize after data
 	QtCharts::QChart *cursorChart;
