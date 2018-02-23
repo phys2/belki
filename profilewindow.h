@@ -23,6 +23,10 @@ public:
 	explicit ProfileWindow(QtCharts::QChart *source, MainWindow *parent = nullptr);
 
 protected:
+	void addSeries(QtCharts::QAbstractSeries* s, bool individual);
+	std::pair<std::vector<qreal>, std::vector<qreal>>
+	computeMeanStddev(const QList<QtCharts::QAbstractSeries*> &input);
+
 	QtCharts::QChart *chart;
 };
 
