@@ -427,7 +427,7 @@
   </action>
   <action name="actionSavePlot">
    <property name="icon">
-    <iconset theme="camera">
+    <iconset theme="camera-photo">
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
