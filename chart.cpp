@@ -89,9 +89,16 @@ void Chart::updatePartitions(bool fullReset)
 		partitions.push_back(new Proteins("Mixed", Qt::gray, this));
 
 		auto d = data.peek();
-		for (auto &c : d->clustering) {
-			auto color = tableau20(partitions.size() - 2);
-			partitions.push_back(new Proteins(c.name, color, this));
+		for (unsigned i = 0; i < d->clustering.size(); ++i) {
+			auto &c = d->clustering[i];
+			auto s = new Proteins(c.name, tableau20(i), this);
+			partitions.push_back(s);
+			/* enable profile view updates on legend label hover */
+			auto lm = legend()->markers(s)[0];
+			connect(lm, &QtCharts::QLegendMarker::hovered, [this, s] (bool active) {
+				if (active)
+					emit cursorChanged(s->samples, s->name());
+			});
 		}
 	} else {
 		for (auto s : partitions)
@@ -110,7 +117,7 @@ void Chart::updatePartitions(bool fullReset)
 			target++; // second series, mixed
 		if (p.memberOf.size() == 1)
 			target = p.memberOf[0] + 2;
-		(*partitions[target]) << source[(int)i];
+		partitions[target]->add(i, source[(int)i]);
 	}
 
 	/* hide empty series from legend (in case of hard clustering) */
@@ -125,6 +132,8 @@ void Chart::updateCursor(const QPointF &pos)
 		return;
 
 	if (pos.isNull() || !plotArea().contains(pos)) {
+		if (legend()->contains(pos)) // do not interfer with cluster profile view
+			return;
 		 // disable tracker
 		tracker->hide();
 		emit cursorChanged({});
@@ -261,6 +270,12 @@ Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)
 	setColor(color);
 
 	chart->legend()->markers(this)[0]->setShape(QtCharts::QLegend::MarkerShapeCircle);
+}
+
+void Chart::Proteins::add(unsigned index, const QPointF &point)
+{
+	append(point);
+	samples.append(index);
 }
 
 Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)

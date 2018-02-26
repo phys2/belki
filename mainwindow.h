@@ -38,7 +38,7 @@ public slots:
 	void showHelp();
 	void displayError(const QString &message);
 	void updateData(const QString &filename);
-	void updateCursorList(QVector<unsigned> samples);
+	void updateCursorList(QVector<unsigned> samples, QString title);
 
 protected:
 	void setupToolbar();

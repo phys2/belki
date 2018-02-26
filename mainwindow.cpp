@@ -242,9 +242,10 @@ void MainWindow::updateData(const QString &filename)
 	chartView->setEnabled(true);
 }
 
-void MainWindow::updateCursorList(QVector<unsigned> samples)
+void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 {
 	auto d = data.peek();
+	cursorChart->setTitle(title);
 	cursorChart->removeAllSeries();
 	if (samples.empty()) {
 		cursorList->clear();

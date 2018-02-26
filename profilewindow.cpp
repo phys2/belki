@@ -25,6 +25,7 @@ ProfileWindow::ProfileWindow(QtCharts::QChart *source, MainWindow *parent) :
 	/* chart */
 	chartView->setChart(chart);
 	chartView->setRenderHint(QPainter::Antialiasing);
+	chart->setTitle(source->title());
 	chart->legend()->setAlignment(Qt::AlignLeft);
 	auto ax = new QtCharts::QCategoryAxis;
 	auto ay = new QtCharts::QValueAxis;
@@ -106,6 +107,7 @@ ProfileWindow::ProfileWindow(QtCharts::QChart *source, MainWindow *parent) :
 	});
 	connect(actionShowLabels, &QAction::toggled, ax, toggleLabels);
 	actionShowIndividual->setChecked(true);
+	actionShowIndividual->setChecked(sources.size() < 50);
 	actionShowAverage->setChecked(true);
 
 	/* we are a single popup thingy: self-show and self-delete on close */

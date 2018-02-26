@@ -21,6 +21,8 @@ public:
 
 	struct Proteins : QtCharts::QScatterSeries {
 		Proteins(const QString &label, QColor color, Chart* chart);
+		void add(unsigned index, const QPointF &point);
+		QVector<unsigned> samples;
 	};
 	struct Marker : QtCharts::QScatterSeries {
 		Marker(unsigned sampleIndex, Chart* chart);
@@ -49,15 +51,15 @@ public slots:
 	void togglePartitions(bool showPartitions);
 
 signals:
-	void cursorChanged(QVector<unsigned> samples);
+	void cursorChanged(QVector<unsigned> samples, QString title = {});
 	void markerToggled(unsigned sampleIndex, bool present);
 	void markersCleared();
 
 protected:
 	Dataset &data;
 
-	QtCharts::QScatterSeries *master;
-	std::vector<QtCharts::QScatterSeries*> partitions;
+	Proteins *master;
+	std::vector<Proteins*> partitions;
 	QMap<unsigned, Marker*> markers;
 
 	QGraphicsEllipseItem *tracker;
