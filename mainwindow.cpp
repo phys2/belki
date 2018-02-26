@@ -66,11 +66,17 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	connect(this, &MainWindow::loadDataset, &data, &Dataset::loadDataset);
 	connect(this, &MainWindow::loadAnnotations, &data, &Dataset::loadAnnotations);
+	connect(this, &MainWindow::loadHierarchy, &data, &Dataset::loadHierarchy);
+	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
 	connect(&data, &Dataset::newData, this, &MainWindow::updateData);
 	connect(&data, &Dataset::newClustering, this, [this] {
 		chart->updatePartitions(true);
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
+	});
+	connect(&data, &Dataset::newHierarchy, this, [this] (double maxDist) {
+		// TODO
+		emit calculatePartition(maxDist - 30);
 	});
 
 	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
@@ -110,7 +116,7 @@ void MainWindow::setupActions()
 		emit loadDataset(filename);
 	});
 	connect(actionLoadAnnotations, &QAction::triggered, [this] {
-		auto filename = io->chooseFile(FileIO::Opennnotations);
+		auto filename = io->chooseFile(FileIO::OpenClustering);
 		if (filename.isEmpty())
 			return;
 		emit loadAnnotations(filename);

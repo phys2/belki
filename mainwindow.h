@@ -31,6 +31,8 @@ public:
 signals:
 	void loadDataset(const QString &filename);
 	void loadAnnotations(const QString &filename);
+	void loadHierarchy(const QString &filename);
+	void calculatePartition(double minDist);
 
 public slots:
 	void showHelp();

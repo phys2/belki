@@ -5,9 +5,14 @@
 #include <QFileInfo>
 #include <QTextStream>
 #include <QDataStream>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include <QCryptographicHash>
 #include <QRegularExpression>
 #include <QMessageBox>
+
+#include <set>
 
 #include <QDebug>
 
@@ -50,17 +55,17 @@ void Dataset::loadAnnotations(const QString &filename)
 		emit ioError("Could not parse file!<p>The second column must contain protein names.</p>");
 		return;
 	}
+	header.removeFirst();
+	header.removeFirst();
 
 	QWriteLocker _(&l);
-	header.removeFirst();
-	header.removeFirst();
 
 	/* setup clusters */
 	for (auto &p : d.proteins)
 		p.memberOf.clear();
 	d.clustering.resize((unsigned)header.size());
 	for (auto i = 0; i < header.size(); ++i) {
-		d.clustering[(unsigned)i] = {header[i], {}, {}};
+		d.clustering[(unsigned)i] = {header[i], {}};
 	}
 
 	/* associate to clusters */
@@ -83,6 +88,108 @@ void Dataset::loadAnnotations(const QString &filename)
 				continue;
 			d.proteins[p.value()].memberOf.push_back((unsigned)i);
 		}
+	}
+
+	emit newClustering();
+}
+
+void Dataset::loadHierarchy(const QString &filename)
+{
+	QFile f(filename);
+	if (!f.open(QIODevice::ReadOnly)) {
+		emit ioError(QString("Could not read file %1!").arg(filename));
+		return;
+	}
+	auto root = QJsonDocument::fromJson(f.readAll()).object();
+	if (root.isEmpty()) {
+		emit ioError(QString("File %1 does not contain valid JSON!").arg(filename));
+		return;
+	}
+
+	QWriteLocker _(&l);
+	auto nodes = root["data"].toObject()["nodes"].toObject();
+	auto &container = d.hierarchy;
+
+	// some preparation. we can expect at least as much clusters:
+	container.reserve(2 * d.proteins.size()); // binary tree
+	container.resize(d.proteins.size()); // cluster-per-protein
+
+	auto maxDist = 0.;
+	for (auto it = nodes.constBegin(); it != nodes.constEnd(); ++it) {
+		unsigned id = it.key().toUInt();
+		auto node = it.value().toObject();
+		if (id + 1 > container.size())
+			container.resize(id + 1);
+
+		auto &c = container[id];
+		c.distance = node["distance"].toDouble();
+		maxDist = std::max(maxDist, c.distance);
+
+		/* leaf: associate proteins */
+		auto content = node["objects"].toArray();
+		if (content.size() == 1) {
+			auto pIt = d.protIndex.find(content[0].toString());
+			if (pIt == d.protIndex.end()) {
+				qDebug() << "Ignored" << content[0].toString() << "(unknown)";
+			}
+			c.protein = (int)pIt.value();
+		} else {
+			c.protein = -1;
+		}
+
+		/* non-leaf: associate children */
+		if (node.contains("left_child")) {
+			c.children = {(unsigned)node["left_child"].toInt(),
+			              (unsigned)node["right_child"].toInt()};
+		}
+	}
+
+	emit newHierarchy(maxDist);
+}
+
+void Dataset::calculatePartition(double minDist)
+{
+	QWriteLocker _(&l);
+
+	auto &container = d.hierarchy;
+	std::set<unsigned> candidates;
+	// we use the fact that input is sorted by distance, ascending
+	for (auto i = container.size() - 1; i > 0; --i) {
+		auto &current = container[i];
+		if (current.distance < minDist)
+			break;
+
+		// add either parent or childs, if any of them is eligible by-itself
+		auto useChildrenInstead = false;
+		for (auto c : current.children) {
+			if (container[c].distance >= minDist)
+				useChildrenInstead = true;
+		}
+		if (useChildrenInstead) {
+			for (auto c : current.children)
+				candidates.insert(c);
+		} else {
+			candidates.insert(i);
+		}
+	}
+
+	// recursively assign all proteins to clusters
+	std::function<void(unsigned, unsigned)> flood;
+	flood = [&] (unsigned hIndex, unsigned cIndex) {
+		auto &current = container[hIndex];
+		if (current.protein >= 0)
+			d.proteins[current.protein].memberOf = {cIndex};
+		for (auto &c : current.children)
+			flood(c, cIndex);
+	};
+
+	// set up clusters based on candidates
+	auto &target = d.clustering;
+	target.clear();
+	for (auto i : candidates) {
+		auto name = QString("Cluster #%1").arg(container.size() - i);
+		target.push_back({name, {}});
+		flood(i, target.size() - 1);
 	}
 
 	emit newClustering();

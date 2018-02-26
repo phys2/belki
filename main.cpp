@@ -16,6 +16,9 @@ int main(int argc, char *argv[])
 
 	if (argc >= 2) // pass initial filename as single argument
 		window.loadDataset(argv[1]);
+
+	window.loadHierarchy("clustering.json");
+
 	if (argc >= 3)
 		window.loadAnnotations(argv[2]);
 

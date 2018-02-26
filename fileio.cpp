@@ -17,7 +17,7 @@ QString FileIO::chooseFile(FileIO::Role purpose, QWidget *p)
 {
 	const QMap<Role, RoleDef> map = {
 	    {OpenDataset, {"Open Dataset", "Peak Volumnes Table (*.tsv)", false, {}}},
-	    {Opennnotations, {"Open Annotations", "Annotation Table (*.tsv *.txt)", false, {}}},
+	    {OpenClustering, {"Open Annotations or Clustering", "Annotation Table (*.tsv *.txt);; Hierarchical Clustering (*.json)", false, {}}},
 	    {OpenMarkers, {"Open Markers List", "List of markers (*.txt);; All Files (*)", false, {}}},
 	    {SaveMarkers, {"Save Markers to File", "List of markers (*.txt)", true, ".txt"}},
 	    //with pdf//{SavePlot, {"Save Plot to File", "Scalable Vector Graphics (*.svg);; Portable Document Format (*.pdf);; Portable Network Graphics (*.png)", true, {}}},

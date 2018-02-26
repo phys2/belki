@@ -9,8 +9,6 @@
 #include <QColor>
 #include <QReadWriteLock>
 
-#include <memory>
-
 class QFile;
 
 class Dataset : public QObject
@@ -20,8 +18,7 @@ class Dataset : public QObject
 public:
 	struct Cluster {
 		QString name;
-		QColor color;
-		std::vector<Cluster*> children;
+		QColor color; // TODO: do we use this? nah! get rid.
 	};
 
 	struct Protein {
@@ -33,6 +30,12 @@ public:
 		QString species;
 		// annotations, if any
 		std::vector<unsigned> memberOf;
+	};
+
+	struct HrCluster {
+		double distance;
+		int protein;
+		std::vector<unsigned> children;
 	};
 
 	struct Public {
@@ -53,6 +56,7 @@ public:
 
 		// clusters, if available
 		std::vector<Cluster> clustering;
+		std::vector<HrCluster> hierarchy;
 	};
 
 	struct View {
@@ -85,11 +89,14 @@ public:
 signals: // IMPORTANT: when connecting to lambda, use object pointer for thread-affinity
 	void newData(const QString &filename);
 	void newClustering();
+	void newHierarchy(double maxDist);
 	void ioError(const QString &message);
 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
 	void loadDataset(const QString &filename);
 	void loadAnnotations(const QString &filename);
+	void loadHierarchy(const QString &filename);
+	void calculatePartition(double minDist);
 
 protected:
 	bool read();
