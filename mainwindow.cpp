@@ -160,7 +160,7 @@ void MainWindow::setupActions()
 	});
 
 	connect(actionProfileView, &QAction::triggered, [this] {
-		auto window = new ProfileWindow(cursorChart, this);
+		new ProfileWindow(cursorChart, this);
 	});
 }
 
