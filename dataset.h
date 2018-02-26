@@ -89,14 +89,14 @@ public:
 signals: // IMPORTANT: when connecting to lambda, use object pointer for thread-affinity
 	void newData(const QString &filename);
 	void newClustering();
-	void newHierarchy(double maxDist);
+	void newHierarchy();
 	void ioError(const QString &message);
 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
 	void loadDataset(const QString &filename);
 	void loadAnnotations(const QString &filename);
 	void loadHierarchy(const QString &filename);
-	void calculatePartition(double minDist);
+	void calculatePartition(unsigned granularity);
 
 protected:
 	bool read();

@@ -32,7 +32,7 @@ signals:
 	void loadDataset(const QString &filename);
 	void loadAnnotations(const QString &filename);
 	void loadHierarchy(const QString &filename);
-	void calculatePartition(double minDist);
+	void calculatePartition(unsigned granularity);
 
 public slots:
 	void showHelp();
@@ -41,6 +41,7 @@ public slots:
 	void updateCursorList(QVector<unsigned> samples);
 
 protected:
+	void setupToolbar();
 	void setupActions();
 	void setupMarkerControls();
 	void updateMarkerControls();

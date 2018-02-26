@@ -84,6 +84,7 @@ void Chart::updatePartitions(bool fullReset)
 			return; // no clusters means nothing to do!
 
 		/* set up partition series */
+		// series needed for soft clustering
 		partitions.push_back(new Proteins("Unlabeled", Qt::darkGray, this));
 		partitions.push_back(new Proteins("Mixed", Qt::gray, this));
 
@@ -111,6 +112,11 @@ void Chart::updatePartitions(bool fullReset)
 			target = p.memberOf[0] + 2;
 		(*partitions[target]) << source[(int)i];
 	}
+
+	/* hide empty series from legend (in case of hard clustering) */
+	for (auto p : {partitions[0], partitions[1]})
+		if (p->pointsVector().empty())
+			removeSeries(p);
 }
 
 void Chart::updateCursor(const QPointF &pos)

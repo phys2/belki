@@ -25,19 +25,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	dataThread.start();
 
 	setupUi(this);
-
-	/* toolbar */
-	// put stuff before other buttons
-	auto anchor = actionLoadAnnotations;
-	fileLabel->setText("<i>No file selected</i>");
-	toolBar->insertWidget(anchor, fileLabel);
-	toolBar->insertSeparator(anchor);
-	toolBar->insertWidget(anchor, topBar);
-	toolBar->insertSeparator(anchor);
-	// right-align screenshot & help button
-	auto* spacer = new QWidget();
-	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	toolBar->insertWidget(actionSavePlot, spacer);
+	setupToolbar();
 
 	/* main chart */
 	chartView->setChart(chart);
@@ -74,15 +62,15 @@ MainWindow::MainWindow(QWidget *parent) :
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
 	});
-	connect(&data, &Dataset::newHierarchy, this, [this] (double maxDist) {
-		// TODO
-		emit calculatePartition(maxDist - 30);
+	connect(&data, &Dataset::newHierarchy, this, [this] {
+		emit calculatePartition(granularitySlider->value());
 	});
 
 	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
 
 	connect(transformSelect, qOverload<const QString&>(&QComboBox::currentIndexChanged),
 	        [this] (const QString &name) { chart->display(name); });
+	connect(granularitySlider, &QSlider::valueChanged, this, &MainWindow::calculatePartition);
 
 	/* actions */
 	setupActions();
@@ -92,6 +80,29 @@ MainWindow::~MainWindow()
 {
 	dataThread.quit();
 	dataThread.wait();
+}
+
+void MainWindow::setupToolbar()
+{
+	// put stuff before other buttons
+	auto anchor = actionLoadAnnotations;
+	fileLabel->setText("<i>No file selected</i>");
+	toolBar->insertWidget(anchor, fileLabel);
+	toolBar->insertSeparator(anchor);
+	toolBar->insertWidget(anchor, topBar);
+	toolBar->insertSeparator(anchor);
+
+	// move hierarchy slider
+	auto sliderAction = toolBar->insertWidget(actionSavePlot, granularitySlider);
+	// sync slider with availability & type of clustering
+	sliderAction->setVisible(false);
+	connect(this, &MainWindow::loadAnnotations, [sliderAction] { sliderAction->setVisible(false); });
+	connect(&data, &Dataset::newHierarchy, [sliderAction] { sliderAction->setVisible(true); });
+
+	// right-align screenshot & help button
+	auto* spacer = new QWidget();
+	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+	toolBar->insertWidget(actionSavePlot, spacer);
 }
 
 void MainWindow::setupActions()
@@ -119,7 +130,11 @@ void MainWindow::setupActions()
 		auto filename = io->chooseFile(FileIO::OpenClustering);
 		if (filename.isEmpty())
 			return;
-		emit loadAnnotations(filename);
+		auto filetype = QFileInfo(filename).suffix();
+		if (filetype == "json")
+			emit loadHierarchy(filename);
+		else
+			emit loadAnnotations(filename);
 	});
 	connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartitions);
 	connect(actionLoadMarkers, &QAction::triggered, [this] {

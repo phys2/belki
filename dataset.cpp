@@ -114,7 +114,6 @@ void Dataset::loadHierarchy(const QString &filename)
 	container.reserve(2 * d.proteins.size()); // binary tree
 	container.resize(d.proteins.size()); // cluster-per-protein
 
-	auto maxDist = 0.;
 	for (auto it = nodes.constBegin(); it != nodes.constEnd(); ++it) {
 		unsigned id = it.key().toUInt();
 		auto node = it.value().toObject();
@@ -123,7 +122,6 @@ void Dataset::loadHierarchy(const QString &filename)
 
 		auto &c = container[id];
 		c.distance = node["distance"].toDouble();
-		maxDist = std::max(maxDist, c.distance);
 
 		/* leaf: associate proteins */
 		auto content = node["objects"].toArray();
@@ -144,30 +142,34 @@ void Dataset::loadHierarchy(const QString &filename)
 		}
 	}
 
-	emit newHierarchy(maxDist);
+	emit newHierarchy();
 }
 
-void Dataset::calculatePartition(double minDist)
+void Dataset::calculatePartition(unsigned granularity)
 {
 	QWriteLocker _(&l);
 
 	auto &container = d.hierarchy;
+
+	granularity = std::min(granularity, (unsigned)container.size());
+	unsigned lowBound = container.size() - granularity - 1;
+
 	std::set<unsigned> candidates;
 	// we use the fact that input is sorted by distance, ascending
-	for (auto i = container.size() - 1; i > 0; --i) {
+	for (auto i = lowBound; i < container.size(); ++i) {
 		auto &current = container[i];
-		if (current.distance < minDist)
-			break;
 
 		// add either parent or childs, if any of them is eligible by-itself
 		auto useChildrenInstead = false;
 		for (auto c : current.children) {
-			if (container[c].distance >= minDist)
+			if (c >= lowBound)
 				useChildrenInstead = true;
 		}
 		if (useChildrenInstead) {
-			for (auto c : current.children)
-				candidates.insert(c);
+			for (auto c : current.children) {
+				if (c < lowBound) // only add what's not covered by granularity
+					candidates.insert(c);
+			}
 		} else {
 			candidates.insert(i);
 		}
@@ -178,7 +180,7 @@ void Dataset::calculatePartition(double minDist)
 	flood = [&] (unsigned hIndex, unsigned cIndex) {
 		auto &current = container[hIndex];
 		if (current.protein >= 0)
-			d.proteins[current.protein].memberOf = {cIndex};
+			d.proteins[(unsigned)current.protein].memberOf = {cIndex};
 		for (auto &c : current.children)
 			flood(c, cIndex);
 	};
