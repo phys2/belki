@@ -83,7 +83,7 @@ void Dataset::loadAnnotations(const QString &filename)
 			continue;
 		}
 
-		for (auto i = 0; i < line.size(); ++i) {
+		for (auto i = 0; i < header.size(); ++i) { // run over header to only allow valid columns
 			if (line[i].isEmpty() || line[i].contains(QRegularExpression("^\\s*$")))
 				continue;
 			d.proteins[p.value()].memberOf.push_back((unsigned)i);
