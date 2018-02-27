@@ -4,7 +4,7 @@
 #include <QtWidgets/QFileDialog>
 #include <QtCore/QMap>
 #include <QtSvg/QSvgGenerator>
-#include <QtPrintSupport/QPrinter>
+//#include <QtPrintSupport/QPrinter> // for PDF support
 #include <QtGui/QPainter>
 
 #include <QtDebug>
@@ -62,13 +62,13 @@ void FileIO::renderToFile(QWidget *source, const QString &title, const QString &
 		svg.setDescription(description);
 		renderer(&svg);
 	}
-	if (filetype == "pdf") { // TODO: this produces only a bitmap, so we disabled it for now
+	/*if (filetype == "pdf") { // TODO: this produces only a bitmap, so we disabled it for now
 		// maybe use QPicture trick. also need to adapt page size
 		QPrinter pdf;
 		pdf.setOutputFormat(QPrinter::PdfFormat);
 		pdf.setOutputFileName(filename);
 		renderer(&pdf);
-	}
+	}*/
 	if (filetype == "png") {
 		const qreal scale = 2.; // render in higher resolution
 		QPixmap pixmap(source->size()*scale);

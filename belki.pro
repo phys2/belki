@@ -1,23 +1,23 @@
-# general
+# GENERAL
 
 CONFIG += c++14
 CONFIG += link_pkgconfig
 QMAKE_CXXFLAGS_RELEASE = -O3 -march=nehalem
 
-# platform support
+# PLATFORM SUPPORT
 
 win32 {
     CONFIG += static
-    QTPLUGIN += qsvgicon # we use an SVG icon set
+    #QTPLUGIN += qsvgicon # if not building with SVG, used for svg icons
     RC_ICONS += gfx/icon.ico
 }
 macx:ICON = gfx/icon.icns
 
-# dependencies
+# DEPENDENCIES
 
-QT += gui charts
-
-QT += svg printsupport # for plot export
+QT += gui widgets
+QT += charts
+QT += svg # for plot export
 
 # openmp, eigen, arpack for tapkee
 QMAKE_CXXFLAGS += -fopenmp
