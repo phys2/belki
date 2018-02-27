@@ -16,7 +16,7 @@ macx:ICON = gfx/icon.icns
 # DEPENDENCIES
 
 QT += gui widgets
-QT += charts
+QT += charts # (disable if using own qtcharts)
 QT += svg # for plot export
 
 # openmp, eigen, arpack for tapkee
@@ -25,8 +25,11 @@ LIBS += -fopenmp
 INCLUDEPATH += /usr/include/eigen3 #PKGCONFIG += eigen3 does not work with mingw
 PKGCONFIG += arpack
 
-# tapkee
+# tapkee (and our own qtcharts)
 INCLUDEPATH += $$PWD/include
+#linux:LIBS += $$PWD/lib/qtcharts-linux/libQt5Charts.a
+#win32:LIBS += $$PWD/lib/qtcharts-mingw/libQt5Charts.a
+#macx:QT += charts # will break sooner or later
 
 HEADERS += \
     chart.h \
