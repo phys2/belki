@@ -17,7 +17,10 @@ QString FileIO::chooseFile(FileIO::Role purpose, QWidget *p)
 {
 	const QMap<Role, RoleDef> map = {
 	    {OpenDataset, {"Open Dataset", "Peak Volumnes Table (*.tsv)", false, {}}},
-	    {OpenClustering, {"Open Annotations or Clustering", "Annotation Table (*.tsv *.txt);; Hierarchical Clustering (*.json)", false, {}}},
+	    {OpenClustering, {"Open Annotations or Clustering",
+	                      "All supported files (*.tsv *.txt *.json);; "
+	                      "Annotation Table (*.tsv *.txt);; Hierarchical Clustering (*.json)",
+	                      false, {}}},
 	    {OpenMarkers, {"Open Markers List", "List of markers (*.txt);; All Files (*)", false, {}}},
 	    {SaveMarkers, {"Save Markers to File", "List of markers (*.txt)", true, ".txt"}},
 	    //with pdf//{SavePlot, {"Save Plot to File", "Scalable Vector Graphics (*.svg);; Portable Document Format (*.pdf);; Portable Network Graphics (*.png)", true, {}}},
@@ -41,6 +44,9 @@ QString FileIO::chooseFile(FileIO::Role purpose, QWidget *p)
 void FileIO::renderToFile(QWidget *source, const QString &title, const QString &description)
 {
 	auto filename = chooseFile(SavePlot, source->window());
+	if (filename.isEmpty())
+		return;
+
 	auto filetype = QFileInfo(filename).suffix();
 	if (filetype.isEmpty()) {
 		emit ioError("Please select a filename with suffix (e.g. .svg)!");

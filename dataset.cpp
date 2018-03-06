@@ -60,6 +60,13 @@ void Dataset::loadAnnotations(const QString &filename)
 
 	QWriteLocker _(&l);
 
+	/* ensure we have data to annotate */
+	qDebug() << d.proteins.size();
+	if (d.proteins.empty()) {
+		emit ioError("Please load protein profiles first!");
+		return;
+	}
+
 	/* setup clusters */
 	for (auto &p : d.proteins)
 		p.memberOf.clear();
@@ -107,6 +114,14 @@ void Dataset::loadHierarchy(const QString &filename)
 	}
 
 	QWriteLocker _(&l);
+
+	/* ensure we have data to annotate */
+	qDebug() << d.proteins.size();
+	if (d.proteins.empty()) {
+		emit ioError("Please load protein profiles first!");
+		return;
+	}
+
 	auto nodes = root["data"].toObject()["nodes"].toObject();
 	auto &container = d.hierarchy;
 
