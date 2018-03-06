@@ -97,7 +97,7 @@ void MainWindow::setupToolbar()
 	// sync slider with availability & type of clustering
 	sliderAction->setVisible(false);
 	connect(this, &MainWindow::loadAnnotations, [sliderAction] { sliderAction->setVisible(false); });
-	connect(&data, &Dataset::newHierarchy, [sliderAction] { sliderAction->setVisible(true); });
+	connect(&data, &Dataset::newHierarchy, this, [sliderAction] { sliderAction->setVisible(true); });
 
 	// right-align screenshot & help button
 	auto* spacer = new QWidget();
