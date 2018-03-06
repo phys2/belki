@@ -89,8 +89,10 @@ void MainWindow::setupToolbar()
 	fileLabel->setText("<i>No file selected</i>");
 	toolBar->insertWidget(anchor, fileLabel);
 	toolBar->insertSeparator(anchor);
-	toolBar->insertWidget(anchor, topBar);
+	toolBar->insertWidget(anchor, transformLabel);
+	toolBar->insertWidget(anchor, transformSelect);
 	toolBar->insertSeparator(anchor);
+	toolBar->insertWidget(anchor, partitionLabel);
 
 	// move hierarchy slider
 	auto sliderAction = toolBar->insertWidget(actionSavePlot, granularitySlider);
@@ -103,6 +105,9 @@ void MainWindow::setupToolbar()
 	auto* spacer = new QWidget();
 	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	toolBar->insertWidget(actionSavePlot, spacer);
+
+	// remove container we picked from
+	topBar->deleteLater();
 }
 
 void MainWindow::setupActions()

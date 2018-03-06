@@ -46,6 +46,10 @@
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/icons/show-average</normaloff>:/icons/show-average</iconset>
+   </property>
    <property name="text">
     <string>Average Profile</string>
    </property>
@@ -56,6 +60,10 @@
   <action name="actionShowIndividual">
    <property name="checkable">
     <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/icons/show-individual</normaloff>:/icons/show-individual</iconset>
    </property>
    <property name="text">
     <string>Individual Profiles</string>
@@ -76,6 +84,10 @@
   <action name="actionShowLabels">
    <property name="checkable">
     <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/icons/show-labels</normaloff>:/icons/show-labels</iconset>
    </property>
    <property name="text">
     <string>Labels</string>

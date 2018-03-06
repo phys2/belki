@@ -21,12 +21,9 @@
    <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
      <widget class="QWidget" name="topBar" native="true">
-      <property name="autoFillBackground">
-       <bool>true</bool>
-      </property>
-      <layout class="QHBoxLayout" name="horizontalLayout">
+      <layout class="QHBoxLayout" name="_2">
        <item>
-        <widget class="QLabel" name="label">
+        <widget class="QLabel" name="transformLabel">
          <property name="text">
           <string>Transformation:</string>
          </property>
@@ -57,6 +54,13 @@
            <string>tSNE</string>
           </property>
          </item>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="partitionLabel">
+         <property name="text">
+          <string>Partition:</string>
+         </property>
         </widget>
        </item>
        <item>
@@ -454,6 +458,10 @@
    </property>
    <property name="enabled">
     <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/icons/show-partition</normaloff>:/icons/show-partition</iconset>
    </property>
    <property name="text">
     <string>Show Partition</string>
