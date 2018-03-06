@@ -1,4 +1,5 @@
-#include <tapkee/tapkee.hpp> // for Eigen
+#include <tapkee/tapkee.hpp> // includes Eigen
+#include <tapkee/utils/logging.hpp>
 
 #include <QPointF>
 
@@ -19,6 +20,10 @@ QVector<QPointF> compute(QString m, QVector<QVector<double> > &features)
 		featmat.col(i) = Eigen::Map<Eigen::VectorXd>(features[i].data(), nrows);
 
 	qDebug() << "Computing" << m;
+
+	// setup some logging
+	tapkee::LoggingSingleton::instance().enable_info();
+	tapkee::LoggingSingleton::instance().enable_benchmark();
 
 	// perform dimensionality reduction
 	ParametersSet p;
