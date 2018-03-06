@@ -58,16 +58,18 @@ ProfileWindow::ProfileWindow(QtCharts::QChart *source, MainWindow *parent) :
 	auto stats = computeMeanStddev(sources);
 
 	// setup QAreaSeries for stddev
-	auto upper = new QtCharts::QLineSeries, lower = new QtCharts::QLineSeries;
-	for (unsigned i = 0; i < stats.first.size(); ++i) {
-		upper->append(i, stats.first[i] + stats.second[i]);
-		lower->append(i, stats.first[i] - stats.second[i]);
+	if (!stats.first.empty()) {
+		auto upper = new QtCharts::QLineSeries, lower = new QtCharts::QLineSeries;
+		for (unsigned i = 0; i < stats.first.size(); ++i) {
+			upper->append(i, stats.first[i] + stats.second[i]);
+			lower->append(i, stats.first[i] - stats.second[i]);
+		}
+		auto stddev = new QtCharts::QAreaSeries(upper, lower);
+		addSeries(stddev, false);
+		stddev->setName("σ (SD)");
+		stddev->setColor(Qt::gray);
+		stddev->setBorderColor(Qt::gray);
 	}
-	auto stddev = new QtCharts::QAreaSeries(upper, lower);
-	addSeries(stddev, false);
-	stddev->setName("σ (SD)");
-	stddev->setColor(Qt::gray);
-	stddev->setBorderColor(Qt::gray);
 
 	// sort series by name
 	qSort(sources.begin(), sources.end(), [] (QtCharts::QAbstractSeries *a, QtCharts::QAbstractSeries *b) {
@@ -85,15 +87,17 @@ ProfileWindow::ProfileWindow(QtCharts::QChart *source, MainWindow *parent) :
 	}
 
 	// setup QLineSeries for mean
-	auto average = new QtCharts::QLineSeries;
-	addSeries(average, false);
-	average->setName("Avg.");
-	auto pen = average->pen();
-	pen.setColor(Qt::black);
-	pen.setWidthF(pen.widthF()*1.5);
-	average->setPen(pen);
-	for (unsigned i = 0; i < stats.first.size(); ++i) {
-		average->append(i, stats.first[i]);
+	if (!stats.first.empty()) {
+		auto average = new QtCharts::QLineSeries;
+		addSeries(average, false);
+		average->setName("Avg.");
+		auto pen = average->pen();
+		pen.setColor(Qt::black);
+		pen.setWidthF(pen.widthF()*1.5);
+		average->setPen(pen);
+		for (unsigned i = 0; i < stats.first.size(); ++i) {
+			average->append(i, stats.first[i]);
+		}
 	}
 
 	/* actions */
@@ -108,7 +112,11 @@ ProfileWindow::ProfileWindow(QtCharts::QChart *source, MainWindow *parent) :
 	connect(actionShowLabels, &QAction::toggled, ax, toggleLabels);
 	actionShowIndividual->setChecked(true);
 	actionShowIndividual->setChecked(sources.size() < 50);
-	actionShowAverage->setChecked(true);
+	if (!stats.first.empty()) {
+		actionShowAverage->setChecked(true);
+	} else {
+		actionShowAverage->setDisabled(true);
+	}
 
 	/* we are a single popup thingy: self-show and self-delete on close */
 	setAttribute(Qt::WidgetAttribute::WA_DeleteOnClose);
@@ -128,6 +136,9 @@ void ProfileWindow::addSeries(QtCharts::QAbstractSeries *s, bool individual)
 std::pair<std::vector<qreal>, std::vector<qreal>>
 ProfileWindow::computeMeanStddev(const QList<QtCharts::QAbstractSeries *> &input)
 {
+	if (input.size() < 2)
+		return {{}, {}};
+
 	/* really not the brightest way to do this.
        maybe we should really just convert to sane formats and back */
 
