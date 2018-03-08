@@ -84,7 +84,7 @@ void Dataset::loadAnnotations(const QString &filename)
 		p.memberOf.clear();
 	d.clustering.resize((unsigned)header.size());
 	for (auto i = 0; i < header.size(); ++i) {
-		d.clustering[(unsigned)i] = {header[i], {}};
+		d.clustering[(unsigned)i] = {header[i]};
 	}
 
 	/* associate to clusters */
@@ -217,7 +217,7 @@ void Dataset::calculatePartition(unsigned granularity)
 	target.clear();
 	for (auto i : candidates) {
 		auto name = QString("Cluster #%1").arg(container.size() - i);
-		target.push_back({name, {}});
+		target.push_back({name});
 		flood(i, target.size() - 1);
 	}
 

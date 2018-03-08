@@ -18,7 +18,6 @@ class Dataset : public QObject
 public:
 	struct Cluster {
 		QString name;
-		QColor color; // TODO: do we use this? nah! get rid.
 	};
 
 	struct Protein {
