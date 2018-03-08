@@ -63,7 +63,7 @@ MainWindow::MainWindow(QWidget *parent) :
 		actionShowPartition->setChecked(true);
 	});
 	connect(&data, &Dataset::newHierarchy, this, [this] {
-		emit calculatePartition(granularitySlider->value());
+		emit calculatePartition((unsigned)granularitySlider->value());
 	});
 
 	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
@@ -191,9 +191,9 @@ void MainWindow::setupMarkerControls()
 	});
 	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
 		if (i->checkState() == Qt::Checked)
-			chart->addMarker(i->data().toInt());
+			chart->addMarker((unsigned)i->data().toInt());
 		if (i->checkState() == Qt::Unchecked)
-			chart->removeMarker(i->data().toInt());
+			chart->removeMarker((unsigned)i->data().toInt());
 	});
 
 	auto toggler = [m] (QModelIndex i) {
