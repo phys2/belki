@@ -226,15 +226,19 @@ void MainWindow::setupMarkerControls()
 	});
 }
 
-void MainWindow::updateData(const QString &filename)
+void MainWindow::updateData()
 {
-	QFileInfo fi(filename);
-	//auto title = QFileInfo(fi.canonicalFilePath()).completeBaseName();
-	title = QDir(QFileInfo(fi.canonicalFilePath()).path()).dirName();
+	QFileInfo fi(data.peek()->source.filename);
+	title = QFileInfo(fi.canonicalFilePath()).completeBaseName();
+	//title = QDir(QFileInfo(fi.canonicalFilePath()).path()).dirName();
 	setWindowTitle(QString("%1 – Belki").arg(title));
 
 	chart->display(transformSelect->currentText(), true);
 	fileLabel->setText(QString("<b>%1</b>").arg(title));
+
+	/* new data means no partitions */
+	actionShowPartition->setChecked(false);
+	actionShowPartition->setEnabled(false);
 
 	/* set up cursor chart */
 	auto ax = qobject_cast<QtCharts::QBarCategoryAxis*>(cursorChart->axisX());

@@ -39,6 +39,12 @@ public:
 	};
 
 	struct Public {
+		struct {
+			QString filename;
+			qint64 size;
+			QByteArray checksum;
+		} source;
+
 		QStringList dimensions;
 
 		QMap<QString, unsigned> protIndex; // map indentifiers to index in vectors
@@ -80,14 +86,8 @@ public:
 	QVector<unsigned> loadMarkers(const QString &filename);
 	void saveMarkers(const QString &filename, const QVector<unsigned> &indices);
 
-	struct {
-		QString filename;
-		qint64 size;
-		QByteArray checksum;
-	} source;
-
-signals: // IMPORTANT: when connecting to lambda, use object pointer for thread-affinity
-	void newData(const QString &filename);
+signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
+	void newData();
 	void newClustering();
 	void newHierarchy();
 	void ioError(const QString &message);
@@ -99,8 +99,8 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void calculatePartition(unsigned granularity);
 
 protected:
-	bool read();
-	bool readSource();
+	bool read(QFile &f); // helper to loadDataset(), assumes write lock
+	bool readSource(QFile &f); // helper to read(), assumes write lock
 	void write();
 
 	QString qvName();

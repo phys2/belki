@@ -37,7 +37,7 @@ signals:
 public slots:
 	void showHelp();
 	void displayError(const QString &message);
-	void updateData(const QString &filename);
+	void updateData();
 	void updateCursorList(QVector<unsigned> samples, QString title);
 
 protected:

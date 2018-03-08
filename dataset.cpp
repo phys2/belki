@@ -20,23 +20,35 @@ void Dataset::loadDataset(const QString &filename)
 {
 	write(); // save interim results on previous dataset
 
-	source = {filename, {}, {}};
+	QFile f(filename);
+	if (!f.open(QIODevice::ReadOnly)) {
+		emit ioError(QString("Could not read file %1!").arg(filename));
+		return;
+	}
 
-	auto success = read(); // obtain data and interim results
+	/* load data, right now better lock until the signal is out */
+	QWriteLocker _(&l);
+
+	d = Public();
+	d.source.filename = filename;
+
+	auto success = read(f); // obtain data and interim results
 	if (!success)
 		return;
 
-	// TODO: compute on-demand
+	/* compute displays,
+	 * TODO: on demand, in that case we need several signals newData + newDisplay */
 	const std::vector<QString> available = {"PCA12", "PCA13", "PCA23", "tSNE"};
 	for (auto &m : available) {
 		if (!d.display.contains(m)) {
 			auto result = dimred::compute(m, d.features);
-			QWriteLocker _(&l);
+			//QWriteLocker _(&l);
 			d.display[m] = std::move(result);
 		}
 	}
 
-	emit newData(filename);
+	/* let the outside world know, see above, would be better to do directly after read */
+	emit newData();
 }
 
 void Dataset::loadAnnotations(const QString &filename)
@@ -254,55 +266,41 @@ void Dataset::saveMarkers(const QString &filename, const QVector<unsigned> &indi
 	}
 }
 
-bool Dataset::read()
+bool Dataset::read(QFile &f) // runs within write lock
 {
 	// get the source data
-	auto success = readSource();
+	auto success = readSource(f);
 	if (!success)
 		return false;
 
 	// try to read pre-computed results
-	QFile f(qvName());
-	if (!f.open(QIODevice::ReadOnly)) {
+	QFile fq(qvName());
+	if (!fq.open(QIODevice::ReadOnly)) {
 		qDebug() << "No serialized interim results found";
 		return true;
 	}
 
-	QDataStream in(&f);
+	QDataStream in(&fq);
 	qint64 size;
 	in >> size;
-	if (size != source.size) {
+	if (size != d.source.size) {
 		qDebug() << "Interim results not compatible with file (size)";
 		return true;
 	}
 
 	QByteArray checksum;
 	in >> checksum;
-	if (checksum != source.checksum) {
+	if (checksum != d.source.checksum) {
 		qDebug() << "Interim results not compatible with file (checksum)";
 		return true;
 	}
 
-	l.lockForWrite();
 	in >> d.display;
-	l.unlock();
 	return true;
 }
 
-bool Dataset::readSource()
+bool Dataset::readSource(QFile &f) // runs within write lock
 {
-	QFile f(source.filename);
-	if (!f.open(QIODevice::ReadOnly)) {
-		emit ioError(QString("Could not read file %1!").arg(source.filename));
-		return false;
-	}
-
-	QWriteLocker _(&l);
-	d.proteins.clear();
-	d.protIndex.clear();
-	d.features.clear();
-	d.featurePoints.clear();
-
 	QTextStream in(&f);
 	d.dimensions = in.readLine().split("\t", QString::SkipEmptyParts);
 	auto len = d.dimensions.size();
@@ -329,29 +327,29 @@ bool Dataset::readSource()
 	}
 	qDebug() << "read" << d.features.size() << "rows with" << len << "columns";
 
-	source.size = f.size();
-	source.checksum = fileChecksum(&f);
+	d.source.size = f.size();
+	d.source.checksum = fileChecksum(&f);
 
 	return true;
 }
 
 void Dataset::write()
 {
-	if (source.filename.isEmpty() || !source.size)
+	if (d.source.filename.isEmpty() || !d.source.size)
 		return; // no data loaded
 
 	QFile f(qvName());
 	f.open(QIODevice::WriteOnly);
 	QDataStream out(&f);
-	out << source.size;
-	out << source.checksum;
+	out << d.source.size;
+	out << d.source.checksum;
 	out << d.display;
 	qDebug() << "Saved interim results to" << f.fileName();
 }
 
 QString Dataset::qvName()
 {
-	QFileInfo fi(source.filename);
+	QFileInfo fi(d.source.filename);
 	return fi.path() + "/" + fi.completeBaseName() + ".qv";
 }
 
