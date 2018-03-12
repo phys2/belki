@@ -9,16 +9,21 @@
 #include <QtWidgets/QGraphicsSceneMouseEvent>
 #include <QtGui/QPolygonF>
 #include <QtCore/QHash>
+#include <QtCore/QTimer>
+
 #include <cmath>
 
 #include <QtCore/QDebug>
 
 Chart::Chart(Dataset &data) :
     data(data),
-    ax(new QtCharts::QValueAxis), ay(new QtCharts::QValueAxis)
+    ax(new QtCharts::QValueAxis), ay(new QtCharts::QValueAxis),
+    animReset(new QTimer(this))
 {
 	/* set up general appearance */
-	setAnimationOptions(QChart::NoAnimation);
+	// disable grid animations as a lot of distracting stuff happens there
+	// e.g. axis reset (and animate) when changing animation duration…
+	setAnimationOptions(SeriesAnimations);
 	legend()->setAlignment(Qt::AlignLeft);
 
 	setAxisX(ax);
@@ -43,6 +48,13 @@ Chart::Chart(Dataset &data) :
 			zoom.history.push(zoom.current);
 		zoom.current = {{ax->min(), ay->min()}, QPointF{ax->max(), ay->max()}};
 	});
+
+	/* setup animation reset timer */
+	animReset->setSingleShot(true);
+	connect(animReset, &QTimer::timeout, [this] {
+		setAnimationDuration(1000);
+		setAnimationOptions(SeriesAnimations);
+	});
 }
 
 Chart::~Chart()
@@ -51,23 +63,27 @@ Chart::~Chart()
 
 void Chart::display(const QString &set, bool fullReset)
 {
-	// reset state
+	/* disable fancy transition on full reset */
+	animate(fullReset ? 0 : 1000);
+
+	/* reset state */
 	if (fullReset) { // completely new data
 		clearMarkers();
 	}
 	resetCursor();
 	zoom = {};
 
-	// update point set
+	/* update point set */
 	master->replace(data.peek()->display[set]);
 
-	// update ranges cheap & dirty
+	/* update ranges cheap & dirty */
 	auto bbox = QPolygonF(master->pointsVector()).boundingRect();
 	auto offset = bbox.width() * 0.05; // give some breathing space
 	bbox.adjust(-offset, -offset, offset, offset);
 	ax->setRange(bbox.left(), bbox.right());
 	ay->setRange(bbox.top(), bbox.bottom());
 
+	/* update other sets */
 	updatePartitions(fullReset);
 	for (auto m : qAsConst(markers)) {
 		m->replace(0, master->pointsVector()[(int)m->sampleIndex]);
@@ -82,6 +98,8 @@ void Chart::updatePartitions(bool fullReset)
 
 		if (data.peek()->clustering.empty())
 			return; // no clusters means nothing to do!
+
+		animate(0);
 
 		/* set up partition series */
 		// series needed for soft clustering
@@ -194,10 +212,11 @@ void Chart::togglePartitions(bool showPartitions)
 
 void Chart::zoomAt(const QPointF &pos, qreal factor)
 {
+	animate(0);
 	auto stretch = 1./factor;
 	auto center = mapToValue(pos);
 
-	// zoom in a way that point under the mouse stays fixed
+	/* zoom in a way that point under the mouse stays fixed */
 	auto dl = center.x() - ax->min(), dr = ax->max() - center.x();
 	ax->setRange(center.x() - dl*stretch, center.x() + dr*stretch);
 
@@ -241,6 +260,13 @@ void Chart::clearMarkers()
 	qDeleteAll(markers);
 	markers.clear();
 	emit markersCleared();
+}
+
+void Chart::animate(int msec) {
+	setAnimationDuration(msec);
+	if (msec == 0)
+		setAnimationOptions(NoAnimation); // yes, this avoids slowdown…
+	animReset->start(msec + 1000);
 }
 
 QColor Chart::tableau20(unsigned index)

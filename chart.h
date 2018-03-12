@@ -5,9 +5,10 @@
 
 #include <QtCharts/QChart>
 #include <QtCharts/QScatterSeries>
-#include <QStack>
+#include <QtCore/QStack>
 
 class QColor;
+class QTimer;
 
 namespace QtCharts {
 class QValueAxis;
@@ -56,6 +57,8 @@ signals:
 	void markersCleared();
 
 protected:
+	void animate(int msec);
+
 	Dataset &data;
 
 	Proteins *master;
@@ -69,6 +72,7 @@ protected:
 		QRectF current;
 		QStack<QRectF> history;
 	} zoom;
+	QTimer *animReset;
 };
 
 #endif /* CHART_H */
