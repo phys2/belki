@@ -156,8 +156,10 @@ void Dataset::loadHierarchy(const QString &filename)
 			auto pIt = d.protIndex.find(content[0].toString());
 			if (pIt == d.protIndex.end()) {
 				qDebug() << "Ignored" << content[0].toString() << "(unknown)";
+				c.protein = -1;
+			} else {
+				c.protein = (int)pIt.value();
 			}
-			c.protein = (int)pIt.value();
 		} else {
 			c.protein = -1;
 		}
