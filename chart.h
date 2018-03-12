@@ -52,6 +52,7 @@ public slots:
 	void togglePartitions(bool showPartitions);
 
 signals:
+	void areaChanged();
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
 	void markerToggled(unsigned sampleIndex, bool present);
 	void markersCleared();

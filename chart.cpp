@@ -41,9 +41,12 @@ Chart::Chart(Dataset &data) :
 	connect(ax, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
 	connect(ay, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
 
-	/* setup zoom history */
+	/* setup signal for range changes */
 	// HACK: we expect ay to always be involved, and always update after ax!
-	connect(ay, &QtCharts::QValueAxis::rangeChanged, [this] {
+	connect(ay, &QtCharts::QValueAxis::rangeChanged, this, &Chart::areaChanged);
+
+	/* setup zoom history */
+	connect(this, &Chart::areaChanged, [this] {
 		if (zoom.current.isValid())
 			zoom.history.push(zoom.current);
 		zoom.current = {{ax->min(), ay->min()}, QPointF{ax->max(), ay->max()}};

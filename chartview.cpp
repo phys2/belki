@@ -30,7 +30,7 @@ void ChartView::mousePressEvent(QMouseEvent *event)
 		   release, which means, probably the rubber was active, and we should
 		   ignore the next release event */
 		auto conn = std::make_shared<QMetaObject::Connection>();
-		*conn = connect(chart(), &Chart::cursorChanged, [this, conn] {
+		*conn = connect(chart(), &Chart::areaChanged, [this, conn] {
 			rubberPerformed = true;
 			disconnect(*conn);
 		});
