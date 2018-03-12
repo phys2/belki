@@ -1,14 +1,12 @@
 #include "mainwindow.h"
 #include "dataset.h"
 #include "chart.h"
+#include "profilechart.h"
 #include "profilewindow.h"
 
 #include <QFileInfo>
 #include <QStandardItemModel>
 #include <QDir>
-#include <QtCharts/QLineSeries>
-#include <QtCharts/QBarCategoryAxis>
-#include <QtCharts/QValueAxis>
 #include <QCompleter>
 #include <QAbstractProxyModel>
 #include <QtWidgets/QLabel>
@@ -17,7 +15,7 @@
 #include <QtDebug>
 
 MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent), chart(new Chart(data)), cursorChart(new QtCharts::QChart),
+    QMainWindow(parent), chart(new Chart(data)), cursorChart(new ProfileChart),
     fileLabel(new QLabel),
     io(new FileIO(this))
 {
@@ -35,11 +33,6 @@ MainWindow::MainWindow(QWidget *parent) :
 	/* cursor chart */
 	cursorPlot->setChart(cursorChart);
 	cursorPlot->setRenderHint(QPainter::Antialiasing);
-	cursorChart->legend()->hide();
-	cursorChart->setAxisX(new QtCharts::QBarCategoryAxis);
-	cursorChart->setAxisY(new QtCharts::QValueAxis);
-	cursorChart->axisY()->hide();
-	cursorChart->axisX()->hide();
 	// common background for plot and its container
 	auto p = cursorInlet->palette();
 	p.setColor(QPalette::Window, p.color(QPalette::Base));
@@ -241,8 +234,7 @@ void MainWindow::updateData()
 	actionShowPartition->setEnabled(false);
 
 	/* set up cursor chart */
-	auto ax = qobject_cast<QtCharts::QBarCategoryAxis*>(cursorChart->axisX());
-	ax->setCategories(data.peek()->dimensions);
+	cursorChart->setCategories(data.peek()->dimensions);
 
 	/* set up marker controls */
 	updateMarkerControls();
@@ -253,9 +245,11 @@ void MainWindow::updateData()
 
 void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 {
-	auto d = data.peek();
+	/* clear plot */
 	cursorChart->setTitle(title);
-	cursorChart->removeAllSeries();
+	cursorChart->clear();
+
+	auto d = data.peek();
 	if (samples.empty()) {
 		cursorList->clear();
 		// only change title to avoid geometry change under Windows
@@ -265,14 +259,9 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	}
 
 	/* set up plot */
-	for (auto i : qAsConst(samples)) {
-		auto s = new QtCharts::QLineSeries;
-		cursorChart->addSeries(s);
-		s->attachAxis(cursorChart->axisX());
-		s->attachAxis(cursorChart->axisY());
-		s->replace(d->featurePoints[i]);
-		s->setName(d->proteins[i].firstName); // hidden here, but used by plot window
-	}
+	for (auto i : qAsConst(samples))
+		cursorChart->addSample(d->proteins[i].firstName, d->featurePoints[i]);
+	cursorChart->finalize();
 
 	/* set up list */
 
@@ -283,7 +272,7 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 		text.append(QString("… (%1 total)").arg(samples.size()));
 		samples.resize(showMax - 1);
 	}
-	// sort by name
+	// sort by name -- _after_ set reduction to get a broad representation
 	qSort(samples.begin(), samples.end(), [&d] (const unsigned& a, const unsigned& b) {
 		return d->proteins[a].firstName < d->proteins[b].firstName;
 	});

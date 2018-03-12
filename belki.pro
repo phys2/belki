@@ -38,7 +38,8 @@ HEADERS += \
     dimred.h \
     chartview.h \
     fileio.h \
-    profilewindow.h
+    profilewindow.h \
+    profilechart.h
 
 SOURCES += \
     chart.cpp \
@@ -48,7 +49,8 @@ SOURCES += \
     dimred.cpp \
     chartview.cpp \
     fileio.cpp \
-    profilewindow.cpp
+    profilewindow.cpp \
+    profilechart.cpp
 
 FORMS += \
     mainwindow.ui \

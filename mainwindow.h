@@ -12,10 +12,8 @@
 
 class QLabel;
 class Chart;
+class ProfileChart;
 class QStandardItem;
-namespace QtCharts {
-class QChart;
-}
 
 class MainWindow : public QMainWindow, private Ui::MainWindow
 {
@@ -52,7 +50,7 @@ protected:
 	QString title;
 
 	Chart *chart; // initialize after data
-	QtCharts::QChart *cursorChart;
+	ProfileChart *cursorChart;
 	QLabel *fileLabel;
 	FileIO *io;
 };

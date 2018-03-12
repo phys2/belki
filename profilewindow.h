@@ -6,10 +6,7 @@
 #include "ui_profilewindow.h"
 
 class MainWindow;
-
-namespace QtCharts {
-class QChart;
-}
+class ProfileChart;
 
 class ProfileWindow : public QMainWindow, private Ui::ProfileWindow
 {
@@ -20,14 +17,10 @@ class ProfileWindow : public QMainWindow, private Ui::ProfileWindow
 	MainWindow *parentWidget();
 
 public:
-	explicit ProfileWindow(QtCharts::QChart *source, MainWindow *parent = nullptr);
+	explicit ProfileWindow(ProfileChart *source, MainWindow *parent = nullptr);
 
 protected:
-	void addSeries(QtCharts::QAbstractSeries* s, bool individual);
-	std::pair<std::vector<qreal>, std::vector<qreal>>
-	computeMeanStddev(const QList<QtCharts::QAbstractSeries*> &input);
-
-	QtCharts::QChart *chart;
+	ProfileChart *chart;
 };
 
 #endif // PROFILEWINDOW_H
