@@ -142,9 +142,10 @@ void Chart::updatePartitions(bool fullReset)
 	}
 
 	/* hide empty series from legend (in case of hard clustering) */
-	for (auto p : {partitions[0], partitions[1]})
-		if (p->pointsVector().empty())
-			removeSeries(p);
+	if (fullReset)
+		for (auto s : {partitions[0], partitions[1]})
+			if (s->pointsVector().empty())
+				removeSeries(s);
 }
 
 void Chart::updateCursor(const QPointF &pos)
