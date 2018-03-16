@@ -1,6 +1,6 @@
 # GENERAL
 
-CONFIG += c++14
+CONFIG += c++1z
 CONFIG += link_pkgconfig
 QMAKE_CXXFLAGS_RELEASE = -O3 -march=nehalem
 
