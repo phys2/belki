@@ -273,7 +273,7 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 		samples.resize(showMax - 1);
 	}
 	// sort by name -- _after_ set reduction to get a broad representation
-	qSort(samples.begin(), samples.end(), [&d] (const unsigned& a, const unsigned& b) {
+	std::sort(samples.begin(), samples.end(), [&d] (const unsigned& a, const unsigned& b) {
 		return d->proteins[a].name < d->proteins[b].name;
 	});
 	// compose list
