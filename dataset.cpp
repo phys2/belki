@@ -183,6 +183,7 @@ void Dataset::calculatePartition(unsigned granularity)
 	granularity = std::min(granularity, (unsigned)container.size());
 	unsigned lowBound = container.size() - granularity - 1;
 
+	/* determine clusters to be displayed */
 	std::set<unsigned> candidates;
 	// we use the fact that input is sorted by distance, ascending
 	for (auto i = lowBound; i < container.size(); ++i) {
@@ -204,7 +205,7 @@ void Dataset::calculatePartition(unsigned granularity)
 		}
 	}
 
-	// recursively assign all proteins to clusters
+	// helper to recursively assign all proteins to clusters
 	std::function<void(unsigned, unsigned)> flood;
 	flood = [&] (unsigned hIndex, unsigned cIndex) {
 		auto &current = container[hIndex];
@@ -214,7 +215,12 @@ void Dataset::calculatePartition(unsigned granularity)
 			flood(c, cIndex);
 	};
 
-	// set up clusters based on candidates
+	/* remove previous cluster assignments in case of incomplete clustering;
+	   incomplete clusterings may happen when the clustering was run on different data */
+	for (auto &p : d.proteins)
+		p.memberOf.clear();
+
+	/* set up clusters based on candidates */
 	auto &target = d.clustering;
 	target.clear();
 	for (auto i : candidates) {
