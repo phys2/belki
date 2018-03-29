@@ -95,11 +95,13 @@ void Chart::display(const QString &set, bool fullReset)
 
 void Chart::updatePartitions(bool fullReset)
 {
+	auto d = data.peek();
+
 	if (fullReset) {
 		qDeleteAll(partitions);
 		partitions.clear();
 
-		if (data.peek()->clustering.empty())
+		if (d->clustering.empty())
 			return; // no clusters means nothing to do!
 
 		animate(0);
@@ -109,7 +111,6 @@ void Chart::updatePartitions(bool fullReset)
 		partitions.push_back(new Proteins("Unlabeled", Qt::darkGray, this));
 		partitions.push_back(new Proteins("Mixed", Qt::gray, this));
 
-		auto d = data.peek();
 		for (unsigned i = 0; i < d->clustering.size(); ++i) {
 			auto &c = d->clustering[i];
 			auto s = new Proteins(c.name, tableau20(i), this);
@@ -127,7 +128,6 @@ void Chart::updatePartitions(bool fullReset)
 	}
 
 	/* populate with proteins */
-	auto d = data.peek();
 	if (d->clustering.empty())
 		return; // no clusters means nothing to do!
 	auto source = master->pointsVector();
