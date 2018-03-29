@@ -248,19 +248,19 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	/* clear plot */
 	cursorChart->setTitle(title);
 	cursorChart->clear();
-
-	auto d = data.peek();
 	if (samples.empty()) {
 		cursorList->clear();
-		// only change title to avoid geometry change under Windows
+		// only change title label to avoid geometry change under Windows
 		cursorCaption->setDisabled(true);
 		actionProfileView->setDisabled(true);
 		return;
 	}
 
+	auto d = data.peek();
+
 	/* set up plot */
 	for (auto i : qAsConst(samples))
-		cursorChart->addSample(d->proteins[i].firstName, d->featurePoints[i]);
+		cursorChart->addSample(d->proteins[i].name, d->featurePoints[i]);
 	cursorChart->finalize();
 
 	/* set up list */
@@ -274,16 +274,16 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	}
 	// sort by name -- _after_ set reduction to get a broad representation
 	qSort(samples.begin(), samples.end(), [&d] (const unsigned& a, const unsigned& b) {
-		return d->proteins[a].firstName < d->proteins[b].firstName;
+		return d->proteins[a].name < d->proteins[b].name;
 	});
 	// compose list
 	QString content;
-	QString tpl("<b><a href='https://uniprot.org/uniprot/%2'>%1</a></b> <small>%3</small><br>");
+	QString tpl("<b><a href='https://uniprot.org/uniprot/%1_%2'>%1</a></b> <small>%3</small><br>");
 	for (auto i : qAsConst(samples)) {
 		auto &p = d->proteins[i];
 		auto clusters = std::accumulate(p.memberOf.begin(), p.memberOf.end(), QStringList(),
 		    [&d] (QStringList a, unsigned b) { return a << d->clustering[b].name; });
-		content.append(tpl.arg(p.firstName, p.name, clusters.join(", ")));
+		content.append(tpl.arg(p.name, p.species, clusters.join(", ")));
 	}
 	cursorList->setText(text.arg(content));
 
@@ -298,14 +298,14 @@ void MainWindow::updateMarkerControls()
 	m->clear();
 	markerItems.clear();
 	auto d = data.peek();
-	for (auto i : qAsConst(d->protIndex)) { // use index to have it sorted (required!)
+	for (auto i : d->protIndex) { // use index to have it sorted (required!)
 		auto item = new QStandardItem;
-		item->setText(d->proteins[i].firstName);
-		item->setData(i);
+		item->setText(d->proteins[i.second].name);
+		item->setData(i.second);
 		item->setCheckable(true);
 		item->setCheckState(Qt::Unchecked);
 		m->appendRow(item);
-		markerItems[i] = item;
+		markerItems[i.second] = item;
 	}
 
 	markerWidget->setEnabled(true);

@@ -9,6 +9,8 @@
 #include <QColor>
 #include <QReadWriteLock>
 
+#include <map>
+
 class QFile;
 
 class Dataset : public QObject
@@ -21,10 +23,8 @@ public:
 	};
 
 	struct Protein {
-		// <name>_<species> as read from the data, used as identifier
+		// first part of protein name, used as identifier
 		QString name;
-		// first part of protein name
-		QString firstName;
 		// last part of protein name
 		QString species;
 		// annotations, if any
@@ -38,6 +38,11 @@ public:
 	};
 
 	struct Public {
+		// helper for finding proteins, name may contain species, throws
+		unsigned find(const QString &name) {
+			return protIndex.at(name.split('_').front());
+		}
+
 		struct {
 			QString filename;
 			qint64 size;
@@ -46,7 +51,7 @@ public:
 
 		QStringList dimensions;
 
-		QMap<QString, unsigned> protIndex; // map indentifiers to index in vectors
+		std::map<QString, unsigned> protIndex; // map indentifiers to index in vectors
 
 		// meta data
 		std::vector<Protein> proteins;

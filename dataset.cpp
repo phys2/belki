@@ -96,16 +96,15 @@ void Dataset::loadAnnotations(const QString &filename)
 		auto name = line[1];
 		line.removeFirst();
 		line.removeFirst();
-		auto p = d.protIndex.find(name);
-		if (p == d.protIndex.end()) {
+		try {
+			auto p = d.find(name);
+			for (auto i = 0; i < header.size(); ++i) { // run over header to only allow valid columns
+				if (line[i].isEmpty() || line[i].contains(QRegularExpression("^\\s*$")))
+					continue;
+				d.proteins[p].memberOf.push_back((unsigned)i);
+			}
+		} catch (std::out_of_range) {
 			qDebug() << "Ignored" << name << "(unknown)";
-			continue;
-		}
-
-		for (auto i = 0; i < header.size(); ++i) { // run over header to only allow valid columns
-			if (line[i].isEmpty() || line[i].contains(QRegularExpression("^\\s*$")))
-				continue;
-			d.proteins[p.value()].memberOf.push_back((unsigned)i);
 		}
 	}
 
@@ -153,12 +152,12 @@ void Dataset::loadHierarchy(const QString &filename)
 		/* leaf: associate proteins */
 		auto content = node["objects"].toArray();
 		if (content.size() == 1) {
-			auto pIt = d.protIndex.find(content[0].toString());
-			if (pIt == d.protIndex.end()) {
-				qDebug() << "Ignored" << content[0].toString() << "(unknown)";
+			auto name = content[0].toString();
+			try {
+				c.protein = d.find(name);
+			} catch (std::out_of_range) {
+				qDebug() << "Ignored" << name << "(unknown)";
 				c.protein = -1;
-			} else {
-				c.protein = (int)pIt.value();
 			}
 		} else {
 			c.protein = -1;
@@ -240,20 +239,19 @@ QVector<unsigned> Dataset::loadMarkers(const QString &filename)
 		return {};
 	}
 
-	/* public method -> called from other thread -> we must lock! */
+	// public method -> called from other thread -> we must lock!
 	QReadLocker _(&l);
+
 	QVector<unsigned> ret;
 	QTextStream in(&f);
 	while (!in.atEnd()) {
 		QString name;
 		in >> name;
-
-		auto it = d.protIndex.find(name);
-		if (it == d.protIndex.end()) {
+		try {
+			ret.append(d.find(name));
+		} catch (std::out_of_range) {
 			qDebug() << "Ignored" << name << "(unknown)";
-			continue;
 		}
-		ret.append(it.value());
 	}
 	return ret;
 }
@@ -266,11 +264,16 @@ void Dataset::saveMarkers(const QString &filename, const QVector<unsigned> &indi
 		return;
 	}
 
-	/* public method -> called from other thread -> we must lock! */
+	// public method -> called from other thread -> we must lock!
 	QReadLocker _(&l);
+
 	QTextStream out(&f);
 	for (auto i : indices) {
-		out << d.proteins[i].name << endl;
+		auto &p = d.proteins[i];
+		out << p.name;
+		if (!p.species.isEmpty())
+			out << "_" << p.species;
+		out << endl;
 	}
 }
 
@@ -312,14 +315,16 @@ bool Dataset::readSource(QFile &f) // runs within write lock
 	QTextStream in(&f);
 	d.dimensions = in.readLine().split("\t", QString::SkipEmptyParts);
 	auto len = d.dimensions.size();
-	unsigned index = 0;
 	while (!in.atEnd()) {
 		QString name;
 		in >> name;
 		if (name.length() < 1)
 			break; // early EOF
+
+		Protein p;
 		auto parts = name.split("_");
-		Protein p{name, parts.first(), parts.last(), {}};
+		p.name = parts.front();
+		p.species = (parts.size() > 1 ? parts.back() : "RAT"); // wild guess
 
 		QVector<double> coeffs(len);
 		QVector<QPointF> points(len);
@@ -329,9 +334,12 @@ bool Dataset::readSource(QFile &f) // runs within write lock
 		}
 		d.features.append(std::move(coeffs));
 		d.featurePoints.push_back(std::move(points));
+
+		if (d.protIndex.find(p.name) != d.protIndex.end())
+			emit ioError(QString("Multiples of protein %1 found in the dataset!").arg(p.name));
+
+		d.protIndex[p.name] = d.proteins.size();
 		d.proteins.push_back(std::move(p));
-		d.protIndex[name] = index;
-		index++;
 	}
 	qDebug() << "read" << d.features.size() << "rows with" << len << "columns";
 
@@ -369,3 +377,5 @@ QByteArray Dataset::fileChecksum(QFile *file)
 	}
 	return QByteArray();
 }
+
+

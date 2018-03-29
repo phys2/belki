@@ -311,7 +311,7 @@ void Chart::Proteins::add(unsigned index, const QPointF &point)
 Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
     : sampleIndex(sampleIndex)
 {
-	auto label = chart->data.peek()->proteins[sampleIndex].firstName;
+	auto label = chart->data.peek()->proteins[sampleIndex].name;
 	setName(label);
 	setPointLabelsFormat(label); // displays name over marker point
 	append(chart->master->pointsVector()[(int)sampleIndex]);
