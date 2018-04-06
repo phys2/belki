@@ -313,30 +313,36 @@ bool Dataset::read(QFile &f) // runs within write lock
 bool Dataset::readSource(QFile &f) // runs within write lock
 {
 	QTextStream in(&f);
-	d.dimensions = in.readLine().split("\t", QString::SkipEmptyParts);
+	auto header = in.readLine().split("\t");
+	header.pop_front(); // first column
+	d.dimensions = header;
 	auto len = d.dimensions.size();
 	while (!in.atEnd()) {
-		QString name;
-		in >> name;
-		if (name.length() < 1)
+		auto line = in.readLine().split("\t");
+		if (line.empty() || line[0].isEmpty())
 			break; // early EOF
 
 		Protein p;
-		auto parts = name.split("_");
+		auto parts = line[0].split("_");
 		p.name = parts.front();
 		p.species = (parts.size() > 1 ? parts.back() : "RAT"); // wild guess
+
+		if (line.size() < len + 1) {
+			emit ioError(QString("Stopped at protein '%1', incomplete row!").arg(p.name));
+			break; // avoid message flood
+		}
 
 		QVector<double> coeffs(len);
 		QVector<QPointF> points(len);
 		for (int i = 0; i < len; ++i) {
-			in >> coeffs[i];
+			coeffs[i] = line[i+1].toDouble();
 			points[i] = {(qreal)i, coeffs[i]};
 		}
 		d.features.append(std::move(coeffs));
 		d.featurePoints.push_back(std::move(points));
 
 		if (d.protIndex.find(p.name) != d.protIndex.end())
-			emit ioError(QString("Multiples of protein %1 found in the dataset!").arg(p.name));
+			emit ioError(QString("Multiples of protein '%1' found in the dataset!").arg(p.name));
 
 		d.protIndex[p.name] = d.proteins.size();
 		d.proteins.push_back(std::move(p));
