@@ -31,7 +31,11 @@ INCLUDEPATH += $$PWD/include
 #win32:LIBS += $$PWD/lib/qtcharts-mingw/libQt5Charts.a
 #macx:QT += charts # will break sooner or later
 
+# FILES
+
 HEADERS += \
+    storage/zip_file.hpp \
+    storage/miniz.h \
     chart.h \
     mainwindow.h \
     dataset.h \
@@ -42,6 +46,7 @@ HEADERS += \
     profilechart.h
 
 SOURCES += \
+    storage/miniz.c \
     chart.cpp \
     main.cpp \
     mainwindow.cpp \
