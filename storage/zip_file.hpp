@@ -33,24 +33,9 @@
 #include <QtCore/QDateTime>
 #include <vector>
 
-namespace miniz_cpp {
-namespace detail {
+namespace qzip {
 
-/* writer that takes QByteArray* in opaque */
-std::size_t write_callback(void *opaque, mz_uint64 file_ofs, const void *pBuf, std::size_t n)
-{
-	auto buffer = static_cast<QByteArray*>(opaque);
-
-	if (file_ofs + n > (unsigned)buffer->size())
-		buffer->resize(file_ofs + n);
-
-	buffer->replace(file_ofs, n, (const char*)pBuf, n);
-	return n;
-}
-
-}   // namespace detail
-
-struct zip_info
+struct Entry
 {
 	mz_uint index; // zip-internal index
 	QString filename;
@@ -72,18 +57,22 @@ struct zip_info
 	bool        preserve = true;
 };
 
-class zip_file
+class Zip
 {
 public:
-	zip_file() : archive_() // zero-initialize
+	Zip() : archive_() // zero-initialize
 	{
 		reset();
 	}
 
-	~zip_file()
+	~Zip()
 	{
 		reset();
 	}
+
+	QString filename() const { return filename_; }
+
+	QString comment() const { return comment_; };
 
 	void load(const QString &filename)
 	{
@@ -184,7 +173,7 @@ public:
 
 		buffer_.clear();
 		meta_.clear();
-		comment.clear();
+		comment_.clear();
 
 		start_write();
 		mz_zip_writer_finalize_archive(&archive_);
@@ -201,17 +190,17 @@ public:
 		return true;
 	}
 
-	bool has_file(const zip_info &meta)
+	bool has_file(const Entry &meta)
 	{
 		return has_file(meta.filename);
 	}
 
-	zip_info meta(const QString &name)
+	Entry entry(const QString &name)
 	{
 		return meta(find(name));
 	}
 
-	std::vector<zip_info> contents()
+	std::vector<Entry> contents()
 	{
 		start_read();
 
@@ -234,7 +223,7 @@ public:
 		return names;
 	}
 
-	QByteArray read(const zip_info &info)
+	QByteArray read(const Entry &info)
 	{
 		std::size_t size    = info.file_size;
 		auto        data    = QByteArray((int)size, Qt::Uninitialized);
@@ -248,7 +237,7 @@ public:
 
 	QByteArray read(const QString &name)
 	{
-		return read(meta(name));
+		return read(entry(name));
 	}
 
 	std::pair<bool, QString> test()
@@ -275,16 +264,15 @@ public:
 		start_write();
 
 		bool success = mz_zip_writer_add_mem(
-		    &archive_, arcname.c_str(),
-			bytes.constData(), (unsigned)bytes.size(),
-			MZ_BEST_COMPRESSION);
+		            &archive_, arcname.c_str(),
+		            bytes.constData(), (unsigned)bytes.size(),
+		            MZ_BEST_COMPRESSION);
 
-		if (!success) {
+		if (!success)
 			throw std::runtime_error("write error");
-		}
 	}
 
-	void write(const zip_info &info, const QByteArray &bytes)
+	void write(const Entry &info, const QByteArray &bytes)
 	{
 		if (info.filename.isEmpty())
 			throw std::runtime_error("must specify a filename");
@@ -317,7 +305,7 @@ public:
 	// call if you want to replace a file from or delete it from an open archive.
 	// call all discards before performing any write operations.
 	// when the file mode is switched from reading to writing, discards will be honored
-	void discard(const zip_info &info)
+	void discard(const Entry &info)
 	{
 		if (archive_.m_zip_mode != MZ_ZIP_MODE_READING)
 			throw std::logic_error("archive not in reading mode");
@@ -325,9 +313,12 @@ public:
 		meta_[info.index].preserve = false;
 	}
 
-	QString filename() const { return filename_; }
+	void setComment(const QString &comment) {
+		if (comment.size() > std::numeric_limits<uint16_t>::max())
+			throw std::logic_error("comment too long");
 
-	std::string comment;
+		comment_ = comment;
+	}
 
 private:
 	mz_uint find(const QString &name)
@@ -341,7 +332,7 @@ private:
 		return (mz_uint)index;
 	}
 
-	zip_info meta(unsigned index)
+	Entry meta(unsigned index)
 	{
 		start_read();
 
@@ -351,7 +342,7 @@ private:
 		mz_zip_archive_file_stat stat;
 		mz_zip_reader_file_stat(&archive_, static_cast<mz_uint>(index), &stat);
 
-		zip_info result;
+		Entry result;
 
 		result.index    = index;
 		result.filename = stat.m_filename;
@@ -393,6 +384,18 @@ private:
 		if (archive_.m_zip_mode == MZ_ZIP_MODE_WRITING)
 			return;
 
+		/* writer that takes QByteArray* in opaque */
+		auto write_callback = [] (void *opaque, auto offset, const void *buf, auto n)
+		{
+			auto buffer = static_cast<QByteArray*>(opaque);
+
+			if (offset + n > (unsigned)buffer->size())
+				buffer->resize(offset + n);
+
+			buffer->replace(offset, n, (const char*)buf, n);
+			return n;
+		};
+
 		switch (archive_.m_zip_mode) {
 		case MZ_ZIP_MODE_READING:
 		{
@@ -408,7 +411,7 @@ private:
 
 			mz_zip_reader_end(&archive_);
 
-			archive_.m_pWrite     = &detail::write_callback;
+			archive_.m_pWrite     = write_callback;
 			archive_.m_pIO_opaque = &buffer_;
 			buffer_.clear(); // will not affect buffer_cow / archive_copy
 
@@ -437,7 +440,7 @@ private:
 			break;
 		}
 
-		archive_.m_pWrite     = &detail::write_callback;
+		archive_.m_pWrite     = write_callback;
 		archive_.m_pIO_opaque = &buffer_;
 
 		if (!mz_zip_writer_init(&archive_, 0))
@@ -446,18 +449,19 @@ private:
 
 	void append_comment()
 	{
-		if (!comment.empty()) {
-			auto comment_length = std::min(static_cast<uint16_t>(comment.length()),
-			                               std::numeric_limits<uint16_t>::max());
-			buffer_[buffer_.size() - 2] = static_cast<char>(comment_length);
-			buffer_[buffer_.size() - 1] = static_cast<char>(comment_length >> 8);
-			std::copy(comment.begin(), comment.end(), std::back_inserter(buffer_));
-		}
+		if (comment_.isEmpty())
+			return;
+
+		auto len = static_cast<uint16_t>(comment_.length());
+		buffer_[buffer_.size() - 2] = static_cast<char>(len);
+		buffer_[buffer_.size() - 1] = static_cast<char>(len >> 8);
+		buffer_.append(comment_.toUtf8());
 	}
 
 	void remove_comment()
 	{
-		if (buffer_.isEmpty()) return;
+		if (buffer_.isEmpty())
+			return;
 
 		auto position = buffer_.size() - 1;
 
@@ -471,25 +475,22 @@ private:
 			}
 		}
 
-		if (position == 3) {
+		if (position == 3)
 			throw std::runtime_error("didn't find end of central directory signature");
-		}
 
 		uint16_t length = static_cast<uint16_t>(buffer_[position + 1]);
 		length    = static_cast<uint16_t>(length << 8) + static_cast<uint16_t>(buffer_[position]);
-		position += 2;
+		if (!length)
+			return;
 
-		if (length != 0) {
-			comment = std::string(buffer_.data() + position, buffer_.data() + position + length);
-			buffer_.resize(buffer_.size() - length);
-			buffer_[buffer_.size() - 1] = 0;
-			buffer_[buffer_.size() - 2] = 0;
-		}
+		comment_ = QByteArray(buffer_.constData() + (position + 2), length);
+		buffer_.replace(position, length + 2, "\0\0"); // shrink, set length 0
 	}
 
 	mz_zip_archive archive_;
-	std::vector<zip_info> meta_; // cache of zip_info structures
+	std::vector<Entry> meta_; // cache of zip_info structures
 	QByteArray buffer_;
 	QString filename_;
+	QString comment_;
 };
 } // namespace miniz_cpp
