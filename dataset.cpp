@@ -121,7 +121,7 @@ void Dataset::readAnnotations(QTextStream in)
 					continue;
 				d.proteins[p].memberOf.push_back((unsigned)i);
 			}
-		} catch (std::out_of_range) {
+		} catch (std::out_of_range&) {
 			qDebug() << "Ignored" << name << "(unknown)";
 		}
 	}
@@ -168,7 +168,7 @@ void Dataset::readHierarchy(const QByteArray &json)
 			auto name = content[0].toString();
 			try {
 				c.protein = d.find(name);
-			} catch (std::out_of_range) {
+			} catch (std::out_of_range&) {
 				qDebug() << "Ignored" << name << "(unknown)";
 				c.protein = -1;
 			}
