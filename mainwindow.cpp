@@ -15,10 +15,12 @@
 #include <QtDebug>
 
 MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent), chart(new Chart(data)), cursorChart(new ProfileChart),
+    QMainWindow(parent), store(data),
+    chart(new Chart(data)), cursorChart(new ProfileChart),
     fileLabel(new QLabel),
     io(new FileIO(this))
 {
+	store.moveToThread(&dataThread);
 	data.moveToThread(&dataThread);
 	dataThread.start();
 
@@ -42,12 +44,13 @@ MainWindow::MainWindow(QWidget *parent) :
 	setupMarkerControls();
 
 	/* signals */
+	connect(&store, &Storage::ioError, this, &MainWindow::displayError);
 	connect(&data, &Dataset::ioError, this, &MainWindow::displayError);
 	connect(io, &FileIO::ioError, this, &MainWindow::displayError);
 
 	connect(this, &MainWindow::loadDataset, &data, &Dataset::loadDataset);
-	connect(this, &MainWindow::loadAnnotations, &data, &Dataset::loadAnnotations);
-	connect(this, &MainWindow::loadHierarchy, &data, &Dataset::loadHierarchy);
+	connect(this, &MainWindow::loadAnnotations, &store, &Storage::importAnnotations);
+	connect(this, &MainWindow::loadHierarchy, &store, &Storage::importHierarchy);
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
 	connect(&data, &Dataset::newData, this, &MainWindow::updateData);
 	connect(&data, &Dataset::newClustering, this, [this] {
@@ -139,7 +142,7 @@ void MainWindow::setupActions()
 		auto filename = io->chooseFile(FileIO::OpenMarkers);
 		if (filename.isEmpty())
 			return;
-		for (auto i : data.loadMarkers(filename))
+		for (auto i : store.importMarkers(filename))
 			chart->addMarker(i);
 	});
 	connect(actionSaveMarkers, &QAction::triggered, [this] {
@@ -150,7 +153,7 @@ void MainWindow::setupActions()
 		for (auto m : qAsConst(this->markerItems))
 			if (m->checkState() == Qt::Checked)
 				indices.append((unsigned)m->data().toInt());
-		data.saveMarkers(filename, indices);
+		store.exportMarkers(filename, indices);
 	});
 	connect(actionClearMarkers, &QAction::triggered, chart, &Chart::clearMarkers);
 	connect(actionSavePlot, &QAction::triggered, [this] {

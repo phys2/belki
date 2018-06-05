@@ -1,13 +1,15 @@
 #ifndef DATASET_H
 #define DATASET_H
 
-#include <QString>
-#include <QMap>
-#include <QVector>
-#include <QList>
-#include <QPointF>
-#include <QColor>
-#include <QReadWriteLock>
+#include <QtCore/QString>
+#include <QtCore/QMap>
+#include <QtCore/QVector>
+#include <QtCore/QList>
+#include <QtCore/QPointF>
+#include <QtGui/QColor>
+#include <QtCore/QReadWriteLock>
+#include <QtCore/QTextStream>
+#include <QtCore/QByteArray>
 
 #include <map>
 
@@ -16,6 +18,8 @@ class QFile;
 class Dataset : public QObject
 {
 	Q_OBJECT
+
+	friend class Storage; // NOTE: ensure that Storage object resides in same thread!
 
 public:
 	struct Cluster {
@@ -87,9 +91,6 @@ public:
 
 	View peek() { return View(d, l); }
 
-	QVector<unsigned> loadMarkers(const QString &filename);
-	void saveMarkers(const QString &filename, const QVector<unsigned> &indices);
-
 signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
 	void newData();
 	void newClustering();
@@ -98,13 +99,13 @@ signals: // IMPORTANT: when connecting to lambda, provide target object pointer 
 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
 	void loadDataset(const QString &filename);
-	void loadAnnotations(const QString &filename);
-	void loadHierarchy(const QString &filename);
 	void calculatePartition(unsigned granularity);
 
 protected:
 	bool read(QFile &f); // helper to loadDataset(), assumes write lock
 	bool readSource(QFile &f); // helper to read(), assumes write lock
+	void readAnnotations(QTextStream in);
+	void readHierarchy(const QByteArray &json);
 	void write();
 
 	QString qvName();

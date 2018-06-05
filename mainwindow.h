@@ -3,6 +3,7 @@
 
 #include "ui_mainwindow.h"
 #include "dataset.h"
+#include "storage.h"
 #include "fileio.h"
 
 #include <QtWidgets/QMainWindow>
@@ -46,6 +47,7 @@ protected:
 
 	QMap<unsigned, QStandardItem*> markerItems;
 	Dataset data;
+	Storage store;
 	QThread dataThread;
 	QString title;
 

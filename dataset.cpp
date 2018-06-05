@@ -3,7 +3,6 @@
 
 #include <QFile>
 #include <QFileInfo>
-#include <QTextStream>
 #include <QDataStream>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -51,15 +50,8 @@ void Dataset::loadDataset(const QString &filename)
 	emit newData();
 }
 
-void Dataset::loadAnnotations(const QString &filename)
+void Dataset::readAnnotations(QTextStream in)
 {
-	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly)) {
-		emit ioError(QString("Could not read file %1!").arg(filename));
-		return;
-	}
-
-	QTextStream in(&f);
 	// we use SkipEmptyParts for chomping, but dangerous…
 	auto header = in.readLine().split("\t", QString::SkipEmptyParts);
 	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
@@ -111,16 +103,11 @@ void Dataset::loadAnnotations(const QString &filename)
 	emit newClustering();
 }
 
-void Dataset::loadHierarchy(const QString &filename)
+void Dataset::readHierarchy(const QByteArray &json)
 {
-	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly)) {
-		emit ioError(QString("Could not read file %1!").arg(filename));
-		return;
-	}
-	auto root = QJsonDocument::fromJson(f.readAll()).object();
+	auto root = QJsonDocument::fromJson(json).object();
 	if (root.isEmpty()) {
-		emit ioError(QString("File %1 does not contain valid JSON!").arg(filename));
+		emit ioError("The selected file does not contain valid JSON!");
 		return;
 	}
 
@@ -229,52 +216,6 @@ void Dataset::calculatePartition(unsigned granularity)
 	}
 
 	emit newClustering();
-}
-
-QVector<unsigned> Dataset::loadMarkers(const QString &filename)
-{
-	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly)) {
-		emit ioError(QString("Could not read file %1!").arg(filename));
-		return {};
-	}
-
-	// public method -> called from other thread -> we must lock!
-	QReadLocker _(&l);
-
-	QVector<unsigned> ret;
-	QTextStream in(&f);
-	while (!in.atEnd()) {
-		QString name;
-		in >> name;
-		try {
-			ret.append(d.find(name));
-		} catch (std::out_of_range) {
-			qDebug() << "Ignored" << name << "(unknown)";
-		}
-	}
-	return ret;
-}
-
-void Dataset::saveMarkers(const QString &filename, const QVector<unsigned> &indices)
-{
-	QFile f(filename);
-	if (!f.open(QIODevice::WriteOnly)) {
-		emit ioError(QString("Could not write file %1!").arg(filename));
-		return;
-	}
-
-	// public method -> called from other thread -> we must lock!
-	QReadLocker _(&l);
-
-	QTextStream out(&f);
-	for (auto i : indices) {
-		auto &p = d.proteins[i];
-		out << p.name;
-		if (!p.species.isEmpty())
-			out << "_" << p.species;
-		out << endl;
-	}
 }
 
 bool Dataset::read(QFile &f) // runs within write lock
