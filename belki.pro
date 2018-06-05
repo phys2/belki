@@ -34,7 +34,7 @@ INCLUDEPATH += $$PWD/include
 # FILES
 
 HEADERS += \
-    storage/zip_file.hpp \
+    storage/qzip.h \
     storage/miniz.h \
     chart.h \
     mainwindow.h \
@@ -43,7 +43,8 @@ HEADERS += \
     chartview.h \
     fileio.h \
     profilewindow.h \
-    profilechart.h
+    profilechart.h \
+    storage.h
 
 SOURCES += \
     storage/miniz.c \
@@ -55,7 +56,8 @@ SOURCES += \
     chartview.cpp \
     fileio.cpp \
     profilewindow.cpp \
-    profilechart.cpp
+    profilechart.cpp \
+    storage.cpp
 
 FORMS += \
     mainwindow.ui \
