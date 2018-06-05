@@ -48,11 +48,12 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(&data, &Dataset::ioError, this, &MainWindow::displayError);
 	connect(io, &FileIO::ioError, this, &MainWindow::displayError);
 
-	connect(this, &MainWindow::loadDataset, &data, &Dataset::loadDataset);
+	connect(this, &MainWindow::loadDataset, &store, &Storage::openDataset);
 	connect(this, &MainWindow::loadAnnotations, &store, &Storage::importAnnotations);
 	connect(this, &MainWindow::loadHierarchy, &store, &Storage::importHierarchy);
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
-	connect(&data, &Dataset::newData, this, &MainWindow::updateData);
+
+	connect(&data, &Dataset::newDisplays, this, &MainWindow::updateData);
 	connect(&data, &Dataset::newClustering, this, [this] {
 		chart->updatePartitions(true);
 		actionShowPartition->setEnabled(true);
@@ -224,9 +225,8 @@ void MainWindow::setupMarkerControls()
 
 void MainWindow::updateData()
 {
-	QFileInfo fi(data.peek()->source.filename);
+	QFileInfo fi(store.filename());
 	title = QFileInfo(fi.canonicalFilePath()).completeBaseName();
-	//title = QDir(QFileInfo(fi.canonicalFilePath()).path()).dirName();
 	setWindowTitle(QString("%1 – Belki").arg(title));
 
 	chart->display(transformSelect->currentText(), true);

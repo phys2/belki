@@ -47,12 +47,6 @@ public:
 			return protIndex.at(name.split('_').front());
 		}
 
-		struct {
-			QString filename;
-			qint64 size;
-			QByteArray checksum;
-		} source;
-
 		QStringList dimensions;
 
 		std::map<QString, unsigned> protIndex; // map indentifiers to index in vectors
@@ -85,32 +79,22 @@ public:
 		QReadWriteLock &l;
 	};
 
-	~Dataset() {
-		write(); // save interim results
-	}
-
 	View peek() { return View(d, l); }
 
 signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
-	void newData();
+	void newDisplays();
 	void newClustering();
 	void newHierarchy();
 	void ioError(const QString &message);
 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
-	void loadDataset(const QString &filename);
+	void computeDisplays();
 	void calculatePartition(unsigned granularity);
 
 protected:
-	bool read(QFile &f); // helper to loadDataset(), assumes write lock
-	bool readSource(QFile &f); // helper to read(), assumes write lock
+	bool readSource(QTextStream in);
 	void readAnnotations(QTextStream in);
 	void readHierarchy(const QByteArray &json);
-	void write();
-
-	QString qvName();
-
-	static QByteArray fileChecksum(QFile *file);
 
 	Public d;
 	QReadWriteLock l;

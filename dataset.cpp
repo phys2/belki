@@ -1,42 +1,22 @@
 #include "dataset.h"
 #include "dimred.h"
 
-#include <QFile>
-#include <QFileInfo>
 #include <QDataStream>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <QCryptographicHash>
 #include <QRegularExpression>
-#include <QMessageBox>
 
 #include <set>
 
 #include <QDebug>
 
-void Dataset::loadDataset(const QString &filename)
+void Dataset::computeDisplays()
 {
-	write(); // save interim results on previous dataset
-
-	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly)) {
-		emit ioError(QString("Could not read file %1!").arg(filename));
-		return;
-	}
-
-	/* load data, right now better lock until the signal is out */
 	QWriteLocker _(&l);
 
-	d = Public();
-	d.source.filename = filename;
-
-	auto success = read(f); // obtain data and interim results
-	if (!success)
-		return;
-
 	/* compute displays,
-	 * TODO: on demand, in that case we need several signals newData + newDisplay */
+	 * TODO: on demand (ie specify through argument what is needed), not be called by storage but by GUI */
 	const std::vector<QString> available = {"PCA12", "PCA13", "PCA23", "tSNE"};
 	for (auto &m : available) {
 		if (!d.display.contains(m)) {
@@ -46,8 +26,54 @@ void Dataset::loadDataset(const QString &filename)
 		}
 	}
 
-	/* let the outside world know, see above, would be better to do directly after read */
-	emit newData();
+	/* let the outside world know */
+	emit newDisplays();
+}
+
+bool Dataset::readSource(QTextStream in)
+{
+	QWriteLocker _(&l);
+
+	/* re-initialize data */
+	d = Public();
+
+	auto header = in.readLine().split("\t");
+	header.pop_front(); // first column
+	d.dimensions = header;
+	auto len = d.dimensions.size();
+	while (!in.atEnd()) {
+		auto line = in.readLine().split("\t");
+		if (line.empty() || line[0].isEmpty())
+			break; // early EOF
+
+		Protein p;
+		auto parts = line[0].split("_");
+		p.name = parts.front();
+		p.species = (parts.size() > 1 ? parts.back() : "RAT"); // wild guess
+
+		if (line.size() < len + 1) {
+			emit ioError(QString("Stopped at protein '%1', incomplete row!").arg(p.name));
+			break; // avoid message flood
+		}
+
+		QVector<double> coeffs(len);
+		QVector<QPointF> points(len);
+		for (int i = 0; i < len; ++i) {
+			coeffs[i] = line[i+1].toDouble();
+			points[i] = {(qreal)i, coeffs[i]};
+		}
+		d.features.append(std::move(coeffs));
+		d.featurePoints.push_back(std::move(points));
+
+		if (d.protIndex.find(p.name) != d.protIndex.end())
+			emit ioError(QString("Multiples of protein '%1' found in the dataset!").arg(p.name));
+
+		d.protIndex[p.name] = d.proteins.size();
+		d.proteins.push_back(std::move(p));
+	}
+	qDebug() << "read" << d.features.size() << "rows with" << len << "columns";
+
+	return true;
 }
 
 void Dataset::readAnnotations(QTextStream in)
@@ -217,112 +243,3 @@ void Dataset::calculatePartition(unsigned granularity)
 
 	emit newClustering();
 }
-
-bool Dataset::read(QFile &f) // runs within write lock
-{
-	// get the source data
-	auto success = readSource(f);
-	if (!success)
-		return false;
-
-	// try to read pre-computed results
-	QFile fq(qvName());
-	if (!fq.open(QIODevice::ReadOnly)) {
-		qDebug() << "No serialized interim results found";
-		return true;
-	}
-
-	QDataStream in(&fq);
-	qint64 size;
-	in >> size;
-	if (size != d.source.size) {
-		qDebug() << "Interim results not compatible with file (size)";
-		return true;
-	}
-
-	QByteArray checksum;
-	in >> checksum;
-	if (checksum != d.source.checksum) {
-		qDebug() << "Interim results not compatible with file (checksum)";
-		return true;
-	}
-
-	in >> d.display;
-	return true;
-}
-
-bool Dataset::readSource(QFile &f) // runs within write lock
-{
-	QTextStream in(&f);
-	auto header = in.readLine().split("\t");
-	header.pop_front(); // first column
-	d.dimensions = header;
-	auto len = d.dimensions.size();
-	while (!in.atEnd()) {
-		auto line = in.readLine().split("\t");
-		if (line.empty() || line[0].isEmpty())
-			break; // early EOF
-
-		Protein p;
-		auto parts = line[0].split("_");
-		p.name = parts.front();
-		p.species = (parts.size() > 1 ? parts.back() : "RAT"); // wild guess
-
-		if (line.size() < len + 1) {
-			emit ioError(QString("Stopped at protein '%1', incomplete row!").arg(p.name));
-			break; // avoid message flood
-		}
-
-		QVector<double> coeffs(len);
-		QVector<QPointF> points(len);
-		for (int i = 0; i < len; ++i) {
-			coeffs[i] = line[i+1].toDouble();
-			points[i] = {(qreal)i, coeffs[i]};
-		}
-		d.features.append(std::move(coeffs));
-		d.featurePoints.push_back(std::move(points));
-
-		if (d.protIndex.find(p.name) != d.protIndex.end())
-			emit ioError(QString("Multiples of protein '%1' found in the dataset!").arg(p.name));
-
-		d.protIndex[p.name] = d.proteins.size();
-		d.proteins.push_back(std::move(p));
-	}
-	qDebug() << "read" << d.features.size() << "rows with" << len << "columns";
-
-	d.source.size = f.size();
-	d.source.checksum = fileChecksum(&f);
-
-	return true;
-}
-
-void Dataset::write()
-{
-	if (d.source.filename.isEmpty() || !d.source.size)
-		return; // no data loaded
-
-	QFile f(qvName());
-	f.open(QIODevice::WriteOnly);
-	QDataStream out(&f);
-	out << d.source.size;
-	out << d.source.checksum;
-	out << d.display;
-	qDebug() << "Saved interim results to" << f.fileName();
-}
-
-QString Dataset::qvName()
-{
-	QFileInfo fi(d.source.filename);
-	return fi.path() + "/" + fi.completeBaseName() + ".qv";
-}
-
-QByteArray Dataset::fileChecksum(QFile *file)
-{
-	QCryptographicHash hash(QCryptographicHash::Sha256);
-	if (hash.addData(file)) {
-		return hash.result();
-	}
-	return QByteArray();
-}
-
-
