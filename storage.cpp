@@ -1,43 +1,129 @@
 #include "storage.h"
 
+#include "storage/qzip.h"
+
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
 #include <QtCore/QCryptographicHash> // for checksum
 #include <QtCore/QTextStream>
+#include <QtCore/QRegularExpression>
 #include <QtDebug>
 
-Storage::Storage(Dataset &data) : data(data)
+/* storage version, increase on breaking changes */
+// TODO: when we start doing new versions, ensure we update a file we open to new version (incl. version entry)
+constexpr int storage_version = 1;
+
+Storage::Storage(Dataset &data)
+    : container(nullptr),
+      data(data)
 {
 	// TODO: this is awkward, on-demand computing
-	connect(this, &Storage::newData, &data, &Dataset::computeDisplays);
+	//connect(this, &Storage::newData, &data, &Dataset::computeDisplays);
 }
 
 Storage::~Storage()
 {
-	// TODO write/close(); // save interim results on previous dataset
+	close(true);
 }
 
 void Storage::openDataset(const QString &filename)
 {
-	// TODO write/close(); // save interim results on previous dataset
+	close(true);
 
-	// TODO: what if we get a ZIP file
+	QFileInfo fi(filename);
+	auto filetype = fi.suffix().toLower();
 
-	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly)) {
-		emit ioError(QString("Could not read file %1!").arg(filename));
-		return;
+	auto check_version = [this] (auto &zipname, auto &contents) {
+		auto vs = contents.filter(QRegularExpression("^belki-[0-9]*$"));
+		if (vs.empty()) {
+			ioError(QString("Could not identify %1 as a Belki file!").arg(zipname));
+			return false;
+		}
+		if (vs.constFirst().split("-").constLast().toInt() > storage_version) {
+			ioError(QString("This version of Belki is too old to understand %1!").arg(zipname));
+			return false;
+		}
+		return true;
+	};
+	auto check_checksum = [this] (auto &zipname, auto &contents, auto &basename, auto proof) {
+		auto cs = contents.filter(QRegularExpression("^input/" + basename + "/.*\\.sha256$"));
+		if (cs.empty()) {
+			ioError(QString("The ZIP file %1 lacks a checksum for %2!").arg(zipname, basename));
+			return false;
+		}
+		if (QFileInfo(cs.constFirst()).completeBaseName() != proof) {
+			ioError(QString("The checksum for %2 in ZIP file %1 does not match!").arg(zipname, basename));
+			return false;
+		}
+		return true;
+	};
+
+	if (filetype == "zip") {
+		// check version
+		container = new qzip::Zip; // TODO use class member
+		container->load(filename);
+		auto contents = container->names();
+
+		// version check
+		if (!check_version(filename, contents)) {
+			close();
+			return;
+		}
+
+		// find source data
+		auto in = contents.filter(QRegularExpression("^input/.*\\.tsv$"));
+		if (in.empty()) {
+			close();
+			return ioError(QString("No source dataset found in %1!").arg(filename));
+		}
+		sourcename = QFileInfo(in.constFirst()).completeBaseName();
+		// parse
+		auto success = data.readSource(QTextStream(container->read("input/" + sourcename + ".tsv")));
+		if (!success) {
+			close();
+			return;
+		}
+
+		// todo: also read whatever else is available
+
+	} else {
+		QFile f(filename);
+		if (!f.open(QIODevice::ReadOnly))
+			return ioError(QString("Could not read file %1!").arg(filename));
+
+		// parse
+		auto success = data.readSource(QTextStream(&f));
+		if (!success)
+			return;
+		auto checksum = fileChecksum(&f);
+		qDebug() << checksum;
+
+		container = new qzip::Zip;
+		sourcename = fi.completeBaseName();
+		auto zipname = fi.path() + "/" + sourcename + ".zip";
+		if (QFileInfo(zipname).exists()) {
+			container->load(zipname);
+			auto contents = container->names();
+
+			// version check
+			if (!check_version(zipname, contents)) {
+				close();
+				return;
+			}
+
+			// compare checksums
+			if (!check_checksum(zipname, contents, sourcename, checksum)) {
+				close();
+				return;
+			}
+
+			// todo: read whatever else is available
+		} else {
+			container->setFilename(zipname);
+			container->write("belki-" + QString::number(storage_version), {});
+			container->write("input/" + sourcename + "/" + checksum + ".sha256", {});
+		}
 	}
-
-	// parse
-	auto success = data.readSource(QTextStream(&f)); // obtain data and interim results
-	if (!success)
-		return;
-
-	// update our metadata and zip… TODO
-	meta.filename = filename;
-	meta.size = f.size();
-	meta.checksum = fileChecksum(&f);
 
 	emit newData();
 }
@@ -45,20 +131,18 @@ void Storage::openDataset(const QString &filename)
 void Storage::importAnnotations(const QString &filename)
 {
 	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly)) {
-		emit ioError(QString("Could not read file %1!").arg(filename));
-		return;
-	}
+	if (!f.open(QIODevice::ReadOnly))
+		return ioError(QString("Could not read file %1!").arg(filename));
+
 	data.readAnnotations(QTextStream(&f));
 }
 
 void Storage::importHierarchy(const QString &filename)
 {
 	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly)) {
-		emit ioError(QString("Could not read file %1!").arg(filename));
-		return;
-	}
+	if (!f.open(QIODevice::ReadOnly))
+		return ioError(QString("Could not read file %1!").arg(filename));
+
 	data.readHierarchy(f.readAll());
 }
 
@@ -88,10 +172,8 @@ QVector<unsigned> Storage::importMarkers(const QString &filename)
 void Storage::exportMarkers(const QString &filename, const QVector<unsigned> &indices)
 {
 	QFile f(filename);
-	if (!f.open(QIODevice::WriteOnly)) {
-		emit ioError(QString("Could not write file %1!").arg(filename));
-		return;
-	}
+	if (!f.open(QIODevice::WriteOnly))
+		return ioError(QString("Could not write file %1!").arg(filename));
 
 	QTextStream out(&f);
 	auto d = data.peek();
@@ -104,10 +186,13 @@ void Storage::exportMarkers(const QString &filename, const QVector<unsigned> &in
 	}
 }
 
-QString Storage::zipName(const QString &filename)
+void Storage::close(bool save)
 {
-	QFileInfo fi(filename);
-	return fi.path() + "/" + fi.completeBaseName() + ".zip";
+	if (container && save)
+		container->save();
+
+	delete container;
+	container = nullptr;
 }
 
 QByteArray Storage::fileChecksum(QFile *file)

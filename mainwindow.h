@@ -28,9 +28,9 @@ public:
 	FileIO *getIo() { return io; }
 
 signals:
-	void loadDataset(const QString &filename);
-	void loadAnnotations(const QString &filename);
-	void loadHierarchy(const QString &filename);
+	void openDataset(const QString &filename);
+	void importAnnotations(const QString &filename);
+	void importHierarchy(const QString &filename);
 	void calculatePartition(unsigned granularity);
 
 public slots:

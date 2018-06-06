@@ -4,6 +4,8 @@
 #include <QObject>
 #include "dataset.h"
 
+namespace qzip { class Zip; }
+
 class Storage : public QObject
 {
 	Q_OBJECT
@@ -11,7 +13,7 @@ public:
 	explicit Storage(Dataset &data);
 	~Storage();
 
-	QString filename() { return meta.filename; }
+	QString filename() { return sourcename; }
 
 	QVector<unsigned> importMarkers(const QString &filename);
 	void exportMarkers(const QString &filename, const QVector<unsigned> &indices);
@@ -26,14 +28,12 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void importHierarchy(const QString &filename);
 
 protected:
-	QString zipName(const QString &filename);
+	void close(bool save = false);
 	static QByteArray fileChecksum(QFile *file);
 
-	struct {
-		QString filename;
-		qint64 size;
-		QByteArray checksum;
-	} meta;
+	QString sourcename; // a file can have several source data in general, we only support/select one right now
+
+	qzip::Zip *container;
 
 	Dataset &data;
 };

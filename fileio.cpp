@@ -16,7 +16,7 @@ FileIO::FileIO(QMainWindow *parent) :
 QString FileIO::chooseFile(FileIO::Role purpose, QWidget *p)
 {
 	const QMap<Role, RoleDef> map = {
-	    {OpenDataset, {"Open Dataset", "Peak Volumnes Table (*.tsv)", false, {}}},
+	    {OpenDataset, {"Open Dataset", "Peak Volumes Table or ZIP file (*.tsv *.zip)", false, {}}},
 	    {OpenClustering, {"Open Annotations or Clustering",
 	                      "All supported files (*.tsv *.txt *.json);; "
 	                      "Annotation Table (*.tsv *.txt);; Hierarchical Clustering (*.json)",
@@ -47,7 +47,7 @@ void FileIO::renderToFile(QWidget *source, const QString &title, const QString &
 	if (filename.isEmpty())
 		return;
 
-	auto filetype = QFileInfo(filename).suffix();
+	auto filetype = QFileInfo(filename).suffix().toLower();
 	if (filetype.isEmpty()) {
 		emit ioError("Please select a filename with suffix (e.g. .svg)!");
 	}

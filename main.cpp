@@ -15,9 +15,9 @@ int main(int argc, char *argv[])
 	window.show();
 
 	if (argc >= 2) // pass initial filename as single argument
-		window.loadDataset(argv[1]);
+		window.openDataset(argv[1]);
 	if (argc >= 3)
-		window.loadAnnotations(argv[2]);
+		window.importAnnotations(argv[2]);
 
 	return a.exec();
 }

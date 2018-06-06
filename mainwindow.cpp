@@ -48,9 +48,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(&data, &Dataset::ioError, this, &MainWindow::displayError);
 	connect(io, &FileIO::ioError, this, &MainWindow::displayError);
 
-	connect(this, &MainWindow::loadDataset, &store, &Storage::openDataset);
-	connect(this, &MainWindow::loadAnnotations, &store, &Storage::importAnnotations);
-	connect(this, &MainWindow::loadHierarchy, &store, &Storage::importHierarchy);
+	connect(this, &MainWindow::openDataset, &store, &Storage::openDataset);
+	connect(this, &MainWindow::importAnnotations, &store, &Storage::importAnnotations);
+	connect(this, &MainWindow::importHierarchy, &store, &Storage::importHierarchy);
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
 
 	connect(&data, &Dataset::newDisplays, this, &MainWindow::updateData);
@@ -95,7 +95,7 @@ void MainWindow::setupToolbar()
 	auto sliderAction = toolBar->insertWidget(actionSavePlot, granularitySlider);
 	// sync slider with availability & type of clustering
 	sliderAction->setVisible(false);
-	connect(this, &MainWindow::loadAnnotations, [sliderAction] { sliderAction->setVisible(false); });
+	connect(this, &MainWindow::importAnnotations, [sliderAction] { sliderAction->setVisible(false); });
 	connect(&data, &Dataset::newHierarchy, this, [sliderAction] { sliderAction->setVisible(true); });
 
 	// right-align screenshot & help button
@@ -126,7 +126,7 @@ void MainWindow::setupActions()
 		if (filename.isEmpty())
 			return;
 		fileLabel->setText(QString("<i>Calculating…</i>"));
-		emit loadDataset(filename);
+		emit openDataset(filename);
 	});
 	connect(actionLoadAnnotations, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenClustering);
@@ -134,9 +134,9 @@ void MainWindow::setupActions()
 			return;
 		auto filetype = QFileInfo(filename).suffix();
 		if (filetype == "json")
-			emit loadHierarchy(filename);
+			emit importHierarchy(filename);
 		else
-			emit loadAnnotations(filename);
+			emit importAnnotations(filename);
 	});
 	connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartitions);
 	connect(actionLoadMarkers, &QAction::triggered, [this] {
@@ -225,8 +225,7 @@ void MainWindow::setupMarkerControls()
 
 void MainWindow::updateData()
 {
-	QFileInfo fi(store.filename());
-	title = QFileInfo(fi.canonicalFilePath()).completeBaseName();
+	title = store.filename();
 	setWindowTitle(QString("%1 – Belki").arg(title));
 
 	chart->display(transformSelect->currentText(), true);
