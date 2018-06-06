@@ -19,7 +19,6 @@ public:
 	void exportMarkers(const QString &filename, const QVector<unsigned> &indices);
 
 signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
-	void newData();
 	void ioError(const QString &message);
 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
@@ -29,7 +28,6 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 
 protected:
 	void close(bool save = false);
-	static QString fileChecksum(QFile *file);
 
 	QString sourcename; // a file can have several source data in general, we only support/select one right now
 

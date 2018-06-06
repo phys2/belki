@@ -33,8 +33,10 @@ public:
 	Chart(Dataset &data);
     virtual ~Chart();
 
-	void display(const QString& set, bool fullReset = false);
-	void updatePartitions(bool fullReset = false);
+	void clear();
+	void clearPartitions();
+	void display(const QString& set);
+	void updatePartitions();
 	void addMarker(unsigned sampleIndex);
 	void removeMarker(unsigned sampleIndex);
 	void clearMarkers();

@@ -64,15 +64,24 @@ Chart::~Chart()
 {
 }
 
-void Chart::display(const QString &set, bool fullReset)
+void Chart::clear()
+{
+	master->clear();
+	clearMarkers();
+	clearPartitions();
+}
+
+void Chart::clearPartitions()
+{
+	qDeleteAll(partitions);
+	partitions.clear();
+}
+
+void Chart::display(const QString &set)
 {
 	/* disable fancy transition on full reset */
-	animate(fullReset ? 0 : 1000);
+	animate(master->pointsVector().empty() ? 0 : 1000);
 
-	/* reset state */
-	if (fullReset) { // completely new data
-		clearMarkers();
-	}
 	resetCursor();
 	zoom = {};
 
@@ -87,26 +96,24 @@ void Chart::display(const QString &set, bool fullReset)
 	ay->setRange(bbox.top(), bbox.bottom());
 
 	/* update other sets */
-	updatePartitions(fullReset);
+	updatePartitions();
 	for (auto m : qAsConst(markers)) {
 		m->replace(0, master->pointsVector()[(int)m->sampleIndex]);
 	}
 }
 
-void Chart::updatePartitions(bool fullReset)
+void Chart::updatePartitions()
 {
 	auto d = data.peek();
+	bool fresh = partitions.empty();
 
-	if (fullReset) {
-		qDeleteAll(partitions);
-		partitions.clear();
-
+	/* set up partition series */
+	if (fresh) {
 		if (d->clustering.empty())
-			return; // no clusters means nothing to do!
+			return; // no clusters means nothing more to do!
 
 		animate(0);
 
-		/* set up partition series */
 		// series needed for soft clustering
 		partitions.push_back(new Proteins("Unlabeled", Qt::darkGray, this));
 		partitions.push_back(new Proteins("Mixed", Qt::gray, this));
@@ -129,8 +136,12 @@ void Chart::updatePartitions(bool fullReset)
 
 	/* populate with proteins */
 	if (d->clustering.empty())
-		return; // no clusters means nothing to do!
+		return; // no clusters means nothing more to do!
+
 	auto source = master->pointsVector();
+	if (source.empty())
+		return; // shouldn't happen, but when it does, better not crash
+
 	for (unsigned i = 0; i < d->proteins.size(); ++i) {
 		auto &p = d->proteins[i];
 		unsigned target = 0; // first series, unlabeled
@@ -142,7 +153,7 @@ void Chart::updatePartitions(bool fullReset)
 	}
 
 	/* hide empty series from legend (in case of hard clustering) */
-	if (fullReset)
+	if (fresh)
 		for (auto s : {partitions[0], partitions[1]})
 			if (s->pointsVector().empty())
 				removeSeries(s);

@@ -53,9 +53,11 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(this, &MainWindow::importHierarchy, &store, &Storage::importHierarchy);
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
 
-	connect(&data, &Dataset::newDisplays, this, &MainWindow::updateData);
+	connect(&data, &Dataset::newSource, this, &MainWindow::resetData);
+	connect(&data, &Dataset::newDisplay, this, &MainWindow::updateData);
 	connect(&data, &Dataset::newClustering, this, [this] {
-		chart->updatePartitions(true);
+		chart->clearPartitions();
+		chart->updatePartitions();
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
 	});
@@ -223,12 +225,10 @@ void MainWindow::setupMarkerControls()
 	});
 }
 
-void MainWindow::updateData()
+void MainWindow::resetData()
 {
 	title = store.filename();
 	setWindowTitle(QString("%1 – Belki").arg(title));
-
-	chart->display(transformSelect->currentText(), true);
 	fileLabel->setText(QString("<b>%1</b>").arg(title));
 
 	/* new data means no partitions */
@@ -241,8 +241,16 @@ void MainWindow::updateData()
 	/* set up marker controls */
 	updateMarkerControls();
 
+	/* better wait for displays to pop up */
+	chart->clear();
+	chartView->setEnabled(false); // TODO: can markerWidget crash uninit. chartView?
+}
+
+void MainWindow::updateData(const QString &display)
+{
 	/* ready to go */
 	chartView->setEnabled(true);
+	transformSelect->setCurrentIndex(transformSelect->findText(display));
 }
 
 void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)

@@ -11,23 +11,26 @@
 
 #include <QDebug>
 
+void Dataset::computeDisplay(const QString& name)
+{
+	// note: no read lock as we are write thread
+	auto result = dimred::compute(name, d.features);
+
+	QWriteLocker _(&l);
+	d.display[name] = std::move(result);
+
+	emit newDisplay(name);
+}
+
 void Dataset::computeDisplays()
 {
-	QWriteLocker _(&l);
-
 	/* compute displays,
 	 * TODO: on demand (ie specify through argument what is needed), not be called by storage but by GUI */
 	const std::vector<QString> available = {"PCA12", "PCA13", "PCA23", "tSNE"};
 	for (auto &m : available) {
-		if (!d.display.contains(m)) {
-			auto result = dimred::compute(m, d.features);
-			//QWriteLocker _(&l);
-			d.display[m] = std::move(result);
-		}
+		if (!d.display.contains(m))
+			computeDisplay(m);
 	}
-
-	/* let the outside world know */
-	emit newDisplays();
 }
 
 bool Dataset::readSource(QTextStream in)
@@ -73,17 +76,52 @@ bool Dataset::readSource(QTextStream in)
 	}
 	qDebug() << "read" << d.features.size() << "rows with" << len << "columns";
 
+	emit newSource();
 	return true;
 }
 
-void Dataset::readAnnotations(QTextStream in)
+void Dataset::readDisplay(const QString& name, const QByteArray &tsv)
 {
+	QTextStream in(tsv);
+	QVector<QPointF> data;
+	while (!in.atEnd()) {
+		auto line = in.readLine().split("\t");
+		if (line.size() != 2)
+			return ioError(QString("Input malformed at line %2 in display %1").arg(name, data.size()+1));
+
+		data.push_back({line[0].toDouble(), line[1].toDouble()});
+	}
+
+	QWriteLocker _(&l);
+
+	if (data.size() != d.features.size())
+		return ioError(QString("Display %1 length does not match source length!").arg(name));
+
+	d.display[name] = std::move(data);
+	emit newDisplay(name);
+}
+
+QByteArray Dataset::writeDisplay(const QString &name)
+{
+	// note: no read lock as we are write thread
+	QByteArray ret;
+	QTextStream out(&ret, QIODevice::WriteOnly);
+	auto &data = d.display[name];
+	for (auto it = data.constBegin(); it != data.constEnd(); ++it)
+		out << it->x() << "\t" << it->y() << endl;
+
+	return ret;
+}
+
+bool Dataset::readAnnotations(const QByteArray &tsv)
+{
+	QTextStream in(tsv);
 	// we use SkipEmptyParts for chomping, but dangerous…
 	auto header = in.readLine().split("\t", QString::SkipEmptyParts);
 	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
 	if (header.size() < 3 || !header[1].contains(re)) {
 		emit ioError("Could not parse file!<p>The second column must contain protein names.</p>");
-		return;
+		return false;
 	}
 	header.removeFirst();
 	header.removeFirst();
@@ -94,7 +132,7 @@ void Dataset::readAnnotations(QTextStream in)
 	qDebug() << d.proteins.size();
 	if (d.proteins.empty()) {
 		emit ioError("Please load protein profiles first!");
-		return;
+		return false;
 	}
 
 	/* setup clusters */
@@ -127,14 +165,15 @@ void Dataset::readAnnotations(QTextStream in)
 	}
 
 	emit newClustering();
+	return true;
 }
 
-void Dataset::readHierarchy(const QByteArray &json)
+bool Dataset::readHierarchy(const QByteArray &json)
 {
 	auto root = QJsonDocument::fromJson(json).object();
 	if (root.isEmpty()) {
 		emit ioError("The selected file does not contain valid JSON!");
-		return;
+		return false;
 	}
 
 	QWriteLocker _(&l);
@@ -143,7 +182,7 @@ void Dataset::readHierarchy(const QByteArray &json)
 	qDebug() << d.proteins.size();
 	if (d.proteins.empty()) {
 		emit ioError("Please load protein profiles first!");
-		return;
+		return false;
 	}
 
 	auto nodes = root["data"].toObject()["nodes"].toObject();
@@ -167,7 +206,7 @@ void Dataset::readHierarchy(const QByteArray &json)
 		if (content.size() == 1) {
 			auto name = content[0].toString();
 			try {
-				c.protein = d.find(name);
+				c.protein = (int)d.find(name);
 			} catch (std::out_of_range&) {
 				qDebug() << "Ignored" << name << "(unknown)";
 				c.protein = -1;
@@ -184,6 +223,7 @@ void Dataset::readHierarchy(const QByteArray &json)
 	}
 
 	emit newHierarchy();
+	return true;
 }
 
 void Dataset::calculatePartition(unsigned granularity)

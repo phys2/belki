@@ -82,19 +82,23 @@ public:
 	View peek() { return View(d, l); }
 
 signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
-	void newDisplays();
+	void newSource();
+	void newDisplay(const QString &name);
 	void newClustering();
 	void newHierarchy();
 	void ioError(const QString &message);
 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
+	void computeDisplay(const QString &name);
 	void computeDisplays();
 	void calculatePartition(unsigned granularity);
 
 protected:
 	bool readSource(QTextStream in);
-	void readAnnotations(QTextStream in);
-	void readHierarchy(const QByteArray &json);
+	bool readAnnotations(const QByteArray &tsv);
+	bool readHierarchy(const QByteArray &json);
+	void readDisplay(const QString &name, const QByteArray &tsv);
+	QByteArray writeDisplay(const QString &name);
 
 	Public d;
 	QReadWriteLock l;

@@ -79,6 +79,8 @@ public:
 	{
 		filename_ = filename;
 		QFile f(filename);
+		if (!f.exists())
+			throw std::runtime_error("File not found!");
 		load(f);
 	}
 

@@ -17,8 +17,17 @@ Storage::Storage(Dataset &data)
     : container(nullptr),
       data(data)
 {
-	// TODO: this is awkward, on-demand computing
-	//connect(this, &Storage::newData, &data, &Dataset::computeDisplays);
+	connect(&data, &Dataset::newDisplay, [this] (auto name) {
+		if (!container)
+			return;
+
+		auto entryname = "input/" + sourcename + "/displays/" + name + ".tsv";
+		if (container->has_file(entryname))
+			return; // do not save redundant copies
+
+		auto tsv = this->data.writeDisplay(name);
+		container->write(entryname, tsv);
+	});
 }
 
 Storage::~Storage()
@@ -57,11 +66,38 @@ void Storage::openDataset(const QString &filename)
 		}
 		return true;
 	};
+	auto calc_checksum = [] (auto data) { return QCryptographicHash::hash(data, QCryptographicHash::Sha256).toHex(); };
+	auto read_auxiliary = [this] (auto &contents) {
+
+		/* TODO: only read lists of available files and offer them. read individual ones on demand */
+
+		// displays
+		auto de = contents.filter(QRegularExpression("^input/" + sourcename + "/displays/.*\\.tsv$"));
+		for (auto &d : qAsConst(de))
+			data.readDisplay(QFileInfo(d).completeBaseName(), container->read(d));
+
+		// annotations
+		auto an = contents.filter(QRegularExpression("^annotations/.*\\.tsv$"));
+		for (auto &a : qAsConst(an))
+			data.readAnnotations(container->read(a));
+
+		// hierarchies (clustering)
+		auto hi = contents.filter(QRegularExpression("^hierarchies/.*\\.json$"));
+		for (auto &h : qAsConst(hi))
+			data.readHierarchy(container->read(h));
+
+		// todo: read markerlists
+	};
 
 	if (filetype == "zip") {
 		// check version
 		container = new qzip::Zip; // TODO use class member
-		container->load(filename);
+		try {
+			container->load(filename);
+		} catch (std::runtime_error& e) {
+			close();
+			return ioError(QString("Could not open %1:<p>%2</p>").arg(filename, e.what()));
+		}
 		auto contents = container->names();
 
 		// version check
@@ -84,23 +120,24 @@ void Storage::openDataset(const QString &filename)
 			return;
 		}
 
-		// todo: also read whatever else is available
-
+		read_auxiliary(contents);
 	} else {
+		sourcename = fi.completeBaseName();
 		QFile f(filename);
 		if (!f.open(QIODevice::ReadOnly))
 			return ioError(QString("Could not read file %1!").arg(filename));
+		// we will read it multiple times
+		auto tsv = f.readAll();
 
 		// parse
-		auto success = data.readSource(QTextStream(&f));
+		auto success = data.readSource(QTextStream(tsv));
 		if (!success)
 			return;
-		auto checksum = fileChecksum(&f);
-		qDebug() << checksum;
+		auto checksum = calc_checksum(tsv);
+
+		auto zipname = fi.path() + "/" + sourcename + ".zip";
 
 		container = new qzip::Zip;
-		sourcename = fi.completeBaseName();
-		auto zipname = fi.path() + "/" + sourcename + ".zip";
 		if (QFileInfo(zipname).exists()) {
 			container->load(zipname);
 			auto contents = container->names();
@@ -117,15 +154,18 @@ void Storage::openDataset(const QString &filename)
 				return;
 			}
 
-			// todo: read whatever else is available
+			read_auxiliary(contents);
 		} else {
+			// initialize new zip
 			container->setFilename(zipname);
 			container->write("belki-" + QString::number(storage_version), {});
 			container->write("input/" + sourcename + "/" + checksum + ".sha256", {});
+			container->write("input/" + sourcename + ".tsv", tsv);
 		}
 	}
 
-	emit newData();
+	// TODO: this is awkward, on-demand computing
+	data.computeDisplays();
 }
 
 void Storage::importAnnotations(const QString &filename)
@@ -134,7 +174,12 @@ void Storage::importAnnotations(const QString &filename)
 	if (!f.open(QIODevice::ReadOnly))
 		return ioError(QString("Could not read file %1!").arg(filename));
 
-	data.readAnnotations(QTextStream(&f));
+	auto content = f.readAll();
+	bool success = data.readAnnotations(content);
+	if (!success)
+		return;
+
+	container->write("annotations/" + QFileInfo(filename).fileName(), content);
 }
 
 void Storage::importHierarchy(const QString &filename)
@@ -143,7 +188,12 @@ void Storage::importHierarchy(const QString &filename)
 	if (!f.open(QIODevice::ReadOnly))
 		return ioError(QString("Could not read file %1!").arg(filename));
 
-	data.readHierarchy(f.readAll());
+	auto content = f.readAll();
+	bool success = data.readHierarchy(content);
+	if (!success)
+		return;
+
+	container->write("hierarchies/" + QFileInfo(filename).fileName(), content);
 }
 
 QVector<unsigned> Storage::importMarkers(const QString &filename)
@@ -193,11 +243,4 @@ void Storage::close(bool save)
 
 	delete container;
 	container = nullptr;
-}
-
-QString Storage::fileChecksum(QFile *file)
-{
-	file->reset();
-	auto hash = QCryptographicHash::hash(file->readAll(), QCryptographicHash::Sha256);
-	return hash.toHex();
 }
