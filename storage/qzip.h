@@ -71,8 +71,9 @@ public:
 	}
 
 	QString filename() const { return filename_; }
+	void setFilename(const QString &filename) { filename_ = filename; }
 
-	QString comment() const { return comment_; };
+	QString comment() const { return comment_; }
 
 	void load(const QString &filename)
 	{
@@ -112,6 +113,7 @@ public:
 		filename_ = filename;
 		QSaveFile f(filename_);
 		save(f);
+		f.commit();
 	}
 
 	void save(QIODevice &io)
@@ -259,12 +261,12 @@ public:
 		return { true, {} };
 	}
 
-	void write(const std::string &arcname, const QByteArray &bytes)
+	void write(const QString &arcname, const QByteArray &bytes)
 	{
 		start_write();
 
 		bool success = mz_zip_writer_add_mem(
-		            &archive_, arcname.c_str(),
+		            &archive_, arcname.toUtf8(),
 		            bytes.constData(), (unsigned)bytes.size(),
 		            MZ_BEST_COMPRESSION);
 
