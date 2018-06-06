@@ -29,7 +29,7 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 
 protected:
 	void close(bool save = false);
-	static QByteArray fileChecksum(QFile *file);
+	static QString fileChecksum(QFile *file);
 
 	QString sourcename; // a file can have several source data in general, we only support/select one right now
 

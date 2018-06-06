@@ -195,11 +195,9 @@ void Storage::close(bool save)
 	container = nullptr;
 }
 
-QByteArray Storage::fileChecksum(QFile *file)
+QString Storage::fileChecksum(QFile *file)
 {
-	QCryptographicHash hash(QCryptographicHash::Sha256);
-	if (hash.addData(file)) {
-		return hash.result();
-	}
-	return QByteArray();
+	file->reset();
+	auto hash = QCryptographicHash::hash(file->readAll(), QCryptographicHash::Sha256);
+	return hash.toHex();
 }
