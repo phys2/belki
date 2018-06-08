@@ -24,12 +24,11 @@ void Dataset::computeDisplay(const QString& name)
 
 void Dataset::computeDisplays()
 {
-	/* compute displays,
-	 * TODO: on demand (ie specify through argument what is needed), not be called by storage but by GUI */
-	const std::vector<QString> available = {"PCA12", "PCA13", "PCA23", "tSNE"};
-	for (auto &m : available) {
-		if (!d.display.contains(m))
-			computeDisplay(m);
+	/* compute PCA displays as a fast starting point */
+	const std::vector<QString> baseSet = {"PCA12", "PCA13", "PCA23"};
+	for (auto &n : baseSet) {
+		if (!d.display.contains(n))
+			computeDisplay(n);
 	}
 }
 

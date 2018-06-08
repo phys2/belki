@@ -30,31 +30,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="transformSelect">
-         <property name="currentIndex">
-          <number>3</number>
-         </property>
-         <item>
-          <property name="text">
-           <string>PCA12</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>PCA13</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>PCA23</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>tSNE</string>
-          </property>
-         </item>
-        </widget>
+        <widget class="QComboBox" name="transformSelect"/>
        </item>
        <item>
         <widget class="QLabel" name="partitionLabel">
@@ -62,6 +38,9 @@
           <string>Partition:</string>
          </property>
         </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="partitionSelect"/>
        </item>
        <item>
         <widget class="QSlider" name="granularitySlider">

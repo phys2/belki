@@ -29,6 +29,8 @@ public:
 
 signals:
 	void openDataset(const QString &filename);
+	void readAnnotations(const QString &name);
+	void readHierarchy(const QString &name);
 	void importAnnotations(const QString &filename);
 	void importHierarchy(const QString &filename);
 	void calculatePartition(unsigned granularity);
@@ -43,6 +45,7 @@ public slots:
 
 protected:
 	void setupToolbar();
+	void setupSignals();
 	void setupActions();
 	void setupMarkerControls();
 	void updateMarkerControls();
@@ -57,6 +60,11 @@ protected:
 	ProfileChart *cursorChart;
 	QLabel *fileLabel;
 	FileIO *io;
+
+	struct {
+		QAction *partitions = nullptr;
+		QAction *granularity = nullptr;
+	} toolbarActions;
 };
 
 #endif // MAINWINDOW_H

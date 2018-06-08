@@ -14,6 +14,8 @@
 
 #include <QtDebug>
 
+constexpr auto hierarchyPostfix = " (Hierarchy)";
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent), store(data),
     chart(new Chart(data)), cursorChart(new ProfileChart),
@@ -40,38 +42,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	p.setColor(QPalette::Window, p.color(QPalette::Base));
 	cursorInlet->setPalette(p);
 
-	/* marker controls */
 	setupMarkerControls();
-
-	/* signals */
-	connect(&store, &Storage::ioError, this, &MainWindow::displayError);
-	connect(&data, &Dataset::ioError, this, &MainWindow::displayError);
-	connect(io, &FileIO::ioError, this, &MainWindow::displayError);
-
-	connect(this, &MainWindow::openDataset, &store, &Storage::openDataset);
-	connect(this, &MainWindow::importAnnotations, &store, &Storage::importAnnotations);
-	connect(this, &MainWindow::importHierarchy, &store, &Storage::importHierarchy);
-	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
-
-	connect(&data, &Dataset::newSource, this, &MainWindow::resetData);
-	connect(&data, &Dataset::newDisplay, this, &MainWindow::updateData);
-	connect(&data, &Dataset::newClustering, this, [this] {
-		chart->clearPartitions();
-		chart->updatePartitions();
-		actionShowPartition->setEnabled(true);
-		actionShowPartition->setChecked(true);
-	});
-	connect(&data, &Dataset::newHierarchy, this, [this] {
-		emit calculatePartition((unsigned)granularitySlider->value());
-	});
-
-	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
-
-	connect(transformSelect, qOverload<const QString&>(&QComboBox::currentIndexChanged),
-	        [this] (const QString &name) { chart->display(name); });
-	connect(granularitySlider, &QSlider::valueChanged, this, &MainWindow::calculatePartition);
-
-	/* actions */
+	setupSignals(); // after setupToolbar(), signal handlers rely on initialized actions
 	setupActions();
 }
 
@@ -93,12 +65,10 @@ void MainWindow::setupToolbar()
 	toolBar->insertSeparator(anchor);
 	toolBar->insertWidget(anchor, partitionLabel);
 
-	// move hierarchy slider
-	auto sliderAction = toolBar->insertWidget(actionSavePlot, granularitySlider);
-	// sync slider with availability & type of clustering
-	sliderAction->setVisible(false);
-	connect(this, &MainWindow::importAnnotations, [sliderAction] { sliderAction->setVisible(false); });
-	connect(&data, &Dataset::newHierarchy, this, [sliderAction] { sliderAction->setVisible(true); });
+	toolbarActions.partitions = toolBar->insertWidget(anchor, partitionSelect);
+	toolbarActions.granularity = toolBar->insertWidget(actionSavePlot, granularitySlider);
+	toolbarActions.partitions->setVisible(false);
+	toolbarActions.granularity->setVisible(false);
 
 	// right-align screenshot & help button
 	auto* spacer = new QWidget();
@@ -107,6 +77,72 @@ void MainWindow::setupToolbar()
 
 	// remove container we picked from
 	topBar->deleteLater();
+}
+
+void MainWindow::setupSignals()
+{
+	/** signals **/
+	/* error dialogs */
+	connect(&store, &Storage::ioError, this, &MainWindow::displayError);
+	connect(&data, &Dataset::ioError, this, &MainWindow::displayError);
+	connect(io, &FileIO::ioError, this, &MainWindow::displayError);
+
+	/* notifications from data/storage thread */
+	connect(&store, &Storage::newAnnotations, this, [this] (auto name, bool loaded) {
+		partitionSelect->addItem(name);
+		if (loaded) { // already pre-selected, need to reflect that
+			QSignalBlocker _(partitionSelect);
+			partitionSelect->setCurrentText(name);
+		}
+		toolbarActions.partitions->setVisible(true);
+	});
+	connect(&store, &Storage::newHierarchy, this, [this] (auto name, bool loaded) {
+		auto n = name + hierarchyPostfix;
+		partitionSelect->addItem(n);
+		if (loaded) { // already pre-selected, need to reflect that
+			QSignalBlocker _(partitionSelect);
+			partitionSelect->setCurrentText(n);
+		}
+		toolbarActions.partitions->setVisible(true);
+	});
+	connect(&data, &Dataset::newSource, this, &MainWindow::resetData);
+	connect(&data, &Dataset::newDisplay, this, &MainWindow::updateData);
+	connect(&data, &Dataset::newClustering, this, [this] {
+		chart->clearPartitions();
+		chart->updatePartitions();
+		actionShowPartition->setEnabled(true);
+		actionShowPartition->setChecked(true);
+	});
+
+	/* notifications from chart */
+	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
+
+	/* signals for designated slots (for thread-affinity) */
+	connect(this, &MainWindow::openDataset, &store, &Storage::openDataset);
+	connect(this, &MainWindow::readAnnotations, &store, &Storage::readAnnotations);
+	connect(this, &MainWindow::readHierarchy, &store, &Storage::readHierarchy);
+	connect(this, &MainWindow::importAnnotations, &store, &Storage::importAnnotations);
+	connect(this, &MainWindow::importHierarchy, &store, &Storage::importHierarchy);
+	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
+
+	/* selecting display/partition/etc. always goes through GUI */
+	connect(transformSelect, &QComboBox::currentTextChanged, [this] (auto name) {
+		chart->display(name);
+		chartView->setEnabled(true);
+	});
+	connect(partitionSelect, &QComboBox::currentTextChanged, [this] (auto name) {
+		bool isHierarchy = name.endsWith(hierarchyPostfix);
+		toolbarActions.granularity->setVisible(isHierarchy);
+
+		if (isHierarchy) {
+			auto n = name.chopped(strlen(hierarchyPostfix));
+			emit readHierarchy(n);
+			emit calculatePartition((unsigned)granularitySlider->value());
+		} else {
+			emit readAnnotations(name);
+		}
+	});
+	connect(granularitySlider, &QSlider::valueChanged, this, &MainWindow::calculatePartition);
 }
 
 void MainWindow::setupActions()
@@ -227,11 +263,13 @@ void MainWindow::setupMarkerControls()
 
 void MainWindow::resetData()
 {
-	title = store.filename();
+	title = store.name();
 	setWindowTitle(QString("%1 – Belki").arg(title));
 	fileLabel->setText(QString("<b>%1</b>").arg(title));
 
 	/* new data means no partitions */
+	toolbarActions.partitions->setVisible(false);
+	toolbarActions.granularity->setVisible(false);
 	actionShowPartition->setChecked(false);
 	actionShowPartition->setEnabled(false);
 
@@ -248,9 +286,8 @@ void MainWindow::resetData()
 
 void MainWindow::updateData(const QString &display)
 {
-	/* ready to go */
-	chartView->setEnabled(true);
-	transformSelect->setCurrentIndex(transformSelect->findText(display));
+	transformSelect->addItem(display); // duplicates ignored
+	transformSelect->setCurrentText(display);
 }
 
 void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)

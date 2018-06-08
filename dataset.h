@@ -22,10 +22,6 @@ class Dataset : public QObject
 	friend class Storage; // NOTE: ensure that Storage object resides in same thread!
 
 public:
-	struct Cluster {
-		QString name;
-	};
-
 	struct Protein {
 		// first part of protein name, used as identifier
 		QString name;
@@ -33,6 +29,10 @@ public:
 		QString species;
 		// annotations, if any
 		std::vector<unsigned> memberOf;
+	};
+
+	struct Cluster {
+		QString name;
 	};
 
 	struct HrCluster {
