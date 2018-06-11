@@ -369,6 +369,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionLoadDataset"/>
+   <addaction name="actionComputeDisplay"/>
    <addaction name="actionLoadAnnotations"/>
    <addaction name="actionShowPartition"/>
    <addaction name="actionSavePlot"/>
@@ -489,6 +490,17 @@
    </property>
    <property name="shortcut">
     <string>V</string>
+   </property>
+  </action>
+  <action name="actionComputeDisplay">
+   <property name="icon">
+    <iconset theme="list-add"/>
+   </property>
+   <property name="text">
+    <string>Compute New</string>
+   </property>
+   <property name="toolTip">
+    <string>Select a new display transform to compute</string>
    </property>
   </action>
  </widget>

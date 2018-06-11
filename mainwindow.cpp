@@ -11,6 +11,7 @@
 #include <QAbstractProxyModel>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QMenu>
 
 #include <QtDebug>
 
@@ -56,12 +57,13 @@ MainWindow::~MainWindow()
 void MainWindow::setupToolbar()
 {
 	// put stuff before other buttons
-	auto anchor = actionLoadAnnotations;
+	auto anchor = actionComputeDisplay;
 	fileLabel->setText("<i>No file selected</i>");
 	toolBar->insertWidget(anchor, fileLabel);
 	toolBar->insertSeparator(anchor);
 	toolBar->insertWidget(anchor, transformLabel);
 	toolBar->insertWidget(anchor, transformSelect);
+	anchor = actionLoadAnnotations;
 	toolBar->insertSeparator(anchor);
 	toolBar->insertWidget(anchor, partitionLabel);
 
@@ -123,6 +125,7 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::readHierarchy, &store, &Storage::readHierarchy);
 	connect(this, &MainWindow::importAnnotations, &store, &Storage::importAnnotations);
 	connect(this, &MainWindow::importHierarchy, &store, &Storage::importHierarchy);
+	connect(this, &MainWindow::computeDisplay, &data, &Dataset::computeDisplay);
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
 
 	/* selecting display/partition/etc. always goes through GUI */
@@ -201,6 +204,18 @@ void MainWindow::setupActions()
 
 	connect(actionProfileView, &QAction::triggered, [this] {
 		new ProfileWindow(cursorChart, this);
+	});
+
+	connect(actionComputeDisplay, &QAction::triggered, [this] {
+		auto methods = dimred::availableMethods();
+		auto menu = new QMenu(this);
+		for (const auto& m : methods) {
+			if (transformSelect->findText(m.id) >= 0)
+				continue;
+
+			menu->addAction(m.description, [this, m] { emit computeDisplay(m.id); });
+		}
+		menu->popup(QCursor::pos());
 	});
 }
 

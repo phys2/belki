@@ -1,3 +1,4 @@
+#include "dimred.h"
 #include <tapkee/tapkee.hpp> // includes Eigen
 #include <tapkee/utils/logging.hpp>
 
@@ -8,6 +9,16 @@
 using namespace tapkee;
 
 namespace dimred {
+
+std::vector<dimred::Method> availableMethods()
+{
+	return {
+		{"PCA12", "PCA, first two components"},
+		{"PCA13", "PCA, first and third components"},
+		{"PCA23", "PCA, second and third components"},
+		{"tSNE", "t-distributed stochastic neighbor embedding, L2"},
+	};
+}
 
 QVector<QPointF> compute(QString m, QVector<QVector<double> > &features)
 {

@@ -31,5 +31,9 @@
         <file alias="actions/symbolic/view-fullscreen-symbolic.svg">breeze/actions/symbolic/view-fullscreen-symbolic.svg</file>
         <file alias="devices/16/camera-photo.svg">breeze/devices/16/camera-photo.svg</file>
         <file alias="devices/22/camera-photo.svg">breeze/devices/22/camera-photo.svg</file>
+        <file alias="actions/16/list-add.svg">breeze/actions/16/list-add.svg</file>
+        <file alias="actions/22/list-add.svg">breeze/actions/22/list-add.svg</file>
+        <file alias="actions/24/list-add.svg">breeze/actions/24/list-add.svg</file>
+        <file alias="actions/symbolic/list-add-symbolic.svg">breeze/actions/symbolic/list-add-symbolic.svg</file>
     </qresource>
 </RCC>

@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include "ui_mainwindow.h"
+#include "dimred.h"
 #include "dataset.h"
 #include "storage.h"
 #include "fileio.h"
@@ -33,6 +34,7 @@ signals:
 	void readHierarchy(const QString &name);
 	void importAnnotations(const QString &filename);
 	void importHierarchy(const QString &filename);
+	void computeDisplay(const QString &name);
 	void calculatePartition(unsigned granularity);
 
 public slots:
