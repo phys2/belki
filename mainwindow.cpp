@@ -213,7 +213,7 @@ void MainWindow::setupActions()
 			if (transformSelect->findText(m.id) >= 0)
 				continue;
 
-			menu->addAction(m.description, [this, m] { emit computeDisplay(m.id); });
+			menu->addAction(m.description, [this, m] { emit computeDisplay(m.name); });
 		}
 		menu->popup(QCursor::pos());
 	});

@@ -6,11 +6,12 @@
 
 namespace dimred {
     struct Method {
-		QString id;
+		QString name;
+		QString id; // first id of resulting method(s)
 		QString description;
 	};
 
-    QVector<QPointF> compute(QString method, QVector<QVector<double>> &features);
+	QMap<QString, QVector<QPointF>> compute(QString method, QVector<QVector<double>> &features);
 
 	std::vector<Method> availableMethods();
 }

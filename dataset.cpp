@@ -17,19 +17,17 @@ void Dataset::computeDisplay(const QString& name)
 	auto result = dimred::compute(name, d.features);
 
 	QWriteLocker _(&l);
-	d.display[name] = std::move(result);
-
-	emit newDisplay(name);
+	for (auto name : result.keys()) {
+		d.display[name] = result[name];
+		emit newDisplay(name);
+	}
 }
 
 void Dataset::computeDisplays()
 {
 	/* compute PCA displays as a fast starting point */
-	const std::vector<QString> baseSet = {"PCA12", "PCA13", "PCA23"};
-	for (auto &n : baseSet) {
-		if (!d.display.contains(n))
-			computeDisplay(n);
-	}
+	if (!d.display.contains("PCA 12"))
+		computeDisplay("PCA");
 }
 
 bool Dataset::readSource(QTextStream in)
