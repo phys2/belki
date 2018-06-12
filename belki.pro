@@ -24,6 +24,11 @@ QMAKE_CXXFLAGS += -fopenmp
 LIBS += -fopenmp
 INCLUDEPATH += /usr/include/eigen3 #PKGCONFIG += eigen3 does not work with mingw
 PKGCONFIG += arpack
+# opencv for distance computations
+PKGCONFIG += opencv
+# TBB for micro-parallelization
+CONFIG(release, debug|release):LIBS += -ltbb
+CONFIG(debug, release|debug):LIBS += -ltbb_debug
 
 # tapkee (and our own qtcharts)
 INCLUDEPATH += $$PWD/include
