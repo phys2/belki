@@ -7,8 +7,7 @@
 #include <tbb/tbb.h>
 
 #include <map>
-
-#include <QDebug>
+#include <iostream>
 
 using namespace tapkee;
 
@@ -22,7 +21,7 @@ std::vector<dimred::Method> availableMethods()
 		{"kPCA L1", "kPCA L1 12", "Kernel-PCA, Manhattan"},
 		{"kPCA L2", "kPCA L2 12", "Kernel-PCA, Euclidean"},
 		{"MDS L1", "MDS L1 12", "Multi-dimensional Scaling, Manhattan"},
-		{"MDS COS", "MDS COS 12", "Multi-dimensional Scaling, Cosine"},
+		{"MDS NL2", "MDS NL2 12", "Multi-dimensional Scaling, Normalized L2"},
 		{"MDS EMD", "MDS EMD 12", "Multi-dimensional Scaling, EMD"},
 		{"tSNE", "tSNE", "t-distributed stochastic neighbor embedding, L2"},
 		{"tSNE EMD", "tSNE EMD", "t-distributed stochastic neighbor embedding, EMD"},
@@ -31,7 +30,7 @@ std::vector<dimred::Method> availableMethods()
 
 QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &features)
 {
-	qDebug() << "Computing" << m;
+	std::cout << "Computing" << m.toStdString();
 
 	// setup some logging
 	tapkee::LoggingSingleton::instance().enable_info();
@@ -56,10 +55,15 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 	    {"L2", [&features] (int i, int j) {
 		    return cv::norm(features[i].toStdVector(), features[j].toStdVector(), cv::NORM_L2);
 	    }},
+	    {"NL2", [&features] (int i, int j) {
+		    cv::Mat1d mi(features[i].toStdVector()), mj(features[j].toStdVector());
+			mi /= cv::norm(mi);
+			mj /= cv::norm(mj);
+			return cv::norm(mi, mj); // TODO: use cv::NORM_L2SQR?
+	    }},
 	    {"COS", [&features] (int i, int j) {
 		    cv::Mat1d mi(features[i].toStdVector()), mj(features[j].toStdVector());
 			return mi.dot(mj) / (cv::norm(mi) * cv::norm(mj));
-		return cv::norm(features[i].toStdVector(), features[j].toStdVector(), cv::NORM_L2);
 	    }},
 	    {"EMD", [&features] (int i, int j) {
 		    cv::Mat1f mi(features[i].size(), 1 + 1, 1.f); // weight + value
@@ -76,7 +80,7 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 		DenseMatrix distances(nFeat, nFeat);
 
 		tbb::parallel_for(int(0), nFeat, [&] (int i) {
-			qDebug() << "computing distances for " << i;
+			std::cerr << "computing distances for " << i;
 			indices[(unsigned)i] = i;
 
 			// fill diagonal

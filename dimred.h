@@ -1,8 +1,9 @@
 #ifndef DIMRED_H
 #define DIMRED_H
 
-#include <QVector>
-#include <QPointF>
+#include <QtCore/QVector>
+#include <QtCore/QMap>
+#include <QtCore/QPointF>
 
 namespace dimred {
     struct Method {
