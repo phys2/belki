@@ -19,6 +19,11 @@ std::vector<dimred::Method> availableMethods()
 	return {
 		{"PCA", "PCA 12", "Principal Component Analysis"},
 		{"kPCA EMD", "kPCA EMD 12", "Kernel-PCA, EMD"},
+		{"kPCA L1", "kPCA L1 12", "Kernel-PCA, Manhattan"},
+		{"kPCA L2", "kPCA L2 12", "Kernel-PCA, Euclidean"},
+		{"MDS L1", "MDS L1 12", "Multi-dimensional Scaling, Manhattan"},
+		{"MDS COS", "MDS COS 12", "Multi-dimensional Scaling, Cosine"},
+		{"MDS EMD", "MDS EMD 12", "Multi-dimensional Scaling, EMD"},
 		{"tSNE", "tSNE", "t-distributed stochastic neighbor embedding, L2"},
 		{"tSNE EMD", "tSNE EMD", "t-distributed stochastic neighbor embedding, EMD"},
 	};
@@ -34,8 +39,9 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 
 	// perform dimensionality reduction
 	ParametersSet p;
-	if (m.startsWith("PCA") || m.startsWith("kPCA")) {
-		p, method=(m == "PCA" ? PCA : KernelPCA), target_dimension=3;
+	if (m.startsWith("PCA") || m.startsWith("kPCA") || m.startsWith("MDS")) {
+		p, method=(m == "PCA" ? PCA : (m.startsWith("kPCA") ? KernelPCA : MultidimensionalScaling));
+		p, target_dimension=3;
 	}
 	if (m.startsWith("tSNE")) {
 		p, method=tDistributedStochasticNeighborEmbedding, target_dimension=2;
@@ -43,7 +49,29 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 	auto parametrized = initialize().withParameters(p);
 	auto nFeat = features.size();
 
-	auto precomputeDistances = [&] (bool kernel = false) {
+	std::map<QString, std::function<double(int, int)>> dist = {
+	    {"L1", [&features] (int i, int j) {
+		    return cv::norm(features[i].toStdVector(), features[j].toStdVector(), cv::NORM_L1);
+	    }},
+	    {"L2", [&features] (int i, int j) {
+		    return cv::norm(features[i].toStdVector(), features[j].toStdVector(), cv::NORM_L2);
+	    }},
+	    {"COS", [&features] (int i, int j) {
+		    cv::Mat1d mi(features[i].toStdVector()), mj(features[j].toStdVector());
+			return mi.dot(mj) / (cv::norm(mi) * cv::norm(mj));
+		return cv::norm(features[i].toStdVector(), features[j].toStdVector(), cv::NORM_L2);
+	    }},
+	    {"EMD", [&features] (int i, int j) {
+		    cv::Mat1f mi(features[i].size(), 1 + 1, 1.f); // weight + value
+			cv::Mat1f mj(features[i].size(), 1 + 1, 1.f); // weight + value
+			std::copy(features[i].constBegin(), features[i].constEnd(), mi.begin() + 1);
+			std::copy(features[j].constBegin(), features[j].constEnd(), mj.begin() + 1);
+			// use L1 here as we have scalar inputs anyway
+			return cv::EMD(mi, mj, cv::DIST_L1);
+	    }},
+    };
+
+	auto precomputeDistances = [&] (auto callback, bool kernel = false) {
 		std::vector<IndexType> indices((unsigned)nFeat);
 		DenseMatrix distances(nFeat, nFeat);
 
@@ -55,13 +83,8 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 			distances(i, i) = 0;
 
 			for (int j = i + 1; j < nFeat; ++j) {
-				cv::Mat1f mi(features[i].size(), 1 + 1, 1.f); // weight + value
-				cv::Mat1f mj(features[i].size(), 1 + 1, 1.f); // weight + value
-				std::copy(features[i].constBegin(), features[i].constEnd(), mi.begin() + 1);
-				std::copy(features[j].constBegin(), features[j].constEnd(), mj.begin() + 1);
-				// use L1 here as we have scalar inputs anyway
-				auto dist = cv::EMD(mi, mj, cv::DIST_L1);
 
+				auto dist = callback(i, j);
 				// fill symmetrically
 				distances(j, i) = distances(i, j) = dist;
 			}
@@ -74,28 +97,26 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 	};
 
 	TapkeeOutput output;
-	if (m.startsWith("tSNE ")) {
-		auto [indices, distances] = precomputeDistances();
+	if (m.startsWith("tSNE ") || m.startsWith("MDS")) { // NOT "tSNE"
+		auto [indices, distances] = precomputeDistances(dist[m.split(" ").last()]);
 		precomputed_distance_callback d(distances);
-		TapkeeOutput output = parametrized.withDistance(d).embedUsing(indices);
+		output = parametrized.withDistance(d).embedUsing(indices);
 	} else if (m.startsWith("kPCA")) {
-		auto [indices, distances] = precomputeDistances(true);
+		auto [indices, distances] = precomputeDistances(dist[m.split(" ").last()], true);
 		precomputed_kernel_callback k(distances);
 		output = parametrized.withKernel(k).embedUsing(indices);
 	} else {
 		// setup feature matrix
 		IndexType nrows = features[0].size();
 		DenseMatrix featmat(nrows, nFeat);
-
 		for (int i = 0; i < nFeat; ++i)
 			featmat.col(i) = Eigen::Map<DenseVector>(features[i].data(), nrows);
 
-		// calculate
 		output = parametrized.embedUsing(featmat);
 	}
 
 	// store result chart-readable
-	if (m.startsWith("PCA") || m.startsWith("kPCA")) {
+	if (m.startsWith("PCA") || m.startsWith("kPCA") || m.startsWith("MDS")) {
 		std::map<QString, std::pair<int, int>> map = {
 		    {{m + " 12"}, {0, 1}}, {{m + " 13"}, {0, 2}}, {{m + " 23"}, {1, 2}}
 		};
