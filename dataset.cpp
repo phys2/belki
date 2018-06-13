@@ -113,14 +113,13 @@ QByteArray Dataset::writeDisplay(const QString &name)
 bool Dataset::readAnnotations(const QByteArray &tsv)
 {
 	QTextStream in(tsv);
-	// we use SkipEmptyParts for chomping, but dangerous…
+	// we use SkipEmptyParts for chomping at the end, but dangerous…
 	auto header = in.readLine().split("\t", QString::SkipEmptyParts);
 	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
-	if (header.size() < 3 || !header[1].contains(re)) {
-		emit ioError("Could not parse file!<p>The second column must contain protein names.</p>");
+	if (header.size() < 2 || !header[0].contains(re)) {
+		emit ioError("Could not parse file!<p>The first column must contain protein names.</p>");
 		return false;
 	}
-	header.removeFirst();
 	header.removeFirst();
 
 	QWriteLocker _(&l);
@@ -143,11 +142,10 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 	/* associate to clusters */
 	while (!in.atEnd()) {
 		auto line = in.readLine().split("\t");
-		if (line.size() < 3)
+		if (line.size() < 2)
 			continue;
 
-		auto name = line[1];
-		line.removeFirst();
+		auto name = line[0];
 		line.removeFirst();
 		try {
 			auto p = d.find(name);
