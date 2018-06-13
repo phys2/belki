@@ -85,8 +85,10 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 		std::vector<IndexType> indices((unsigned)nFeat);
 		DenseMatrix distances(nFeat, nFeat);
 
+		std::cerr << "computing distances for " << nFeat << " points" << std::endl;
 		tbb::parallel_for(int(0), nFeat, [&] (int i) {
-			std::cerr << "computing distances for " << i;
+			if (i % 10)
+				std::cerr << ".";
 			indices[(unsigned)i] = i;
 
 			// fill diagonal
@@ -99,6 +101,7 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 				distances(j, i) = distances(i, j) = dist;
 			}
 		});
+		std::cerr << " done" << std::endl;
 		if (kernel) {
 			auto imean = -1. / distances.mean();
 			distances = (distances.array() * imean).exp();
@@ -128,21 +131,22 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 		output = parametrized.embedUsing(featmat);
 	}
 
-	// store result chart-readable
+	// store result chart-readable: 3D → 2D
 	if (m.startsWith("PCA") || m.startsWith("kPCA") || m.startsWith("MDS")) {
 		std::map<QString, std::pair<int, int>> map = {
 		    {{m + " 12"}, {0, 1}}, {{m + " 13"}, {0, 2}}, {{m + " 23"}, {1, 2}}
 		};
 		QMap<QString, QVector<QPointF>> ret;
-		for (const auto& [name, indices] : map) {
+		for (const auto& [name, cols] : map) {
 			auto points = QVector<QPointF>(nFeat);
 			for (int i = 0; i < nFeat; ++i)
-				points[i] = {output.embedding(i, indices.first), output.embedding(i, indices.second)};
+				points[i] = {output.embedding(i, cols.first), output.embedding(i, cols.second)};
 			ret.insert(name, points);
 		}
 		return ret;
 	}
 
+	// plain 2D
 	QVector<QPointF> points(nFeat);
 	for (int i = 0; i < nFeat; ++i)
 		points[i] = {output.embedding(i, 0), output.embedding(i, 1)};
