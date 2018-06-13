@@ -23,7 +23,10 @@ std::vector<dimred::Method> availableMethods()
 		{"MDS L1", "MDS L1 12", "Multi-dimensional Scaling, Manhattan"},
 		{"MDS NL2", "MDS NL2 12", "Multi-dimensional Scaling, Normalized L2"},
 		{"MDS EMD", "MDS EMD 12", "Multi-dimensional Scaling, EMD"},
-		{"tSNE", "tSNE", "t-distributed stochastic neighbor embedding, L2"},
+		{"Diff L1", "Diff L1", "Diffusion Map, Manhattan"},
+		{"Diff", "Diff", "Diffusion Map, Euclidean"},
+		{"Diff EMD", "Diff EMD", "Diffusion Map, EMD"},
+		{"tSNE", "tSNE", "t-distributed stochastic neighbor embedding, Euclidean"},
 		{"tSNE EMD", "tSNE EMD", "t-distributed stochastic neighbor embedding, EMD"},
 	};
 }
@@ -44,6 +47,9 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 	}
 	if (m.startsWith("tSNE")) {
 		p, method=tDistributedStochasticNeighborEmbedding, target_dimension=2;
+	}
+	if (m.startsWith("Diff")) {
+		p, method=DiffusionMap, target_dimension=2;
 	}
 	auto parametrized = initialize().withParameters(p);
 	auto nFeat = features.size();
@@ -101,14 +107,17 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 	};
 
 	TapkeeOutput output;
-	if (m.startsWith("tSNE ") || m.startsWith("MDS")) { // NOT "tSNE"
+	// custom distance
+	if (m.startsWith("MDS") || m.startsWith("Diff ") || m.startsWith("tSNE ")) { // NOT "tSNE"
 		auto [indices, distances] = precomputeDistances(dist[m.split(" ").last()]);
 		precomputed_distance_callback d(distances);
 		output = parametrized.withDistance(d).embedUsing(indices);
+	// custom kernel
 	} else if (m.startsWith("kPCA")) {
 		auto [indices, distances] = precomputeDistances(dist[m.split(" ").last()], true);
 		precomputed_kernel_callback k(distances);
 		output = parametrized.withKernel(k).embedUsing(indices);
+	// plain work on features
 	} else {
 		// setup feature matrix
 		IndexType nrows = features[0].size();
