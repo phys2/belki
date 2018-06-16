@@ -191,7 +191,7 @@ void Storage::importAnnotations(const QString &filename)
 		return;
 
 	QFileInfo fi(filename);
-	container->write("annotations/" + fi.fileName(), content);
+	container->write("annotations/" + fi.completeBaseName() + ".tsv", content);
 	emit newAnnotations(fi.completeBaseName(), true);
 }
 
@@ -207,7 +207,7 @@ void Storage::importHierarchy(const QString &filename)
 		return;
 
 	QFileInfo fi(filename);
-	container->write("hierarchies/" + fi.fileName(), content);
+	container->write("hierarchies/" + fi.completeBaseName() + ".json", content);
 	emit newHierarchy(fi.completeBaseName(), true);
 }
 
