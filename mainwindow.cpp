@@ -91,10 +91,12 @@ void MainWindow::setupSignals()
 
 	/* notifications from data/storage thread */
 	connect(&store, &Storage::newAnnotations, this, [this] (auto name, bool loaded) {
-		partitionSelect->addItem(name);
 		if (loaded) { // already pre-selected, need to reflect that
 			QSignalBlocker _(partitionSelect);
+			partitionSelect->addItem(name);
 			partitionSelect->setCurrentText(name);
+		} else {
+			partitionSelect->addItem(name);
 		}
 		toolbarActions.partitions->setVisible(true);
 	});
