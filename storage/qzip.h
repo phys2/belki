@@ -210,6 +210,7 @@ public:
 
 		auto num_files = mz_zip_reader_get_num_files(&archive_);
 		if (num_files > meta_.size()) {
+			meta_.clear();
 			for (std::size_t i = 0; i < num_files; i++)
 				meta_.push_back(meta(i));
 		}
