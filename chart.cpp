@@ -148,7 +148,7 @@ void Chart::updatePartitions()
 		if (p.memberOf.size() > 1)
 			target++; // second series, mixed
 		if (p.memberOf.size() == 1)
-			target = p.memberOf[0] + 2;
+			target = *p.memberOf.begin() + 2;
 		partitions[target]->add(i, source[(int)i]);
 	}
 

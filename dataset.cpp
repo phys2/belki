@@ -152,7 +152,7 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 			for (auto i = 0; i < header.size(); ++i) { // run over header to only allow valid columns
 				if (line[i].isEmpty() || line[i].contains(QRegularExpression("^\\s*$")))
 					continue;
-				d.proteins[p].memberOf.push_back((unsigned)i);
+				d.proteins[p].memberOf.insert((unsigned)i);
 			}
 		} catch (std::out_of_range&) {
 			qDebug() << "Ignored" << name << "(unknown)";

@@ -11,6 +11,7 @@
 #include <QtCore/QTextStream>
 #include <QtCore/QByteArray>
 
+#include <set>
 #include <map>
 
 class QFile;
@@ -28,7 +29,7 @@ public:
 		// last part of protein name
 		QString species;
 		// annotations, if any
-		std::vector<unsigned> memberOf;
+		std::set<unsigned> memberOf;
 	};
 
 	struct Cluster {
