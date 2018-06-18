@@ -133,10 +133,14 @@ void MainWindow::setupSignals()
 
 	/* selecting display/partition/etc. always goes through GUI */
 	connect(transformSelect, &QComboBox::currentTextChanged, [this] (auto name) {
+		if (name.isEmpty())
+			return;
 		chart->display(name);
 		chartView->setEnabled(true);
 	});
 	connect(partitionSelect, &QComboBox::currentTextChanged, [this] (auto name) {
+		if (name.isEmpty())
+			return;
 		bool isHierarchy = name.endsWith(hierarchyPostfix);
 		toolbarActions.granularity->setVisible(isHierarchy);
 		actionExportAnnotations->setVisible(isHierarchy);
@@ -293,7 +297,11 @@ void MainWindow::resetData()
 	setWindowTitle(QString("%1 – Belki").arg(title));
 	fileLabel->setText(QString("<b>%1</b>").arg(title));
 
+	/* new data means no displays */
+	transformSelect->clear();
+
 	/* new data means no partitions */
+	partitionSelect->clear();
 	actionShowPartition->setChecked(false);
 	actionShowPartition->setEnabled(false);
 	toolbarActions.partitions->setVisible(false);
