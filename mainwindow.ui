@@ -372,6 +372,7 @@
    <addaction name="actionComputeDisplay"/>
    <addaction name="actionLoadAnnotations"/>
    <addaction name="actionShowPartition"/>
+   <addaction name="actionExportAnnotations"/>
    <addaction name="actionSavePlot"/>
    <addaction name="actionHelp"/>
   </widget>
@@ -494,13 +495,25 @@
   </action>
   <action name="actionComputeDisplay">
    <property name="icon">
-    <iconset theme="list-add"/>
+    <iconset theme="list-add">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Compute New</string>
    </property>
    <property name="toolTip">
     <string>Select a new display transform to compute</string>
+   </property>
+  </action>
+  <action name="actionExportAnnotations">
+   <property name="icon">
+    <iconset theme="document-export"/>
+   </property>
+   <property name="text">
+    <string>Export Annotations</string>
+   </property>
+   <property name="toolTip">
+    <string>Save current annotations to a .tsv file</string>
    </property>
   </action>
  </widget>

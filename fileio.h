@@ -14,6 +14,7 @@ public:
 		OpenClustering,
 		OpenMarkers,
 		SaveMarkers,
+		SaveAnnotations,
 		SavePlot
 	};
 	struct RoleDef {

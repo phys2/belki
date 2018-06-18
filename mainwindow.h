@@ -34,6 +34,7 @@ signals:
 	void readHierarchy(const QString &name);
 	void importAnnotations(const QString &filename);
 	void importHierarchy(const QString &filename);
+	void exportAnnotations(const QString &filename);
 	void computeDisplay(const QString &name);
 	void calculatePartition(unsigned granularity);
 

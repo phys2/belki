@@ -211,6 +211,33 @@ void Storage::importHierarchy(const QString &filename)
 	emit newHierarchy(fi.completeBaseName(), true);
 }
 
+void Storage::exportAnnotations(const QString &filename)
+{
+	QFile f(filename);
+	if (!f.open(QIODevice::WriteOnly))
+		return ioError(QString("Could not write file %1!").arg(filename));
+
+	QTextStream out(&f);
+	auto d = data.peek();
+
+	// write header
+	out << "Protein Name";
+	for (auto &c : d->clustering)
+		out << "\t" << c.name;
+	out << endl;
+
+	// write associations
+	for (auto &p : d->proteins) {
+		out << p.name << "_" << p.species;
+		for (unsigned i = 0; i < d->clustering.size(); ++i) {
+			out << "\t";
+			if (p.memberOf.find(i) != p.memberOf.end())
+				out << d->clustering[i].name;
+		}
+		out << endl;
+	}
+}
+
 QVector<unsigned> Storage::importMarkers(const QString &filename)
 {
 	QFile f(filename);

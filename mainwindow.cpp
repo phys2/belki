@@ -68,7 +68,7 @@ void MainWindow::setupToolbar()
 	toolBar->insertWidget(anchor, partitionLabel);
 
 	toolbarActions.partitions = toolBar->insertWidget(anchor, partitionSelect);
-	toolbarActions.granularity = toolBar->insertWidget(actionSavePlot, granularitySlider);
+	toolbarActions.granularity = toolBar->insertWidget(actionExportAnnotations, granularitySlider);
 	toolbarActions.partitions->setVisible(false);
 	toolbarActions.granularity->setVisible(false);
 
@@ -127,6 +127,7 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::readHierarchy, &store, &Storage::readHierarchy);
 	connect(this, &MainWindow::importAnnotations, &store, &Storage::importAnnotations);
 	connect(this, &MainWindow::importHierarchy, &store, &Storage::importHierarchy);
+	connect(this, &MainWindow::exportAnnotations, &store, &Storage::exportAnnotations);
 	connect(this, &MainWindow::computeDisplay, &data, &Dataset::computeDisplay);
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
 
@@ -138,6 +139,7 @@ void MainWindow::setupSignals()
 	connect(partitionSelect, &QComboBox::currentTextChanged, [this] (auto name) {
 		bool isHierarchy = name.endsWith(hierarchyPostfix);
 		toolbarActions.granularity->setVisible(isHierarchy);
+		actionExportAnnotations->setVisible(isHierarchy);
 
 		if (isHierarchy) {
 			auto n = name.chopped(strlen(hierarchyPostfix));
@@ -180,6 +182,13 @@ void MainWindow::setupActions()
 			emit importHierarchy(filename);
 		else
 			emit importAnnotations(filename);
+	});
+	connect(actionExportAnnotations, &QAction::triggered, [this] {
+		auto filename = io->chooseFile(FileIO::SaveAnnotations);
+		if (filename.isEmpty())
+			return;
+
+		emit exportAnnotations(filename);
 	});
 	connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartitions);
 	connect(actionLoadMarkers, &QAction::triggered, [this] {
@@ -285,10 +294,11 @@ void MainWindow::resetData()
 	fileLabel->setText(QString("<b>%1</b>").arg(title));
 
 	/* new data means no partitions */
-	toolbarActions.partitions->setVisible(false);
-	toolbarActions.granularity->setVisible(false);
 	actionShowPartition->setChecked(false);
 	actionShowPartition->setEnabled(false);
+	toolbarActions.partitions->setVisible(false);
+	toolbarActions.granularity->setVisible(false);
+	actionExportAnnotations->setVisible(false);
 
 	/* set up cursor chart */
 	cursorChart->setCategories(data.peek()->dimensions);

@@ -29,6 +29,7 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void readHierarchy(const QString &name);
 	void importAnnotations(const QString &filename);
 	void importHierarchy(const QString &filename);
+	void exportAnnotations(const QString &filename);
 
 protected:
 	void freadError(const QString &filename);
