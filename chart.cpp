@@ -152,11 +152,19 @@ void Chart::updatePartitions()
 		partitions[target]->add(i, source[(int)i]);
 	}
 
-	/* hide empty series from legend (in case of hard clustering) */
-	if (fresh)
+	if (fresh) {
+		/* hide empty series from legend (in case of hard clustering) */
 		for (auto s : {partitions[0], partitions[1]})
 			if (s->pointsVector().empty())
 				removeSeries(s);
+
+		/* re-order marker series to come up on top of partitions */
+		// unfortunately, due to QCharts suckery, we need to re-create them
+		for (auto i = markers.begin(); i != markers.end(); ++i) {
+			delete i.value();
+			i.value() = new Marker(i.key(), this);
+		}
+	}
 }
 
 void Chart::updateCursor(const QPointF &pos)
@@ -251,13 +259,8 @@ void Chart::addMarker(unsigned sampleIndex)
 		return; // already there
 
 	markers[sampleIndex] = new Marker(sampleIndex, this);
-	emit markerToggled(sampleIndex, true);
 
-	/* allow to remove marker by clicking its legend entry */
-	auto lm = legend()->markers(markers[sampleIndex])[0];
-	connect(lm, &QtCharts::QLegendMarker::clicked, [this, sampleIndex] {
-		removeMarker(sampleIndex);
-	});
+	emit markerToggled(sampleIndex, true);
 }
 
 void Chart::removeMarker(unsigned sampleIndex)
@@ -340,4 +343,10 @@ Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
 	f.setBold(true);
 	f.setPointSizeF(f.pointSizeF() * 1.3);
 	setPointLabelsFont(f);
+
+	/* allow to remove marker by clicking its legend entry */
+	auto lm = chart->legend()->markers(this)[0];
+	connect(lm, &QtCharts::QLegendMarker::clicked, [chart, sampleIndex] {
+		chart->removeMarker(sampleIndex);
+	});
 }

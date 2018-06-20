@@ -27,6 +27,9 @@ public:
 	};
 	struct Marker : QtCharts::QScatterSeries {
 		Marker(unsigned sampleIndex, Chart* chart);
+		// no copies/moves! registers itself to the chart in above constructor
+		Marker(const Marker&) = delete;
+		Marker& operator=(const Marker&) = delete;
 		unsigned sampleIndex;
 	};
 
