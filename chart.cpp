@@ -37,7 +37,7 @@ Chart::Chart(Dataset &data) :
 	/* set up tracker ellipse used in track() */
 	tracker = new QGraphicsEllipseItem(this);
 	tracker->setPen({Qt::red});
-	tracker->setZValue(50);
+	tracker->setZValue(1000);
 	connect(ax, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
 	connect(ay, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
 
