@@ -7,6 +7,8 @@
 #include <QJsonArray>
 #include <QRegularExpression>
 
+#include <tbb/parallel_do.h>
+
 #include <set>
 
 #include <QDebug>
@@ -270,11 +272,11 @@ void Dataset::calculatePartition(unsigned granularity)
 	/* set up clusters based on candidates */
 	auto &target = d.clustering;
 	target.clear();
-	for (auto i : candidates) {
+	tbb::parallel_do(candidates.begin(), candidates.end(), [&] (unsigned i) {
 		auto name = QString("Cluster #%1").arg(container.size() - i);
 		target.push_back({name});
 		flood(i, target.size() - 1);
-	}
+	});
 
 	emit newClustering();
 }
