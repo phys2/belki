@@ -27,13 +27,17 @@ std::vector<dimred::Method> availableMethods()
 		{"Diff", "Diff", "Diffusion Map, Euclidean"},
 		{"Diff EMD", "Diff EMD", "Diffusion Map, EMD"},
 		{"tSNE", "tSNE", "t-distributed stochastic neighbor embedding, Euclidean"},
-		{"tSNE EMD", "tSNE EMD", "t-distributed stochastic neighbor embedding, EMD"},
+		{"tSNE 10", "tSNE 10", "t-SNE with perplexity 10"},
+		{"tSNE 20", "tSNE 20", "t-SNE with perplexity 20"},
+		{"tSNE 40", "tSNE 40", "t-SNE with perplexity 40"},
+		{"tSNE 50", "tSNE 50", "t-SNE with perplexity 50"},
+		{"tSNE 60", "tSNE 60", "t-SNE with perplexity 60"},
 	};
 }
 
 QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &features)
 {
-	std::cout << "Computing" << m.toStdString();
+	std::cout << "Computing " << m.toStdString() << std::endl;
 
 	// setup some logging
 	tapkee::LoggingSingleton::instance().enable_info();
@@ -47,6 +51,10 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 	}
 	if (m.startsWith("tSNE")) {
 		p, method=tDistributedStochasticNeighborEmbedding, target_dimension=2;
+		double perp = m.split(' ').back().toDouble();
+		if (perp > 0.)
+			p, sne_perplexity=perp;
+		// also available: sne_theta
 	}
 	if (m.startsWith("Diff")) {
 		p, method=DiffusionMap, target_dimension=2;
@@ -111,7 +119,7 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 
 	TapkeeOutput output;
 	// custom distance
-	if (m.startsWith("MDS") || m.startsWith("Diff ") || m.startsWith("tSNE ")) { // NOT "tSNE"
+	if (m.startsWith("MDS") || m.startsWith("Diff ")) {
 		auto [indices, distances] = precomputeDistances(dist[m.split(" ").last()]);
 		precomputed_distance_callback d(distances);
 		output = parametrized.withDistance(d).embedUsing(indices);
