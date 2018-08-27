@@ -151,6 +151,9 @@ void Chart::updatePartitions()
 			target = *p.memberOf.begin() + 2;
 		partitions[target]->add(i, source[(int)i]);
 	}
+	// the partitions use deffered addition, which we need to trigger
+	for (auto p : partitions)
+		p->apply();
 
 	if (fresh) {
 		/* hide empty series from legend (in case of hard clustering) */
@@ -318,8 +321,14 @@ Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)
 
 void Chart::Proteins::add(unsigned index, const QPointF &point)
 {
-	append(point);
+	replacement.append(point); // deferred addition to chart for speed reasons
 	samples.append(index);
+}
+
+void Chart::Proteins::apply()
+{
+	replace(replacement);
+	replacement.clear();
 }
 
 Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)

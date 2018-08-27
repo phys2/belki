@@ -23,7 +23,10 @@ public:
 	struct Proteins : QtCharts::QScatterSeries {
 		Proteins(const QString &label, QColor color, Chart* chart);
 		void add(unsigned index, const QPointF &point);
+		void apply();
+
 		QVector<unsigned> samples;
+		QVector<QPointF> replacement;
 	};
 	struct Marker : QtCharts::QScatterSeries {
 		Marker(unsigned sampleIndex, Chart* chart);
