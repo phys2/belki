@@ -64,6 +64,8 @@ signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
 	void markerToggled(unsigned sampleIndex, bool present);
 	void markersCleared();
+	void scaleProteins(qreal factor);
+	void switchProteinBorders();
 
 protected:
 	void animate(int msec);

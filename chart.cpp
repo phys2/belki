@@ -316,6 +316,17 @@ Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)
 	color.setAlphaF(0.65);
 	setColor(color);
 
+	connect(chart, &Chart::scaleProteins, [this] (qreal factor) {
+		setMarkerSize(markerSize() * factor);
+	});
+	connect(chart, &Chart::switchProteinBorders, [this] {
+		const QVector<Qt::PenStyle> rot{
+			Qt::PenStyle::SolidLine, Qt::PenStyle::DotLine, Qt::PenStyle::NoPen};
+		auto border = pen();
+		border.setStyle(rot[(rot.indexOf(border.style()) + 1) % rot.size()]);
+		setPen(border);
+	});
+
 	chart->legend()->markers(this)[0]->setShape(QtCharts::QLegend::MarkerShapeCircle);
 }
 

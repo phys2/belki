@@ -74,6 +74,13 @@ void ChartView::keyReleaseEvent(QKeyEvent *event)
 
 	if (event->key() == Qt::Key_Z)
 		chart()->undoZoom();
+
+	if (event->key() == Qt::Key_Plus)
+		chart()->scaleProteins(1.25);
+	if (event->key() == Qt::Key_Minus)
+		chart()->scaleProteins(0.8);
+	if (event->key() == Qt::Key_B)
+		chart()->switchProteinBorders();
 }
 
 void ChartView::wheelEvent(QWheelEvent *event)
