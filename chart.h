@@ -22,6 +22,9 @@ public:
 
 	struct Proteins : QtCharts::QScatterSeries {
 		Proteins(const QString &label, QColor color, Chart* chart);
+		// no copies/moves! registers itself to the chart in above constructor
+		Proteins(const Proteins&) = delete;
+		Proteins& operator=(const Proteins&) = delete;
 		void add(unsigned index, const QPointF &point);
 		void apply();
 
