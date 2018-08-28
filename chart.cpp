@@ -226,6 +226,27 @@ void Chart::undoZoom()
 	zoom.history.pop();
 }
 
+void Chart::scaleProteins(qreal factor)
+{
+	proteinStyle.size *= factor;
+	emit proteinStyleUpdated();
+}
+
+void Chart::switchProteinBorders()
+{
+	const QVector<Qt::PenStyle> rot{
+		Qt::PenStyle::SolidLine, Qt::PenStyle::DotLine, Qt::PenStyle::NoPen};
+	proteinStyle.border = rot[(rot.indexOf(proteinStyle.border) + 1) % rot.size()];
+	emit proteinStyleUpdated();
+}
+
+void Chart::adjustProteinAlpha(qreal adjustment)
+{
+	auto &a = proteinStyle.alpha;
+	a = std::min(1., std::max(0., a + adjustment));
+	emit proteinStyleUpdated();
+}
+
 void Chart::togglePartitions(bool showPartitions)
 {
 	if (master->isVisible() != showPartitions)
@@ -304,30 +325,32 @@ QColor Chart::tableau20(unsigned index)
 
 Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)
 {
+	auto &s = chart->proteinStyle;
 	setName(label);
 	chart->addSeries(this);
 	attachAxis(chart->axisX());
 	attachAxis(chart->axisY());
 
-	QPen border(Qt::PenStyle::DotLine);
+	QPen border(s.border);
 	border.setColor(Qt::darkGray);
 	setPen(border);
 
-	color.setAlphaF(0.65);
+	color.setAlphaF(s.alpha);
 	setColor(color);
-
-	connect(chart, &Chart::scaleProteins, [this] (qreal factor) {
-		setMarkerSize(markerSize() * factor);
-	});
-	connect(chart, &Chart::switchProteinBorders, [this] {
-		const QVector<Qt::PenStyle> rot{
-			Qt::PenStyle::SolidLine, Qt::PenStyle::DotLine, Qt::PenStyle::NoPen};
-		auto border = pen();
-		border.setStyle(rot[(rot.indexOf(border.style()) + 1) % rot.size()]);
-		setPen(border);
-	});
+	setMarkerSize(s.size);
 
 	chart->legend()->markers(this)[0]->setShape(QtCharts::QLegend::MarkerShapeCircle);
+
+	// allow updates in the future (note: receiver specified for cleanup on delete!)
+	connect(chart, &Chart::proteinStyleUpdated, this, [this, &s] {
+		setMarkerSize(s.size);
+		auto border = pen();
+		border.setStyle(s.border);
+		setPen(border);
+		auto fillColor = brush().color();
+		fillColor.setAlphaF(s.alpha);
+		setColor(fillColor);
+	});
 }
 
 void Chart::Proteins::add(unsigned index, const QPointF &point)

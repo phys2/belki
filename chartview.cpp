@@ -75,10 +75,17 @@ void ChartView::keyReleaseEvent(QKeyEvent *event)
 	if (event->key() == Qt::Key_Z)
 		chart()->undoZoom();
 
-	if (event->key() == Qt::Key_Plus)
-		chart()->scaleProteins(1.25);
-	if (event->key() == Qt::Key_Minus)
-		chart()->scaleProteins(0.8);
+	if (event->modifiers() & Qt::AltModifier) {
+		if (event->key() == Qt::Key_Plus)
+			chart()->adjustProteinAlpha(.05);
+		if (event->key() == Qt::Key_Minus)
+			chart()->adjustProteinAlpha(-.05);
+	} else {
+		if (event->key() == Qt::Key_Plus)
+			chart()->scaleProteins(1.25);
+		if (event->key() == Qt::Key_Minus)
+			chart()->scaleProteins(0.8);
+	}
 	if (event->key() == Qt::Key_B)
 		chart()->switchProteinBorders();
 }

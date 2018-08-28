@@ -48,6 +48,11 @@ public:
 	void clearMarkers();
 
 	void zoomAt(const QPointF &pos, qreal factor);
+	void undoZoom();
+
+	void scaleProteins(qreal factor);
+	void switchProteinBorders();
+	void adjustProteinAlpha(qreal adjustment);
 
 	static QColor tableau20(unsigned index);
 
@@ -56,7 +61,6 @@ public:
 public slots:
 	void resetCursor();
 	void updateCursor(const QPointF &pos = {});
-	void undoZoom();
 	void togglePartitions(bool showPartitions);
 
 signals:
@@ -64,8 +68,7 @@ signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
 	void markerToggled(unsigned sampleIndex, bool present);
 	void markersCleared();
-	void scaleProteins(qreal factor);
-	void switchProteinBorders();
+	void proteinStyleUpdated();
 
 protected:
 	void animate(int msec);
@@ -83,6 +86,13 @@ protected:
 		QRectF current;
 		QStack<QRectF> history;
 	} zoom;
+
+	struct {
+		qreal size = 15.;
+		qreal alpha = .65;
+		Qt::PenStyle border = Qt::PenStyle::DotLine;
+	} proteinStyle;
+
 	QTimer *animReset;
 };
 
