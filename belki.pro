@@ -27,8 +27,12 @@ PKGCONFIG += arpack
 # opencv for distance computations
 PKGCONFIG += opencv
 # TBB for micro-parallelization
-CONFIG(release, debug|release):LIBS += -ltbb
-CONFIG(debug, release|debug):LIBS += -ltbb_debug
+win32 {
+    LIBS += -ltbb_static
+} else {
+    CONFIG(release, debug|release):LIBS += -ltbb
+    CONFIG(debug, release|debug):LIBS += -ltbb_debug
+}
 
 # tapkee (and our own qtcharts)
 INCLUDEPATH += $$PWD/include
