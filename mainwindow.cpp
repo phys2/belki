@@ -57,9 +57,10 @@ MainWindow::~MainWindow()
 void MainWindow::setupToolbar()
 {
 	// put stuff before other buttons
-	auto anchor = actionComputeDisplay;
 	fileLabel->setText("<i>No file selected</i>");
-	toolBar->insertWidget(anchor, fileLabel);
+	toolBar->insertWidget(actionLoadDescriptions, fileLabel);
+
+	auto anchor = actionComputeDisplay;
 	toolBar->insertSeparator(anchor);
 	toolBar->insertWidget(anchor, transformLabel);
 	toolBar->insertWidget(anchor, transformSelect);
@@ -125,6 +126,7 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::openDataset, &store, &Storage::openDataset);
 	connect(this, &MainWindow::readAnnotations, &store, &Storage::readAnnotations);
 	connect(this, &MainWindow::readHierarchy, &store, &Storage::readHierarchy);
+	connect(this, &MainWindow::importDescriptions, &store, &Storage::importDescriptions);
 	connect(this, &MainWindow::importAnnotations, &store, &Storage::importAnnotations);
 	connect(this, &MainWindow::importHierarchy, &store, &Storage::importHierarchy);
 	connect(this, &MainWindow::exportAnnotations, &store, &Storage::exportAnnotations);
@@ -176,6 +178,12 @@ void MainWindow::setupActions()
 			return;
 		fileLabel->setText(QString("<i>Calculating…</i>"));
 		emit openDataset(filename);
+	});
+	connect(actionLoadDescriptions, &QAction::triggered, [this] {
+		auto filename = io->chooseFile(FileIO::OpenDescriptions);
+		if (filename.isEmpty())
+			return;
+		emit importDescriptions(filename);
 	});
 	connect(actionLoadAnnotations, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenClustering);
@@ -360,12 +368,12 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	});
 	// compose list
 	QString content;
-	QString tpl("<b><a href='https://uniprot.org/uniprot/%1_%2'>%1</a></b> <small>%3</small><br>");
+	QString tpl("<b><a href='https://uniprot.org/uniprot/%1_%2'>%1</a></b> <small>%3 <i>%4</i></small><br>");
 	for (auto i : qAsConst(samples)) {
 		auto &p = d->proteins[i];
 		auto clusters = std::accumulate(p.memberOf.begin(), p.memberOf.end(), QStringList(),
 		    [&d] (QStringList a, unsigned b) { return a << d->clustering[b].name; });
-		content.append(tpl.arg(p.name, p.species, clusters.join(", ")));
+		content.append(tpl.arg(p.name, p.species, clusters.join(", "), p.description));
 	}
 	cursorList->setText(text.arg(content));
 

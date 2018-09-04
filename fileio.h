@@ -11,6 +11,7 @@ class FileIO : public QObject
 public:
 	enum Role {
 		OpenDataset,
+		OpenDescriptions,
 		OpenClustering,
 		OpenMarkers,
 		SaveMarkers,

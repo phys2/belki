@@ -27,6 +27,7 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void openDataset(const QString &filename);
 	void readAnnotations(const QString &name);
 	void readHierarchy(const QString &name);
+	void importDescriptions(const QString &filename);
 	void importAnnotations(const QString &filename);
 	void importHierarchy(const QString &filename);
 	void exportAnnotations(const QString &filename);

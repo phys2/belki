@@ -369,6 +369,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionLoadDataset"/>
+   <addaction name="actionLoadDescriptions"/>
    <addaction name="actionComputeDisplay"/>
    <addaction name="actionLoadAnnotations"/>
    <addaction name="actionShowPartition"/>
@@ -514,6 +515,18 @@
    </property>
    <property name="toolTip">
     <string>Save current annotations to a .tsv file</string>
+   </property>
+  </action>
+  <action name="actionLoadDescriptions">
+   <property name="icon">
+    <iconset theme="document-open">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>Load Descriptions</string>
+   </property>
+   <property name="toolTip">
+    <string>Load a .tsv description file</string>
    </property>
   </action>
  </widget>

@@ -176,6 +176,20 @@ void Storage::readHierarchy(const QString &name)
 	data.readHierarchy(content);
 }
 
+void Storage::importDescriptions(const QString &filename)
+{
+	QFile f(filename);
+	if (!f.open(QIODevice::ReadOnly))
+		return freadError(filename);
+
+	auto content = f.readAll();
+	bool success = data.readDescriptions(content);
+	if (!success)
+		return;
+
+	// TODO: actual import (storage in ZIP, and then ability to re-read)
+}
+
 void Storage::importAnnotations(const QString &filename)
 {
 	QFile f(filename);

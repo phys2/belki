@@ -28,6 +28,8 @@ public:
 		QString name;
 		// last part of protein name
 		QString species;
+		// description, if any
+		QString description;
 		// annotations, if any
 		std::set<unsigned> memberOf;
 	};
@@ -96,6 +98,7 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 
 protected:
 	bool readSource(QTextStream in);
+	bool readDescriptions(const QByteArray &tsv);
 	bool readAnnotations(const QByteArray &tsv);
 	bool readHierarchy(const QByteArray &json);
 	void readDisplay(const QString &name, const QByteArray &tsv);

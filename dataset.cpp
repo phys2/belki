@@ -110,6 +110,41 @@ QByteArray Dataset::writeDisplay(const QString &name)
 	return ret;
 }
 
+bool Dataset::readDescriptions(const QByteArray &tsv)
+{
+	QTextStream in(tsv);
+	auto header = in.readLine().split("\t");
+	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
+	if (header.size() != 2 || !header[0].contains(re)) {
+		emit ioError("Could not parse file!<p>The first column must contain protein names, second descriptions.</p>");
+		return false;
+	}
+
+	QWriteLocker _(&l);
+
+	/* ensure we have data to annotate */
+	if (d.proteins.empty()) {
+		emit ioError("Please load protein profiles first!");
+		return false;
+	}
+
+	/* fill-in descriptions */
+	while (!in.atEnd()) {
+		auto line = in.readLine().split("\t");
+		if (line.size() < 2)
+			continue;
+
+		auto name = line[0];
+		try {
+			auto p = d.find(name);
+			d.proteins[p].description = line[1];
+		} catch (std::out_of_range&) {
+			qDebug() << "Ignored" << name << "(unknown)";
+		}
+	}
+	return true;
+}
+
 bool Dataset::readAnnotations(const QByteArray &tsv)
 {
 	QTextStream in(tsv);
