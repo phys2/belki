@@ -32,6 +32,7 @@ std::vector<dimred::Method> availableMethods()
 		{"tSNE 40", "tSNE 40", "t-SNE with perplexity 40"},
 		{"tSNE 50", "tSNE 50", "t-SNE with perplexity 50"},
 		{"tSNE 60", "tSNE 60", "t-SNE with perplexity 60"},
+		{"tSNE 70", "tSNE 70", "t-SNE with perplexity 70"},
 	};
 }
 
