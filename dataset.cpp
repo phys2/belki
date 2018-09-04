@@ -160,7 +160,6 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 	QWriteLocker _(&l);
 
 	/* ensure we have data to annotate */
-	qDebug() << d.proteins.size();
 	if (d.proteins.empty()) {
 		emit ioError("Please load protein profiles first!");
 		return false;
@@ -209,7 +208,6 @@ bool Dataset::readHierarchy(const QByteArray &json)
 	QWriteLocker _(&l);
 
 	/* ensure we have data to annotate */
-	qDebug() << d.proteins.size();
 	if (d.proteins.empty()) {
 		emit ioError("Please load protein profiles first!");
 		return false;
