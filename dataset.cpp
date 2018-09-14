@@ -168,7 +168,8 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 	/* setup clusters */
 	for (auto &p : d.proteins)
 		p.memberOf.clear();
-	d.clustering.resize((unsigned)header.size());
+	d.clustering.clear();
+	d.clustering.reserve((unsigned)header.size());
 	for (auto i = 0; i < header.size(); ++i) {
 		d.clustering[(unsigned)i] = {header[i]};
 	}
@@ -303,10 +304,12 @@ void Dataset::calculatePartition(unsigned granularity)
 	/* set up clusters based on candidates */
 	auto &target = d.clustering;
 	target.clear();
+	target.reserve(candidates.size());
 	for (auto i : candidates) {
 		auto name = QString("Cluster #%1").arg(container.size() - i);
-		target.push_back({name});
-		flood(i, target.size() - 1);
+		// use index in hierarchy as cluster index as well
+		target[i] = {name};
+		flood(i, i);
 	}
 
 	emit newClustering();

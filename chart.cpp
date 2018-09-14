@@ -73,7 +73,8 @@ void Chart::clear()
 
 void Chart::clearPartitions()
 {
-	qDeleteAll(partitions);
+	for (auto s : partitions)
+		delete s.second;
 	partitions.clear();
 }
 
@@ -115,23 +116,26 @@ void Chart::updatePartitions()
 		animate(0);
 
 		// series needed for soft clustering
-		partitions.push_back(new Proteins("Unlabeled", Qt::darkGray, this));
-		partitions.push_back(new Proteins("Mixed", Qt::gray, this));
+		partitions[-2] = (new Proteins("Unlabeled", Qt::darkGray, this));
+		partitions[-1] = (new Proteins("Mixed", Qt::gray, this));
 
-		for (unsigned i = 0; i < d->clustering.size(); ++i) {
-			auto &c = d->clustering[i];
-			auto s = new Proteins(c.name, tableau20(i), this);
-			partitions.push_back(s);
+		unsigned colorCounter = 0;
+		for (auto c : d->clustering) {
+			auto s = new Proteins(c.second.name, tableau20(colorCounter++), this);
+			partitions[(int)c.first] = s;
 			/* enable profile view updates on legend label hover */
 			auto lm = legend()->markers(s)[0];
 			connect(lm, &QtCharts::QLegendMarker::hovered, [this, s] (bool active) {
-				if (active)
-					emit cursorChanged(s->samples, s->name());
+				if (!active)
+					return
+				emit cursorChanged(s->samples, s->name());
+				for (auto i : partitions)
+					i.second->redecorate(false, s == i.second);
 			});
 		}
 	} else {
 		for (auto s : partitions)
-			s->clear();
+			s.second->clear();
 	}
 
 	/* populate with proteins */
@@ -144,20 +148,20 @@ void Chart::updatePartitions()
 
 	for (unsigned i = 0; i < d->proteins.size(); ++i) {
 		auto &p = d->proteins[i];
-		unsigned target = 0; // first series, unlabeled
+		int target = -2; // first series, unlabeled
 		if (p.memberOf.size() > 1)
 			target++; // second series, mixed
 		if (p.memberOf.size() == 1)
-			target = *p.memberOf.begin() + 2;
+			target = (int)*p.memberOf.begin();
 		partitions[target]->add(i, source[(int)i]);
 	}
 	// the partitions use deffered addition, which we need to trigger
 	for (auto p : partitions)
-		p->apply();
+		p.second->apply();
 
 	if (fresh) {
 		/* hide empty series from legend (in case of hard clustering) */
-		for (auto s : {partitions[0], partitions[1]})
+		for (auto s : {partitions[-2], partitions[-1]})
 			if (s->pointsVector().empty())
 				removeSeries(s);
 
@@ -254,7 +258,7 @@ void Chart::togglePartitions(bool showPartitions)
 
 	master->setVisible(!showPartitions);
 	for (auto s: partitions)
-		s->setVisible(showPartitions);
+		s.second->setVisible(showPartitions);
 }
 
 void Chart::zoomAt(const QPointF &pos, qreal factor)

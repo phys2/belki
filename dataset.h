@@ -66,7 +66,7 @@ public:
 		QMap<QString, QVector<QPointF>> display;
 
 		// clusters, if available
-		std::vector<Cluster> clustering;
+		std::unordered_map<unsigned, Cluster> clustering;
 		std::vector<HrCluster> hierarchy;
 	};
 

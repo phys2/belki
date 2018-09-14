@@ -7,6 +7,8 @@
 #include <QtCharts/QScatterSeries>
 #include <QtCore/QStack>
 
+#include <unordered_map>
+
 class QColor;
 class QTimer;
 
@@ -79,7 +81,7 @@ protected:
 	Dataset &data;
 
 	Proteins *master;
-	std::vector<Proteins*> partitions;
+	std::unordered_map<int, Proteins*> partitions;
 	QMap<unsigned, Marker*> markers;
 
 	QGraphicsEllipseItem *tracker;
