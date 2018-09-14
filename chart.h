@@ -27,6 +27,7 @@ public:
 		// no copies/moves! registers itself to the chart in above constructor
 		Proteins(const Proteins&) = delete;
 		Proteins& operator=(const Proteins&) = delete;
+		void clear() { QtCharts::QScatterSeries::clear(); samples.clear(); }
 		void add(unsigned index, const QPointF &point);
 		void apply();
 		void redecorate(bool full = true, bool highlight = false);
