@@ -23,6 +23,7 @@ protected:
 	void keyReleaseEvent(QKeyEvent *event) override;
 	void wheelEvent(QWheelEvent *event) override;
 
+	// workarounds to left-mouse conflict
 	bool rubberState = false;
 	bool rubberPerformed;
 };
