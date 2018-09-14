@@ -411,7 +411,7 @@ Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
 	setBorderColor(Qt::black);
 	setColor(chart->tableau20(qHash(label)));
 	setMarkerShape(QtCharts::QScatterSeries::MarkerShapeRectangle);
-	setMarkerSize(20);
+	setMarkerSize(chart->proteinStyle.size * 1.3333);
 	setPointLabelsVisible(true);
 	auto f = pointLabelsFont();
 	f.setBold(true);
@@ -422,5 +422,11 @@ Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
 	auto lm = chart->legend()->markers(this)[0];
 	connect(lm, &QtCharts::QLegendMarker::clicked, [chart, sampleIndex] {
 		chart->removeMarker(sampleIndex);
+	});
+
+	// follow style changes (note: receiver specified for cleanup on delete!)
+	connect(chart, &Chart::proteinStyleUpdated, this, [chart,this] {
+		// we only care about size
+		setMarkerSize(chart->proteinStyle.size * 1.3333);
 	});
 }
