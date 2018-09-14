@@ -207,14 +207,24 @@ void Chart::updateCursor(const QPointF &pos)
 	tracker->show();
 
 	// determine all proteins that fall into the cursor
-	auto p = master->pointsVector();
 	QVector<unsigned> list;
-	for (int i = 0; i < p.size(); ++i) {
-		auto diff = p[i] - center;
-		if (QPointF::dotProduct(diff, diff) < range) {
-			list << (unsigned)i;
+	std::set<int> affectedPartitions;
+	{
+		auto d = data.peek();
+		auto p = master->pointsVector();
+		for (int i = 0; i < p.size(); ++i) {
+			auto diff = p[i] - center;
+			if (QPointF::dotProduct(diff, diff) < range) {
+				list << (unsigned)i;
+				for (auto m : d->proteins[(unsigned)i].memberOf)
+					affectedPartitions.insert((int)m);
+			}
 		}
-	}
+	} // peek() scope
+
+	for (auto i : partitions)
+		i.second->redecorate(false, affectedPartitions.count(i.first));
+
 	emit cursorChanged(list);
 }
 
@@ -335,25 +345,14 @@ Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)
 	attachAxis(chart->axisX());
 	attachAxis(chart->axisY());
 
-	QPen border(s.border);
-	border.setColor(Qt::darkGray);
-	setPen(border);
-
-	color.setAlphaF(s.alpha);
 	setColor(color);
-	setMarkerSize(s.size);
+	redecorate();
 
 	chart->legend()->markers(this)[0]->setShape(QtCharts::QLegend::MarkerShapeCircle);
 
-	// allow updates in the future (note: receiver specified for cleanup on delete!)
-	connect(chart, &Chart::proteinStyleUpdated, this, [this, &s] {
-		setMarkerSize(s.size);
-		auto border = pen();
-		border.setStyle(s.border);
-		setPen(border);
-		auto fillColor = brush().color();
-		fillColor.setAlphaF(s.alpha);
-		setColor(fillColor);
+	// follow style changes (note: receiver specified for cleanup on delete!)
+	connect(chart, &Chart::proteinStyleUpdated, this, [this] {
+		redecorate();
 	});
 }
 
@@ -367,6 +366,34 @@ void Chart::Proteins::apply()
 {
 	replace(replacement);
 	replacement.clear();
+}
+
+void Chart::Proteins::redecorate(bool full, bool hl)
+{
+	if (!full && (hl == highlighted))
+		return;
+
+	highlighted = hl;
+
+	auto c = reinterpret_cast<Chart*>(chart());
+	if (!c)
+		return;
+
+	auto &s = c->proteinStyle;
+	if (full)
+		setMarkerSize(s.size);
+
+	QPen border(s.border);
+	border.setColor(highlighted ? Qt::black : Qt::darkGray);
+	border.setStyle(highlighted ? Qt::PenStyle::SolidLine : s.border);
+	setPen(border);
+
+	if (!full)
+		return;
+
+	auto fillColor = brush().color();
+	fillColor.setAlphaF(s.alpha);
+	setColor(fillColor);
 }
 
 Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
