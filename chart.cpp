@@ -11,6 +11,7 @@
 #include <QtCore/QHash>
 #include <QtCore/QTimer>
 
+#include <map>
 #include <cmath>
 
 #include <QtCore/QDebug>
@@ -120,9 +121,15 @@ void Chart::updatePartitions()
 		partitions[-1] = (new Proteins("Mixed", Qt::gray, this));
 
 		unsigned colorCounter = 0;
-		for (auto c : d->clustering) {
-			auto s = new Proteins(c.second.name, tableau20(colorCounter++), this);
-			partitions[(int)c.first] = s;
+		// insert ordered by size, descending
+		std::multimap<unsigned, unsigned, std::greater<unsigned>> clustersBySize;
+		for (auto c : d->clustering)
+			clustersBySize.insert({c.second.size, c.first});
+
+		for (auto i : clustersBySize) {
+			auto &c = d->clustering[i.second];
+			auto s = new Proteins(c.name, tableau20(colorCounter++), this);
+			partitions[(int)i.second] = s;
 			/* enable profile view updates on legend label hover */
 			auto lm = legend()->markers(s)[0];
 			connect(lm, &QtCharts::QLegendMarker::hovered, [this, s] (bool active) {
@@ -339,7 +346,6 @@ QColor Chart::tableau20(unsigned index)
 
 Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)
 {
-	auto &s = chart->proteinStyle;
 	setName(label);
 	chart->addSeries(this);
 	attachAxis(chart->axisX());

@@ -36,6 +36,7 @@ public:
 
 	struct Cluster {
 		QString name;
+		unsigned size = 0;
 	};
 
 	struct HrCluster {

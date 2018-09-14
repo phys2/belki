@@ -188,6 +188,7 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 				if (line[i].isEmpty() || line[i].contains(QRegularExpression("^\\s*$")))
 					continue;
 				d.proteins[p].memberOf.insert((unsigned)i);
+				d.clustering[(unsigned)i].size++;
 			}
 		} catch (std::out_of_range&) {
 			qDebug() << "Ignored" << name << "(unknown)";
@@ -290,8 +291,10 @@ void Dataset::calculatePartition(unsigned granularity)
 	std::function<void(unsigned, unsigned)> flood;
 	flood = [&] (unsigned hIndex, unsigned cIndex) {
 		auto &current = container[hIndex];
-		if (current.protein >= 0)
+		if (current.protein >= 0) {
 			d.proteins[(unsigned)current.protein].memberOf = {cIndex};
+			d.clustering[cIndex].size++;
+		}
 		for (auto &c : current.children)
 			flood(c, cIndex);
 	};
