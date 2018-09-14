@@ -498,7 +498,7 @@ private:
 		// Build ball tree on data set
 		VpTree<DataPoint, euclidean_distance>* tree = new VpTree<DataPoint, euclidean_distance>();
 		std::vector<DataPoint> obj_X(N, DataPoint(D, -1, X));
-		for(int n = 0; n < N; n++) obj_X[n] = DataPoint(D, n, X + n * D);
+		for(int n = 0; n < N; n++) obj_X[n] = DataPoint(D, n, X + n * D); // dimensionality, index, pointer to data
 		tree->create(obj_X);
 		
 		// Loop over all points to find nearest neighbors
