@@ -315,5 +315,19 @@ void Dataset::calculatePartition(unsigned granularity)
 		flood(i, i);
 	}
 
+	/* defragment clusters (un-assign and remove small clusters) */
+	// TODO: make configurable; instead keep X biggest clusters?
+	auto minSize = unsigned(0.005f * (float)d.proteins.size());
+	auto it = d.clustering.begin();
+	while (it != d.clustering.end()) {
+		if (it->second.size < minSize) {
+			for (auto &p : d.proteins)
+				p.memberOf.erase(it->first);
+			it = d.clustering.erase(it);
+		} else {
+			it++;
+		}
+	}
+
 	emit newClustering();
 }

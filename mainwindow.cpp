@@ -118,6 +118,11 @@ void MainWindow::setupSignals()
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
 	});
+	connect(&data, &Dataset::newHierarchy, this, [this] {
+		auto d = data.peek();
+		auto reasonable = std::min(d->proteins.size(), d->hierarchy.size()) / 4;
+		granularitySlider->setMaximum(reasonable);
+	});
 
 	/* notifications from chart */
 	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
