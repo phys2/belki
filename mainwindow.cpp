@@ -72,6 +72,7 @@ void MainWindow::setupToolbar()
 	toolbarActions.granularity = toolBar->insertWidget(actionExportAnnotations, granularitySlider);
 	toolbarActions.partitions->setVisible(false);
 	toolbarActions.granularity->setVisible(false);
+	actionExportAnnotations->setVisible(false);
 
 	// right-align screenshot & help button
 	auto* spacer = new QWidget();
