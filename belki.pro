@@ -43,6 +43,9 @@ INCLUDEPATH += $$PWD/include
 # FILES
 
 HEADERS += \
+    meanshift/fams.h \
+    meanshift/lsh.h \
+    meanshift/lshreader.h \
     storage/qzip.h \
     storage/miniz.h \
     chart.h \
@@ -56,6 +59,11 @@ HEADERS += \
     storage.h
 
 SOURCES += \
+    meanshift/fams.cpp \
+    meanshift/io.cpp \
+    meanshift/mode_pruning.cpp \
+    meanshift/lsh.cpp \
+    meanshift/lshreader.cpp \
     storage/miniz.c \
     chart.cpp \
     main.cpp \
