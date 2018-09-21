@@ -1,11 +1,11 @@
 #include "dataset.h"
 #include "dimred.h"
 
-#include <QDataStream>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonArray>
-#include <QRegularExpression>
+#include <QtCore/QDataStream>
+#include <QtCore/QJsonDocument>
+#include <QtCore/QJsonObject>
+#include <QtCore/QJsonArray>
+#include <QtCore/QRegularExpression>
 
 #include <set>
 
