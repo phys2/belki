@@ -73,7 +73,10 @@ void ChartView::keyReleaseEvent(QKeyEvent *event)
 		chart()->cursorLocked = !chart()->cursorLocked;
 
 	if (event->key() == Qt::Key_Z)
-		chart()->undoZoom();
+		chart()->undoZoom(event->modifiers() & Qt::ShiftModifier);
+
+	if (event->key() == Qt::Key_S)
+		chart()->toggleSingleMode();
 
 	if (event->modifiers() & Qt::AltModifier) {
 		if (event->key() == Qt::Key_Plus)

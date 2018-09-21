@@ -235,16 +235,24 @@ void Chart::updateCursor(const QPointF &pos)
 	emit cursorChanged(list);
 }
 
-void Chart::undoZoom()
+void Chart::undoZoom(bool full)
 {
 	if (zoom.history.empty())
 		return;
 
-	auto range = zoom.history.pop();
+	auto range = (full ? zoom.history.first() : zoom.history.pop());
+	if (full)
+		zoom.history.clear();
 	axisX()->setRange(range.left(), range.right());
 	axisY()->setRange(range.top(), range.bottom());
 	// undo triggered push
 	zoom.history.pop();
+}
+
+void Chart::toggleSingleMode()
+{
+	proteinStyle.singleMode = !proteinStyle.singleMode;
+	emit proteinStyleUpdated();
 }
 
 void Chart::scaleProteins(qreal factor)
@@ -263,7 +271,9 @@ void Chart::switchProteinBorders()
 
 void Chart::adjustProteinAlpha(qreal adjustment)
 {
-	auto &a = proteinStyle.alpha;
+	if (proteinStyle.singleMode)
+		return; // avoid hidden changes
+	auto &a = proteinStyle.alpha.reg;
 	a = std::min(1., std::max(0., a + adjustment));
 	emit proteinStyleUpdated();
 }
@@ -390,15 +400,19 @@ void Chart::Proteins::redecorate(bool full, bool hl)
 		setMarkerSize(s.size);
 
 	QPen border(s.border);
-	border.setColor(highlighted ? Qt::black : Qt::darkGray);
+	auto col = Qt::darkGray;
+	if (highlighted) {
+		col = Qt::black;
+	}
+	border.setColor(col);
 	border.setStyle(highlighted ? Qt::PenStyle::SolidLine : s.border);
 	setPen(border);
 
-	if (!full)
-		return;
-
 	auto fillColor = brush().color();
-	fillColor.setAlphaF(s.alpha);
+	auto alpha = s.alpha.reg;
+	if (s.singleMode)
+		alpha = (highlighted ? s.alpha.hi : s.alpha.lo);
+	fillColor.setAlphaF(alpha);
 	setColor(fillColor);
 }
 

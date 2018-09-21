@@ -57,8 +57,9 @@ public:
 	void clearMarkers();
 
 	void zoomAt(const QPointF &pos, qreal factor);
-	void undoZoom();
+	void undoZoom(bool full = false);
 
+	void toggleSingleMode();
 	void scaleProteins(qreal factor);
 	void switchProteinBorders();
 	void adjustProteinAlpha(qreal adjustment);
@@ -97,8 +98,13 @@ protected:
 	} zoom;
 
 	struct {
+		bool singleMode = false; // mode to highlight single clusters
 		qreal size = 15.;
-		qreal alpha = .65;
+		struct {
+			qreal reg = .65;
+			qreal hi = .9;
+			qreal lo = .1;
+		} alpha;
 		Qt::PenStyle border = Qt::PenStyle::DotLine;
 	} proteinStyle;
 
