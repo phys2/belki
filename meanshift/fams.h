@@ -10,9 +10,6 @@
 #ifndef FAMS_H
 #define FAMS_H
 
-#include "lsh.h"
-#include "lshreader.h"
-
 #include <QVector>
 
 #include <opencv2/core.hpp> // for timer functionality
@@ -70,17 +67,8 @@ public:
 		/// pilot density
 		float k = 1; // k * sqrt(N) is number of neighbors used for construction
 
-		/// locality sensitive hashing
-		bool use_LSH = false;
-		int K = 20, L = 10; //<- LSH parameters
-
 		/// static bandwidth
 		float bandwidth = 0;
-
-		/// LSH determination of K and L
-		bool findKL = false;
-		int Kmin = 1, Kjump = 1;
-		float epsilon = 0.05f;
 
 		/// minimum number of points per reported mode (after pruning)
 		int pruneMinN = 50;
@@ -173,10 +161,7 @@ public:
 	/* save to file as %g: modes for all starting points or the pruned ones */
 	void saveModes(const std::string& filename, bool pruned);
 
-	std::pair<int, int> FindKL();
 	void ComputeRealBandwidths(unsigned int h);
-	int64 DoFindKLIteration(int K, int L, float* scores);
-	void ComputeScores(float* scores, LSHReader &lsh, int L);
 
 	// returns a vector of pruned modes (sorted by size)
 	//std::vector<std::vector<float>> modeVector() const;
@@ -265,11 +250,9 @@ public:
 	unsigned int n_, d_; // number of points, number of dimensions
 
 protected:
-	bool ComputePilot(vector<double> *weights = nullptr);
-	unsigned int DoMSAdaptiveIteration(
-			const std::vector<unsigned int> *res,
-			const std::vector<unsigned short> &old,
-			std::vector<unsigned short> &ret) const;
+	bool ComputePilot(std::vector<double> *weights = nullptr);
+	unsigned int DoMSAdaptiveIteration(const std::vector<unsigned short> &old,
+	        std::vector<unsigned short> &ret) const;
 
 	// tells whether to continue, takes recent progress
 	bool progressUpdate(float percent, bool absolute = true);
@@ -308,10 +291,6 @@ public:
 	Config config;
 
 protected:
-
-	// LSH used during ordinary run
-	LSH *lsh_ = nullptr;
-
 	bool cancelled = false;
 	float progress = 0.f, progress_old = 0.f;
 	tbb::mutex progressMutex;

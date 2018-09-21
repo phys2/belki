@@ -37,7 +37,6 @@ void Dataset::computeFAMS()
 
 	fams.reset(new seg_meanshift::FAMS({
 	                                       .k=meanshift.k,
-	                                       .use_LSH=false,
 	                                       .pruneMinN = 0, // we use pruneClusters() instead
 	                                   }));
 	fams->importPoints(d.features, true);
