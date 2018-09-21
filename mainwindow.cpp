@@ -46,6 +46,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	setupMarkerControls();
 	setupSignals(); // after setupToolbar(), signal handlers rely on initialized actions
 	setupActions();
+
+	// initialize widgets to be empty & most-restrictive
+	clearData();
 }
 
 MainWindow::~MainWindow()
@@ -70,9 +73,7 @@ void MainWindow::setupToolbar()
 
 	toolbarActions.partitions = toolBar->insertWidget(anchor, partitionSelect);
 	toolbarActions.granularity = toolBar->insertWidget(actionExportAnnotations, granularitySlider);
-	toolbarActions.partitions->setVisible(false);
-	toolbarActions.granularity->setVisible(false);
-	actionExportAnnotations->setVisible(false);
+	toolbarActions.famsK = toolBar->insertWidget(actionExportAnnotations, famsKSlider);
 
 	// right-align screenshot & help button
 	auto* spacer = new QWidget();
@@ -138,6 +139,7 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::exportAnnotations, &store, &Storage::exportAnnotations);
 	connect(this, &MainWindow::computeDisplay, &data, &Dataset::computeDisplay);
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
+	connect(this, &MainWindow::runFAMS, &data, &Dataset::computeFAMS);
 
 	/* selecting display/partition/etc. always goes through GUI */
 	connect(transformSelect, &QComboBox::currentTextChanged, [this] (auto name) {
@@ -146,22 +148,55 @@ void MainWindow::setupSignals()
 		chart->display(name);
 		chartView->setEnabled(true);
 	});
-	connect(partitionSelect, &QComboBox::currentTextChanged, [this] (auto name) {
+	connect(partitionSelect, QOverload<int>::of(&QComboBox::activated), [this] () {
+		// clear partition-type dependant state
+		toolbarActions.granularity->setVisible(false);
+		toolbarActions.famsK->setVisible(false);
+		actionExportAnnotations->setVisible(false);
+		actionShowPartition->setEnabled(true);
+
+		// special items (TODO: better use an enum here, maybe include hierarchies)
+		if (partitionSelect->currentData().isValid()) {
+
+			auto v = partitionSelect->currentData().value<int>();
+			if (v == 0) {
+				actionShowPartition->setChecked(false);
+				actionShowPartition->setEnabled(false);
+				data.cancelFAMS();
+				// TODO: better to remove annotation instead of hiding it
+			} else if (v == 1) {
+				data.changeFAMS((unsigned)famsKSlider->value() * 0.01f);
+				emit runFAMS();
+				toolbarActions.famsK->setVisible(true);
+				actionExportAnnotations->setVisible(true);
+			}
+			return;
+		}
+
+		// not FAMS? cancel it in case it is running
+		data.cancelFAMS();
+
+		// regular items: identified by name
+		auto name = partitionSelect->currentText();
 		if (name.isEmpty())
 			return;
-		bool isHierarchy = name.endsWith(hierarchyPostfix);
-		toolbarActions.granularity->setVisible(isHierarchy);
-		actionExportAnnotations->setVisible(isHierarchy);
 
+		bool isHierarchy = name.endsWith(hierarchyPostfix);
 		if (isHierarchy) {
 			auto n = name.chopped(strlen(hierarchyPostfix));
 			emit readHierarchy(n);
 			emit calculatePartition((unsigned)granularitySlider->value());
+			toolbarActions.granularity->setVisible(true);
+			actionExportAnnotations->setVisible(true);
 		} else {
 			emit readAnnotations(name);
 		}
 	});
 	connect(granularitySlider, &QSlider::valueChanged, this, &MainWindow::calculatePartition);
+	connect(famsKSlider, &QSlider::valueChanged, [this] (int v) {
+		data.changeFAMS(v * 0.01f); // reconfigure from outside (this thread)
+		emit runFAMS(); // start calculation inside data thread
+	});
 }
 
 void MainWindow::setupActions()
@@ -305,32 +340,42 @@ void MainWindow::setupMarkerControls()
 	});
 }
 
-void MainWindow::resetData()
+void MainWindow::clearData()
 {
-	title = store.name();
-	setWindowTitle(QString("%1 – Belki").arg(title));
-	fileLabel->setText(QString("<b>%1</b>").arg(title));
-
-	/* new data means no displays */
+	/* no displays */
 	transformSelect->clear();
 
-	/* new data means no partitions */
+	/* no partitions except inbuilt mean-shift */
 	partitionSelect->clear();
+	partitionSelect->addItem("None", {0});
+	partitionSelect->addItem("Adaptive Mean Shift", {1});
+	// TODO
+
+	/* hide and disable widgets that need data or even more */
 	actionShowPartition->setChecked(false);
 	actionShowPartition->setEnabled(false);
 	toolbarActions.partitions->setVisible(false);
 	toolbarActions.granularity->setVisible(false);
+	toolbarActions.famsK->setVisible(false);
 	actionExportAnnotations->setVisible(false);
+
+	chart->clear();
+	chartView->setEnabled(false); // TODO: can markerWidget crash uninit. chartView?
+}
+
+void MainWindow::resetData()
+{
+	clearData();
+
+	title = store.name();
+	setWindowTitle(QString("%1 – Belki").arg(title));
+	fileLabel->setText(QString("<b>%1</b>").arg(title));
 
 	/* set up cursor chart */
 	cursorChart->setCategories(data.peek()->dimensions);
 
 	/* set up marker controls */
 	updateMarkerControls();
-
-	/* better wait for displays to pop up */
-	chart->clear();
-	chartView->setEnabled(false); // TODO: can markerWidget crash uninit. chartView?
 }
 
 void MainWindow::updateData(const QString &display)

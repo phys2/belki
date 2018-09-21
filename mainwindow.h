@@ -38,11 +38,13 @@ signals:
 	void exportAnnotations(const QString &filename);
 	void computeDisplay(const QString &name);
 	void calculatePartition(unsigned granularity);
+	void runFAMS();
 
 public slots:
 	void showHelp();
 	void displayError(const QString &message);
 
+	void clearData();
 	void resetData();
 	void updateData(const QString &display);
 	void updateCursorList(QVector<unsigned> samples, QString title);
@@ -66,8 +68,9 @@ protected:
 	FileIO *io;
 
 	struct {
-		QAction *partitions = nullptr;
-		QAction *granularity = nullptr;
+		QAction *partitions;
+		QAction *granularity;
+		QAction *famsK;
 	} toolbarActions;
 };
 

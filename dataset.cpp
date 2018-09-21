@@ -30,11 +30,67 @@ void Dataset::computeDisplays()
 		computeDisplay("PCA");
 }
 
+void Dataset::computeFAMS()
+{
+	auto &fams = meanshift.fams;
+	qDebug() << "FAMS " << meanshift.k << " vs " << (fams ? fams->config.k : 0);
+	if (fams && (fams->config.k == meanshift.k || meanshift.k <= 0))
+		return; // already done
+
+	fams.reset(new seg_meanshift::FAMS({
+	                                       .k=meanshift.k,
+	                                       .use_LSH=false,
+	                                       .pruneMinN = 0, // we use pruneClusters() instead
+	                                   }));
+	fams->importPoints(d.features, true);
+	bool success = fams->prepareFAMS();
+	if (!success)
+		return;
+	fams->selectStartPoints(0., 1);
+	success = fams->finishFAMS();
+	if (!success)
+		return;
+
+	fams->pruneModes();
+
+	QWriteLocker _(&l);
+	d.clustering.clear();
+	auto nmodes = meanshift.fams->getModes().size();
+	for (unsigned i = 0; i < nmodes; ++i)
+		d.clustering[i] = {QString("Cluster #%1").arg(i+1)};
+
+	auto &index = meanshift.fams->getModePerPoint();
+	for (unsigned i = 0; i < index.size(); ++i) {
+		auto m = (unsigned)index[i];
+		d.proteins[i].memberOf = {m};
+		d.clustering[m].size++;
+	}
+	pruneClusters();
+
+	emit newClustering();
+}
+
+void Dataset::changeFAMS(float k)
+{
+	qDebug() << "changing to " << k;
+	meanshift.k = k;
+	if (meanshift.fams) {
+		meanshift.fams->cancel();
+		meanshift.fams->config.k = 0;
+	}
+}
+
+void Dataset::cancelFAMS()
+{
+	changeFAMS(-1);
+}
+
 bool Dataset::readSource(QTextStream in)
 {
 	QWriteLocker _(&l);
 
 	/* re-initialize data */
+	cancelFAMS();
 	d = Public();
 
 	auto header = in.readLine().split("\t");
@@ -315,6 +371,13 @@ void Dataset::calculatePartition(unsigned granularity)
 		flood(i, i);
 	}
 
+	pruneClusters();
+
+	emit newClustering();
+}
+
+void Dataset::pruneClusters()
+{
 	/* defragment clusters (un-assign and remove small clusters) */
 	// TODO: make configurable; instead keep X biggest clusters?
 	auto minSize = unsigned(0.005f * (float)d.proteins.size());
@@ -328,6 +391,4 @@ void Dataset::calculatePartition(unsigned granularity)
 			it++;
 		}
 	}
-
-	emit newClustering();
 }

@@ -1,6 +1,8 @@
 #ifndef DATASET_H
 #define DATASET_H
 
+#include "meanshift/fams.h"
+
 #include <QtCore/QString>
 #include <QtCore/QMap>
 #include <QtCore/QVector>
@@ -13,8 +15,6 @@
 
 #include <set>
 #include <map>
-
-class QFile;
 
 class Dataset : public QObject
 {
@@ -85,6 +85,9 @@ public:
 
 	View peek() { return View(d, l); }
 
+	void changeFAMS(float k); // to be called from different thread
+	void cancelFAMS(); // can be called from different thread
+
 signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
 	void newSource();
 	void newDisplay(const QString &name);
@@ -95,6 +98,7 @@ signals: // IMPORTANT: when connecting to lambda, provide target object pointer 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
 	void computeDisplay(const QString &name);
 	void computeDisplays();
+	void computeFAMS();
 	void calculatePartition(unsigned granularity);
 
 protected:
@@ -103,10 +107,16 @@ protected:
 	bool readAnnotations(const QByteArray &tsv);
 	bool readHierarchy(const QByteArray &json);
 	void readDisplay(const QString &name, const QByteArray &tsv);
+	void pruneClusters();
 	QByteArray writeDisplay(const QString &name);
 
 	Public d;
 	QReadWriteLock l;
+
+	struct {
+		std::unique_ptr<seg_meanshift::FAMS> fams;
+		float k = -1;
+	} meanshift;
 };
 
 #endif // DATASET_H
