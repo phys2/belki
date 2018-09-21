@@ -134,7 +134,7 @@ void Chart::updatePartitions()
 			auto lm = legend()->markers(s)[0];
 			connect(lm, &QtCharts::QLegendMarker::hovered, [this, s] (bool active) {
 				if (!active)
-					return
+					return;
 				emit cursorChanged(s->samples, s->name());
 				for (auto i : partitions)
 					i.second->redecorate(false, s == i.second);
