@@ -122,7 +122,7 @@ public:
 	};
 
 	struct ComputePilotPoint {
-		ComputePilotPoint(FAMS& master, vector<double> *weights = nullptr)
+		ComputePilotPoint(FAMS& master, std::vector<double> *weights = nullptr)
 			: fams(master), weights(weights), dbg_acc(0.), dbg_noknn(0) {}
 		ComputePilotPoint(ComputePilotPoint& other, tbb::split)
 			: fams(other.fams), weights(other.weights),
@@ -135,7 +135,7 @@ public:
 		}
 
 		FAMS& fams;
-		vector<double> *weights;
+		std::vector<double> *weights;
 		long long dbg_acc; // can go over limit of 32 bit integer
 		unsigned int dbg_noknn;
 	};
@@ -165,7 +165,7 @@ public:
 	/** optional argument bandwidths provides pre-calculated
 	 *  per-point bandwidth
 	 */
-	bool prepareFAMS(vector<double> *bandwidths = nullptr, vector<double> *factors = nullptr);
+	bool prepareFAMS(std::vector<double> *bandwidths = nullptr, std::vector<double> *factors = nullptr);
 	bool finishFAMS();
 	void pruneModes();
 	void cancel() { cancelled = true; }
