@@ -117,8 +117,8 @@ void Chart::updatePartitions()
 		animate(0);
 
 		// series needed for soft clustering
-		partitions[-2] = (new Proteins("Unlabeled", Qt::darkGray, this));
-		partitions[-1] = (new Proteins("Mixed", Qt::gray, this));
+		partitions[-2] = (new Proteins("Unlabeled", Qt::gray, this));
+		partitions[-1] = (new Proteins("Mixed", Qt::darkGray, this));
 
 		unsigned colorCounter = 0;
 		std::multimap<std::pair<int, QString>, unsigned> clustersBySize;
