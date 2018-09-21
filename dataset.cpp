@@ -7,8 +7,6 @@
 #include <QtCore/QJsonArray>
 #include <QtCore/QRegularExpression>
 
-#include <set>
-
 #include <QDebug>
 
 void Dataset::computeDisplay(const QString& name)
