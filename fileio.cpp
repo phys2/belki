@@ -20,7 +20,7 @@ QString FileIO::chooseFile(FileIO::Role purpose, QWidget *p)
 	    {OpenDescriptions, {"Open Descriptions", "Two-column table with descriptions (*.tsv)", false, {}}},
 	    {OpenClustering, {"Open Annotations or Clustering",
 	                      "All supported files (*.tsv *.txt *.json);; "
-	                      "Annotation Table (*.tsv *.txt);; Hierarchical Clustering (*.json)",
+	                      "Annotation Table / Protein Lists (*.tsv *.txt);; Hierarchical Clustering (*.json)",
 	                      false, {}}},
 	    {OpenMarkers, {"Open Markers List", "List of markers (*.txt);; All Files (*)", false, {}}},
 	    {SaveMarkers, {"Save Markers to File", "List of markers (*.txt)", true, ".txt"}},

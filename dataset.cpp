@@ -203,52 +203,86 @@ bool Dataset::readDescriptions(const QByteArray &tsv)
 
 bool Dataset::readAnnotations(const QByteArray &tsv)
 {
-	QTextStream in(tsv);
-	// we use SkipEmptyParts for chomping at the end, but dangerous…
-	auto header = in.readLine().split("\t", QString::SkipEmptyParts);
-	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
-	if (header.size() < 2 || !header[0].contains(re)) {
-		emit ioError("Could not parse file!<p>The first column must contain protein names.</p>");
-		return false;
-	}
-	header.removeFirst();
-
-	QWriteLocker _(&l);
-
 	/* ensure we have data to annotate */
 	if (d.proteins.empty()) {
 		emit ioError("Please load protein profiles first!");
 		return false;
 	}
 
-	/* setup clusters */
-	for (auto &p : d.proteins)
-		p.memberOf.clear();
-	d.clustering.clear();
-	d.clustering.reserve((unsigned)header.size());
-	for (auto i = 0; i < header.size(); ++i) {
-		d.clustering[(unsigned)i] = {header[i]};
-	}
+	QTextStream in(tsv);
+	// we use SkipEmptyParts for chomping at the end, but dangerous…
+	auto header = in.readLine().split("\t", QString::SkipEmptyParts);
+	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
+	if (header.size() == 2 && header[1].contains("Members")) {
+		/* expect name + list of proteins per-cluster per-line */
 
-	/* associate to clusters */
-	while (!in.atEnd()) {
-		auto line = in.readLine().split("\t");
-		if (line.size() < 2)
-			continue;
+		QWriteLocker _(&l);
 
-		auto name = line[0];
-		line.removeFirst();
-		try {
-			auto p = d.find(name);
-			for (auto i = 0; i < header.size(); ++i) { // run over header to only allow valid columns
-				if (line[i].isEmpty() || line[i].contains(QRegularExpression("^\\s*$")))
-					continue;
-				d.proteins[p].memberOf.insert((unsigned)i);
-				d.clustering[(unsigned)i].size++;
+		/* clear clusters */
+		for (auto &p : d.proteins)
+			p.memberOf.clear();
+		d.clustering.clear();
+
+		/* build new clusters */
+		unsigned clusterIndex = 0;
+		while (!in.atEnd()) {
+			auto line = in.readLine().split("\t");
+			if (line.size() < 2)
+				continue;
+
+			d.clustering[clusterIndex] = {line[0]};
+			line.removeFirst();
+
+			for (auto &name : qAsConst(line)) {
+				try {
+					auto p = d.find(name);
+					d.proteins[p].memberOf.insert(clusterIndex);
+					d.clustering[clusterIndex].size++;
+				} catch (std::out_of_range&) {
+					qDebug() << "Ignored" << name << "(unknown)";
+				}
 			}
-		} catch (std::out_of_range&) {
-			qDebug() << "Ignored" << name << "(unknown)";
+
+			clusterIndex++;
 		}
+	} else if (header.size() > 1 && header[0].contains(re)) {
+		/* expect matrix layout, first column protein names */
+		header.removeFirst();
+
+		QWriteLocker _(&l);
+
+		/* setup clusters */
+		for (auto &p : d.proteins)
+			p.memberOf.clear();
+		d.clustering.clear();
+		d.clustering.reserve((unsigned)header.size());
+		for (auto i = 0; i < header.size(); ++i) {
+			d.clustering[(unsigned)i] = {header[i]};
+		}
+
+		/* associate to clusters */
+		while (!in.atEnd()) {
+			auto line = in.readLine().split("\t");
+			if (line.size() < 2)
+				continue;
+
+			auto name = line[0];
+			line.removeFirst();
+			try {
+				auto p = d.find(name);
+				for (auto i = 0; i < header.size(); ++i) { // run over header to only allow valid columns
+					if (line[i].isEmpty() || line[i].contains(QRegularExpression("^\\s*$")))
+						continue;
+					d.proteins[p].memberOf.insert((unsigned)i);
+					d.clustering[(unsigned)i].size++;
+				}
+			} catch (std::out_of_range&) {
+				qDebug() << "Ignored" << name << "(unknown)";
+			}
+		}
+	} else {
+		emit ioError("Could not parse file!<p>The first column must contain protein or group names.</p>");
+		return false;
 	}
 
 	emit newClustering();
