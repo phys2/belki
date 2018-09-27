@@ -184,22 +184,22 @@ unsigned int FAMS::DoMSAdaptiveIteration(const std::vector<unsigned short> &old,
 										 std::vector<unsigned short> &ret) const
 {
 	double total_weight = 0;
-	double dist;
 	std::vector<double> rr(d_, 0.);
 	unsigned int crtH = 0;
 	double       hmdist = 1e100;
-	for (size_t i = 0; i < n_; i++) {
-		const Point &ptp = datapoints[i];
-		if (DistL1Data(old, ptp, ptp.window, dist)) { // TODO L2
-			double x = 1.0 - (dist / ptp.window);
-			double w = ptp.weightdp2 * x * x * ptp.factor;
-			total_weight += w;
-			for (size_t j = 0; j < ptp.data->size(); j++)
-				rr[j] += (*ptp.data)[j] * w;
-			if (dist < hmdist) {
-				hmdist = dist;
-				crtH   = ptp.window;
-			}
+	for (auto &ptp : datapoints) {
+		auto [inside, dist] = DistL1(old, ptp, ptp.window); // TODO L2
+		if (!inside)
+		    continue;
+
+		double x = 1.0 - (dist / ptp.window);
+		double w = ptp.weightdp2 * x * x * ptp.factor;
+		total_weight += w;
+		for (size_t j = 0; j < ptp.data->size(); j++)
+		    rr[j] += (*ptp.data)[j] * w;
+		if (dist < hmdist) {
+			hmdist = dist;
+			crtH   = ptp.window;
 		}
 	}
 	if (total_weight == 0) {
@@ -233,8 +233,7 @@ const
 		for (int iter = 0; oldMean != crtMean && (iter < FAMS_MAXITER);
 			 iter++) {
 			oldMean = crtMean;
-			unsigned int newWindow =
-			      fams.DoMSAdaptiveIteration(oldMean, crtMean);
+			unsigned newWindow = fams.DoMSAdaptiveIteration(oldMean, crtMean);
 			if (!newWindow) {
 				// oldMean is final mean -> break loop
 				break;

@@ -221,18 +221,16 @@ public:
 	}
 
 	/*
-	   a boolean function which computes the distance if it is less than dist
-	   into dist_res.
+	   a boolean function which computes the distance if it is less than threshold.
 	   Not using SSE due to early abortion.
 	 */
-	inline bool DistL1Data(const std::vector<unsigned short> &in_d1,
-						   const Point& in_pt2, double in_dist,
-						   double& in_res) const
+	inline std::tuple<bool, double> DistL1(const std::vector<unsigned short> &d1,
+	                       const Point& pt2, double thresh) const
 	{
-		in_res = 0;
-		for (size_t in_i = 0; in_i < in_d1.size() && (in_res < in_dist); in_i++)
-			in_res += abs(in_d1[in_i] - (*in_pt2.data)[in_i]);
-		return (in_res < in_dist);
+		double dist = 0.;
+		for (size_t i = 0; i < d1.size() && (dist < thresh); i++)
+			dist += abs(d1[i] - (*pt2.data)[i]);
+		return {(dist < thresh), dist};
 	}
 
 	inline static void bgLog(const char *varStr, ...)
