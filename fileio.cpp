@@ -80,7 +80,7 @@ void FileIO::renderToFile(QWidget *source, const RenderMeta &meta, QString filen
 		renderer(&pdf);
 	}*/
 	if (filetype == "png") {
-		const qreal scale = 2.; // render in higher resolution
+		const qreal scale = 1.; // 2.; // render in higher resolution
 		QPixmap pixmap(source->size()*scale);
 		pixmap.setDevicePixelRatio(scale);
 		renderer(&pixmap);
