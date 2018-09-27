@@ -53,6 +53,7 @@ void FileIO::renderToFile(QWidget *source, const RenderMeta &meta, QString filen
 	auto filetype = QFileInfo(filename).suffix().toLower();
 	if (filetype.isEmpty()) {
 		emit ioError("Please select a filename with suffix (e.g. .svg)!");
+		return;
 	}
 
 	auto renderer = [source] (QPaintDevice *target) {
