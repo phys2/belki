@@ -262,7 +262,7 @@ void MainWindow::setupActions()
 	});
 	connect(actionClearMarkers, &QAction::triggered, chart, &Chart::clearMarkers);
 	connect(actionSavePlot, &QAction::triggered, [this] {
-		io->renderToFile(chartView, title, transformSelect->currentText());
+		io->renderToFile(chartView, {title, transformSelect->currentText()});
 	});
 
 	connect(actionProfileView, &QAction::triggered, [this] {

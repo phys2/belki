@@ -25,6 +25,11 @@ public:
 		QString writeSuffix;
 	};
 
+	struct RenderMeta {
+		QString title;
+		QString description;
+	};
+
 	explicit FileIO(QMainWindow *parent);
 
 	QString chooseFile(Role purpose, QWidget *p = nullptr);
@@ -33,7 +38,7 @@ signals:
 	void ioError(const QString &message);
 
 public slots:
-	void renderToFile(QWidget *source, const QString &title = {}, const QString &description = {});
+	void renderToFile(QWidget *source, const RenderMeta &meta, QString filename = {});
 
 protected:
 	QMainWindow *parent; // anchor dialogs to main window

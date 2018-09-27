@@ -43,9 +43,10 @@ QString FileIO::chooseFile(FileIO::Role purpose, QWidget *p)
 	return QFileDialog::getOpenFileName(p, params.title, {}, params.filter);
 }
 
-void FileIO::renderToFile(QWidget *source, const QString &title, const QString &description)
+void FileIO::renderToFile(QWidget *source, const RenderMeta &meta, QString filename)
 {
-	auto filename = chooseFile(SavePlot, source->window());
+	if (filename.isEmpty())
+		filename = chooseFile(SavePlot, source->window());
 	if (filename.isEmpty())
 		return;
 
@@ -66,8 +67,8 @@ void FileIO::renderToFile(QWidget *source, const QString &title, const QString &
 		svg.setFileName(filename);
 		svg.setSize(source->size());
 		svg.setViewBox(source->rect());
-		svg.setTitle(title);
-		svg.setDescription(description);
+		svg.setTitle(meta.title);
+		svg.setDescription(meta.description);
 		renderer(&svg);
 	}
 	/*if (filetype == "pdf") { // TODO: this produces only a bitmap, so we disabled it for now

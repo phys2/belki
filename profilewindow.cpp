@@ -24,7 +24,7 @@ ProfileWindow::ProfileWindow(ProfileChart *source, MainWindow *parent) :
 		auto desc = chart->title();
 		if (desc.isEmpty())
 			desc = "Selected Profiles";
-		parent->getIo()->renderToFile(chartView, title, desc);
+		parent->getIo()->renderToFile(chartView, {title, desc});
 	});
 	connect(actionShowLabels, &QAction::toggled, chart, &ProfileChart::toggleLabels);
 	connect(actionShowIndividual, &QAction::toggled, chart, &ProfileChart::toggleIndividual);
