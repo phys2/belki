@@ -121,11 +121,14 @@ void Chart::updatePartitions()
 		partitions[-1] = (new Proteins("Mixed", Qt::darkGray, this));
 
 		unsigned colorCounter = 0;
-		std::multimap<std::pair<int, QString>, unsigned> clustersBySize;
+		/*std::multimap<std::pair<int, QString>, unsigned> clustersOrdered;
 		for (auto c : d->clustering) // insert ordered by size, desc; name asc
-			clustersBySize.insert({{-c.second.size, c.second.name}, c.first});
+			clustersOrdered.insert({{-c.second.size, c.second.name}, c.first});*/
+		std::multimap<QString, unsigned> clustersOrdered;
+		for (auto c : d->clustering) // insert ordered by name
+			clustersOrdered.insert({c.second.name, c.first});
 
-		for (auto i : clustersBySize) {
+		for (auto i : clustersOrdered) {
 			auto &c = d->clustering[i.second];
 			auto s = new Proteins(c.name, tableau20(colorCounter++), this);
 			partitions[(int)i.second] = s;
