@@ -4,11 +4,11 @@
 #include "profilechart.h"
 #include "profilewindow.h"
 
-#include <QFileInfo>
-#include <QStandardItemModel>
-#include <QDir>
-#include <QCompleter>
-#include <QAbstractProxyModel>
+#include <QtCore/QFileInfo>
+#include <QtCore/QDir>
+#include <QtWidgets/QCompleter>
+#include <QtGui/QStandardItemModel>
+#include <QtCore/QAbstractProxyModel>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QMenu>
