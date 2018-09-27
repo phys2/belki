@@ -18,9 +18,6 @@ ProfileWindow::ProfileWindow(ProfileChart *source, MainWindow *parent) :
 	chartView->setRenderHint(QPainter::Antialiasing);
 
 	/* actions */
-	// standard keys not available in UI Designer
-	actionSavePlot->setShortcut(QKeySequence::StandardKey::Print);
-
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		auto parent = parentWidget();
 		auto title = parent->getTitle();

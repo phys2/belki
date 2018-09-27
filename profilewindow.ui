@@ -80,6 +80,9 @@
    <property name="text">
     <string>Save Plot</string>
    </property>
+   <property name="shortcut">
+    <string>Print</string>
+   </property>
   </action>
   <action name="actionShowLabels">
    <property name="checkable">
@@ -94,6 +97,9 @@
    </property>
    <property name="toolTip">
     <string>Show Sample Labels</string>
+   </property>
+   <property name="shortcut">
+    <string>L</string>
    </property>
   </action>
  </widget>

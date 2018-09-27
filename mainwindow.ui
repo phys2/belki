@@ -509,6 +509,9 @@
    <property name="toolTip">
     <string>Save the plot to SVG or PDF</string>
    </property>
+   <property name="shortcut">
+    <string>Print</string>
+   </property>
   </action>
   <action name="actionProfileView">
    <property name="enabled">

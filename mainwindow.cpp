@@ -203,7 +203,6 @@ void MainWindow::setupActions()
 {
 	/* Shortcuts (standard keys not available in UI Designer) */
 	actionLoadDataset->setShortcut(QKeySequence::StandardKey::Open);
-	actionSavePlot->setShortcut(QKeySequence::StandardKey::Print);
 	actionHelp->setShortcut(QKeySequence::StandardKey::HelpContents);
 
 	/* Buttons to be wired to actions */
