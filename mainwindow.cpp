@@ -109,7 +109,6 @@ void MainWindow::setupSignals()
 		} else {
 			partitionSelect->addItem(name);
 		}
-		toolbarActions.partitions->setVisible(true);
 	});
 	connect(&store, &Storage::newHierarchy, this, [this] (auto name, bool loaded) {
 		auto n = name + hierarchyPostfix;
@@ -118,7 +117,6 @@ void MainWindow::setupSignals()
 			QSignalBlocker _(partitionSelect);
 			partitionSelect->setCurrentText(n);
 		}
-		toolbarActions.partitions->setVisible(true);
 	});
 	connect(&data, &Dataset::newSource, this, &MainWindow::resetData);
 	connect(&data, &Dataset::newDisplay, this, &MainWindow::updateData);
@@ -364,7 +362,6 @@ void MainWindow::clearData()
 	/* hide and disable widgets that need data or even more */
 	actionShowPartition->setChecked(false);
 	actionShowPartition->setEnabled(false);
-	toolbarActions.partitions->setVisible(false);
 	toolbarActions.granularity->setVisible(false);
 	toolbarActions.famsK->setVisible(false);
 	actionExportAnnotations->setVisible(false);
