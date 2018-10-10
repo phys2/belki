@@ -365,19 +365,98 @@
         </layout>
        </widget>
       </widget>
-      <widget class="ChartView" name="chartView">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
+      <widget class="QTabWidget" name="tabWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>3</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
-       <property name="mouseTracking">
-        <bool>false</bool>
+       <property name="currentIndex">
+        <number>1</number>
        </property>
+       <widget class="QWidget" name="chartTab">
+        <attribute name="title">
+         <string>Visualization</string>
+        </attribute>
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="ChartView" name="chartView">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="mouseTracking">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="heatmapTab">
+        <attribute name="title">
+         <string>Heatmap</string>
+        </attribute>
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="HeatmapView" name="heatmapView">
+           <property name="verticalScrollBarPolicy">
+            <enum>Qt::ScrollBarAlwaysOff</enum>
+           </property>
+           <property name="horizontalScrollBarPolicy">
+            <enum>Qt::ScrollBarAlwaysOff</enum>
+           </property>
+           <property name="backgroundBrush">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>64</red>
+              <green>64</green>
+              <blue>64</blue>
+             </color>
+            </brush>
+           </property>
+           <property name="renderHints">
+            <set>QPainter::TextAntialiasing</set>
+           </property>
+           <property name="dragMode">
+            <enum>QGraphicsView::ScrollHandDrag</enum>
+           </property>
+           <property name="transformationAnchor">
+            <enum>QGraphicsView::AnchorUnderMouse</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
       </widget>
      </widget>
     </item>
@@ -577,6 +656,11 @@
    <class>ChartView</class>
    <extends>QGraphicsView</extends>
    <header>chartview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>HeatmapView</class>
+   <extends>QGraphicsView</extends>
+   <header>heatmapview.h</header>
   </customwidget>
  </customwidgets>
  <resources>

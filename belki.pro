@@ -54,7 +54,9 @@ HEADERS += \
     fileio.h \
     profilewindow.h \
     profilechart.h \
-    storage.h
+    storage.h \
+    heatmapscene.h \
+    heatmapview.h
 
 SOURCES += \
     meanshift/fams.cpp \
@@ -70,7 +72,9 @@ SOURCES += \
     fileio.cpp \
     profilewindow.cpp \
     profilechart.cpp \
-    storage.cpp
+    storage.cpp \
+    heatmapscene.cpp \
+    heatmapview.cpp
 
 FORMS += \
     mainwindow.ui \

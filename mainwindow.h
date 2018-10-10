@@ -14,6 +14,7 @@
 
 class QLabel;
 class Chart;
+class HeatmapScene;
 class ProfileChart;
 class QStandardItem;
 
@@ -63,7 +64,9 @@ protected:
 	QThread dataThread;
 	QString title;
 
-	Chart *chart; // initialize after data
+	Chart *chart;
+	HeatmapScene *heatmap;
+
 	ProfileChart *cursorChart;
 	QLabel *fileLabel;
 	FileIO *io;

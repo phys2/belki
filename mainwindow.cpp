@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "dataset.h"
 #include "chart.h"
+#include "heatmapscene.h"
 #include "profilechart.h"
 #include "profilewindow.h"
 
@@ -25,7 +26,8 @@ const QVector<QColor> tableau20 = {
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent), store(data),
-    chart(new Chart(data)), cursorChart(new ProfileChart),
+    chart(new Chart(data)), heatmap(new HeatmapScene(data)),
+    cursorChart(new ProfileChart),
     fileLabel(new QLabel),
     io(new FileIO(this))
 {
@@ -40,6 +42,9 @@ MainWindow::MainWindow(QWidget *parent) :
 	chartView->setChart(chart);
 	chartView->setRubberBand(QtCharts::QChartView::RectangleRubberBand);
 	chartView->setRenderHint(QPainter::Antialiasing);
+
+	/* heatmap */
+	heatmapView->setScene(heatmap);
 
 	/* cursor chart */
 	cursorPlot->setChart(cursorChart);
@@ -123,6 +128,7 @@ void MainWindow::setupSignals()
 	connect(&data, &Dataset::newClustering, this, [this] {
 		chart->clearPartitions();
 		chart->updatePartitions();
+		heatmap->recolor();
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
 	});
@@ -132,8 +138,9 @@ void MainWindow::setupSignals()
 		granularitySlider->setMaximum(reasonable);
 	});
 
-	/* notifications from chart */
+	/* notifications from chart / heatmap */
 	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
+	connect(heatmap, &HeatmapScene::cursorChanged, this, &MainWindow::updateCursorList);
 
 	/* signals for designated slots (for thread-affinity) */
 	connect(this, &MainWindow::openDataset, &store, &Storage::openDataset);
@@ -368,6 +375,8 @@ void MainWindow::clearData()
 
 	chart->clear();
 	chartView->setEnabled(false); // TODO: can markerWidget crash uninit. chartView?
+	heatmap->reset();
+	heatmapView->setEnabled(false);
 }
 
 void MainWindow::resetData()
@@ -383,6 +392,10 @@ void MainWindow::resetData()
 
 	/* set up marker controls */
 	updateMarkerControls();
+
+	/* set up heatmap (chart will set-up when new display comes available */
+	heatmap->reset(true);
+	heatmapView->setEnabled(true);
 }
 
 void MainWindow::updateData(const QString &display)
