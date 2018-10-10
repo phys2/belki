@@ -72,7 +72,6 @@ void Dataset::computeFAMS()
 
 void Dataset::changeFAMS(float k)
 {
-	qDebug() << "changing to " << k;
 	meanshift.k = k;
 	if (meanshift.fams) {
 		meanshift.fams->cancel();

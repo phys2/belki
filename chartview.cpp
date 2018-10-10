@@ -1,10 +1,6 @@
 #include "chartview.h"
 #include "chart.h"
 
-#include <memory>
-
-#include <QtDebug>
-
 Chart *ChartView::chart()
 {
 	return qobject_cast<Chart*>(QChartView::chart());

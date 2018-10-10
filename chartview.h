@@ -10,11 +10,10 @@ class ChartView : public QtCharts::QChartView
 public:
 	using QChartView::QChartView;
 
-	// hack override to cast to right type.
-	// Note: only works with object refence (e.g. internally) because non-virtual
+protected:
+	// override for internal use (does not work through pointer! scene() is non-virtual)
 	Chart *chart();
 
-protected:
 	void mouseMoveEvent(QMouseEvent *event) override;
 	void mousePressEvent(QMouseEvent *event) override;
 	void mouseReleaseEvent(QMouseEvent *event) override;
