@@ -36,6 +36,7 @@ public:
 
 	struct Cluster {
 		QString name;
+		QColor color;
 		unsigned size = 0;
 	};
 
@@ -68,6 +69,7 @@ public:
 
 		// clusters, if available
 		std::unordered_map<unsigned, Cluster> clustering;
+		std::vector<unsigned> clusterOrder;
 		std::vector<HrCluster> hierarchy;
 	};
 
@@ -100,6 +102,7 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void computeDisplays();
 	void computeFAMS();
 	void calculatePartition(unsigned granularity);
+	void updateColorset(QVector<QColor> colors);
 
 protected:
 	bool readSource(QTextStream in);
@@ -107,7 +110,11 @@ protected:
 	bool readAnnotations(const QByteArray &tsv);
 	bool readHierarchy(const QByteArray &json);
 	void readDisplay(const QString &name, const QByteArray &tsv);
+
 	void pruneClusters();
+	void orderClusters(bool genericNames);
+	void colorClusters();
+
 	QByteArray writeDisplay(const QString &name);
 
 	Public d;
@@ -117,6 +124,8 @@ protected:
 		std::unique_ptr<seg_meanshift::FAMS> fams;
 		float k = -1;
 	} meanshift;
+
+	QVector<QColor> colorset = {Qt::black};
 };
 
 #endif // DATASET_H

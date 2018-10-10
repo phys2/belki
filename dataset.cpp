@@ -54,7 +54,7 @@ void Dataset::computeFAMS()
 	d.clustering.clear();
 	auto nmodes = meanshift.fams->getModes().size();
 	for (unsigned i = 0; i < nmodes; ++i)
-		d.clustering[i] = {QString("Cluster #%1").arg(i+1)};
+		d.clustering[i] = {QString("Cluster #%1").arg(i+1), {}};
 
 	auto &index = meanshift.fams->getModePerPoint();
 	for (unsigned i = 0; i < index.size(); ++i) {
@@ -62,7 +62,10 @@ void Dataset::computeFAMS()
 		d.proteins[i].memberOf = {m};
 		d.clustering[m].size++;
 	}
+
 	pruneClusters();
+	orderClusters(true);
+	colorClusters();
 
 	emit newClustering();
 }
@@ -227,7 +230,7 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 			if (line.size() < 2)
 				continue;
 
-			d.clustering[clusterIndex] = {line[0]};
+			d.clustering[clusterIndex] = {line[0], {}};
 			line.removeFirst();
 
 			for (auto &name : qAsConst(line)) {
@@ -254,7 +257,7 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 		d.clustering.clear();
 		d.clustering.reserve((unsigned)header.size());
 		for (auto i = 0; i < header.size(); ++i) {
-			d.clustering[(unsigned)i] = {header[i]};
+			d.clustering[(unsigned)i] = {header[i], {}};
 		}
 
 		/* associate to clusters */
@@ -282,6 +285,8 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 		return false;
 	}
 
+	orderClusters(false);
+	colorClusters();
 	emit newClustering();
 	return true;
 }
@@ -398,13 +403,21 @@ void Dataset::calculatePartition(unsigned granularity)
 	for (auto i : candidates) {
 		auto name = QString("Cluster #%1").arg(container.size() - i);
 		// use index in hierarchy as cluster index as well
-		target[i] = {name};
+		target[i] = {name, {}};
 		flood(i, i);
 	}
 
 	pruneClusters();
+	orderClusters(true);
+	colorClusters();
 
 	emit newClustering();
+}
+
+void Dataset::updateColorset(QVector<QColor> colors)
+{
+	colorset = colors;
+	colorClusters();
 }
 
 void Dataset::pruneClusters()
@@ -421,5 +434,28 @@ void Dataset::pruneClusters()
 		} else {
 			it++;
 		}
+	}
+}
+
+void Dataset::orderClusters(bool genericNames)
+{
+	std::multimap<std::pair<int, QString>, unsigned> clustersOrdered;
+	if (genericNames) {
+		for (auto c : d.clustering) // insert ordered by size, desc; name asc
+			clustersOrdered.insert({{-c.second.size, c.second.name}, c.first});
+	} else {
+		for (auto c : d.clustering) // insert ordered by name
+			clustersOrdered.insert({{0, c.second.name}, c.first});
+	}
+
+	d.clusterOrder.clear();
+	for (auto i : clustersOrdered)
+		d.clusterOrder.push_back(i.second);
+}
+
+void Dataset::colorClusters()
+{
+	for (unsigned i = 0; i < d.clusterOrder.size(); ++i) {
+		d.clustering[d.clusterOrder[i]].color = colorset[(int)i % colorset.size()];
 	}
 }

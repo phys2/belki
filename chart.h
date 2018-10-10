@@ -64,14 +64,13 @@ public:
 	void switchProteinBorders();
 	void adjustProteinAlpha(qreal adjustment);
 
-	static QColor tableau20(unsigned index);
-
 	bool cursorLocked = false;
 
 public slots:
 	void resetCursor();
 	void updateCursor(const QPointF &pos = {});
 	void togglePartitions(bool showPartitions);
+	void updateColorset(QVector<QColor> colors);
 
 signals:
 	void areaChanged();
@@ -83,7 +82,10 @@ signals:
 protected:
 	void animate(int msec);
 
+	// data source
 	Dataset &data;
+
+	/* items in the scene */
 
 	Proteins *master;
 	std::unordered_map<int, Proteins*> partitions;
@@ -91,6 +93,8 @@ protected:
 
 	QGraphicsEllipseItem *tracker;
 	QtCharts::QValueAxis *ax, *ay;
+
+	/* state variables */
 
 	struct {
 		QRectF current;
@@ -108,6 +112,9 @@ protected:
 		Qt::PenStyle border = Qt::PenStyle::DotLine;
 	} proteinStyle;
 
+	QVector<QColor> colorset;
+
+	// deferred animation reset
 	QTimer *animReset;
 };
 

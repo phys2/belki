@@ -16,6 +16,12 @@
 #include <QtDebug>
 
 constexpr auto hierarchyPostfix = " (Hierarchy)";
+const QVector<QColor> tableau20 = {
+    {31, 119, 180}, {174, 199, 232}, {255, 127, 14}, {255, 187, 120},
+    {44, 160, 44}, {152, 223, 138}, {214, 39, 40}, {255, 152, 150},
+    {148, 103, 189}, {197, 176, 213}, {140, 86, 75}, {196, 156, 148},
+    {227, 119, 194}, {247, 182, 210}, {127, 127, 127}, {199, 199, 199},
+    {188, 189, 34}, {219, 219, 141}, {23, 190, 207}, {158, 218, 229}};
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent), store(data),
@@ -46,6 +52,8 @@ MainWindow::MainWindow(QWidget *parent) :
 	setupMarkerControls();
 	setupSignals(); // after setupToolbar(), signal handlers rely on initialized actions
 	setupActions();
+
+	emit updateColorset(tableau20);
 
 	// initialize widgets to be empty & most-restrictive
 	clearData();
@@ -140,6 +148,9 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::computeDisplay, &data, &Dataset::computeDisplay);
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
 	connect(this, &MainWindow::runFAMS, &data, &Dataset::computeFAMS);
+	qRegisterMetaType<QVector<QColor>>();
+	connect(this, &MainWindow::updateColorset, &data, &Dataset::updateColorset);
+	connect(this, &MainWindow::updateColorset, chart, &Chart::updateColorset);
 
 	/* selecting display/partition/etc. always goes through GUI */
 	connect(transformSelect, &QComboBox::currentTextChanged, [this] (auto name) {

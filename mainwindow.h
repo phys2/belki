@@ -39,6 +39,7 @@ signals:
 	void computeDisplay(const QString &name);
 	void calculatePartition(unsigned granularity);
 	void runFAMS();
+	void updateColorset(QVector<QColor> colors);
 
 public slots:
 	void showHelp();

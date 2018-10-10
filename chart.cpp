@@ -120,18 +120,11 @@ void Chart::updatePartitions()
 		partitions[-2] = (new Proteins("Unlabeled", Qt::gray, this));
 		partitions[-1] = (new Proteins("Mixed", Qt::darkGray, this));
 
-		unsigned colorCounter = 0;
-		/*std::multimap<std::pair<int, QString>, unsigned> clustersOrdered;
-		for (auto c : d->clustering) // insert ordered by size, desc; name asc
-			clustersOrdered.insert({{-c.second.size, c.second.name}, c.first});*/
-		std::multimap<QString, unsigned> clustersOrdered;
-		for (auto c : d->clustering) // insert ordered by name
-			clustersOrdered.insert({c.second.name, c.first});
-
-		for (auto i : clustersOrdered) {
-			auto &c = d->clustering[i.second];
-			auto s = new Proteins(c.name, tableau20(colorCounter++), this);
-			partitions[(int)i.second] = s;
+		// go through clusters in their designated order
+		for (auto i : d->clusterOrder) {
+			auto &c = d->clustering[i];
+			auto s = new Proteins(c.name, c.color, this);
+			partitions[(int)i] = s;
 			/* enable profile view updates on legend label hover */
 			auto lm = legend()->markers(s)[0];
 			connect(lm, &QtCharts::QLegendMarker::hovered, [this, s] (bool active) {
@@ -290,6 +283,12 @@ void Chart::togglePartitions(bool showPartitions)
 		s.second->setVisible(showPartitions);
 }
 
+void Chart::updateColorset(QVector<QColor> colors)
+{
+	colorset = colors;
+	// TODO: re-initialize [partitions+]markers
+}
+
 void Chart::zoomAt(const QPointF &pos, qreal factor)
 {
 	animate(0);
@@ -342,18 +341,6 @@ void Chart::animate(int msec) {
 	if (msec == 0)
 		setAnimationOptions(NoAnimation); // yes, this avoids slowdown…
 	animReset->start(msec + 1000);
-}
-
-QColor Chart::tableau20(unsigned index)
-{
-	const std::vector<QColor> tableau = {
-	    {31, 119, 180}, {174, 199, 232}, {255, 127, 14}, {255, 187, 120},
-	    {44, 160, 44}, {152, 223, 138}, {214, 39, 40}, {255, 152, 150},
-	    {148, 103, 189}, {197, 176, 213}, {140, 86, 75}, {196, 156, 148},
-	    {227, 119, 194}, {247, 182, 210}, {127, 127, 127}, {199, 199, 199},
-	    {188, 189, 34}, {219, 219, 141}, {23, 190, 207}, {158, 218, 229}};
-
-	return tableau[index % tableau.size()];
 }
 
 Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)
@@ -431,7 +418,7 @@ Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
 	attachAxis(chart->axisY());
 
 	setBorderColor(Qt::black);
-	setColor(chart->tableau20(qHash(label)));
+	setColor(chart->colorset[(int)qHash(label) % chart->colorset.size()]);
 	setMarkerShape(QtCharts::QScatterSeries::MarkerShapeRectangle);
 	setMarkerSize(chart->proteinStyle.size * 1.3333);
 	setPointLabelsVisible(true);
