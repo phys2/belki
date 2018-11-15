@@ -54,7 +54,8 @@ void Storage::openDataset(const QString &filename)
 		return true;
 	};
 	auto check_checksum = [this] (auto &zipname, auto &contents, auto &basename, auto proof) {
-		auto cs = contents.filter(QRegularExpression("^input/" + basename + "/.*\\.sha256$"));
+		auto re = QString("^input/%1/.*\\.sha256$").arg(QRegularExpression::escape(basename));
+		auto cs = contents.filter(QRegularExpression(re));
 		if (cs.empty()) {
 			ioError(QString("The ZIP file %1 lacks a checksum for %2!").arg(zipname, basename));
 			return false;
@@ -68,7 +69,8 @@ void Storage::openDataset(const QString &filename)
 	auto calc_checksum = [] (auto data) { return QCryptographicHash::hash(data, QCryptographicHash::Sha256).toHex(); };
 	auto read_auxiliary = [this] (auto &contents) {
 		// displays – read at start
-		auto de = contents.filter(QRegularExpression("^input/" + sourcename + "/displays/.*\\.tsv$"));
+		auto re = QString("^input/%1/displays/.*\\.tsv$").arg(QRegularExpression::escape(sourcename));
+		auto de = contents.filter(QRegularExpression(re));
 		for (auto &d : qAsConst(de))
 			data.readDisplay(QFileInfo(d).completeBaseName(), container->read(d));
 
