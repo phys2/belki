@@ -11,6 +11,11 @@
 
 void Dataset::computeDisplay(const QString& name)
 {
+	// empty data shouldn't happen but right now can when a file cannot be read completely,
+	// in the future this should result in IOError already earlier
+	if (d.features.empty())
+		return;
+
 	// note: no read lock as we are write thread
 	auto result = dimred::compute(name, d.features);
 
@@ -30,6 +35,11 @@ void Dataset::computeDisplays()
 
 void Dataset::computeFAMS()
 {
+	// empty data shouldn't happen but right now can when a file cannot be read completely,
+	// in the future this should result in IOError already earlier
+	if (d.features.empty())
+		return;
+
 	auto &fams = meanshift.fams;
 	qDebug() << "FAMS " << meanshift.k << " vs " << (fams ? fams->config.k : 0);
 	if (fams && (fams->config.k == meanshift.k || meanshift.k <= 0))
@@ -88,12 +98,18 @@ bool Dataset::readSource(QTextStream in)
 {
 	QWriteLocker _(&l);
 
-	/* re-initialize data */
+	auto header = in.readLine().split("\t");
+	header.pop_front(); // first column
+	if (header.contains("") || header.removeDuplicates()) {
+		emit ioError("Malformed header: Duplicate or empty columns!");
+		return false;
+	}
+
+	/* re-initialize data – no return false from this point on! */
 	cancelFAMS();
 	d = Public();
 
-	auto header = in.readLine().split("\t");
-	header.pop_front(); // first column
+	/* fill it up */
 	d.dimensions = header;
 	auto len = d.dimensions.size();
 	while (!in.atEnd()) {
@@ -111,11 +127,18 @@ bool Dataset::readSource(QTextStream in)
 			break; // avoid message flood
 		}
 
+		bool success = true;
 		QVector<double> coeffs(len);
 		QVector<QPointF> points(len);
 		for (int i = 0; i < len; ++i) {
-			coeffs[i] = line[i+1].toDouble();
+			bool ok;
+			coeffs[i] = line[i+1].toDouble(&ok);
+			success = success && ok;
 			points[i] = {(qreal)i, coeffs[i]};
+		}
+		if (!success) {
+			emit ioError(QString("Stopped at protein '%1', malformed row!").arg(p.name));
+			break; // avoid message flood
 		}
 		d.features.append(std::move(coeffs));
 		d.featurePoints.push_back(std::move(points));

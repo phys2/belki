@@ -39,6 +39,8 @@ Chart::Chart(Dataset &data) :
 	tracker = new QGraphicsEllipseItem(this);
 	tracker->setPen({Qt::red});
 	tracker->setZValue(1000);
+
+	/* reset cursor whenever the zoom changes, TODO: why doesn't it work? */
 	connect(ax, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
 	connect(ay, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
 
@@ -215,8 +217,8 @@ void Chart::updateCursor(const QPointF &pos)
 		auto d = data.peek();
 		auto p = master->pointsVector();
 		for (int i = 0; i < p.size(); ++i) {
-			auto diff = p[i] - center;
-			if (QPointF::dotProduct(diff, diff) < range) {
+			auto diffVec = p[i] - center;
+			if (QPointF::dotProduct(diffVec, diffVec) < range) {
 				list << (unsigned)i;
 				for (auto m : d->proteins[(unsigned)i].memberOf)
 					affectedPartitions.insert((int)m);

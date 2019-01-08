@@ -32,6 +32,14 @@ void HeatmapScene::reset(bool haveData)
 		profiles[i] = h;
 	}
 
+	// empty data shouldn't happen but right now can when a file cannot be read completely,
+	// in the future this should result in IOError already earlier
+	if (profiles.empty())
+		return;
+
+	// save for later
+	layout.columnWidth = profiles[0]->boundingRect().width();
+
 	// TODO: reorder using hier. order
 }
 
