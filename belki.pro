@@ -25,7 +25,7 @@ LIBS += -fopenmp
 INCLUDEPATH += /usr/include/eigen3 #PKGCONFIG += eigen3 does not work with mingw
 PKGCONFIG += arpack
 # opencv for distance computations
-PKGCONFIG += opencv
+PKGCONFIG += opencv4
 # TBB for micro-parallelization
 win32 {
     LIBS += -ltbb_static
