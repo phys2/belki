@@ -1,11 +1,11 @@
 #include "fileio.h"
 
-#include <QtWidgets/QMainWindow>
-#include <QtWidgets/QFileDialog>
-#include <QtCore/QMap>
-#include <QtSvg/QSvgGenerator>
-//#include <QtPrintSupport/QPrinter> // for PDF support
-#include <QtGui/QPainter>
+#include <QMainWindow>
+#include <QFileDialog>
+#include <QMap>
+#include <QSvgGenerator>
+//#include <QPrinter> // for PDF support
+#include <QPainter>
 
 #include <QtDebug>
 

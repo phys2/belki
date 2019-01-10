@@ -5,14 +5,14 @@
 #include "profilechart.h"
 #include "profilewindow.h"
 
-#include <QtCore/QFileInfo>
-#include <QtCore/QDir>
-#include <QtWidgets/QCompleter>
-#include <QtGui/QStandardItemModel>
-#include <QtCore/QAbstractProxyModel>
-#include <QtWidgets/QLabel>
-#include <QtWidgets/QMessageBox>
-#include <QtWidgets/QMenu>
+#include <QFileInfo>
+#include <QDir>
+#include <QCompleter>
+#include <QStandardItemModel>
+#include <QAbstractProxyModel>
+#include <QLabel>
+#include <QMessageBox>
+#include <QMenu>
 
 #include <QtDebug>
 

@@ -3,9 +3,9 @@
 
 #include "dataset.h"
 
-#include <QtCharts/QChart>
-#include <QtCharts/QScatterSeries>
-#include <QtCore/QStack>
+#include <QChart>
+#include <QScatterSeries>
+#include <QStack>
 
 #include <unordered_map>
 

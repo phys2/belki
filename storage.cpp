@@ -2,11 +2,11 @@
 
 #include "storage/qzip.h"
 
-#include <QtCore/QFile>
-#include <QtCore/QFileInfo>
-#include <QtCore/QCryptographicHash> // for checksum
-#include <QtCore/QTextStream>
-#include <QtCore/QRegularExpression>
+#include <QFile>
+#include <QFileInfo>
+#include <QCryptographicHash> // for checksum
+#include <QTextStream>
+#include <QRegularExpression>
 #include <QtDebug>
 
 /* storage version, increase on breaking changes */

@@ -1,11 +1,11 @@
 #include "profilechart.h"
 #include "profilewindow.h"
 
-#include <QtCharts/QLineSeries>
-#include <QtCharts/QAreaSeries>
-#include <QtCharts/QValueAxis>
-#include <QtCharts/QBarCategoryAxis>
-#include <QtCharts/QCategoryAxis>
+#include <QLineSeries>
+#include <QAreaSeries>
+#include <QValueAxis>
+#include <QBarCategoryAxis>
+#include <QCategoryAxis>
 
 #include <cmath>
 

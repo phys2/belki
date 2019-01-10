@@ -7,8 +7,8 @@
 #include "storage.h"
 #include "fileio.h"
 
-#include <QtWidgets/QMainWindow>
-#include <QtCore/QThread>
+#include <QMainWindow>
+#include <QThread>
 
 #include <memory>
 

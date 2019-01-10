@@ -1,7 +1,7 @@
 #include "heatmapview.h"
 #include "heatmapscene.h"
 
-#include <QtGui/QKeyEvent>
+#include <QKeyEvent>
 
 #include <QtDebug>
 

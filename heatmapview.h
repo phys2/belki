@@ -1,7 +1,7 @@
 #ifndef HEATMAPVIEW_H
 #define HEATMAPVIEW_H
 
-#include <QtWidgets/QGraphicsView>
+#include <QGraphicsView>
 
 class HeatmapScene;
 

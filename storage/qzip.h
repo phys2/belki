@@ -26,11 +26,11 @@
 
 #include "miniz.h"
 
-#include <QtCore/QString>
-#include <QtCore/QByteArray>
-#include <QtCore/QFile>
-#include <QtCore/QSaveFile>
-#include <QtCore/QDateTime>
+#include <QString>
+#include <QByteArray>
+#include <QFile>
+#include <QSaveFile>
+#include <QDateTime>
 #include <vector>
 
 namespace qzip {

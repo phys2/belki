@@ -1,20 +1,20 @@
 #include "chart.h"
 
-#include <QtCharts/QAbstractAxis>
-#include <QtCharts/QScatterSeries>
-#include <QtCharts/QSplineSeries>
-#include <QtCharts/QValueAxis>
-#include <QtCharts/QLegendMarker>
-#include <QtWidgets/QGraphicsScene>
-#include <QtWidgets/QGraphicsSceneMouseEvent>
-#include <QtGui/QPolygonF>
-#include <QtCore/QHash>
-#include <QtCore/QTimer>
+#include <QAbstractAxis>
+#include <QScatterSeries>
+#include <QSplineSeries>
+#include <QValueAxis>
+#include <QLegendMarker>
+#include <QGraphicsScene>
+#include <QGraphicsSceneMouseEvent>
+#include <QPolygonF>
+#include <QHash>
+#include <QTimer>
 
 #include <map>
 #include <cmath>
 
-#include <QtCore/QDebug>
+#include <QDebug>
 
 Chart::Chart(Dataset &data) :
     data(data),

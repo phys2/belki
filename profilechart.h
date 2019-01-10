@@ -1,8 +1,8 @@
 #ifndef PROFILECHART_H
 #define PROFILECHART_H
 
-#include <QtCore/QStringList>
-#include <QtCharts/QChart>
+#include <QStringList>
+#include <QChart>
 
 class ProfileWindow;
 

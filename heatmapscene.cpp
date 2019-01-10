@@ -1,7 +1,7 @@
 #include "heatmapscene.h"
 
-#include <QtGui/QPainter>
-#include <QtWidgets/QGraphicsItem>
+#include <QPainter>
+#include <QGraphicsItem>
 
 #include <QtDebug>
 
@@ -38,7 +38,7 @@ void HeatmapScene::reset(bool haveData)
 		return;
 
 	// save for later
-	layout.columnWidth = profiles[0]->boundingRect().width();
+	//layout.columnWidth = profiles[0]->boundingRect().width();
 
 	// TODO: reorder using hier. order
 }

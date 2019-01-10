@@ -3,15 +3,15 @@
 
 #include "meanshift/fams.h"
 
-#include <QtCore/QString>
-#include <QtCore/QMap>
-#include <QtCore/QVector>
-#include <QtCore/QList>
-#include <QtCore/QPointF>
-#include <QtGui/QColor>
-#include <QtCore/QReadWriteLock>
-#include <QtCore/QTextStream>
-#include <QtCore/QByteArray>
+#include <QString>
+#include <QMap>
+#include <QVector>
+#include <QList>
+#include <QPointF>
+#include <QColor>
+#include <QReadWriteLock>
+#include <QTextStream>
+#include <QByteArray>
 
 #include <set>
 #include <map>

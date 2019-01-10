@@ -3,8 +3,8 @@
 
 #include "dataset.h"
 
-#include <QtWidgets/QGraphicsScene>
-#include <QtWidgets/QAbstractGraphicsShapeItem>
+#include <QGraphicsScene>
+#include <QAbstractGraphicsShapeItem>
 
 class HeatmapScene : public QGraphicsScene
 {
