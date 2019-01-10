@@ -107,7 +107,7 @@
   <customwidget>
    <class>QtCharts::QChartView</class>
    <extends>QGraphicsView</extends>
-   <header location="global">QtCharts/QChartView</header>
+   <header location="global">QChartView</header>
   </customwidget>
  </customwidgets>
  <resources>
