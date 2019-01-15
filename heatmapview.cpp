@@ -47,7 +47,6 @@ void HeatmapView::wheelEvent(QWheelEvent *event)
 
 void HeatmapView::resizeEvent(QResizeEvent *event)
 {
-	qDebug() << "RESIZE";
 	arrangeScene(event->size());
 
 	QGraphicsView::resizeEvent(event);
