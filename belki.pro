@@ -4,6 +4,9 @@ CONFIG += c++1z
 CONFIG += link_pkgconfig
 QMAKE_CXXFLAGS_RELEASE = -O3 -march=nehalem
 
+QMAKE_CXXFLAGS_DEBUG += -fsanitize=address,leak,undefined
+debug:QMAKE_LIBS += -fsanitize=address,leak,undefined
+
 # PLATFORM SUPPORT
 
 win32 {
