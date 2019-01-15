@@ -128,7 +128,7 @@ bool Dataset::readSource(QTextStream in)
 		}
 
 		bool success = true;
-		QVector<double> coeffs(len);
+		std::vector<double> coeffs(len);
 		QVector<QPointF> points(len);
 		for (int i = 0; i < len; ++i) {
 			bool ok;

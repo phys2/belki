@@ -86,7 +86,7 @@ void HeatmapScene::recolor()
 }
 
 
-HeatmapScene::Profile::Profile(unsigned index, QVector<double> features, QGraphicsItem *parent)
+HeatmapScene::Profile::Profile(unsigned index, const std::vector<double> &features, QGraphicsItem *parent)
     : QAbstractGraphicsShapeItem(parent),
       index(index), features(features)
 {

@@ -36,7 +36,7 @@ std::vector<dimred::Method> availableMethods()
 	};
 }
 
-QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &features)
+QMap<QString, QVector<QPointF>> compute(QString m, QVector<std::vector<double> > &features)
 {
 	std::cout << "Computing " << m.toStdString() << std::endl;
 
@@ -65,26 +65,26 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<QVector<double> > &fe
 
 	std::map<QString, std::function<double(int, int)>> dist = {
 	    {"L1", [&features] (int i, int j) {
-		    return cv::norm(features[i].toStdVector(), features[j].toStdVector(), cv::NORM_L1);
+		    return cv::norm(features[i], features[j], cv::NORM_L1);
 	    }},
 	    {"L2", [&features] (int i, int j) {
-		    return cv::norm(features[i].toStdVector(), features[j].toStdVector(), cv::NORM_L2);
+		    return cv::norm(features[i], features[j], cv::NORM_L2);
 	    }},
 	    {"NL2", [&features] (int i, int j) {
-		    cv::Mat1d mi(features[i].toStdVector()), mj(features[j].toStdVector());
+		    cv::Mat1d mi(features[i]), mj(features[j]);
 			mi /= cv::norm(mi);
 			mj /= cv::norm(mj);
 			return cv::norm(mi, mj); // TODO: use cv::NORM_L2SQR?
 	    }},
 	    {"COS", [&features] (int i, int j) {
-		    cv::Mat1d mi(features[i].toStdVector()), mj(features[j].toStdVector());
+		    cv::Mat1d mi(features[i]), mj(features[j]);
 			return mi.dot(mj) / (cv::norm(mi) * cv::norm(mj));
 	    }},
 	    {"EMD", [&features] (int i, int j) {
 		    cv::Mat1f mi(features[i].size(), 1 + 1, 1.f); // weight + value
 			cv::Mat1f mj(features[i].size(), 1 + 1, 1.f); // weight + value
-			std::copy(features[i].constBegin(), features[i].constEnd(), mi.begin() + 1);
-			std::copy(features[j].constBegin(), features[j].constEnd(), mj.begin() + 1);
+			std::copy(features[i].cbegin(), features[i].cend(), mi.begin() + 1);
+			std::copy(features[j].cbegin(), features[j].cend(), mj.begin() + 1);
 			// use L1 here as we have scalar inputs anyway
 			return cv::EMD(mi, mj, cv::DIST_L1);
 	    }},

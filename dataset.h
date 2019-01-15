@@ -60,7 +60,7 @@ public:
 		std::vector<Protein> proteins;
 
 		// original data
-		QVector<QVector<double>> features;
+		QVector<std::vector<double>> features;
 		// pre-cached set of points
 		std::vector<QVector<QPointF>> featurePoints;
 

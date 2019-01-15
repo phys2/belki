@@ -146,7 +146,7 @@ public:
 	const auto& getModes() const { return prunedModes; }
 	const auto& getModePerPoint() const { return prunedIndex; }
 
-	bool importPoints(const QVector<QVector<double>> &features, bool normalize = false);
+	bool importPoints(const QVector<std::vector<double>> &features, bool normalize = false);
 	void selectStartPoints(double percent, int jump);
 	void importStartPoints(std::vector<Point> &points);
 

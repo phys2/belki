@@ -12,7 +12,7 @@ using namespace std;
 
 namespace seg_meanshift {
 
-bool FAMS::importPoints(const QVector<QVector<double>> &features, bool normalize) {
+bool FAMS::importPoints(const QVector<std::vector<double>> &features, bool normalize) {
 	bgLog("Import data points from multispectral image... ");
 
 	// w_ and h_ are only used for result output (i.e. in io.cpp)
@@ -31,7 +31,7 @@ bool FAMS::importPoints(const QVector<QVector<double>> &features, bool normalize
 
 		float factor = 65535.;
 		if (normalize) {
-			double n = cv::norm(source.toStdVector(), cv::NORM_L2);
+			double n = cv::norm(source, cv::NORM_L2);
 			if (n == 0.)
 				n = 1.;
 			if (n < 1.)

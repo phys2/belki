@@ -12,7 +12,7 @@ namespace dimred {
 		QString description;
 	};
 
-	QMap<QString, QVector<QPointF>> compute(QString method, QVector<QVector<double>> &features);
+	QMap<QString, QVector<QPointF>> compute(QString method, QVector<std::vector<double>> &features);
 
 	std::vector<Method> availableMethods();
 }
