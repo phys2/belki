@@ -59,7 +59,9 @@ HEADERS += \
     profilechart.h \
     storage.h \
     heatmapscene.h \
-    heatmapview.h
+    heatmapview.h \
+    distmatscene.h \
+    distmatview.h
 
 SOURCES += \
     meanshift/fams.cpp \
@@ -77,7 +79,9 @@ SOURCES += \
     profilechart.cpp \
     storage.cpp \
     heatmapscene.cpp \
-    heatmapview.cpp
+    heatmapview.cpp \
+    distmatscene.cpp \
+    distmatview.cpp
 
 FORMS += \
     mainwindow.ui \

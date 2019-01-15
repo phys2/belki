@@ -435,6 +435,62 @@
            <property name="horizontalScrollBarPolicy">
             <enum>Qt::ScrollBarAlwaysOff</enum>
            </property>
+           <property name="sizeAdjustPolicy">
+            <enum>QAbstractScrollArea::AdjustToContentsOnFirstShow</enum>
+           </property>
+           <property name="backgroundBrush">
+            <brush brushstyle="SolidPattern">
+             <color alpha="255">
+              <red>64</red>
+              <green>64</green>
+              <blue>64</blue>
+             </color>
+            </brush>
+           </property>
+           <property name="renderHints">
+            <set>QPainter::TextAntialiasing</set>
+           </property>
+           <property name="dragMode">
+            <enum>QGraphicsView::ScrollHandDrag</enum>
+           </property>
+           <property name="transformationAnchor">
+            <enum>QGraphicsView::AnchorUnderMouse</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="distmatTab">
+        <attribute name="title">
+         <string>Distance Map</string>
+        </attribute>
+        <layout class="QVBoxLayout" name="verticalLayout1">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="DistmatView" name="distmatView">
+           <property name="verticalScrollBarPolicy">
+            <enum>Qt::ScrollBarAlwaysOff</enum>
+           </property>
+           <property name="horizontalScrollBarPolicy">
+            <enum>Qt::ScrollBarAlwaysOff</enum>
+           </property>
+           <property name="sizeAdjustPolicy">
+            <enum>QAbstractScrollArea::AdjustToContents</enum>
+           </property>
            <property name="backgroundBrush">
             <brush brushstyle="SolidPattern">
              <color alpha="255">
@@ -624,7 +680,8 @@
   </action>
   <action name="actionExportAnnotations">
    <property name="icon">
-    <iconset theme="document-export"/>
+    <iconset theme="document-export">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Export Annotations</string>
@@ -661,6 +718,11 @@
    <class>HeatmapView</class>
    <extends>QGraphicsView</extends>
    <header>heatmapview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>DistmatView</class>
+   <extends>QGraphicsView</extends>
+   <header>distmatview.h</header>
   </customwidget>
  </customwidgets>
  <resources>

@@ -15,6 +15,7 @@
 class QLabel;
 class Chart;
 class HeatmapScene;
+class DistmatScene;
 class ProfileChart;
 class QStandardItem;
 
@@ -66,6 +67,7 @@ protected:
 
 	Chart *chart;
 	HeatmapScene *heatmap;
+	DistmatScene *distmat;
 
 	ProfileChart *cursorChart;
 	QLabel *fileLabel;
