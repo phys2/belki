@@ -29,6 +29,7 @@ std::vector<dimred::Method> availableMethods()
 		{"tSNE", "tSNE", "t-distributed stochastic neighbor embedding, Euclidean"},
 		{"tSNE 10", "tSNE 10", "t-SNE with perplexity 10"},
 		{"tSNE 20", "tSNE 20", "t-SNE with perplexity 20"},
+		{"tSNE 30", "tSNE 30", "t-SNE with perplexity 30"},
 		{"tSNE 40", "tSNE 40", "t-SNE with perplexity 40"},
 		{"tSNE 50", "tSNE 50", "t-SNE with perplexity 50"},
 		{"tSNE 60", "tSNE 60", "t-SNE with perplexity 60"},
