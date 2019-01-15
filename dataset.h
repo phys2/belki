@@ -15,6 +15,8 @@
 
 #include <set>
 #include <map>
+#include <unordered_map>
+#include <memory>
 
 class Dataset : public QObject
 {
