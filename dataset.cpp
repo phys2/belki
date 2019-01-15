@@ -444,6 +444,8 @@ void Dataset::updateColorset(QVector<QColor> colors)
 
 void Dataset::pruneClusters()
 {
+	QWriteLocker _(&l);
+
 	/* defragment clusters (un-assign and remove small clusters) */
 	// TODO: make configurable; instead keep X biggest clusters?
 	auto minSize = unsigned(0.005f * (float)d.proteins.size());
@@ -461,6 +463,8 @@ void Dataset::pruneClusters()
 
 void Dataset::orderClusters(bool genericNames)
 {
+	QWriteLocker _(&l);
+
 	std::multimap<std::pair<int, QString>, unsigned> clustersOrdered;
 	if (genericNames) {
 		for (auto c : d.clustering) // insert ordered by size, desc; name asc
@@ -477,6 +481,8 @@ void Dataset::orderClusters(bool genericNames)
 
 void Dataset::colorClusters()
 {
+	QWriteLocker _(&l);
+
 	for (unsigned i = 0; i < d.clusterOrder.size(); ++i) {
 		d.clustering[d.clusterOrder[i]].color = colorset[(int)i % colorset.size()];
 	}

@@ -118,7 +118,7 @@ protected:
 	QByteArray writeDisplay(const QString &name);
 
 	Public d;
-	QReadWriteLock l;
+	QReadWriteLock l{QReadWriteLock::RecursionMode::Recursive};
 
 	struct {
 		std::unique_ptr<seg_meanshift::FAMS> fams;
