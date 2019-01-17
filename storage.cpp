@@ -162,7 +162,7 @@ void Storage::openDataset(const QString &filename)
 		}
 	}
 
-	// TODO: this is awkward, on-demand computing
+	// compute some initial displays
 	data.computeDisplays();
 }
 
@@ -234,7 +234,7 @@ void Storage::exportAnnotations(const QString &filename)
 		return ioError(QString("Could not write file %1!").arg(filename));
 
 	QTextStream out(&f);
-	auto d = data.peek();
+	auto d = data.peek(); // TODO: avoid acquiring read lock in writer thread!
 
 	// write header
 	out << "Protein Name";
@@ -264,7 +264,7 @@ QVector<unsigned> Storage::importMarkers(const QString &filename)
 
 	QVector<unsigned> ret;
 	QTextStream in(&f);
-	auto d = data.peek();
+	auto d = data.peek(); // TODO: avoid acquiring read lock in writer thread!
 	while (!in.atEnd()) {
 		QString name;
 		in >> name;
@@ -284,7 +284,7 @@ void Storage::exportMarkers(const QString &filename, const QVector<unsigned> &in
 		return ioError(QString("Could not write file %1!").arg(filename));
 
 	QTextStream out(&f);
-	auto d = data.peek();
+	auto d = data.peek(); // TODO: avoid acquiring read lock in writer thread!
 	for (auto i : indices) {
 		auto &p = d->proteins[i];
 		out << p.name;
