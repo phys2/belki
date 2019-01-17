@@ -431,11 +431,9 @@ void Dataset::calculatePartition(unsigned granularity)
 		auto &current = container[i];
 
 		// add either parent or childs, if any of them is eligible by-itself
-		auto useChildrenInstead = false;
-		for (auto c : current.children) {
-			if (c >= lowBound)
-				useChildrenInstead = true;
-		}
+		auto useChildrenInstead =
+		        std::any_of(current.children.begin(), current.children.end(),
+		                    [lowBound] (auto c) { return c >= lowBound; });
 		if (useChildrenInstead) {
 			for (auto c : current.children) {
 				if (c < lowBound) // only add what's not covered by granularity
@@ -454,7 +452,7 @@ void Dataset::calculatePartition(unsigned granularity)
 			d.proteins[(unsigned)current.protein].memberOf = {cIndex};
 			d.clustering[cIndex].size++;
 		}
-		for (auto &c : current.children)
+		for (auto c : current.children)
 			flood(c, cIndex);
 	};
 
