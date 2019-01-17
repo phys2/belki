@@ -149,6 +149,8 @@ public:
 	bool importPoints(const QVector<std::vector<double>> &features, bool normalize = false);
 	void selectStartPoints(double percent, int jump);
 	void importStartPoints(std::vector<Point> &points);
+	// returns a vector of pruned modes (sorted by size)
+	std::vector<std::vector<double>> exportModes() const;
 
 	/** optional argument bandwidths provides pre-calculated
 	 *  per-point bandwidth
@@ -162,9 +164,6 @@ public:
 	void saveModes(const std::string& filename, bool pruned);
 
 	void ComputeRealBandwidths(unsigned int h);
-
-	// returns a vector of pruned modes (sorted by size)
-	//std::vector<std::vector<float>> modeVector() const;
 
 	// conversion functions
 	inline float ushort2value(unsigned short in) const

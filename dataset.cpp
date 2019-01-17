@@ -62,9 +62,9 @@ void Dataset::computeFAMS()
 
 	QWriteLocker _(&l);
 	d.clustering.clear();
-	auto nmodes = meanshift.fams->getModes().size();
-	for (unsigned i = 0; i < nmodes; ++i)
-		d.clustering[i] = {QString("Cluster #%1").arg(i+1), {}};
+	auto modes = meanshift.fams->exportModes();
+	for (unsigned i = 0; i < modes.size(); ++i)
+		d.clustering[i] = {QString("Cluster #%1").arg(i+1), {}, 0, modes[i]};
 
 	auto &index = meanshift.fams->getModePerPoint();
 	for (unsigned i = 0; i < index.size(); ++i) {
@@ -74,6 +74,7 @@ void Dataset::computeFAMS()
 	}
 
 	pruneClusters();
+	computeClusterCentroids();
 	orderClusters(true);
 	colorClusters();
 
@@ -339,6 +340,7 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 		return false;
 	}
 
+	computeClusterCentroids();
 	orderClusters(false);
 	colorClusters();
 	emit newClustering();
@@ -457,11 +459,13 @@ void Dataset::calculatePartition(unsigned granularity)
 	for (auto i : candidates) {
 		auto name = QString("Cluster #%1").arg(container.size() - i);
 		// use index in hierarchy as cluster index as well
-		target[i] = {name, {}};
+		target[i] = {name, {}, 0, {}};
 		flood(i, i);
 	}
 
 	pruneClusters();
+
+	computeClusterCentroids();
 	orderClusters(true);
 	colorClusters();
 
@@ -493,16 +497,36 @@ void Dataset::pruneClusters()
 	}
 }
 
+void Dataset::computeClusterCentroids()
+{
+	QWriteLocker _(&l);
+
+	for (auto &c: d.clustering) {
+		c.second.mode = std::vector<double>((size_t)d.dimensions.size(), 0.);
+	}
+
+	for (unsigned i = 0; i < d.proteins.size(); ++i) {
+		for (auto ci : d.proteins[i].memberOf)
+			cv::add(d.clustering[ci].mode, d.features[(int)i], d.clustering[ci].mode);
+	}
+
+	for (auto &c: d.clustering) {
+		auto scale = 1./c.second.size;
+		auto &m = c.second.mode;
+		std::for_each(m.begin(), m.end(), [scale] (double &e) { e *= scale; });
+	}
+}
+
 void Dataset::orderClusters(bool genericNames)
 {
 	QWriteLocker _(&l);
 
 	std::multimap<std::pair<int, QString>, unsigned> clustersOrdered;
 	if (genericNames) {
-		for (auto c : d.clustering) // insert ordered by size, desc; name asc
+		for (auto &c : d.clustering) // insert ordered by size, desc; name asc
 			clustersOrdered.insert({{-c.second.size, c.second.name}, c.first});
 	} else {
-		for (auto c : d.clustering) // insert ordered by name
+		for (auto &c : d.clustering) // insert ordered by name
 			clustersOrdered.insert({{0, c.second.name}, c.first});
 	}
 

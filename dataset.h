@@ -40,6 +40,8 @@ public:
 		QString name;
 		QColor color;
 		unsigned size = 0;
+		// mode of the cluster, if not available, centroid
+		std::vector<double> mode;
 	};
 
 	struct HrCluster {
@@ -114,6 +116,7 @@ protected:
 	void readDisplay(const QString &name, const QByteArray &tsv);
 
 	void pruneClusters();
+	void computeClusterCentroids();
 	void orderClusters(bool genericNames);
 	void colorClusters();
 

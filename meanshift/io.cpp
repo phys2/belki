@@ -52,16 +52,16 @@ bool FAMS::importPoints(const QVector<std::vector<double>> &features, bool norma
 	return true;
 }
 
-/*std::vector<multi_img::Pixel> FAMS::modeVector() const {
-	std::vector<multi_img::Pixel> ret(prunedModes.size(), multi_img::Pixel(d_));
-	for (size_t i = 0; i < prunedModes.size(); ++i) {
-		const std::vector<unsigned short> &src = prunedModes[i];
-		multi_img::Pixel &dest = ret[i];
+std::vector<std::vector<double>> FAMS::exportModes() const {
+	std::vector<std::vector<double>> ret;
+	for (const auto& src : prunedModes) {
+		std::vector<double> dest(d_);
 		for (size_t d = 0; d < src.size(); ++d)
 			dest[d] = ushort2value(src[d]);
+		ret.push_back(std::move(dest));
 	}
 	return ret;
-}*/
+}
 
 void FAMS::saveModes(const std::string& filename, bool pruned) {
 
