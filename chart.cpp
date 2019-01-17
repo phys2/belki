@@ -27,8 +27,8 @@ Chart::Chart(Dataset &data) :
 	setAnimationOptions(SeriesAnimations);
 	legend()->setAlignment(Qt::AlignLeft);
 
-	setAxisX(ax);
-	setAxisY(ay);
+	addAxis(ax, Qt::AlignBottom);
+	addAxis(ay, Qt::AlignLeft);
 	ax->setTitleText("dim 1");
 	ay->setTitleText("dim 2");
 
@@ -240,8 +240,8 @@ void Chart::undoZoom(bool full)
 	auto range = (full ? zoom.history.first() : zoom.history.pop());
 	if (full)
 		zoom.history.clear();
-	axisX()->setRange(range.left(), range.right());
-	axisY()->setRange(range.top(), range.bottom());
+	ax->setRange(range.left(), range.right());
+	ay->setRange(range.top(), range.bottom());
 	// undo triggered push
 	zoom.history.pop();
 }
@@ -349,8 +349,8 @@ Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)
 {
 	setName(label);
 	chart->addSeries(this);
-	attachAxis(chart->axisX());
-	attachAxis(chart->axisY());
+	attachAxis(chart->ax);
+	attachAxis(chart->ay);
 
 	setColor(color);
 	redecorate();
@@ -416,8 +416,8 @@ Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
 	append(chart->master->pointsVector()[(int)sampleIndex]);
 	chart->addSeries(this);
 
-	attachAxis(chart->axisX());
-	attachAxis(chart->axisY());
+	attachAxis(chart->ax);
+	attachAxis(chart->ay);
 
 	setBorderColor(Qt::black);
 	setColor(chart->colorset[(int)qHash(label) % chart->colorset.size()]);
