@@ -241,6 +241,8 @@ void MainWindow::setupActions()
 		auto filename = io->chooseFile(FileIO::OpenDataset);
 		if (filename.isEmpty())
 			return;
+		// avoid queueing signals from widgets referencing old data
+		clearData();
 		fileLabel->setText(QString("<i>Calculating…</i>"));
 		emit openDataset(filename);
 	});
