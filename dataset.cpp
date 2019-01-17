@@ -291,7 +291,7 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 			if (line.size() < 2)
 				continue;
 
-			d.clustering[clusterIndex] = {line[0], {}};
+			d.clustering[clusterIndex] = {line[0], {}, 0, {}};
 			line.removeFirst();
 
 			for (auto &name : qAsConst(line)) {
@@ -318,7 +318,7 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 		d.clustering.clear();
 		d.clustering.reserve((unsigned)header.size());
 		for (auto i = 0; i < header.size(); ++i) {
-			d.clustering[(unsigned)i] = {header[i], {}};
+			d.clustering[(unsigned)i] = {header[i], {}, 0, {}};
 		}
 
 		/* associate to clusters */
