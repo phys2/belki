@@ -7,6 +7,8 @@
 #include <QJsonArray>
 #include <QRegularExpression>
 
+#include <unordered_set>
+
 #include <QDebug>
 
 void Dataset::computeDisplay(const QString& name)
@@ -77,6 +79,8 @@ void Dataset::computeFAMS()
 	computeClusterCentroids();
 	orderClusters(true);
 	colorClusters();
+
+	orderProteins(OrderBy::CLUSTERING);
 
 	emit newClustering();
 }
@@ -183,6 +187,8 @@ bool Dataset::readSource(QTextStream in)
 			points[i] = {(qreal)i, in[i]};
 		d.featurePoints.push_back(std::move(points));
 	}
+
+	orderProteins(OrderBy::NAME);
 
 	emit newSource();
 	return true;
@@ -343,6 +349,9 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 	computeClusterCentroids();
 	orderClusters(false);
 	colorClusters();
+
+	orderProteins(OrderBy::CLUSTERING);
+
 	emit newClustering();
 	return true;
 }
@@ -399,6 +408,8 @@ bool Dataset::readHierarchy(const QByteArray &json)
 			              (unsigned)node["right_child"].toInt()};
 		}
 	}
+
+	orderProteins(OrderBy::HIERARCHY);
 
 	emit newHierarchy();
 	return true;
@@ -542,4 +553,66 @@ void Dataset::colorClusters()
 	for (unsigned i = 0; i < d.clusterOrder.size(); ++i) {
 		d.clustering[d.clusterOrder[i]].color = colorset[(int)i % colorset.size()];
 	}
+}
+
+void Dataset::orderProteins(OrderBy by)
+{
+	QWriteLocker _(&l);
+
+	auto &target = d.proteinOrder;
+	target.clear();
+
+	auto byName = [this] (auto a, auto b) {
+		return d.proteins[a].name < d.proteins[b].name;
+	};
+
+	/* order based on hierarchy */
+	if (by == OrderBy::HIERARCHY) {
+		return;
+	}
+
+	/* order based on ordered clusters */
+	if (by == OrderBy::CLUSTERING) {
+
+		// ensure that each protein appears only once
+		std::unordered_set<unsigned> seen;
+		for (auto ci : d.clusterOrder) {
+			// assemble all affected proteins, and their spread from cluster core
+			std::vector<std::pair<unsigned, double>> members;
+			for (unsigned i = 0; i < d.proteins.size(); ++i) {
+				if (seen.count(i))
+					continue; // protein was part of bigger cluster
+				if (d.proteins[i].memberOf.count(ci)) {
+					double dist = cv::norm(d.features[(int)i], d.clustering[ci].mode, cv::NORM_L2SQR);
+					members.push_back({i, dist});
+					seen.insert(i);
+				}
+			}
+			// sort by distance to mode/centroid
+			std::sort(members.begin(), members.end(), [] (auto a, auto b) {
+				return a.second < b.second;
+			});
+			// now append to global list
+			std::transform(members.begin(), members.end(), std::back_inserter(target),
+			               [] (const auto &i) { return i.first; });
+		}
+
+		// add all proteins not covered yet
+		std::vector<unsigned> missing;
+		for (unsigned i = 0; i < d.proteins.size(); ++i) {
+			if (!seen.count(i))
+				missing.push_back(i);
+		}
+		std::sort(missing.begin(), missing.end(), byName);
+		target.insert(target.end(), missing.begin(), missing.end());
+		return;
+	}
+
+	/* replicate file order */
+	target.resize(d.proteins.size());
+	std::iota(target.begin(), target.end(), 0);
+
+	/* order based on name (some prots have common prefixes) */
+	if (by == OrderBy::NAME)
+		std::sort(target.begin(), target.end(), byName);
 }

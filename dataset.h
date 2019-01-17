@@ -71,10 +71,14 @@ public:
 		// feature reduced point sets
 		QMap<QString, QVector<QPointF>> display;
 
-		// clusters, if available
+		// clusters / hierarchy, if available
 		std::unordered_map<unsigned, Cluster> clustering;
 		std::vector<unsigned> clusterOrder;
 		std::vector<HrCluster> hierarchy;
+
+		// order of proteins
+		// determined by hierarchy or clusters (if available), or name
+		std::vector<unsigned> proteinOrder;
 	};
 
 	struct View {
@@ -119,6 +123,15 @@ protected:
 	void computeClusterCentroids();
 	void orderClusters(bool genericNames);
 	void colorClusters();
+
+	enum class OrderBy {
+		FILE,
+		NAME,
+		CLUSTERING,
+		HIERARCHY
+	};
+
+	void orderProteins(OrderBy by);
 
 	QByteArray writeDisplay(const QString &name);
 
