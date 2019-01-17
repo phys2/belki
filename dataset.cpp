@@ -117,39 +117,71 @@ bool Dataset::readSource(QTextStream in)
 		if (line.empty() || line[0].isEmpty())
 			break; // early EOF
 
+		if (line.size() < len + 1) {
+			emit ioError(QString("Stopped at '%1', incomplete row!").arg(line[0]));
+			break; // avoid message flood
+		}
+
+		/* setup metadata */
 		Protein p;
 		auto parts = line[0].split("_");
 		p.name = parts.front();
 		p.species = (parts.size() > 1 ? parts.back() : "RAT"); // wild guess
 
-		if (line.size() < len + 1) {
-			emit ioError(QString("Stopped at protein '%1', incomplete row!").arg(p.name));
-			break; // avoid message flood
-		}
+		/* check index */
+		if (d.protIndex.find(p.name) != d.protIndex.end())
+			emit ioError(QString("Multiples of protein '%1' found in the dataset!").arg(p.name));
 
+		/* read coefficients */
 		bool success = true;
-		std::vector<double> coeffs(len);
-		QVector<QPointF> points(len);
+		std::vector<double> coeffs((size_t)len);
 		for (int i = 0; i < len; ++i) {
 			bool ok;
-			coeffs[i] = line[i+1].toDouble(&ok);
+			coeffs[(size_t)i] = line[i+1].toDouble(&ok);
 			success = success && ok;
-			points[i] = {(qreal)i, coeffs[i]};
 		}
 		if (!success) {
 			emit ioError(QString("Stopped at protein '%1', malformed row!").arg(p.name));
 			break; // avoid message flood
 		}
-		d.features.append(std::move(coeffs));
-		d.featurePoints.push_back(std::move(points));
 
-		if (d.protIndex.find(p.name) != d.protIndex.end())
-			emit ioError(QString("Multiples of protein '%1' found in the dataset!").arg(p.name));
-
+		/* append */
 		d.protIndex[p.name] = d.proteins.size();
 		d.proteins.push_back(std::move(p));
+		d.features.append(std::move(coeffs));
 	}
+
 	qDebug() << "read" << d.features.size() << "rows with" << len << "columns";
+	if (d.features.empty() || len == 0)
+		return true;
+
+	/* normalize, if needed */
+	auto minVal = d.features[0][0], maxVal = d.features[0][0];
+	for (auto in : qAsConst(d.features)) {
+		double mi, ma;
+		cv::minMaxLoc(in, &mi, &ma);
+		minVal = std::min(minVal, mi);
+		maxVal = std::max(maxVal, ma);
+	}
+	if (minVal < 0 || maxVal > 1) { // simple heuristic to auto-normalize
+		emit ioError(QString("Values outside expected range (instead [%1, %2])."
+		                     "<br>Normalizing to [0, 1].").arg(minVal).arg(maxVal));
+		auto scale = 1. / (maxVal - minVal);
+		for (int i = 0; i < d.features.size(); ++i) {
+			auto &v = d.features[i];
+			std::for_each(v.begin(), v.end(), [minVal, scale] (double &e) {
+				e = (e - minVal) * scale;
+			});
+		}
+	}
+
+	/* pre-cache features as QPoints for plotting */
+	for (auto in : qAsConst(d.features)) {
+		QVector<QPointF> points(in.size());
+		for (size_t i = 0; i < in.size(); ++i)
+			points[i] = {(qreal)i, in[i]};
+		d.featurePoints.push_back(std::move(points));
+	}
 
 	emit newSource();
 	return true;
