@@ -135,6 +135,7 @@ void MainWindow::setupSignals()
 		chart->clearPartitions();
 		chart->updatePartitions();
 		heatmap->recolor();
+		distmat->reorder();
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
 	});
@@ -142,6 +143,7 @@ void MainWindow::setupSignals()
 		auto d = data.peek();
 		auto reasonable = std::min(d->proteins.size(), d->hierarchy.size()) / 4;
 		granularitySlider->setMaximum(reasonable);
+		distmat->reorder();
 	});
 
 	/* notifications from views */
