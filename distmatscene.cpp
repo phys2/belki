@@ -38,7 +38,7 @@ void DistmatScene::reset(bool haveData)
 
 	/* amass all the combinations we need for filling a symmetric matrix */
 	std::vector<cv::Point_<size_t>> coords;
-	for (size_t y = 0; y < sidelen; ++y) {
+	for (size_t y = 0; y < (unsigned)sidelen; ++y) {
 		for (size_t x = 0; x <= y; ++x)
 			coords.push_back({x, y});
 	}
@@ -67,7 +67,7 @@ void DistmatScene::reset(bool haveData)
 
 	/* get the work done in parallel */
 	tbb::parallel_for((size_t)0, coords.size(), [&] (size_t i) {
-		distmat(coords[i]) = distCorr(coords[i]);
+		distmat(coords[i]) = (float)distCorr(coords[i]);
 	});
 
 	/* fill-in symmetric values, normalize and convert to 8 bit */
