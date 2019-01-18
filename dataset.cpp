@@ -566,6 +566,15 @@ void Dataset::orderProteins(OrderBy by)
 
 	/* order based on hierarchy */
 	if (by == OrderBy::HIERARCHY) {
+		std::function<void(unsigned)> collect;
+		collect = [&] (unsigned hIndex) {
+			auto &current = d.hierarchy[hIndex];
+			if (current.protein >= 0)
+				d.proteinOrder.push_back((unsigned)current.protein);
+			for (auto c : current.children)
+				collect(c);
+		};
+		collect(d.hierarchy.size()-1);
 		return;
 	}
 
