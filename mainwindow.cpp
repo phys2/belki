@@ -135,6 +135,7 @@ void MainWindow::setupSignals()
 		chart->clearPartitions();
 		chart->updatePartitions();
 		heatmap->recolor();
+		// note: if from hierarchy, the order did not really change
 		distmat->reorder();
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
