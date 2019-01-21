@@ -48,11 +48,10 @@ void HeatmapScene::rearrange(QSize viewport)
 	if (profiles.empty())
 		return;
 
-	auto columnWidth = profiles[0]->boundingRect().width();
-	auto aspect = (viewport.width() / columnWidth) / viewport.height();
-	unsigned columns = (unsigned)std::floor(std::sqrt(profiles.size() * aspect));
+	auto aspect = (viewport.width() / layout.columnWidth) / viewport.height();
+	layout.columns = (unsigned)std::floor(std::sqrt(profiles.size() * aspect));
 
-	rearrange(columns);
+	rearrange(layout.columns);
 }
 
 void HeatmapScene::rearrange(unsigned columns)
@@ -60,14 +59,13 @@ void HeatmapScene::rearrange(unsigned columns)
 	if (!columns || profiles.empty())
 		return;
 
-	unsigned rows = (unsigned)std::ceil(profiles.size() / (float)columns);
-	auto columnWidth = profiles[0]->boundingRect().width();
-	QSizeF box(columnWidth * columns, rows);
+	layout.rows = (unsigned)std::ceil(profiles.size() / (float)columns);
+	QSizeF box(layout.columnWidth * columns, layout.rows);
 
 	setSceneRect({{0, 0}, box});
 
 	for (unsigned i = 0; i < profiles.size(); ++i) {
-		profiles[i]->setPos((i / rows) * columnWidth, i % rows);
+		profiles[i]->setPos((i / layout.rows) * layout.columnWidth, i % layout.rows);
 	}
 }
 
@@ -83,6 +81,15 @@ void HeatmapScene::recolor()
 		profiles[i]->setBrush(d->clustering[*assoc.begin()].color);
 	}
 	update();
+}
+
+void HeatmapScene::reorder()
+{
+	auto d = data.peek();
+	// TODO: go through all clusters first based on clusterOrder, but then also
+	// go through proteins not in a cluster (or in several clusters, transitions?)
+
+	// alternative: only provide hierarchical ordering for now
 }
 
 

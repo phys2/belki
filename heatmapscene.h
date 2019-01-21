@@ -42,6 +42,7 @@ public slots:
 	void rearrange(QSize viewport);
 	void rearrange(unsigned columns);
 	void recolor();
+	void reorder(); // TODO: make order configurable
 
 protected:
 	Dataset &data;
@@ -55,6 +56,11 @@ protected:
 		qreal expansion = 10; // x-scale of items
 		qreal margin = 10; // x-margin of items
 	} style;
+
+	struct {
+		unsigned rows, columns = 1;
+		qreal columnWidth = 0.;
+	} layout;
 
 	std::vector<Profile*> profiles;
 };

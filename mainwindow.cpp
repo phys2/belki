@@ -135,6 +135,7 @@ void MainWindow::setupSignals()
 		chart->clearPartitions();
 		chart->updatePartitions();
 		heatmap->recolor();
+		heatmap->reorder(); // TODO hack
 		distmat->reorder();
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
@@ -270,6 +271,7 @@ void MainWindow::setupActions()
 		emit exportAnnotations(filename);
 	});
 	connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartitions);
+	connect(actionShowPartition, &QAction::toggled, heatmap, &HeatmapScene::recolor);
 	connect(actionLoadMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenMarkers);
 		if (filename.isEmpty())
