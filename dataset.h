@@ -47,6 +47,7 @@ public:
 	struct HrCluster {
 		double distance;
 		int protein;
+		unsigned parent;
 		std::vector<unsigned> children;
 	};
 

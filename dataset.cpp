@@ -407,6 +407,10 @@ bool Dataset::readHierarchy(const QByteArray &json)
 			c.children = {(unsigned)node["left_child"].toInt(),
 			              (unsigned)node["right_child"].toInt()};
 		}
+
+		/* back-association */
+		if (node.contains("parent"))
+			c.parent = (unsigned)node["parent"].toInt();
 	}
 
 	orderProteins(OrderBy::HIERARCHY);
