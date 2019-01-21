@@ -38,7 +38,7 @@ void HeatmapScene::reset(bool haveData)
 		return;
 
 	// save for later
-	//layout.columnWidth = profiles[0]->boundingRect().width();
+	layout.columnWidth = profiles[0]->boundingRect().width();
 
 	// TODO: reorder using hier. order
 }
