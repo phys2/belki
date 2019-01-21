@@ -23,6 +23,35 @@ DistmatScene::DistmatScene(Dataset &data) : data(data)
 	setSceneRect(0, 0, 1, 1);
 }
 
+std::map<DistmatScene::Measure, std::function<double (const std::vector<double> &, const std::vector<double> &)> > DistmatScene::measures()
+{
+	auto distL2 = [] (const auto &a, const auto &b) {
+		return cv::norm(a, b, cv::NORM_L2);
+	};
+	auto distCrossCorr = [] (const auto &a, const auto &b) {
+		double corr1 = 0., corr2 = 0., crosscorr = 0.;
+		for (unsigned i = 0; i < a.size(); ++i) {
+			auto v1 = a[i], v2 = b[i];
+			corr1 += v1*v1;
+			corr2 += v2*v2;
+			crosscorr += v1*v2;
+		}
+		return crosscorr / (sqrt(corr1) * sqrt(corr2));
+	};
+	auto distPearson = [&] (const auto &a, const auto &b) {
+		std::vector<double> aa, bb;
+		cv::subtract(a, cv::mean(a), aa);
+		cv::subtract(b, cv::mean(b), bb);
+		return distCrossCorr(aa, bb);
+	};
+
+	return {
+		{Measure::NORM_L2, distL2},
+		{Measure::CROSSCORREL, distCrossCorr},
+		{Measure::PEARSON, distPearson},
+	};
+}
+
 void DistmatScene::reset(bool haveData)
 {
 	if (display->scene())
@@ -43,31 +72,11 @@ void DistmatScene::reset(bool haveData)
 			coords.push_back({x, y});
 	}
 
-	auto distL2 = [&] (cv::Point_<size_t> xy) {
-		return cv::norm(d->features[xy.x], d->features[xy.y], cv::NORM_L2);
-	};
-
-	auto distCorr = [&] (cv::Point_<size_t> xy) {
-		auto &x = d->features[xy.x];
-		auto &y = d->features[xy.y];
-		double corr1 = 0., corr2 = 0., crosscorr = 0.;
-
-		auto it1 = x.begin(), it2 = y.begin();
-		for (; it1 < x.end(); ++it1, ++it2) {
-			double v1 = *it1, v2 = *it2;
-			// auto correlation of both images
-			corr1 += v1*v1;
-			corr2 += v2*v2;
-			// pixel-wise cross correlation
-			crosscorr += v1*v2;
-		}
-		// normalizing the pixel cross correlation by the square root of the autocorrelation of the images
-		return crosscorr / (sqrt(corr1) * sqrt(corr2));
-	};
-
 	/* get the work done in parallel */
+	auto m = measures()[measure];
 	tbb::parallel_for((size_t)0, coords.size(), [&] (size_t i) {
-		distmat(coords[i]) = (float)distCorr(coords[i]);
+		const auto &a = d->features[coords[i].x], &b = d->features[coords[i].y];
+		distmat(coords[i]) = (float)m(a, b);
 	});
 
 	/* fill-in symmetric values, normalize and convert to 8 bit */
@@ -76,40 +85,51 @@ void DistmatScene::reset(bool haveData)
 	reorder();
 }
 
+/* re-create img and display from mat, using current protein order */
 void DistmatScene::reorder()
 {
-	/* re-create img and display from mat, using current protein order */
 	auto d = data.peek();
 
-	/* convert to Mat1b and reorder at the same time */
-	// determine scale
-	double minVal, maxVal; // todo: more efficient to be done in parallel fill, using tbb reduce op
-	cv::minMaxLoc(distmat, &minVal, &maxVal);
+	/* determine shift & scale to fit into uchar */
+	double minVal, maxVal;
+	switch (measure) {
+	case Measure::PEARSON:
+		minVal = -1.;
+		maxVal = 1.;
+		break;
+	case Measure::CROSSCORREL:
+		minVal = 0.;
+		maxVal = 1.;
+		break;
+	default:
+		cv::minMaxLoc(distmat, &minVal, &maxVal);
+	}
 	double scale = 255./(maxVal - minVal);
 
 	auto translate = [&d] (int y, int x) {
 		return cv::Point(d->proteinOrder[x], d->proteinOrder[y]);
 	};
 
+	/* convert to Mat1b and reorder at the same time */
 	cv::Mat1b distmatB(distmat.rows, distmat.cols);
 	std::vector<cv::Point_<size_t>> coords;
 	for (int y = 0; y < distmat.rows; ++y) {
 		for (int x = 0; x < distmat.cols; ++x)
 			distmatB(y, x) = (uchar)((distmat(translate(y, x)) - minVal)*scale);
 	}
-	//cv::convertScaleAbs(distmat, distmatB, scale, -minVal*scale);
 
 	cv::applyColorMap(distmatB, distimg, colormap());
 
 	/* finally make a pixmap item out of it */
-	QImage foo(distimg.data, distimg.cols, distimg.rows, distimg.step, QImage::Format_RGB888);
-	display->setPixmap(QPixmap::fromImage(foo));
+	display->setPixmap(
+	            QPixmap::fromImage({distimg.data, distimg.cols, distimg.rows,
+	                                (int)distimg.step, QImage::Format_RGB888}));
 
-	// normalize display size on screen and also flip Y-axis
+	/* normalize display size on screen and also flip Y-axis */
 	scale = 1./display->boundingRect().width();
-	auto t = QTransform::fromTranslate(0, 1).scale(scale, -scale);
-	display->setTransform(t);
+	display->setTransform(QTransform::fromTranslate(0, 1).scale(scale, -scale));
 
+	/* ensure it's on the scene */
 	if (!display->scene())
 		addItem(display);
 }
