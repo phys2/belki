@@ -24,15 +24,20 @@ public:
 	static std::map<Measure, std::function<double(const std::vector<double> &,
 	                                     const std::vector<double> &)>> measures();
 
+	void setViewport(const QRectF &rect, qreal scale);
+
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
 
 public slots:
 	void reset(bool haveData = false);
 	void reorder();
+	void recolor();
 
 protected:
 	void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
+
+	void rearrange();
 
 	Dataset &data;
 
@@ -40,6 +45,12 @@ protected:
 	cv::Mat1f distmat;
 	cv::Mat3b distimg;
 	QGraphicsPixmapItem *display;
+	std::map<Qt::Edge, QGraphicsPixmapItem*> clusterbars;
+
+	/* geometry of the current view, used to re-arrange stuff into view */
+	QRectF viewport;
+	qreal vpScale;
+
 };
 
 #endif // DISTMATSCENE_H

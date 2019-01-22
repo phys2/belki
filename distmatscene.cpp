@@ -20,7 +20,24 @@ DistmatScene::DistmatScene(Dataset &data) : data(data)
 	display->setCursor(Qt::CursorShape::CrossCursor);
 	addItem(display);
 
-	setSceneRect(0, 0, 1, 1);
+	for (auto i : {Qt::TopEdge, Qt::LeftEdge}) {
+		auto c = new QGraphicsPixmapItem;
+		c->setShapeMode(QGraphicsPixmapItem::ShapeMode::BoundingRectShape);
+		c->setTransformationMode(Qt::TransformationMode::FastTransformation);
+		addItem(c);
+		clusterbars[i] = c;
+	}
+
+	// some "feel good" borders
+	qreal offset = .1;
+	setSceneRect({QPointF{-offset, -offset}, QPointF{1. + offset, 1. + offset}});
+}
+
+void DistmatScene::setViewport(const QRectF &rect, qreal scale)
+{
+	   viewport = rect;
+	   vpScale = scale;
+	   rearrange();
 }
 
 std::map<DistmatScene::Measure, std::function<double (const std::vector<double> &, const std::vector<double> &)> > DistmatScene::measures()
@@ -54,9 +71,9 @@ std::map<DistmatScene::Measure, std::function<double (const std::vector<double> 
 
 void DistmatScene::reset(bool haveData)
 {
-	if (display->scene())
-		removeItem(display); // avoid deletion
-	clear(); // removes & deletes all items
+	display->setVisible(false);
+	for (auto &c : clusterbars)
+		c.second->setVisible(false);
 	if (!haveData) {
 		return;
 	}
@@ -127,10 +144,66 @@ void DistmatScene::reorder()
 	/* normalize display size on screen and also flip Y-axis */
 	scale = 1./display->boundingRect().width();
 	display->setTransform(QTransform::fromTranslate(0, 1).scale(scale, -scale));
+	display->setVisible(true);
 
-	/* ensure it's on the scene */
-	if (!display->scene())
-		addItem(display);
+	/* reflect new order in clusterbars */
+	recolor();
+}
+
+/* draw colored bars around matrix that indicate cluster membership */
+void DistmatScene::recolor()
+{
+	auto d = data.peek();
+	if (d->clustering.empty()) {
+		// no clustering, disappear
+		for (auto &c : clusterbars)
+			c.second->setVisible(false);
+		return;
+	}
+
+	const auto &source = d->proteinOrder;
+	QImage clusterbar(source.size(), 1, QImage::Format_ARGB32);
+	for (unsigned i = 0; i < source.size(); ++i) {
+		const auto &assoc = d->proteins[source[i]].memberOf;
+		switch (assoc.size()) {
+		case 0:
+			clusterbar.setPixelColor(i, 0, Qt::transparent);
+			break;
+		case 1:
+			clusterbar.setPixelColor(i, 0, d->clustering[*assoc.begin()].color);
+			break;
+		default:
+			clusterbar.setPixelColor(i, 0, Qt::white);
+		}
+	}
+
+	std::map<Qt::Edge, QTransform> transforms = {
+	    {Qt::TopEdge, QTransform::fromScale(1./source.size(), -.025)},
+	    {Qt::LeftEdge, QTransform::fromTranslate(0, 1).scale(-0.025, -1./source.size()).rotate(90)}
+	};
+	for (auto& [i, c] : clusterbars) {
+		c->setPixmap(QPixmap::fromImage(clusterbar));
+		c->setTransform(transforms[i]);
+		c->setVisible(true);
+	}
+
+	rearrange();
+}
+
+void DistmatScene::rearrange()
+{
+	auto topleft = viewport.topLeft() + QPointF{15.*vpScale, 15.*vpScale};
+
+	/* shift colorbars into view */
+	for (auto& [i, c] : clusterbars) {
+		auto pos = c->pos();
+		auto size = c->sceneBoundingRect().size();
+		if (i == Qt::TopEdge)
+			pos.setY(std::max(-10.*vpScale, topleft.y()));
+		if (i == Qt::LeftEdge)
+			pos.setX(std::max(-10.*vpScale, topleft.x()) - size.width());
+		c->setPos(pos);
+	}
 }
 
 void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
