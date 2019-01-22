@@ -75,12 +75,10 @@ void DistmatScene::reset(bool haveData)
 	/* get the work done in parallel */
 	auto m = measures()[measure];
 	tbb::parallel_for((size_t)0, coords.size(), [&] (size_t i) {
-		const auto &a = d->features[coords[i].x], &b = d->features[coords[i].y];
-		distmat(coords[i]) = (float)m(a, b);
+		auto c = coords[i];
+		const auto &a = d->features[c.x], &b = d->features[c.y];
+		distmat(c) = distmat(c.x, c.y) = (float)m(a, b);
 	});
-
-	/* fill-in symmetric values, normalize and convert to 8 bit */
-	cv::completeSymm(distmat, true);
 
 	reorder();
 }
@@ -113,10 +111,11 @@ void DistmatScene::reorder()
 	/* convert to Mat1b and reorder at the same time */
 	cv::Mat1b distmatB(distmat.rows, distmat.cols);
 	std::vector<cv::Point_<size_t>> coords;
-	for (int y = 0; y < distmat.rows; ++y) {
-		for (int x = 0; x < distmat.cols; ++x)
-			distmatB(y, x) = (uchar)((distmat(translate(y, x)) - minVal)*scale);
-	}
+	tbb::parallel_for(0, distmat.rows, [&] (int y) {
+		for (int x = 0; x <= y; ++x)
+			distmatB(y, x) = distmatB(x, y)
+			        = (uchar)((distmat(translate(y, x)) - minVal)*scale);
+	});
 
 	cv::applyColorMap(distmatB, distimg, colormap());
 
