@@ -4,15 +4,13 @@
 #include "dataset.h"
 
 #include <QGraphicsScene>
-#include <QGraphicsItemGroup>
+#include <QGraphicsRectItem>
+#include <QGraphicsSimpleTextItem>
+#include <QGraphicsLineItem>
 
 #include <opencv2/core/core.hpp>
 #include <functional>
 #include <map>
-
-class QGraphicsPixmapItem;
-class QGraphicsSimpleTextItem;
-class QGraphicsLineItem;
 
 class DistmatScene : public QGraphicsScene
 {
@@ -24,15 +22,20 @@ public:
 		PEARSON
 	};
 
-	struct Marker : QGraphicsItemGroup {
-		Marker(unsigned sampleIndex, qreal coordY, DistmatScene* scene);
+	struct Marker {
+		Marker(unsigned sampleIndex, qreal coord, DistmatScene* scene);
 		// no copies/moves! adds itself to the scene in above constructor
 		Marker(const Marker&) = delete;
 		Marker& operator=(const Marker&) = delete;
-		~Marker() { delete label; delete line; }
+		~Marker() { delete label; delete line; delete backdrop; }
+
+		void rearrange(qreal right, qreal scale);
+
 		unsigned sampleIndex;
+		qreal coordinate;
 		QGraphicsSimpleTextItem *label;
 		QGraphicsLineItem *line;
+		QGraphicsRectItem *backdrop;
 	};
 
 	DistmatScene(Dataset &data);

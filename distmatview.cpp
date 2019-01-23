@@ -13,7 +13,7 @@ DistmatScene *DistmatView::scene() const
 void DistmatView::enterEvent(QEvent *)
 {
 	// steal focus for the interactive cursor with keyboard events
-	// TODO: needed in Heatmap view?
+	// TODO: needed in this view?
 	setFocus(Qt::MouseFocusReason);
 }
 
@@ -36,8 +36,6 @@ void DistmatView::wheelEvent(QWheelEvent *event)
 
 void DistmatView::resizeEvent(QResizeEvent *event)
 {
-	// TODO: when we have annotations etc, it might be wiser to do it the other
-	// way round; scale dist matrix to fit in minus margins
 	fitInView(sceneRect(), Qt::KeepAspectRatio);
 	QGraphicsView::resizeEvent(event);
 }
@@ -51,7 +49,6 @@ void DistmatView::paintEvent(QPaintEvent *event)
 		auto rect = mapToScene({{0, 0}, viewport()->size()}).boundingRect();
 		auto scale = mapToScene(QPoint{1, 1}).x() - rect.left();
 		scene()->setViewport(rect, scale);
-		// TODO re-arrange text widgets
 	}
 	QGraphicsView::paintEvent(event);
 }
