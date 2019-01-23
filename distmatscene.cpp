@@ -210,16 +210,9 @@ void DistmatScene::addMarker(unsigned sampleIndex)
 	auto it = std::find(d->proteinOrder.begin(), d->proteinOrder.end(), sampleIndex);
 	// note: all proteins are always in the order! we do not check right now
 	auto pos = it - d->proteinOrder.begin();
-	qDebug() << pos;
+	auto coordY = 1. - ((qreal)pos / distmat.rows);
 
-	auto item = new QGraphicsSimpleTextItem(d->proteins[sampleIndex].name);
-	addItem(item);
-	item->setBrush(Qt::white);
-	item->setScale(0.001);
-	auto dimensions = item->sceneBoundingRect().size();
-	item->setPos(-(dimensions.width() + 10.*vpScale),
-	             1. - ((qreal)pos / distmat.rows) - dimensions.height()/2.);
-	markers[sampleIndex] = item;
+	markers[sampleIndex] = new Marker(sampleIndex, coordY, this);
 }
 
 void DistmatScene::removeMarker(unsigned sampleIndex)
@@ -277,6 +270,24 @@ void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 	// use floored coordinates, as everything in [0,1[ lies over pixel 0
 	emit cursorChanged({d->proteinOrder[(unsigned)pos.x()],
 	                    d->proteinOrder[(unsigned)pos.y()]});
+}
+
+DistmatScene::Marker::Marker(unsigned sampleIndex, qreal coordY, DistmatScene *scene)
+{
+	auto scale = scene->vpScale;
+	auto title = scene->data.peek()->proteins[sampleIndex].name;
+	label = new QGraphicsSimpleTextItem(title);
+	scene->addItem(label);
+	label->setBrush(Qt::white);
+	label->setScale(1. * scale);
+	auto dimensions = label->sceneBoundingRect().size();
+	label->setPos(-(dimensions.width() + 12.*scale),
+	             coordY - dimensions.height()/2.);
+	line = new QGraphicsLineItem({{-10.*scale, coordY}, {0., coordY}});
+	QPen pen(Qt::white);
+	pen.setCosmetic(true);
+	line->setPen(pen);
+	scene->addItem(line);
 }
 
 std::array<cv::Vec3b, 256> colormap() {

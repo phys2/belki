@@ -4,6 +4,7 @@
 #include "dataset.h"
 
 #include <QGraphicsScene>
+#include <QGraphicsItemGroup>
 
 #include <opencv2/core/core.hpp>
 #include <functional>
@@ -11,6 +12,7 @@
 
 class QGraphicsPixmapItem;
 class QGraphicsSimpleTextItem;
+class QGraphicsLineItem;
 
 class DistmatScene : public QGraphicsScene
 {
@@ -20,6 +22,17 @@ public:
 		NORM_L2,
 		CROSSCORREL,
 		PEARSON
+	};
+
+	struct Marker : QGraphicsItemGroup {
+		Marker(unsigned sampleIndex, qreal coordY, DistmatScene* scene);
+		// no copies/moves! adds itself to the scene in above constructor
+		Marker(const Marker&) = delete;
+		Marker& operator=(const Marker&) = delete;
+		~Marker() { delete label; delete line; }
+		unsigned sampleIndex;
+		QGraphicsSimpleTextItem *label;
+		QGraphicsLineItem *line;
 	};
 
 	DistmatScene(Dataset &data);
@@ -51,7 +64,7 @@ protected:
 	cv::Mat3b distimg;
 	QGraphicsPixmapItem *display;
 	std::map<Qt::Edge, QGraphicsPixmapItem*> clusterbars;
-	std::map<unsigned, QGraphicsSimpleTextItem*> markers;
+	std::map<unsigned, Marker*> markers;
 
 	/* geometry of the current view, used to re-arrange stuff into view */
 	QRectF viewport;
