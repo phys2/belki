@@ -20,7 +20,7 @@ DistmatScene::DistmatScene(Dataset &data) : data(data)
 	display->setCursor(Qt::CursorShape::CrossCursor);
 	addItem(display);
 
-	for (auto i : {Qt::TopEdge, Qt::LeftEdge}) {
+	for (auto i : {Qt::TopEdge, Qt::LeftEdge, Qt::BottomEdge, Qt::RightEdge}) {
 		auto c = new QGraphicsPixmapItem;
 		c->setShapeMode(QGraphicsPixmapItem::ShapeMode::BoundingRectShape);
 		c->setTransformationMode(Qt::TransformationMode::FastTransformation);
@@ -179,7 +179,9 @@ void DistmatScene::recolor()
 
 	std::map<Qt::Edge, QTransform> transforms = {
 	    {Qt::TopEdge, QTransform::fromScale(1./source.size(), -.025)},
-	    {Qt::LeftEdge, QTransform::fromTranslate(0, 1).scale(-0.025, -1./source.size()).rotate(90)}
+	    {Qt::LeftEdge, QTransform::fromTranslate(0, 1).scale(.025, -1./source.size()).rotate(90)},
+	    {Qt::BottomEdge, QTransform::fromScale(1./source.size(), .025)},
+	    {Qt::RightEdge, QTransform::fromTranslate(0, 1).scale(-.025, -1./source.size()).rotate(90)}
 	};
 	for (auto& [i, c] : clusterbars) {
 		c->setPixmap(QPixmap::fromImage(clusterbar));
@@ -192,16 +194,27 @@ void DistmatScene::recolor()
 
 void DistmatScene::rearrange()
 {
-	auto topleft = viewport.topLeft() + QPointF{15.*vpScale, 15.*vpScale};
+	QPointF margin{15.*vpScale, 15.*vpScale};
+	auto topleft = viewport.topLeft() + margin;
+	auto botright = viewport.bottomRight() - margin;
 
 	/* shift colorbars into view */
 	for (auto& [i, c] : clusterbars) {
 		auto pos = c->pos();
-		auto size = c->sceneBoundingRect().size();
-		if (i == Qt::TopEdge)
+		switch (i) {
+		case (Qt::TopEdge):
 			pos.setY(std::max(-10.*vpScale, topleft.y()));
-		if (i == Qt::LeftEdge)
-			pos.setX(std::max(-10.*vpScale, topleft.x()) - size.width());
+			break;
+		case (Qt::BottomEdge):
+			pos.setY(std::min(1. + 10.*vpScale, botright.y()));
+			break;
+		case (Qt::LeftEdge):
+			pos.setX(std::max(-10.*vpScale, topleft.x()));
+			break;
+		case (Qt::RightEdge):
+			pos.setX(std::min(1. + 10.*vpScale, botright.x()));
+			break;
+		}
 		c->setPos(pos);
 	}
 }
