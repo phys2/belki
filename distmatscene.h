@@ -52,6 +52,8 @@ public slots:
 	void reorder();
 	void recolor();
 
+	void updateColorset(QVector<QColor> colors);
+
 	void addMarker(unsigned sampleIndex);
 	void removeMarker(unsigned sampleIndex);
 
@@ -61,6 +63,7 @@ protected:
 	void rearrange();
 
 	Dataset &data;
+	QVector<QColor> colorset;
 
 	Measure measure = Measure::CROSSCORREL;
 	cv::Mat1f distmat;

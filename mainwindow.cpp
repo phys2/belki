@@ -165,6 +165,7 @@ void MainWindow::setupSignals()
 	qRegisterMetaType<QVector<QColor>>();
 	connect(this, &MainWindow::updateColorset, &data, &Dataset::updateColorset);
 	connect(this, &MainWindow::updateColorset, chart, &Chart::updateColorset);
+	connect(this, &MainWindow::updateColorset, distmat, &DistmatScene::updateColorset);
 	connect(this, &MainWindow::orderProteins, &data, &Dataset::orderProteins);
 
 	/* selecting display/partition/etc. always goes through GUI */

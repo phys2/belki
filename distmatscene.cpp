@@ -199,29 +199,6 @@ void DistmatScene::recolor()
 	rearrange();
 }
 
-void DistmatScene::addMarker(unsigned sampleIndex)
-{
-	if (markers.count(sampleIndex))
-		return;
-
-	// reverse-search in protein order
-	auto d = data.peek();
-	auto it = std::find(d->proteinOrder.begin(), d->proteinOrder.end(), sampleIndex);
-	// note: we do not check if protein was found, we require order to be complete
-	auto coord = (qreal)(it - d->proteinOrder.begin()) / distmat.rows;
-
-	markers[sampleIndex] = new Marker(sampleIndex, coord, this);
-}
-
-void DistmatScene::removeMarker(unsigned sampleIndex)
-{
-	if (!markers.count(sampleIndex))
-		return;
-
-	delete markers[sampleIndex];
-	markers.erase(sampleIndex);
-}
-
 void DistmatScene::rearrange()
 {
 	QPointF margin{15.*vpScale, 15.*vpScale};
@@ -253,6 +230,29 @@ void DistmatScene::rearrange()
 		m->rearrange(viewport.left(), vpScale);
 }
 
+void DistmatScene::addMarker(unsigned sampleIndex)
+{
+	if (markers.count(sampleIndex))
+		return;
+
+	// reverse-search in protein order
+	auto d = data.peek();
+	auto it = std::find(d->proteinOrder.begin(), d->proteinOrder.end(), sampleIndex);
+	// note: we do not check if protein was found, we require order to be complete
+	auto coord = (qreal)(it - d->proteinOrder.begin()) / distmat.rows;
+
+	markers[sampleIndex] = new Marker(sampleIndex, coord, this);
+}
+
+void DistmatScene::removeMarker(unsigned sampleIndex)
+{
+	if (!markers.count(sampleIndex))
+		return;
+
+	delete markers[sampleIndex];
+	markers.erase(sampleIndex);
+}
+
 void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
 	if (!display->scene())
@@ -278,18 +278,22 @@ DistmatScene::Marker::Marker(unsigned sampleIndex, qreal coord, DistmatScene *sc
     : sampleIndex(sampleIndex), coordinate(coord)
 {
 	auto title = scene->data.peek()->proteins[sampleIndex].name;
+	auto color = scene->colorset[(int)qHash(title) % scene->colorset.size()];
 	label = new QGraphicsSimpleTextItem(title);
-	label->setBrush(Qt::white);
+	label->setBrush(color);
+	auto font = label->font();
+	font.setBold(true);
+	label->setFont(font);
 
 	QBrush fill(QColor{0, 0, 0, 127});
-	QPen outline(Qt::darkGray);
+	QPen outline(color.dark(300));
 	outline.setCosmetic(true);
 	backdrop = new QGraphicsRectItem;
 	backdrop->setBrush(fill);
 	backdrop->setPen(outline);
 
 	line = new QGraphicsLineItem;
-	QPen pen(Qt::lightGray);
+	QPen pen(color.darker(150));
 	pen.setCosmetic(true);
 	line->setPen(pen);
 
@@ -303,7 +307,7 @@ DistmatScene::Marker::Marker(unsigned sampleIndex, qreal coord, DistmatScene *sc
 void DistmatScene::Marker::rearrange(qreal right, qreal scale)
 {
 	auto vCenter = 1. - coordinate; // flip
-	auto linewidth = 10.*scale;
+	auto linewidth = 15.*scale;
 	auto margin = 2.*scale;
 
 	// invert zoom for label
@@ -319,6 +323,13 @@ void DistmatScene::Marker::rearrange(qreal right, qreal scale)
 
 	// keep line in place, but adjust length
 	line->setLine({{-linewidth, vCenter}, {0., vCenter}});
+}
+
+void DistmatScene::updateColorset(QVector<QColor> colors)
+{
+	colorset = colors;
+	recolor();
+	// TODO: re-initialize markers
 }
 
 std::array<cv::Vec3b, 256> colormap() {
