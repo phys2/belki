@@ -4,11 +4,13 @@
 #include "dataset.h"
 
 #include <QGraphicsScene>
-#include <QAbstractGraphicsShapeItem>
 
 #include <opencv2/core/core.hpp>
 #include <functional>
 #include <map>
+
+class QGraphicsPixmapItem;
+class QGraphicsSimpleTextItem;
 
 class DistmatScene : public QGraphicsScene
 {
@@ -34,6 +36,9 @@ public slots:
 	void reorder();
 	void recolor();
 
+	void addMarker(unsigned sampleIndex);
+	void removeMarker(unsigned sampleIndex);
+
 protected:
 	void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
 
@@ -46,6 +51,7 @@ protected:
 	cv::Mat3b distimg;
 	QGraphicsPixmapItem *display;
 	std::map<Qt::Edge, QGraphicsPixmapItem*> clusterbars;
+	std::map<unsigned, QGraphicsSimpleTextItem*> markers;
 
 	/* geometry of the current view, used to re-arrange stuff into view */
 	QRectF viewport;

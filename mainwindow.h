@@ -42,6 +42,7 @@ signals:
 	void calculatePartition(unsigned granularity);
 	void runFAMS();
 	void updateColorset(QVector<QColor> colors);
+	void orderProteins(Dataset::OrderBy order);
 
 public slots:
 	void showHelp();

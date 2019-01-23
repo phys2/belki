@@ -350,7 +350,7 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 	orderClusters(false);
 	colorClusters();
 
-	orderProteins(OrderBy::CLUSTERING);
+	// orderProteins(OrderBy::CLUSTERING); TODO hack for current presentation
 
 	emit newClustering();
 	return true;
@@ -481,6 +481,7 @@ void Dataset::calculatePartition(unsigned granularity)
 	computeClusterCentroids();
 	orderClusters(true);
 	colorClusters();
+	// note: we do not re-order proteins as the hierarchy maintains precedence
 
 	emit newClustering();
 }

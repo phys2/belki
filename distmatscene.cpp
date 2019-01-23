@@ -1,7 +1,8 @@
 #include "distmatscene.h"
 
 #include <QPainter>
-#include <QGraphicsItem>
+#include <QGraphicsPixmapItem>
+#include <QGraphicsSimpleTextItem>
 #include <QGraphicsSceneMouseEvent>
 #include <QCursor>
 
@@ -148,6 +149,13 @@ void DistmatScene::reorder()
 
 	/* reflect new order in clusterbars */
 	recolor();
+
+	/* reflect new order in markers (hack) */
+	auto mCopy = markers;
+	for (auto& [i, m] : mCopy) {
+		removeMarker(i);
+		addMarker(i);
+	}
 }
 
 /* draw colored bars around matrix that indicate cluster membership */
@@ -190,6 +198,37 @@ void DistmatScene::recolor()
 	}
 
 	rearrange();
+}
+
+void DistmatScene::addMarker(unsigned sampleIndex)
+{
+	if (markers.count(sampleIndex))
+		return;
+
+	// reverse-search in protein order
+	auto d = data.peek();
+	auto it = std::find(d->proteinOrder.begin(), d->proteinOrder.end(), sampleIndex);
+	// note: all proteins are always in the order! we do not check right now
+	auto pos = it - d->proteinOrder.begin();
+	qDebug() << pos;
+
+	auto item = new QGraphicsSimpleTextItem(d->proteins[sampleIndex].name);
+	addItem(item);
+	item->setBrush(Qt::white);
+	item->setScale(0.001);
+	auto dimensions = item->sceneBoundingRect().size();
+	item->setPos(-(dimensions.width() + 10.*vpScale),
+	             1. - ((qreal)pos / distmat.rows) - dimensions.height()/2.);
+	markers[sampleIndex] = item;
+}
+
+void DistmatScene::removeMarker(unsigned sampleIndex)
+{
+	if (!markers.count(sampleIndex))
+		return;
+
+	delete markers[sampleIndex];
+	markers.erase(sampleIndex);
 }
 
 void DistmatScene::rearrange()

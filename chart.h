@@ -52,8 +52,6 @@ public:
 	void clearPartitions();
 	void display(const QString& set);
 	void updatePartitions();
-	void addMarker(unsigned sampleIndex);
-	void removeMarker(unsigned sampleIndex);
 	void clearMarkers();
 
 	void zoomAt(const QPointF &pos, qreal factor);
@@ -71,6 +69,8 @@ public slots:
 	void updateCursor(const QPointF &pos = {});
 	void togglePartitions(bool showPartitions);
 	void updateColorset(QVector<QColor> colors);
+	void addMarker(unsigned sampleIndex);
+	void removeMarker(unsigned sampleIndex);
 
 signals:
 	void areaChanged();

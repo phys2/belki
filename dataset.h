@@ -25,6 +25,14 @@ class Dataset : public QObject
 	friend class Storage; // NOTE: ensure that Storage object resides in same thread!
 
 public:
+	enum class OrderBy {
+		FILE,
+		NAME,
+		CLUSTERING,
+		HIERARCHY
+	};
+	Q_ENUM(OrderBy)
+
 	struct Protein {
 		// first part of protein name, used as identifier
 		QString name;
@@ -112,6 +120,7 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void computeFAMS();
 	void calculatePartition(unsigned granularity);
 	void updateColorset(QVector<QColor> colors);
+	void orderProteins(OrderBy by);
 
 protected:
 	bool readSource(QTextStream in);
@@ -124,15 +133,6 @@ protected:
 	void computeClusterCentroids();
 	void orderClusters(bool genericNames);
 	void colorClusters();
-
-	enum class OrderBy {
-		FILE,
-		NAME,
-		CLUSTERING,
-		HIERARCHY
-	};
-
-	void orderProteins(OrderBy by);
 
 	QByteArray writeDisplay(const QString &name);
 

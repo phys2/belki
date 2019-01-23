@@ -135,7 +135,6 @@ void MainWindow::setupSignals()
 		chart->clearPartitions();
 		chart->updatePartitions();
 		heatmap->recolor();
-		// note: if from hierarchy, the order did not really change
 		distmat->reorder();
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
@@ -166,6 +165,7 @@ void MainWindow::setupSignals()
 	qRegisterMetaType<QVector<QColor>>();
 	connect(this, &MainWindow::updateColorset, &data, &Dataset::updateColorset);
 	connect(this, &MainWindow::updateColorset, chart, &Chart::updateColorset);
+	connect(this, &MainWindow::orderProteins, &data, &Dataset::orderProteins);
 
 	/* selecting display/partition/etc. always goes through GUI */
 	connect(transformSelect, &QComboBox::currentTextChanged, [this] (auto name) {
@@ -190,6 +190,7 @@ void MainWindow::setupSignals()
 				actionShowPartition->setEnabled(false);
 				data.cancelFAMS();
 				// TODO: better to remove annotation instead of hiding it
+				emit orderProteins(Dataset::OrderBy::FILE);
 			} else if (v == 1) {
 				data.changeFAMS((unsigned)famsKSlider->value() * 0.01f);
 				emit runFAMS();
@@ -271,12 +272,15 @@ void MainWindow::setupActions()
 		emit exportAnnotations(filename);
 	});
 	connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartitions);
+	connect(actionShowPartition, &QAction::toggled, distmat, &DistmatScene::reorder);
 	connect(actionLoadMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenMarkers);
 		if (filename.isEmpty())
 			return;
-		for (auto i : store.importMarkers(filename))
+		for (auto i : store.importMarkers(filename)) { // TODO: use signal
 			chart->addMarker(i);
+			distmat->addMarker(i);
+		}
 	});
 	connect(actionSaveMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::SaveMarkers);
@@ -322,7 +326,7 @@ void MainWindow::setupMarkerControls()
 	protSearch->setCompleter(cpl);
 	protList->setModel(cpl->completionModel());
 
-	/* synchronize with chart */
+	/* synchronize with displays */
 	connect(chart, &Chart::markerToggled, [this] (unsigned idx, bool present) {
 		this->markerItems[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 	});
@@ -331,10 +335,15 @@ void MainWindow::setupMarkerControls()
 			m->setCheckState(Qt::Unchecked);
 	});
 	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
-		if (i->checkState() == Qt::Checked)
-			chart->addMarker((unsigned)i->data().toInt());
-		if (i->checkState() == Qt::Unchecked)
-			chart->removeMarker((unsigned)i->data().toInt());
+		// TODO: use signal
+		auto index = (unsigned)i->data().toInt();
+		if (i->checkState() == Qt::Checked) {
+			chart->addMarker(index);
+			distmat->addMarker(index);
+		} else if (i->checkState() == Qt::Unchecked) {
+			chart->removeMarker(index);
+			distmat->removeMarker(index);
+		}
 	});
 
 	auto toggler = [m] (QModelIndex i) {
