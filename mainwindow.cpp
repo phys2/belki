@@ -191,7 +191,10 @@ void MainWindow::setupSignals()
 				actionShowPartition->setEnabled(false);
 				data.cancelFAMS();
 				// TODO: better to remove annotation instead of hiding it
-				emit orderProteins(Dataset::OrderBy::FILE);
+				/* TODO: does not currently work as expected!
+				 when protein order is updated, no signal is emitted. 
+				 leading to an inconsistent state in views rather than update */
+				// emit orderProteins(Dataset::OrderBy::FILE);
 			} else if (v == 1) {
 				data.changeFAMS((unsigned)famsKSlider->value() * 0.01f);
 				emit runFAMS();
@@ -273,7 +276,8 @@ void MainWindow::setupActions()
 		emit exportAnnotations(filename);
 	});
 	connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartitions);
-	connect(actionShowPartition, &QAction::toggled, distmat, &DistmatScene::reorder);
+	// TODO: does not work, order is read from dataset where it didn't change
+	// connect(actionShowPartition, &QAction::toggled, distmat, &DistmatScene::reorder);
 	connect(actionLoadMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenMarkers);
 		if (filename.isEmpty())
