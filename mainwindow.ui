@@ -509,6 +509,9 @@
            <property name="transformationAnchor">
             <enum>QGraphicsView::AnchorUnderMouse</enum>
            </property>
+           <property name="viewportUpdateMode">
+            <enum>QGraphicsView::FullViewportUpdate</enum>
+           </property>
           </widget>
          </item>
         </layout>
