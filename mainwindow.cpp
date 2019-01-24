@@ -336,8 +336,8 @@ void MainWindow::setupMarkerControls()
 		this->markerItems[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 	});
 	connect(chart, &Chart::markersCleared, [this] () {
-		for (auto m : qAsConst(this->markerItems))
-			m->setCheckState(Qt::Unchecked);
+		for (auto i : qAsConst(this->markerItems))
+			i->setCheckState(Qt::Unchecked);
 	});
 	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
 		// TODO: use signal
