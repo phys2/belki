@@ -40,8 +40,6 @@ public:
 		QString species;
 		// description, if any
 		QString description;
-		// annotations, if any
-		std::set<unsigned> memberOf;
 	};
 
 	struct Cluster {
@@ -50,6 +48,18 @@ public:
 		unsigned size = 0;
 		// mode of the cluster, if not available, centroid
 		std::vector<double> mode;
+	};
+
+	struct Clustering {
+		Clustering(size_t numProteins = 0) : memberships(numProteins) {}
+		bool empty() { return clusters.empty(); }
+
+		// cluster definitions
+		std::unordered_map<unsigned, Cluster> clusters;
+		// order of clusters (based on size/name/etc)
+		std::vector<unsigned> order;
+		// protein memberships
+		std::vector<std::set<unsigned>> memberships;
 	};
 
 	struct HrCluster {
@@ -81,12 +91,11 @@ public:
 		QMap<QString, QVector<QPointF>> display;
 
 		// clusters / hierarchy, if available
-		std::unordered_map<unsigned, Cluster> clustering;
-		std::vector<unsigned> clusterOrder;
+		Clustering clustering;
 		std::vector<HrCluster> hierarchy;
 
 		// order of proteins
-		// determined by hierarchy or clusters (if available), or name
+		// determined by hierarchy or clusters (if available), pos. in file, or name
 		std::vector<unsigned> proteinOrder;
 	};
 

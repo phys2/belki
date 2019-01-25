@@ -161,7 +161,8 @@ void DistmatScene::reorder()
 void DistmatScene::recolor()
 {
 	auto d = data.peek();
-	if (d->clustering.empty()) {
+	auto &cl = d->clustering;
+	if (cl.empty()) {
 		// no clustering, disappear
 		for (auto &c : clusterbars)
 			c.second->setVisible(false);
@@ -170,14 +171,14 @@ void DistmatScene::recolor()
 
 	const auto &source = d->proteinOrder;
 	QImage clusterbar(source.size(), 1, QImage::Format_ARGB32);
-	for (unsigned i = 0; i < source.size(); ++i) {
-		const auto &assoc = d->proteins[source[i]].memberOf;
+	for (int i = 0; i < (int)source.size(); ++i) {
+		const auto &assoc = cl.memberships[source[i]];
 		switch (assoc.size()) {
 		case 0:
 			clusterbar.setPixelColor(i, 0, Qt::transparent);
 			break;
 		case 1:
-			clusterbar.setPixelColor(i, 0, d->clustering[*assoc.begin()].color);
+			clusterbar.setPixelColor(i, 0, cl.clusters[*assoc.begin()].color);
 			break;
 		default:
 			clusterbar.setPixelColor(i, 0, Qt::white);

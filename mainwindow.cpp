@@ -472,8 +472,9 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	QString tpl("<b><a href='https://uniprot.org/uniprot/%1_%2'>%1</a></b> <small>%3 <i>%4</i></small><br>");
 	for (auto i : qAsConst(samples)) {
 		auto &p = d->proteins[i];
-		auto clusters = std::accumulate(p.memberOf.begin(), p.memberOf.end(), QStringList(),
-		    [&d] (QStringList a, unsigned b) { return a << d->clustering[b].name; });
+		auto &m = d->clustering.memberships[i];
+		auto clusters = std::accumulate(m.begin(), m.end(), QStringList(),
+		    [&d] (QStringList a, unsigned b) { return a << d->clustering.clusters[b].name; });
 		content.append(tpl.arg(p.name, p.species, clusters.join(", "), p.description));
 	}
 	cursorList->setText(text.arg(content));
