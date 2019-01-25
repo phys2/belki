@@ -175,7 +175,7 @@ void MainWindow::setupSignals()
 		chart->display(name);
 		chartView->setEnabled(true);
 	});
-	connect(partitionSelect, QOverload<int>::of(&QComboBox::activated), [this] () {
+	connect(partitionSelect, QOverload<int>::of(&QComboBox::activated), [this] {
 		// clear partition-type dependant state
 		toolbarActions.granularity->setVisible(false);
 		toolbarActions.famsK->setVisible(false);
@@ -335,7 +335,7 @@ void MainWindow::setupMarkerControls()
 	connect(chart, &Chart::markerToggled, [this] (unsigned idx, bool present) {
 		this->markerItems[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 	});
-	connect(chart, &Chart::markersCleared, [this] () {
+	connect(chart, &Chart::markersCleared, [this] {
 		for (auto i : qAsConst(this->markerItems))
 			i->setCheckState(Qt::Unchecked);
 	});

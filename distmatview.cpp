@@ -45,7 +45,6 @@ void DistmatView::paintEvent(QPaintEvent *event)
 	auto vp = std::make_pair(viewportTransform(), viewport()->size());
 	if (vp != lastViewport) {
 		lastViewport = vp;
-		auto t = vp.first.inverted();
 		auto rect = mapToScene({{0, 0}, viewport()->size()}).boundingRect();
 		auto scale = mapToScene(QPoint{1, 1}).x() - rect.left();
 		scene()->setViewport(rect, scale);

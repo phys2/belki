@@ -133,7 +133,7 @@ void HeatmapScene::Profile::paint(QPainter *painter, const QStyleOptionGraphicsI
 	painter->fillRect(QRectF(s.margin, 0, (qreal)features.size() * s.expansion, 1),
 	                  highlight ? s.cursor : bg);
 
-	for (int i = 0; i < features.size(); ++i) {
+	for (unsigned i = 0; i < features.size(); ++i) {
 		fg.setAlphaF(features[i]);
 		QRectF r(s.margin + i * s.expansion, 0, s.expansion, 1);
 		painter->fillRect(r, fg);
