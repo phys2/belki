@@ -346,7 +346,7 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 	orderClusters(false);
 	colorClusters();
 
-	// orderProteins(OrderBy::CLUSTERING); TODO hack for current presentation
+	orderProteins(OrderBy::CLUSTERING);
 
 	emit newClustering();
 	return true;
