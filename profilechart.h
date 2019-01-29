@@ -9,6 +9,7 @@ class ProfileWindow;
 namespace QtCharts {
 class QAreaSeries;
 class QLineSeries;
+class QAbstractAxis;
 }
 
 class ProfileChart : public QtCharts::QChart
@@ -41,6 +42,8 @@ signals:
 
 protected:
 	void computeStats(); // helper to finalize()
+
+	QtCharts::QAbstractAxis *ax, *ay;
 };
 
 #endif // PROFILECHART_H
