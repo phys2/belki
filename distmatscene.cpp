@@ -257,11 +257,11 @@ void DistmatScene::updateColorset(QVector<QColor> colors)
 	// TODO: re-initialize markers
 }
 
+DistmatScene::LegendItem::LegendItem(qreal coord) : coordinate(coord) {}
 DistmatScene::LegendItem::LegendItem(DistmatScene *scene, qreal coord, QString title)
     : coordinate(coord)
 {
-	if (!title.isEmpty())
-		setup(scene, title, Qt::white);
+	setup(scene, title, Qt::white);
 }
 
 void DistmatScene::LegendItem::setup(DistmatScene *scene, QString title, QColor color)
@@ -288,7 +288,7 @@ void DistmatScene::LegendItem::setup(DistmatScene *scene, QString title, QColor 
 }
 
 DistmatScene::Marker::Marker(DistmatScene *scene, unsigned sampleIndex, qreal coord)
-    : LegendItem(scene, coord), sampleIndex(sampleIndex)
+    : LegendItem(coord), sampleIndex(sampleIndex)
 {
 	auto title = scene->data.peek()->proteins[sampleIndex].name;
 	auto color = scene->colorset[(int)qHash(title) % scene->colorset.size()];

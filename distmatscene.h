@@ -23,7 +23,9 @@ public:
 
 	class LegendItem : QObject {
 	public:
-		LegendItem(DistmatScene* scene, qreal coord, QString label = {});
+		LegendItem(qreal coord);
+		// constructor that initializes (calling setup())
+		LegendItem(DistmatScene* scene, qreal coord, QString label);
 		// no copies/moves! adds its items to the scene in above constructor
 		LegendItem(const LegendItem&) = delete;
 		LegendItem& operator=(const LegendItem&) = delete;
