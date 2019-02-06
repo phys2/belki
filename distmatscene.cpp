@@ -22,9 +22,9 @@ DistmatScene::DistmatScene(Dataset &data)
 
 void DistmatScene::setViewport(const QRectF &rect, qreal scale)
 {
-	   viewport = rect;
-	   vpScale = scale;
-	   rearrange();
+	viewport = rect;
+	vpScale = scale;
+	rearrange();
 }
 
 void DistmatScene::setDisplay()
