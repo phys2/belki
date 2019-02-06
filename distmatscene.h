@@ -2,45 +2,68 @@
 #define DISTMATSCENE_H
 
 #include "dataset.h"
+#include "distmat.h"
 
 #include <QGraphicsScene>
 #include <QGraphicsRectItem>
 #include <QGraphicsSimpleTextItem>
 #include <QGraphicsLineItem>
 
-#include <opencv2/core/core.hpp>
-#include <functional>
 #include <map>
 
 class DistmatScene : public QGraphicsScene
 {
 	Q_OBJECT
 public:
-	enum class Measure {
-		NORM_L2,
-		CROSSCORREL,
-		PEARSON
+	enum class Direction {
+		PER_PROTEIN,
+		PER_DIMENSION,
 	};
+	Q_ENUM(Direction)
 
-	struct Marker {
-		Marker(unsigned sampleIndex, qreal coord, DistmatScene* scene);
-		// no copies/moves! adds itself to the scene in above constructor
-		Marker(const Marker&) = delete;
-		Marker& operator=(const Marker&) = delete;
-		~Marker() { delete label; delete line; delete backdrop; }
+	class LegendItem : QObject {
+	public:
+		LegendItem(DistmatScene* scene, qreal coord, QString label = {});
+		// no copies/moves! adds its items to the scene in above constructor
+		LegendItem(const LegendItem&) = delete;
+		LegendItem& operator=(const LegendItem&) = delete;
+		~LegendItem() { delete label; delete line; delete backdrop; }
 
+		void setVisible(bool visible);
 		void rearrange(qreal right, qreal scale);
 
-		unsigned sampleIndex;
 		qreal coordinate;
+
+	protected:
+		void setup(DistmatScene *scene, QString label, QColor color);
+
 		QGraphicsSimpleTextItem *label;
 		QGraphicsLineItem *line;
 		QGraphicsRectItem *backdrop;
 	};
 
+	struct Marker : public LegendItem {
+		Marker(DistmatScene* scene, unsigned sampleIndex, qreal coord);
+
+		unsigned sampleIndex;
+	};
+
+	class Clusterbars : QObject {
+	public:
+		Clusterbars(DistmatScene *scene);
+		// no copies/moves! adds its items to the scene in above constructor
+		Clusterbars(const Clusterbars&) = delete;
+		Clusterbars& operator=(const Clusterbars&) = delete;
+
+		void update(QImage content);
+		void setVisible(bool visible);
+		void rearrange(QRectF target, qreal margin);
+
+	protected:
+		std::map<Qt::Edge, QGraphicsPixmapItem*> items;
+	};
+
 	DistmatScene(Dataset &data);
-	static std::map<Measure, std::function<double(const std::vector<double> &,
-	                                     const std::vector<double> &)>> measures();
 
 	void setViewport(const QRectF &rect, qreal scale);
 
@@ -49,6 +72,7 @@ signals:
 
 public slots:
 	void reset(bool haveData = false);
+	void setDirection(DistmatScene::Direction direction);
 	void reorder();
 	void recolor();
 
@@ -60,17 +84,22 @@ public slots:
 protected:
 	void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
 
+	void setDisplay();
 	void rearrange();
+
+	Direction currentDirection = Direction::PER_PROTEIN;
+	std::map<Direction, Distmat> matrices;
 
 	Dataset &data;
 	QVector<QColor> colorset;
 
-	Measure measure = Measure::CROSSCORREL;
-	cv::Mat1f distmat;
-	cv::Mat3b distimg;
 	QGraphicsPixmapItem *display;
-	std::map<Qt::Edge, QGraphicsPixmapItem*> clusterbars;
+
+	// annotations used in PER_PROTEIN:
+	Clusterbars clusterbars;
 	std::map<unsigned, Marker*> markers;
+	// annotations used in PER_DIRECTION:
+	std::vector<LegendItem*> dimensionLabels;
 
 	/* geometry of the current view, used to re-arrange stuff into view */
 	QRectF viewport;
