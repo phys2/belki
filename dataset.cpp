@@ -175,10 +175,13 @@ bool Dataset::readSource(QTextStream in)
 	if (minVal < 0 || maxVal > 1) { // simple heuristic to auto-normalize
 		emit ioError(QString("Values outside expected range (instead [%1, %2])."
 		                     "<br>Normalizing to [0, 1].").arg(minVal).arg(maxVal));
+		//maxVal = std::log1p(maxVal);
+		//minVal = std::log1p(minVal);
 		auto scale = 1. / (maxVal - minVal);
 		for (int i = 0; i < d.features.size(); ++i) {
 			auto &v = d.features[i];
 			std::for_each(v.begin(), v.end(), [minVal, scale] (double &e) {
+				//e = std::log1p(e);
 				e = (e - minVal) * scale;
 			});
 		}
