@@ -241,6 +241,8 @@ void MainWindow::setupActions()
 	saveMarkersButton->setDefaultAction(actionSaveMarkers);
 	clearMarkersButton->setDefaultAction(actionClearMarkers);
 	profileViewButton->setDefaultAction(actionProfileView);
+	// DistMat
+	toggleDistdirButton->setDefaultAction(actionToggleDistdir);
 
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 	connect(actionLoadDataset, &QAction::triggered, [this] {
@@ -316,6 +318,11 @@ void MainWindow::setupActions()
 			menu->addAction(m.description, [this, m] { emit computeDisplay(m.name); });
 		}
 		menu->popup(QCursor::pos());
+	});
+
+	connect(actionToggleDistdir, &QAction::toggled, [this] (bool toggle) {
+		distmat->setDirection(toggle ? DistmatScene::Direction::PER_DIMENSION
+		                             : DistmatScene::Direction::PER_PROTEIN);
 	});
 }
 
