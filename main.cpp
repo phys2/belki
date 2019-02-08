@@ -1,8 +1,11 @@
 #include "mainwindow.h"
 #include "dataset.h" // to register type
+
 #include <QChartView>
 #include <QApplication>
 #include <QIcon>
+
+#include <iostream>
 
 int main(int argc, char *argv[])
 {
@@ -11,7 +14,7 @@ int main(int argc, char *argv[])
 	QApplication a(argc, argv);
 
 	// setup our custom icon theme if there is no system theme (e.g. OSX, Windows)
-	if (QIcon::themeName().isEmpty() || !QIcon::themeName().compare("hicolor"))
+	if (QIcon::themeName().isEmpty() || QIcon::themeName() == "hicolor")
 		QIcon::setThemeName("Breeze");
 
 	MainWindow window;
@@ -22,5 +25,7 @@ int main(int argc, char *argv[])
 	if (argc >= 3)
 		window.importAnnotations(argv[2]);
 
+	// proof-of-concept, works with CMake build
+	// std::cout << "Running Belki " PROJECT_VERSION << std::endl;
 	return a.exec();
 }
