@@ -9,11 +9,12 @@
 #include <cstdlib>
 #include <algorithm>
 #include <limits>
+#include <random>
 
 namespace tapkee
 {
 
-inline IndexType uniform_random_index() 
+inline IndexType uniform_random_index()
 {
 #ifdef CUSTOM_UNIFORM_RANDOM_INDEX_FUNCTION
 	return CUSTOM_UNIFORM_RANDOM_INDEX_FUNCTION % std::numeric_limits<IndexType>::max();
@@ -57,7 +58,9 @@ inline ScalarType gaussian_random()
 template <class RAI>
 inline void random_shuffle(RAI first, RAI last)
 {
-	std::random_shuffle(first,last,uniform_random_index_bounded);
+	std::random_device rng;
+	std::mt19937 urng(rng());
+	std::shuffle(first,last, urng);
 }
 
 }

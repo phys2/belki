@@ -166,6 +166,8 @@ void MainWindow::setupSignals()
 	qRegisterMetaType<QVector<QColor>>();
 	connect(this, &MainWindow::updateColorset, &data, &Dataset::updateColorset);
 	connect(this, &MainWindow::updateColorset, chart, &Chart::updateColorset);
+	connect(this, &MainWindow::updateColorset, distmat, &DistmatScene::updateColorset);
+	connect(this, &MainWindow::orderProteins, &data, &Dataset::orderProteins);
 
 	/* selecting display/partition/etc. always goes through GUI */
 	connect(transformSelect, &QComboBox::currentTextChanged, [this] (auto name) {
@@ -174,7 +176,7 @@ void MainWindow::setupSignals()
 		chart->display(name);
 		chartView->setEnabled(true);
 	});
-	connect(partitionSelect, QOverload<int>::of(&QComboBox::activated), [this] () {
+	connect(partitionSelect, QOverload<int>::of(&QComboBox::activated), [this] {
 		// clear partition-type dependant state
 		toolbarActions.granularity->setVisible(false);
 		toolbarActions.famsK->setVisible(false);
@@ -190,6 +192,10 @@ void MainWindow::setupSignals()
 				actionShowPartition->setEnabled(false);
 				data.cancelFAMS();
 				// TODO: better to remove annotation instead of hiding it
+				/* TODO: does not currently work as expected!
+				 when protein order is updated, no signal is emitted. 
+				 leading to an inconsistent state in views rather than update */
+				// emit orderProteins(Dataset::OrderBy::FILE);
 			} else if (v == 1) {
 				data.changeFAMS((unsigned)famsKSlider->value() * 0.01f);
 				emit runFAMS();
@@ -236,6 +242,8 @@ void MainWindow::setupActions()
 	saveMarkersButton->setDefaultAction(actionSaveMarkers);
 	clearMarkersButton->setDefaultAction(actionClearMarkers);
 	profileViewButton->setDefaultAction(actionProfileView);
+	// DistMat
+	toggleDistdirButton->setDefaultAction(actionToggleDistdir);
 
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 	connect(actionLoadDataset, &QAction::triggered, [this] {
@@ -272,12 +280,16 @@ void MainWindow::setupActions()
 	});
 	connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartitions);
 	connect(actionShowPartition, &QAction::toggled, heatmap, &HeatmapScene::recolor);
+	// TODO: does not work, order is read from dataset where it didn't change
+	// connect(actionShowPartition, &QAction::toggled, distmat, &DistmatScene::reorder);
 	connect(actionLoadMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenMarkers);
 		if (filename.isEmpty())
 			return;
-		for (auto i : store.importMarkers(filename))
+		for (auto i : store.importMarkers(filename)) { // TODO: use signal
 			chart->addMarker(i);
+			distmat->addMarker(i);
+		}
 	});
 	connect(actionSaveMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::SaveMarkers);
@@ -309,6 +321,11 @@ void MainWindow::setupActions()
 		}
 		menu->popup(QCursor::pos());
 	});
+
+	connect(actionToggleDistdir, &QAction::toggled, [this] (bool toggle) {
+		distmat->setDirection(toggle ? DistmatScene::Direction::PER_DIMENSION
+		                             : DistmatScene::Direction::PER_PROTEIN);
+	});
 }
 
 void MainWindow::setupMarkerControls()
@@ -323,19 +340,24 @@ void MainWindow::setupMarkerControls()
 	protSearch->setCompleter(cpl);
 	protList->setModel(cpl->completionModel());
 
-	/* synchronize with chart */
+	/* synchronize with displays */
 	connect(chart, &Chart::markerToggled, [this] (unsigned idx, bool present) {
 		this->markerItems[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 	});
-	connect(chart, &Chart::markersCleared, [this] () {
-		for (auto m : qAsConst(this->markerItems))
-			m->setCheckState(Qt::Unchecked);
+	connect(chart, &Chart::markersCleared, [this] {
+		for (auto i : qAsConst(this->markerItems))
+			i->setCheckState(Qt::Unchecked);
 	});
 	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
-		if (i->checkState() == Qt::Checked)
-			chart->addMarker((unsigned)i->data().toInt());
-		if (i->checkState() == Qt::Unchecked)
-			chart->removeMarker((unsigned)i->data().toInt());
+		// TODO: use signal
+		auto index = (unsigned)i->data().toInt();
+		if (i->checkState() == Qt::Checked) {
+			chart->addMarker(index);
+			distmat->addMarker(index);
+		} else if (i->checkState() == Qt::Unchecked) {
+			chart->removeMarker(index);
+			distmat->removeMarker(index);
+		}
 	});
 
 	auto toggler = [m] (QModelIndex i) {
@@ -459,8 +481,9 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	QString tpl("<b><a href='https://uniprot.org/uniprot/%1_%2'>%1</a></b> <small>%3 <i>%4</i></small><br>");
 	for (auto i : qAsConst(samples)) {
 		auto &p = d->proteins[i];
-		auto clusters = std::accumulate(p.memberOf.begin(), p.memberOf.end(), QStringList(),
-		    [&d] (QStringList a, unsigned b) { return a << d->clustering[b].name; });
+		auto &m = d->clustering.memberships[i];
+		auto clusters = std::accumulate(m.begin(), m.end(), QStringList(),
+		    [&d] (QStringList a, unsigned b) { return a << d->clustering.clusters[b].name; });
 		content.append(tpl.arg(p.name, p.species, clusters.join(", "), p.description));
 	}
 	cursorList->setText(text.arg(content));

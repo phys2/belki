@@ -4,8 +4,8 @@
 #include <QLineSeries>
 #include <QAreaSeries>
 #include <QValueAxis>
-#include <QBarCategoryAxis>
 #include <QCategoryAxis>
+#include <QBarCategoryAxis>
 
 #include <cmath>
 
@@ -13,28 +13,33 @@
 
 ProfileChart::ProfileChart()
 {
-	/* small plot */
+	/* small plot constructor */
+
+	ax = new QtCharts::QBarCategoryAxis;
+	ay = new QtCharts::QValueAxis;
+	ay->setRange(0, 1);
+	addAxis(ax, Qt::AlignBottom);
+	addAxis(ay, Qt::AlignLeft);
+	for (auto a : {ax, ay})
+		a->hide();
 	legend()->hide();
-	setAxisX(new QtCharts::QBarCategoryAxis);
-	setAxisY(new QtCharts::QValueAxis);
-	axisY()->setRange(0, 1);
-	axisY()->hide();
-	axisX()->hide();
 }
 
 ProfileChart::ProfileChart(ProfileChart *source)
 {
-	/* big, labelled plot */
+	/* big, labelled plot constructor */
+	auto ax = new QtCharts::QCategoryAxis;
+	this->ax = ax; // keep QCategoryAxis* in this method
+	ay = new QtCharts::QValueAxis;
+	addAxis(ax, Qt::AlignBottom);
+	addAxis(ay, Qt::AlignLeft);
+
 	setTitle(source->title());
 	legend()->setAlignment(Qt::AlignLeft);
-	auto ax = new QtCharts::QCategoryAxis;
-	auto ay = new QtCharts::QValueAxis;
-	setAxisX(ax);
-	setAxisY(ay);
 
 	ax->setLabelsAngle(-90);
 	ax->setLabelsPosition(QtCharts::QCategoryAxis::AxisLabelsPositionOnValue);
-	auto labels = qobject_cast<QtCharts::QBarCategoryAxis*>(source->axisX())->categories();
+	auto labels = qobject_cast<QtCharts::QBarCategoryAxis*>(source->ax)->categories();
 	ax->setRange(0, labels.size() - 1);
 	ay->setRange(0, 1);
 
@@ -65,8 +70,8 @@ ProfileChart::ProfileChart(ProfileChart *source)
 
 void ProfileChart::setCategories(QStringList categories)
 {
-	auto ax = qobject_cast<QtCharts::QBarCategoryAxis*>(axisX());
-	ax->setCategories(categories);
+	auto a = qobject_cast<QtCharts::QBarCategoryAxis*>(ax);
+	a->setCategories(categories);
 }
 
 void ProfileChart::clear()
@@ -97,8 +102,8 @@ void ProfileChart::finalize(bool fresh)
 
 	auto add = [this] (QtCharts::QAbstractSeries *s, bool individual) {
 		addSeries(s);
-		s->attachAxis(axisX());
-		s->attachAxis(axisY());
+		for (auto a : {ax, ay})
+			s->attachAxis(a);
 		auto signal = individual ? &ProfileChart::toggleIndividual : &ProfileChart::toggleAverage;
 		connect(this, signal, s, &QtCharts::QAbstractSeries::setVisible);
 	};
@@ -145,7 +150,7 @@ void ProfileChart::computeStats()
 		return;
 
 	/* really not the brightest way to do this.
-	   maybe we should really just convert to sane formats and back */
+	   might want to indeed convert to sane formats and back to use OpenCV */
 
 	stats.mean.resize((unsigned)input[0]->pointsVector().size());
 	for (auto s : input) {
@@ -153,6 +158,7 @@ void ProfileChart::computeStats()
 		for (unsigned j = 0; j < stats.mean.size(); ++j)
 			stats.mean[j] += points[(int)j].y();
 	}
+
 	for (auto &v : stats.mean)
 		v /= input.size();
 

@@ -123,8 +123,8 @@ void Chart::updatePartitions()
 		partitions[-1] = (new Proteins("Mixed", Qt::darkGray, this));
 
 		// go through clusters in their designated order
-		for (auto i : d->clusterOrder) {
-			auto &c = d->clustering[i];
+		for (auto i : d->clustering.order) {
+			auto &c = d->clustering.clusters[i];
 			auto s = new Proteins(c.name, c.color, this);
 			partitions[(int)i] = s;
 			/* enable profile view updates on legend label hover */
@@ -133,8 +133,8 @@ void Chart::updatePartitions()
 				if (!active)
 					return;
 				emit cursorChanged(s->samples, s->name());
-				for (auto i : partitions)
-					i.second->redecorate(false, s == i.second);
+				for (auto& [_, p] : partitions)
+					p->redecorate(false, s == p);
 			});
 		}
 	} else {
@@ -150,13 +150,13 @@ void Chart::updatePartitions()
 	if (source.empty())
 		return; // shouldn't happen, but when it does, better not crash
 
-	for (unsigned i = 0; i < d->proteins.size(); ++i) {
-		auto &p = d->proteins[i];
+	for (unsigned i = 0; i < d->clustering.memberships.size(); ++i) {
+		auto &m = d->clustering.memberships[i];
 		int target = -2; // first series, unlabeled
-		if (p.memberOf.size() > 1)
+		if (m.size() > 1)
 			target++; // second series, mixed
-		if (p.memberOf.size() == 1)
-			target = (int)*p.memberOf.begin();
+		if (m.size() == 1)
+			target = (int)*m.begin();
 		partitions[target]->add(i, source[(int)i]);
 	}
 	// the partitions use deffered addition, which we need to trigger
@@ -215,19 +215,19 @@ void Chart::updateCursor(const QPointF &pos)
 	std::set<int> affectedPartitions;
 	{
 		auto d = data.peek();
-		auto p = master->pointsVector();
-		for (int i = 0; i < p.size(); ++i) {
-			auto diffVec = p[i] - center;
+		auto pv = master->pointsVector();
+		for (int i = 0; i < pv.size(); ++i) {
+			auto diffVec = pv[i] - center;
 			if (QPointF::dotProduct(diffVec, diffVec) < range) {
 				list << (unsigned)i;
-				for (auto m : d->proteins[(unsigned)i].memberOf)
+				for (auto m : d->clustering.memberships[(unsigned)i])
 					affectedPartitions.insert((int)m);
 			}
 		}
 	} // peek() scope
 
-	for (auto i : partitions)
-		i.second->redecorate(false, affectedPartitions.count(i.first));
+	for (auto& [i, p] : partitions)
+		p->redecorate(false, affectedPartitions.count(i));
 
 	emit cursorChanged(list);
 }

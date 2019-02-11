@@ -238,17 +238,19 @@ void Storage::exportAnnotations(const QString &filename)
 
 	// write header
 	out << "Protein Name";
-	for (auto c : d->clustering)
-		out << "\t" << c.second.name;
+	for (auto& [i, c] : d->clustering.clusters)
+		out << "\t" << c.name;
 	out << endl;
 
 	// write associations
-	for (auto &p : d->proteins) {
+	for (unsigned i = 0; i < d->proteins.size(); ++i) {
+		auto &p = d->proteins[i];
+		auto &m = d->clustering.memberships[i];
 		out << p.name << "_" << p.species;
-		for (auto c : d->clustering) {
+		for (auto& [i, c] : d->clustering.clusters) {
 			out << "\t";
-			if (p.memberOf.find(c.first) != p.memberOf.end())
-				out << c.second.name;
+			if (m.count(i))
+				out << c.name;
 		}
 		out << endl;
 	}

@@ -25,6 +25,14 @@ class Dataset : public QObject
 	friend class Storage; // NOTE: ensure that Storage object resides in same thread!
 
 public:
+	enum class OrderBy {
+		FILE,
+		NAME,
+		CLUSTERING,
+		HIERARCHY
+	};
+	Q_ENUM(OrderBy)
+
 	struct Protein {
 		// first part of protein name, used as identifier
 		QString name;
@@ -32,8 +40,6 @@ public:
 		QString species;
 		// description, if any
 		QString description;
-		// annotations, if any
-		std::set<unsigned> memberOf;
 	};
 
 	struct Cluster {
@@ -44,10 +50,28 @@ public:
 		std::vector<double> mode;
 	};
 
+	struct Clustering {
+		Clustering(size_t numProteins = 0) : memberships(numProteins) {}
+		bool empty() { return clusters.empty(); }
+
+		// cluster definitions
+		std::unordered_map<unsigned, Cluster> clusters;
+		// order of clusters (based on size/name/etc)
+		std::vector<unsigned> order;
+		// cluster memberships of each protein
+		std::vector<std::set<unsigned>> memberships;
+	};
+
 	struct HrCluster {
 		double distance;
 		int protein;
+		unsigned parent;
 		std::vector<unsigned> children;
+	};
+
+	struct Order {
+		std::vector<unsigned> index; // protein indices ordered
+		std::vector<unsigned> rankOf; // position of each protein in the order
 	};
 
 	struct Public {
@@ -72,13 +96,12 @@ public:
 		QMap<QString, QVector<QPointF>> display;
 
 		// clusters / hierarchy, if available
-		std::unordered_map<unsigned, Cluster> clustering;
-		std::vector<unsigned> clusterOrder;
+		Clustering clustering;
 		std::vector<HrCluster> hierarchy;
 
 		// order of proteins
-		// determined by hierarchy or clusters (if available), or name
-		std::vector<unsigned> proteinOrder;
+		// determined by hierarchy or clusters (if available), pos. in file, or name
+		Order order;
 	};
 
 	struct View {
@@ -111,6 +134,7 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void computeFAMS();
 	void calculatePartition(unsigned granularity);
 	void updateColorset(QVector<QColor> colors);
+	void orderProteins(OrderBy by);
 
 protected:
 	bool readSource(QTextStream in);
@@ -123,15 +147,6 @@ protected:
 	void computeClusterCentroids();
 	void orderClusters(bool genericNames);
 	void colorClusters();
-
-	enum class OrderBy {
-		FILE,
-		NAME,
-		CLUSTERING,
-		HIERARCHY
-	};
-
-	void orderProteins(OrderBy by);
 
 	QByteArray writeDisplay(const QString &name);
 

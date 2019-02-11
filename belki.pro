@@ -61,7 +61,8 @@ HEADERS += \
     heatmapscene.h \
     heatmapview.h \
     distmatscene.h \
-    distmatview.h
+    distmatview.h \
+    distmat.h
 
 SOURCES += \
     meanshift/fams.cpp \
@@ -81,7 +82,8 @@ SOURCES += \
     heatmapscene.cpp \
     heatmapview.cpp \
     distmatscene.cpp \
-    distmatview.cpp
+    distmatview.cpp \
+    distmat.cpp
 
 FORMS += \
     mainwindow.ui \

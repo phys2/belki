@@ -18,6 +18,9 @@ protected:
 	void keyReleaseEvent(QKeyEvent *event) override;
 	void wheelEvent(QWheelEvent *event) override;
 	void resizeEvent(QResizeEvent *event) override;
+	void paintEvent(QPaintEvent *event) override;
+
+	std::pair<QTransform, QSize> lastViewport;
 };
 
 #endif // DISTMATVIEW_H

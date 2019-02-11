@@ -72,13 +72,22 @@ void HeatmapScene::rearrange(unsigned columns)
 void HeatmapScene::recolor()
 {
 	auto d = data.peek();
+	if (d->clustering.empty()) {
+		for (auto &p : profiles)
+			p->setBrush(Qt::transparent);
+		update();
+		return;
+	}
+
 	for (unsigned i = 0; i < profiles.size(); ++i) {
-		const auto &assoc = d->proteins[i].memberOf;
-		if (assoc.size() != 1) {
+		const auto &assoc = d->clustering.memberships[i];
+		switch (assoc.size()) {
+		case 1:
+			profiles[i]->setBrush(d->clustering.clusters[*assoc.begin()].color);
+			break;
+		default: // TODO: maybe set to White on multiple memberships
 			profiles[i]->setBrush(Qt::transparent);
-			continue;
 		}
-		profiles[i]->setBrush(d->clustering[*assoc.begin()].color);
 	}
 	update();
 }
@@ -131,7 +140,7 @@ void HeatmapScene::Profile::paint(QPainter *painter, const QStyleOptionGraphicsI
 	painter->fillRect(QRectF(s.margin, 0, (qreal)features.size() * s.expansion, 1),
 	                  highlight ? s.cursor : bg);
 
-	for (int i = 0; i < features.size(); ++i) {
+	for (unsigned i = 0; i < features.size(); ++i) {
 		fg.setAlphaF(features[i]);
 		QRectF r(s.margin + i * s.expansion, 0, s.expansion, 1);
 		painter->fillRect(r, fg);
