@@ -58,7 +58,7 @@ public:
 		std::unordered_map<unsigned, Cluster> clusters;
 		// order of clusters (based on size/name/etc)
 		std::vector<unsigned> order;
-		// protein memberships
+		// cluster memberships of each protein
 		std::vector<std::set<unsigned>> memberships;
 	};
 
@@ -67,6 +67,11 @@ public:
 		int protein;
 		unsigned parent;
 		std::vector<unsigned> children;
+	};
+
+	struct Order {
+		std::vector<unsigned> index; // protein indices ordered
+		std::vector<unsigned> rankOf; // position of each protein in the order
 	};
 
 	struct Public {
@@ -96,7 +101,7 @@ public:
 
 		// order of proteins
 		// determined by hierarchy or clusters (if available), pos. in file, or name
-		std::vector<unsigned> proteinOrder;
+		Order order;
 	};
 
 	struct View {

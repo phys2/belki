@@ -125,7 +125,7 @@ void DistmatScene::reorder()
 		/* re-do display with current ordering */
 		auto d = data.peek();
 		matrices[currentDirection].computeImage([&d] (int y, int x) {
-			return cv::Point(d->proteinOrder[x], d->proteinOrder[y]);
+			return cv::Point(d->order.index[x], d->order.index[y]);
 		});
 		if (currentDirection == Direction::PER_PROTEIN)
 			setDisplay();
@@ -153,7 +153,7 @@ void DistmatScene::recolor()
 	}
 
 	/* setup a colored bar that indicates cluster membership */
-	const auto &source = d->proteinOrder;
+	const auto &source = d->order.index;
 	QImage clusterbar(source.size(), 1, QImage::Format_ARGB32);
 	for (int i = 0; i < (int)source.size(); ++i) {
 		const auto &assoc = cl.memberships[source[i]];
@@ -198,10 +198,8 @@ void DistmatScene::addMarker(unsigned sampleIndex)
 
 	// reverse-search in protein order
 	auto d = data.peek();
-	auto &p = d->proteinOrder;
-	auto it = std::find(p.begin(), p.end(), sampleIndex);
-	// note: we do not check if protein was found, we require order to be complete
-	auto coord = (qreal)(it - p.begin() + 0.5) / p.size();
+	auto pos = d->order.rankOf[sampleIndex];
+	auto coord = (qreal)(pos + 0.5) / d->proteins.size();
 
 	markers[sampleIndex] = new Marker(this, sampleIndex, coord);
 }
@@ -225,29 +223,31 @@ void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 	/* check if cursor lies over matrix */
 	// shrink width/height to avoid index out of bounds later
 	auto inside = display->boundingRect().adjusted(0,0,-0.01,-0.01).contains(pos);
-
-	/* display current value */
-	if (currentDirection == Direction::PER_DIMENSION) {
-		if (!inside)
-			return;
-
-		// for proteins, we would have to do _reverse_ reordering here, so we cut it out for now
-		auto &m = matrices[currentDirection].matrix;
-		display->setToolTip(QString::number(m((int)pos.y(), (int)pos.x()), 'f', 2));
-		return;
-	}
-
-	/* emit cursor change */
 	if (!inside) {
-		emit cursorChanged({});
+		if (currentDirection == Direction::PER_PROTEIN)
+			emit cursorChanged({});
 		return;
 	}
-
-	auto d = data.peek();
 
 	// use floored coordinates, as everything in [0,1[ lies over pixel 0
-	emit cursorChanged({d->proteinOrder[(unsigned)pos.x()],
-	                    d->proteinOrder[(unsigned)pos.y()]});
+	cv::Point_<unsigned> idx = {(unsigned)pos.x(), (unsigned)pos.y()};
+	if (currentDirection == Direction::PER_PROTEIN) {
+		// need to back-translate
+		auto d = data.peek();
+		idx = {d->order.index[(size_t)pos.x()],
+		       d->order.index[(size_t)pos.y()]};
+	}
+
+	/* display current value */
+	auto &m = matrices[currentDirection].matrix;
+	display->setToolTip(QString::number((double)m(idx), 'f', 2));
+
+	if (currentDirection == Direction::PER_DIMENSION)
+		return;
+
+	/* emit cursor change */
+	auto d = data.peek();
+	emit cursorChanged({idx.x, idx.y});
 }
 
 void DistmatScene::updateColorset(QVector<QColor> colors)

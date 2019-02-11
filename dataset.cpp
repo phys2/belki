@@ -558,31 +558,29 @@ void Dataset::colorClusters()
 
 void Dataset::orderProteins(OrderBy by)
 {
-	QWriteLocker _(&l);
-
-	auto &target = d.proteinOrder;
-	target.clear();
+	Order target;
+	auto &index = target.index;
 
 	auto byName = [this] (auto a, auto b) {
 		return d.proteins[a].name < d.proteins[b].name;
 	};
 
+	switch (by) {
 	/* order based on hierarchy */
-	if (by == OrderBy::HIERARCHY) {
+	case OrderBy::HIERARCHY: {
 		std::function<void(unsigned)> collect;
 		collect = [&] (unsigned hIndex) {
 			auto &current = d.hierarchy[hIndex];
 			if (current.protein >= 0)
-				d.proteinOrder.push_back((unsigned)current.protein);
+				index.push_back((unsigned)current.protein);
 			for (auto c : current.children)
 				collect(c);
 		};
 		collect(d.hierarchy.size()-1);
-		return;
+		break;
 	}
-
 	/* order based on ordered clusters */
-	if (by == OrderBy::CLUSTERING) {
+	case OrderBy::CLUSTERING: {
 
 		// ensure that each protein appears only once
 		std::unordered_set<unsigned> seen;
@@ -604,7 +602,7 @@ void Dataset::orderProteins(OrderBy by)
 				return a.second < b.second;
 			});
 			// now append to global list
-			std::transform(members.begin(), members.end(), std::back_inserter(target),
+			std::transform(members.begin(), members.end(), std::back_inserter(index),
 			               [] (const auto &i) { return i.first; });
 		}
 
@@ -615,15 +613,25 @@ void Dataset::orderProteins(OrderBy by)
 				missing.push_back(i);
 		}
 		std::sort(missing.begin(), missing.end(), byName);
-		target.insert(target.end(), missing.begin(), missing.end());
-		return;
+		index.insert(index.end(), missing.begin(), missing.end());
+		break;
+	}
+	default: {
+		/* replicate file order */
+		index.resize(d.proteins.size());
+		std::iota(index.begin(), index.end(), 0);
+
+		/* order based on name (some prots have common prefixes) */
+		if (by == OrderBy::NAME)
+			std::sort(index.begin(), index.end(), byName);
+	}
 	}
 
-	/* replicate file order */
-	target.resize(d.proteins.size());
-	std::iota(target.begin(), target.end(), 0);
+	/* now fill the back-references */
+	target.rankOf.resize(index.size());
+	for (size_t i = 0; i < index.size(); ++i)
+		target.rankOf[index[i]] = i;
 
-	/* order based on name (some prots have common prefixes) */
-	if (by == OrderBy::NAME)
-		std::sort(target.begin(), target.end(), byName);
+	QWriteLocker _(&l);
+	d.order = target;
 }
