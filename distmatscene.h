@@ -23,8 +23,6 @@ public:
 
 	class LegendItem : QObject {
 	public:
-		LegendItem(qreal coord);
-		// constructor that initializes (calling setup())
 		LegendItem(DistmatScene* scene, qreal coord, QString label);
 		// no copies/moves! adds its items to the scene in above constructor
 		LegendItem(const LegendItem&) = delete;
@@ -37,6 +35,7 @@ public:
 		qreal coordinate;
 
 	protected:
+		LegendItem(qreal coord); // must be followed by a call to setup()
 		void setup(DistmatScene *scene, QString label, QColor color);
 
 		QGraphicsSimpleTextItem *label;
