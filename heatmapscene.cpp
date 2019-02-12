@@ -40,7 +40,8 @@ void HeatmapScene::reset(bool haveData)
 	// save for later
 	layout.columnWidth = profiles[0]->boundingRect().width();
 
-	// TODO: reorder using hier. order
+	// fulfill current protein order
+	reorder();
 }
 
 void HeatmapScene::rearrange(QSize viewport)
@@ -60,13 +61,14 @@ void HeatmapScene::rearrange(unsigned columns)
 		return;
 
 	layout.rows = (unsigned)std::ceil(profiles.size() / (float)columns);
-	QSizeF box(layout.columnWidth * columns, layout.rows);
 
-	setSceneRect({{0, 0}, box});
+	// reposition profiles
+	reorder();
 
-	for (unsigned i = 0; i < profiles.size(); ++i) {
-		profiles[i]->setPos((i / layout.rows) * layout.columnWidth, i % layout.rows);
-	}
+	// set scene rect
+	QRectF box({0, 0}, QSizeF{layout.columnWidth * columns, (qreal)layout.rows});
+	qreal offset = 10; // some "feel good" borders
+	setSceneRect(box.adjusted(-offset, -offset, offset, offset));
 }
 
 void HeatmapScene::recolor()
@@ -95,10 +97,11 @@ void HeatmapScene::recolor()
 void HeatmapScene::reorder()
 {
 	auto d = data.peek();
-	// TODO: go through all clusters first based on clusterOrder, but then also
-	// go through proteins not in a cluster (or in several clusters, transitions?)
 
-	// alternative: only provide hierarchical ordering for now
+	for (unsigned i = 0; i < profiles.size(); ++i) {
+		auto p = profiles[d->order.index[i]];
+		p->setPos((i / layout.rows) * layout.columnWidth, i % layout.rows);
+	}
 }
 
 

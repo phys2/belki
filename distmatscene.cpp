@@ -15,8 +15,7 @@ DistmatScene::DistmatScene(Dataset &data)
 	display->setCursor(Qt::CursorShape::CrossCursor);
 	addItem(display);
 
-	// some "feel good" borders
-	qreal offset = .1;
+	qreal offset = .1; // some "feel good" borders
 	setSceneRect({QPointF{-offset, -offset}, QPointF{1. + offset, 1. + offset}});
 }
 
