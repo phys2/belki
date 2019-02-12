@@ -19,9 +19,10 @@ protected:
 	void wheelEvent(QWheelEvent *event) override;
 	void resizeEvent(QResizeEvent *event) override;
 
-	void arrangeScene(QSize geometry = {});
+	void arrangeScene();
 
 	bool singleColumn = false;
+	qreal outerScale = 1.; // scale factor of a pixel where scene fully fits
 };
 
 #endif // HEATMAPVIEW_H
