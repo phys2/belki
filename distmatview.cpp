@@ -29,7 +29,7 @@ void DistmatView::wheelEvent(QWheelEvent *event)
 	auto anchor = transformationAnchor();
 	setTransformationAnchor(AnchorUnderMouse);
 	auto angle = event->angleDelta().y();
-	qreal factor = (angle > 0 ? 1.1 : 0.9);
+	qreal factor = std::pow(1.2, angle / 240.0);
 	scale(factor, factor);
 	setTransformationAnchor(anchor);
 }
