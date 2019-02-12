@@ -149,6 +149,7 @@ protected:
 	void colorClusters();
 
 	QByteArray writeDisplay(const QString &name);
+	static QStringList trimCrap(QStringList values);
 
 	Public d;
 	QReadWriteLock l{QReadWriteLock::RecursionMode::Recursive};

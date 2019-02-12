@@ -76,7 +76,7 @@ target_link_libraries(belki PUBLIC
 	#Qt5::QXdgDesktopPortalThemePlugin Qt5::QSvgIconPlugin
 	#Qt5::QWindowsIntegrationPlugin Qt5::QWindowsVistaStylePlugin
 	)
-message(${OpenCV_LIBRARIES})
+
 if (STATIC_BUILD) # find* scripts fail for us due to custom nameing schemes
 	# sucks that the version is encoded in opencv static lib filenames
 	target_link_libraries(belki PUBLIC tbb_static opencv_imgproc401 opencv_core401)

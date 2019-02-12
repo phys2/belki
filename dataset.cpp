@@ -117,7 +117,7 @@ bool Dataset::readSource(QTextStream in)
 	d = Public();
 
 	/* fill it up */
-	d.dimensions = header;
+	d.dimensions = trimCrap(std::move(header));
 	auto len = d.dimensions.size();
 	while (!in.atEnd()) {
 		auto line = in.readLine().split("\t");
@@ -634,4 +634,38 @@ void Dataset::orderProteins(OrderBy by)
 
 	QWriteLocker _(&l);
 	d.order = target;
+}
+
+QStringList Dataset::trimCrap(QStringList values)
+{
+	if (values.empty())
+		return values;
+
+	/* remove custom shit in our data */
+	QString match("[A-Z]{2}20\\d{6}.*?\\([A-Z]{2}(?:-[A-Z]{2})?\\)_(.*?)_\\(?(?:band|o|u)(?:\\+(?:band|o|u))+\\)?_.*?$");
+	values.replaceInStrings(QRegularExpression(match), "\\1");
+
+	/* remove common prefix & suffix */
+	QString reference = values.front();
+	int front = reference.size(), back = reference.size();
+	for (auto it = ++values.cbegin(); it != values.cend(); ++it) {
+		front = std::min(front, it->size());
+		back = std::min(back, it->size());
+		for (int i = 0; i < front; ++i) {
+			if (it->at(i) != reference[i]) {
+				front = i;
+				break;
+			}
+		}
+		for (int i = 0; i < back; ++i) {
+			if (it->at(it->size()-1 - i) != reference[reference.size()-1 - i]) {
+				back = i;
+				break;
+			}
+		}
+	}
+	match = QString("^.{%1}(.*?).{%2}$").arg(front).arg(back);
+	values.replaceInStrings(QRegularExpression(match), "\\1");
+
+	return values;
 }
