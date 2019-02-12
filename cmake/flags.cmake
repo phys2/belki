@@ -26,7 +26,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 	list(APPEND FLAGS_DEBUG
         # Additional warnings that don't come with Wall/Wextra:
         -Wduplicated-cond -Wduplicated-branches -Wlogical-op
-		-Wuseless-cast
+		#-Wuseless-cast
 		)
 endif()
 
