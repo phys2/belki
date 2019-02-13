@@ -3,6 +3,7 @@
 
 #include "dataset.h"
 #include "distmat.h"
+#include "utils.h"
 
 #include <QGraphicsScene>
 #include <QGraphicsRectItem>
@@ -21,12 +22,9 @@ public:
 	};
 	Q_ENUM(Direction)
 
-	class LegendItem : QObject {
-	public:
+	struct LegendItem : NonCopyable // adds its items to the scene
+	{
 		LegendItem(DistmatScene* scene, qreal coord, QString label);
-		// no copies/moves! adds its items to the scene in above constructor
-		LegendItem(const LegendItem&) = delete;
-		LegendItem& operator=(const LegendItem&) = delete;
 		~LegendItem() { delete label; delete line; delete backdrop; }
 
 		void setVisible(bool visible);
@@ -49,12 +47,10 @@ public:
 		unsigned sampleIndex;
 	};
 
-	class Clusterbars : QObject {
+	class Clusterbars : NonCopyable // adds its items to the scene
+	{
 	public:
 		Clusterbars(DistmatScene *scene);
-		// no copies/moves! adds its items to the scene in above constructor
-		Clusterbars(const Clusterbars&) = delete;
-		Clusterbars& operator=(const Clusterbars&) = delete;
 
 		void update(QImage content);
 		void setVisible(bool visible);

@@ -60,6 +60,7 @@ target_sources(belki PRIVATE
 	profilechart.h profilechart.cpp
 	profilewindow.h profilewindow.cpp profilewindow.ui
 	storage.h storage.cpp
+	utils.h
 	)
 
 ## link to modules

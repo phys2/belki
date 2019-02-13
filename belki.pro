@@ -62,7 +62,8 @@ HEADERS += \
     heatmapview.h \
     distmatscene.h \
     distmatview.h \
-    distmat.h
+    distmat.h \
+    utils.h
 
 SOURCES += \
     meanshift/fams.cpp \

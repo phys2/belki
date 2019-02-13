@@ -2,6 +2,7 @@
 #define CHART_H
 
 #include "dataset.h"
+#include "utils.h"
 
 #include <QChart>
 #include <QScatterSeries>
@@ -22,11 +23,10 @@ class Chart: public QtCharts::QChart
 
 public:
 
-	struct Proteins : QtCharts::QScatterSeries {
+	struct Proteins : QtCharts::QScatterSeries, NonCopyable // registers itself to the chart
+	{
 		Proteins(const QString &label, QColor color, Chart* chart);
-		// no copies/moves! registers itself to the chart in above constructor
-		Proteins(const Proteins&) = delete;
-		Proteins& operator=(const Proteins&) = delete;
+
 		void clear() { QtCharts::QScatterSeries::clear(); samples.clear(); }
 		void add(unsigned index, const QPointF &point);
 		void apply();
@@ -37,11 +37,10 @@ public:
 		bool highlighted = false;
 	};
 
-	struct Marker : QtCharts::QScatterSeries {
+	struct Marker : QtCharts::QScatterSeries, NonCopyable // registers itself to the chart
+	{
 		Marker(unsigned sampleIndex, Chart* chart);
-		// no copies/moves! registers itself to the chart in above constructor
-		Marker(const Marker&) = delete;
-		Marker& operator=(const Marker&) = delete;
+
 		unsigned sampleIndex;
 	};
 

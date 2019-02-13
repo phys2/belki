@@ -155,7 +155,7 @@ void DistmatScene::recolor()
 	const auto &source = d->order.index;
 	QImage clusterbar(source.size(), 1, QImage::Format_ARGB32);
 	for (int i = 0; i < (int)source.size(); ++i) {
-		const auto &assoc = cl.memberships[source[i]];
+		const auto &assoc = cl.memberships[source[(size_t)i]];
 		switch (assoc.size()) {
 		case 0:
 			clusterbar.setPixelColor(i, 0, Qt::transparent);
@@ -195,7 +195,6 @@ void DistmatScene::addMarker(unsigned sampleIndex)
 	if (markers.count(sampleIndex))
 		return;
 
-	// reverse-search in protein order
 	auto d = data.peek();
 	auto pos = d->order.rankOf[sampleIndex];
 	auto coord = (qreal)(pos + 0.5) / d->proteins.size();
