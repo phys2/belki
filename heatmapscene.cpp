@@ -71,6 +71,19 @@ void HeatmapScene::rearrange(unsigned columns)
 	setSceneRect(box.adjusted(-offset, -offset, offset, offset));
 }
 
+void HeatmapScene::reorder()
+{
+	if (!layout.rows) // view is not set-up yet
+		return;
+
+	auto d = data.peek();
+
+	for (unsigned i = 0; i < profiles.size(); ++i) {
+		auto p = profiles[d->order.index[i]];
+		p->setPos((i / layout.rows) * layout.columnWidth, i % layout.rows);
+	}
+}
+
 void HeatmapScene::recolor()
 {
 	auto d = data.peek();
@@ -93,17 +106,6 @@ void HeatmapScene::recolor()
 	}
 	update();
 }
-
-void HeatmapScene::reorder()
-{
-	auto d = data.peek();
-
-	for (unsigned i = 0; i < profiles.size(); ++i) {
-		auto p = profiles[d->order.index[i]];
-		p->setPos((i / layout.rows) * layout.columnWidth, i % layout.rows);
-	}
-}
-
 
 HeatmapScene::Profile::Profile(unsigned index, const std::vector<double> &features, QGraphicsItem *parent)
     : QAbstractGraphicsShapeItem(parent),
