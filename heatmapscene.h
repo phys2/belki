@@ -2,6 +2,7 @@
 #define HEATMAPSCENE_H
 
 #include "dataset.h"
+#include "utils.h"
 
 #include <QGraphicsScene>
 #include <QAbstractGraphicsShapeItem>
@@ -32,7 +33,26 @@ public:
 		bool highlight = false;
 	};
 
+	struct Marker : NonCopyable // adds its items to the scene
+	{
+		Marker(HeatmapScene* scene, unsigned sampleIndex, const QPointF &pos);
+		~Marker() { delete label; delete line; delete backdrop; }
+
+		void rearrange(const QPointF &pos);
+
+		unsigned sampleIndex;
+
+	protected:
+		HeatmapScene* scene() const { return qobject_cast<HeatmapScene*>(label->scene()); }
+
+		QGraphicsSimpleTextItem *label;
+		QGraphicsLineItem *line;
+		QGraphicsRectItem *backdrop;
+	};
+
 	HeatmapScene(Dataset &data);
+
+	void setScale(qreal scale);
 
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
@@ -42,7 +62,12 @@ public slots:
 	void rearrange(QSize viewport);
 	void rearrange(unsigned columns);
 	void recolor();
-	void reorder(); // TODO: make order configurable
+	void reorder();
+
+	void updateColorset(QVector<QColor> colors);
+
+	void addMarker(unsigned sampleIndex);
+	void removeMarker(unsigned sampleIndex);
 
 protected:
 	Dataset &data;
@@ -63,6 +88,9 @@ protected:
 	} layout;
 
 	std::vector<Profile*> profiles;
+	std::map<unsigned, Marker*> markers;
+	QVector<QColor> colorset;
+	qreal pixelScale; // size of a pixel in scene coordinates
 };
 
 #endif // HEATMAPSCENE_H

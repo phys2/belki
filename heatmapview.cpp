@@ -40,11 +40,8 @@ void HeatmapView::wheelEvent(QWheelEvent *event)
 	auto anchor = transformationAnchor();
 	setTransformationAnchor(AnchorUnderMouse);
 	auto angle = event->angleDelta().y();
-	qreal factor = std::pow(1.2, angle / 240.0);// (angle > 0 ? 1.1 : 0.9);
+	qreal factor = std::pow(1.2, angle / 240.0);
 	scale(factor, factor);
-	auto currentScale = mapToScene(QRect(0, 0, 1, 1)).boundingRect().width();
-	if (currentScale > outerScale)
-		arrangeScene();
 
 	setTransformationAnchor(anchor);
 }
@@ -54,6 +51,21 @@ void HeatmapView::resizeEvent(QResizeEvent *event)
 	arrangeScene();
 
 	QGraphicsView::resizeEvent(event);
+}
+
+void HeatmapView::paintEvent(QPaintEvent *event)
+{
+	auto scale = mapToScene(QRect(0, 0, 1, 1)).boundingRect().width();
+	if (scale != currentScale) {
+		currentScale = scale;
+		if (currentScale > outerScale && !singleColumn) {
+			arrangeScene();
+			currentScale = outerScale;
+		}
+		scene()->setScale(currentScale);
+	}
+
+	QGraphicsView::paintEvent(event);
 }
 
 void HeatmapView::arrangeScene()

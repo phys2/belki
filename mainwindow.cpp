@@ -135,7 +135,7 @@ void MainWindow::setupSignals()
 		chart->clearPartitions();
 		chart->updatePartitions();
 		heatmap->recolor();
-		heatmap->reorder(); // TODO hack
+		heatmap->reorder();
 		distmat->reorder();
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
@@ -166,6 +166,7 @@ void MainWindow::setupSignals()
 	qRegisterMetaType<QVector<QColor>>();
 	connect(this, &MainWindow::updateColorset, &data, &Dataset::updateColorset);
 	connect(this, &MainWindow::updateColorset, chart, &Chart::updateColorset);
+	connect(this, &MainWindow::updateColorset, heatmap, &HeatmapScene::updateColorset);
 	connect(this, &MainWindow::updateColorset, distmat, &DistmatScene::updateColorset);
 	connect(this, &MainWindow::orderProteins, &data, &Dataset::orderProteins);
 
@@ -286,9 +287,8 @@ void MainWindow::setupActions()
 		auto filename = io->chooseFile(FileIO::OpenMarkers);
 		if (filename.isEmpty())
 			return;
-		for (auto i : store.importMarkers(filename)) { // TODO: use signal
-			chart->addMarker(i);
-			distmat->addMarker(i);
+		for (auto i : store.importMarkers(filename)) {
+			this->markerItems[i]->setCheckState(Qt::Checked);
 		}
 	});
 	connect(actionSaveMarkers, &QAction::triggered, [this] {
@@ -353,9 +353,11 @@ void MainWindow::setupMarkerControls()
 		auto index = (unsigned)i->data().toInt();
 		if (i->checkState() == Qt::Checked) {
 			chart->addMarker(index);
+			heatmap->addMarker(index);
 			distmat->addMarker(index);
 		} else if (i->checkState() == Qt::Unchecked) {
 			chart->removeMarker(index);
+			heatmap->removeMarker(index);
 			distmat->removeMarker(index);
 		}
 	});

@@ -10,11 +10,23 @@ HeatmapScene::HeatmapScene(Dataset &data) : data(data)
 
 }
 
+void HeatmapScene::setScale(qreal scale)
+{
+	pixelScale = scale;
+	// markers use pixelScale
+	for (auto& [i, m] : markers)
+		m->rearrange(profiles[i]->pos());
+}
+
 void HeatmapScene::reset(bool haveData)
 {
-	clear(); // removes & deletes all items
+	profiles.clear();
+	for (auto &[_, m] : markers)
+		delete m;
+	markers.clear();
+	clear(); // removes & deletes all items (ie. profiles)
+
 	if (!haveData) {
-		profiles.clear();
 		return;
 	}
 
@@ -82,6 +94,35 @@ void HeatmapScene::reorder()
 		auto p = profiles[d->order.index[i]];
 		p->setPos((i / layout.rows) * layout.columnWidth, i % layout.rows);
 	}
+
+	// sync marker positions
+	for (auto& [i, m] : markers)
+		m->rearrange(profiles[i]->pos());
+}
+
+void HeatmapScene::updateColorset(QVector<QColor> colors)
+{
+	colorset = colors;
+	recolor();
+	// TODO: re-initialize markers
+}
+
+void HeatmapScene::addMarker(unsigned sampleIndex)
+{
+	if (markers.count(sampleIndex))
+		return;
+
+	auto pos = profiles[sampleIndex]->pos();
+	markers[sampleIndex] = new Marker(this, sampleIndex, pos);
+}
+
+void HeatmapScene::removeMarker(unsigned sampleIndex)
+{
+	if (!markers.count(sampleIndex))
+		return;
+
+	delete markers[sampleIndex];
+	markers.erase(sampleIndex);
 }
 
 void HeatmapScene::recolor()
@@ -117,7 +158,7 @@ HeatmapScene::Profile::Profile(unsigned index, const std::vector<double> &featur
 QRectF HeatmapScene::Profile::boundingRect() const
 {
 	auto s = scene()->style;
-	return {0, 0, 2.*s.margin + (qreal)features.size() * s.expansion, 1};
+	return {0, 0, 2. * s.margin + (qreal)features.size() * s.expansion, 1};
 }
 
 void HeatmapScene::Profile::paint(QPainter *painter, const QStyleOptionGraphicsItem*, QWidget*)
@@ -165,4 +206,54 @@ void HeatmapScene::Profile::hoverLeaveEvent(QGraphicsSceneHoverEvent*)
 {
 	highlight = false;
 	update();
+}
+
+HeatmapScene::Marker::Marker(HeatmapScene *scene, unsigned sampleIndex, const QPointF &pos)
+{
+	auto title = scene->data.peek()->proteins[sampleIndex].name;
+	auto color = scene->colorset[(int)qHash(title) % scene->colorset.size()];
+
+	QBrush fill(QColor{0, 0, 0, 127});
+	QPen outline(color.dark(300));
+	outline.setCosmetic(true);
+	backdrop = scene->addRect({});
+	backdrop->setBrush(fill);
+	backdrop->setPen(outline);
+
+	line = scene->addLine({});
+	QPen pen(color.darker(150));
+	pen.setCosmetic(true);
+	line->setPen(pen);
+
+	// do label last, so it will be on top of its backdrop
+	label = scene->addSimpleText(title);
+	auto font = label->font();
+	font.setBold(true);
+	label->setFont(font);
+	label->setBrush(color);
+
+	rearrange(pos);
+}
+
+void HeatmapScene::Marker::rearrange(const QPointF &pos)
+{
+	auto vCenter = pos.y() + 0.5;
+	auto linewidth = .5 * scene()->style.margin;
+	auto right = pos.x() + scene()->style.margin;
+
+	auto scale = scene()->pixelScale;
+	auto margin = 2.*scale;
+
+	// invert zoom for label
+	label->setScale(scale);
+	auto labelSize = label->sceneBoundingRect().size();
+
+	// place label
+	auto left = right - (labelSize.width() + margin + linewidth);
+	label->setPos(left, vCenter - labelSize.height()/2.);
+	backdrop->setRect(label->sceneBoundingRect()
+	                  .adjusted(-margin, -margin, margin, margin));
+
+	// place line
+	line->setLine({{right - linewidth, vCenter}, {right, vCenter}});
 }

@@ -18,11 +18,13 @@ protected:
 	void keyReleaseEvent(QKeyEvent *event) override;
 	void wheelEvent(QWheelEvent *event) override;
 	void resizeEvent(QResizeEvent *event) override;
+	void paintEvent(QPaintEvent *event) override;
 
 	void arrangeScene();
 
 	bool singleColumn = false;
-	qreal outerScale = 1.; // scale factor of a pixel where scene fully fits
+	qreal currentScale = 1.; // current scale factor (pixel size in the scene)
+	qreal outerScale = 1.; // scale factor where scene is fully fitted
 };
 
 #endif // HEATMAPVIEW_H
