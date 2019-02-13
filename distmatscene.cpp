@@ -265,12 +265,6 @@ DistmatScene::LegendItem::LegendItem(DistmatScene *scene, qreal coord, QString t
 
 void DistmatScene::LegendItem::setup(DistmatScene *scene, QString title, QColor color)
 {
-	label = scene->addSimpleText(title);
-	label->setBrush(color);
-	auto font = label->font();
-	font.setBold(true);
-	label->setFont(font);
-
 	QBrush fill(QColor{0, 0, 0, 127});
 	QPen outline(color.dark(300));
 	outline.setCosmetic(true);
@@ -282,6 +276,13 @@ void DistmatScene::LegendItem::setup(DistmatScene *scene, QString title, QColor 
 	QPen pen(color.darker(150));
 	pen.setCosmetic(true);
 	line->setPen(pen);
+
+	// do label last, so it will be on top of its backdrop
+	label = scene->addSimpleText(title);
+	auto font = label->font();
+	font.setBold(true);
+	label->setFont(font);
+	label->setBrush(color);
 
 	rearrange(scene->viewport.left(), scene->vpScale);
 }
