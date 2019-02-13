@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QRegularExpression>
+#include <QCollator>
 
 #include <unordered_set>
 
@@ -529,21 +530,27 @@ void Dataset::computeClusterCentroids()
 
 void Dataset::orderClusters(bool genericNames)
 {
+	auto &cl = d.clustering.clusters;
+	std::vector<unsigned> target;
+	for (auto & [i, _] : cl)
+		target.push_back(i);
+
+	QCollator col;
+	col.setNumericMode(true);
+	col.setCaseSensitivity(Qt::CaseInsensitive);
+	std::function<bool(unsigned,unsigned)> byName = [&] (auto a, auto b) {
+		return col(cl[a].name, cl[b].name);
+	};
+	auto bySizeName = [&] (auto a, auto b) {
+		if (cl[a].size == cl[b].size)
+			return byName(a, b);
+		return cl[a].size > cl[b].size;
+	};
+
+	std::sort(target.begin(), target.end(), genericNames ? bySizeName : byName);
+
 	QWriteLocker _(&l);
-
-	auto &cl = d.clustering;
-	std::multimap<std::pair<int, QString>, unsigned> clustersOrdered;
-	if (genericNames) {
-		for (auto& [i, c] : cl.clusters) // insert ordered by size, desc; name asc
-			clustersOrdered.insert({{-c.size, c.name}, i});
-	} else {
-		for (auto& [i, c] : cl.clusters) // insert ordered by name
-			clustersOrdered.insert({{0, c.name}, i});
-	}
-
-	cl.order.clear();
-	for (auto& [_, c] : clustersOrdered)
-		cl.order.push_back(c);
+	d.clustering.order = std::move(target);
 }
 
 void Dataset::colorClusters()
