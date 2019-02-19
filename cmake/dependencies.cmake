@@ -28,7 +28,7 @@ find_package(Qt5Svg CONFIG REQUIRED)
 
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-# Instruct CMake to run moc automatically when needed
+# Instruct CMake to run moc, create ui headers, genereate ressources code
 set(CMAKE_AUTOMOC ON)
-# Create code from a list of Qt designer ui files
 set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
