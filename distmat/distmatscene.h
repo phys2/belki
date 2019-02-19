@@ -101,7 +101,6 @@ protected:
 	/* geometry of the current view, used to re-arrange stuff into view */
 	QRectF viewport;
 	qreal vpScale;
-
 };
 
 #endif // DISTMATSCENE_H

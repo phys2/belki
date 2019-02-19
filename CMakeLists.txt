@@ -52,16 +52,18 @@ target_sources(belki PRIVATE
 	chartview.h chartview.cpp
 	dataset.h dataset.cpp
 	dimred.h dimred.cpp
-	distmat.h distmat.cpp
-	distmatscene.h distmatscene.cpp distmatview.h distmatview.cpp
 	fileio.h fileio.cpp
-	heatmapscene.h heatmapscene.cpp heatmapview.h heatmapview.cpp
 	mainwindow.h mainwindow.cpp mainwindow.ui
 	profilechart.h profilechart.cpp
 	profilewindow.h profilewindow.cpp profilewindow.ui
 	storage.h storage.cpp
 	utils.h
+	viewer.h
 	)
+
+# gui components (they add to target 'belki')
+add_subdirectory(heatmap)
+add_subdirectory(distmat)
 
 ## link to modules
 target_include_directories(belki SYSTEM PUBLIC

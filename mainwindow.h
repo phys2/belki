@@ -12,10 +12,8 @@
 
 #include <memory>
 
+class Chart; // TODO remove
 class QLabel;
-class Chart;
-class HeatmapScene;
-class DistmatScene;
 class ProfileChart;
 class QStandardItem;
 
@@ -31,6 +29,7 @@ public:
 	FileIO *getIo() { return io; }
 
 signals:
+	// to Dataset/Storage thread
 	void openDataset(const QString &filename);
 	void readAnnotations(const QString &name);
 	void readHierarchy(const QString &name);
@@ -41,8 +40,17 @@ signals:
 	void computeDisplay(const QString &name);
 	void calculatePartition(unsigned granularity);
 	void runFAMS();
-	void updateColorset(QVector<QColor> colors);
 	void orderProteins(Dataset::OrderBy order);
+
+	// to views
+	void reset(bool haveData);
+	void recolor();
+	void reorder();
+	void addMarker(unsigned sampleIndex);
+	void removeMarker(unsigned sampleIndex);
+
+	// other signals
+	void updateColorset(QVector<QColor> colors);
 
 public slots:
 	void showHelp();
@@ -66,9 +74,8 @@ protected:
 	QThread dataThread;
 	QString title;
 
+	std::vector<Viewer*> views;
 	Chart *chart;
-	HeatmapScene *heatmap;
-	DistmatScene *distmat;
 
 	ProfileChart *cursorChart;
 	QLabel *fileLabel;

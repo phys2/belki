@@ -58,12 +58,15 @@ HEADERS += \
     profilewindow.h \
     profilechart.h \
     storage.h \
-    heatmapscene.h \
-    heatmapview.h \
-    distmatscene.h \
-    distmatview.h \
-    distmat.h \
-    utils.h
+    heatmap/heatmaptab.h \
+    heatmap/heatmapscene.h \
+    heatmap/heatmapview.h \
+    distmat/distmattab.h \
+    distmat/distmatscene.h \
+    distmat/distmatview.h \
+    distmat/distmat.h \
+    utils.h \
+    viewer.h
 
 SOURCES += \
     meanshift/fams.cpp \
@@ -80,15 +83,19 @@ SOURCES += \
     profilewindow.cpp \
     profilechart.cpp \
     storage.cpp \
-    heatmapscene.cpp \
-    heatmapview.cpp \
-    distmatscene.cpp \
-    distmatview.cpp \
-    distmat.cpp
+    heatmap/heatmaptab.cpp \
+    heatmap/heatmapscene.cpp \
+    heatmap/heatmapview.cpp \
+    distmat/distmattab.cpp \
+    distmat/distmatscene.cpp \
+    distmat/distmatview.cpp \
+    distmat/distmat.cpp
 
 FORMS += \
     mainwindow.ui \
-    profilewindow.ui
+    profilewindow.ui \
+    heatmap/heatmaptab.ui \
+    distmat/distmattab.ui
 
 RESOURCES += \
     resources.qrc \

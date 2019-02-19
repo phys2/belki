@@ -1,8 +1,6 @@
 #include "mainwindow.h"
 #include "dataset.h"
 #include "chart.h"
-#include "heatmapscene.h"
-#include "distmatscene.h"
 #include "profilechart.h"
 #include "profilewindow.h"
 
@@ -28,8 +26,6 @@ const QVector<QColor> tableau20 = {
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent), store(data),
     chart(new Chart(data)),
-    heatmap(new HeatmapScene(data)),
-    distmat(new DistmatScene(data)),
     cursorChart(new ProfileChart),
     fileLabel(new QLabel),
     io(new FileIO(this))
@@ -41,16 +37,26 @@ MainWindow::MainWindow(QWidget *parent) :
 	setupUi(this);
 	setupToolbar();
 
+	/* Views in tabs */
+	views = {heatmapTab, distmatTab};
+	for (auto v : views) {
+		v->init(&data);
+		// connect singnalling into view
+		connect(this, &MainWindow::updateColorset, v, &Viewer::inUpdateColorset);
+		connect(this, &MainWindow::reset, v, &Viewer::inReset);
+		connect(this, &MainWindow::recolor, v, &Viewer::inRecolor);
+		connect(this, &MainWindow::reorder, v, &Viewer::inReorder);
+		connect(this, &MainWindow::addMarker, v, &Viewer::inAddMarker);
+		connect(this, &MainWindow::removeMarker, v, &Viewer::inRemoveMarker);
+
+		// connect signalling out of view
+		connect(v, &Viewer::cursorChanged, this, &MainWindow::updateCursorList);
+	}
+
 	/* main chart */
 	chartView->setChart(chart);
 	chartView->setRubberBand(QtCharts::QChartView::RectangleRubberBand);
 	chartView->setRenderHint(QPainter::Antialiasing);
-
-	/* heatmap */
-	heatmapView->setScene(heatmap);
-
-	/* Distance matrix */
-	distmatView->setScene(distmat);
 
 	/* cursor chart */
 	cursorPlot->setChart(cursorChart);
@@ -134,9 +140,8 @@ void MainWindow::setupSignals()
 	connect(&data, &Dataset::newClustering, this, [this] {
 		chart->clearPartitions();
 		chart->updatePartitions();
-		heatmap->recolor();
-		heatmap->reorder();
-		distmat->reorder();
+		emit recolor();
+		emit reorder();
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
 	});
@@ -144,13 +149,11 @@ void MainWindow::setupSignals()
 		auto d = data.peek();
 		auto reasonable = std::min(d->proteins.size(), d->hierarchy.size()) / 4;
 		granularitySlider->setMaximum(reasonable);
-		distmat->reorder();
+		emit reorder();
 	});
 
 	/* notifications from views */
 	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
-	connect(heatmap, &HeatmapScene::cursorChanged, this, &MainWindow::updateCursorList);
-	connect(distmat, &DistmatScene::cursorChanged, this, &MainWindow::updateCursorList);
 
 	/* signals for designated slots (for thread-affinity) */
 	connect(this, &MainWindow::openDataset, &store, &Storage::openDataset);
@@ -166,8 +169,6 @@ void MainWindow::setupSignals()
 	qRegisterMetaType<QVector<QColor>>();
 	connect(this, &MainWindow::updateColorset, &data, &Dataset::updateColorset);
 	connect(this, &MainWindow::updateColorset, chart, &Chart::updateColorset);
-	connect(this, &MainWindow::updateColorset, heatmap, &HeatmapScene::updateColorset);
-	connect(this, &MainWindow::updateColorset, distmat, &DistmatScene::updateColorset);
 	connect(this, &MainWindow::orderProteins, &data, &Dataset::orderProteins);
 
 	/* selecting display/partition/etc. always goes through GUI */
@@ -244,11 +245,6 @@ void MainWindow::setupActions()
 	clearMarkersButton->setDefaultAction(actionClearMarkers);
 	profileViewButton->setDefaultAction(actionProfileView);
 
-	// Heatmap tab
-	toggleSinglecolButton->setDefaultAction(actionToggleSingleCol);
-	// DistMat tab
-	toggleDistdirButton->setDefaultAction(actionToggleDistdir);
-
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 	connect(actionLoadDataset, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenDataset);
@@ -283,9 +279,10 @@ void MainWindow::setupActions()
 		emit exportAnnotations(filename);
 	});
 	connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartitions);
-	connect(actionShowPartition, &QAction::toggled, heatmap, &HeatmapScene::recolor);
-	// TODO: does not work, order is read from dataset where it didn't change
-	// connect(actionShowPartition, &QAction::toggled, distmat, &DistmatScene::reorder);
+	for (auto v: views) {
+		// TODO: doesn't work (no effective change in dataset). Recolor, reorder, both?
+		connect(actionShowPartition, &QAction::toggled, v, &Viewer::inRecolor);
+	}
 	connect(actionLoadMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenMarkers);
 		if (filename.isEmpty())
@@ -324,12 +321,6 @@ void MainWindow::setupActions()
 		}
 		menu->popup(QCursor::pos());
 	});
-
-	connect(actionToggleSingleCol, &QAction::toggled, heatmapView, &HeatmapView::setColumnMode);
-	connect(actionToggleDistdir, &QAction::toggled, [this] (bool toggle) {
-		distmat->setDirection(toggle ? DistmatScene::Direction::PER_DIMENSION
-		                             : DistmatScene::Direction::PER_PROTEIN);
-	});
 }
 
 void MainWindow::setupMarkerControls()
@@ -357,12 +348,10 @@ void MainWindow::setupMarkerControls()
 		auto index = (unsigned)i->data().toInt();
 		if (i->checkState() == Qt::Checked) {
 			chart->addMarker(index);
-			heatmap->addMarker(index);
-			distmat->addMarker(index);
+			emit addMarker(index);
 		} else if (i->checkState() == Qt::Unchecked) {
 			chart->removeMarker(index);
-			heatmap->removeMarker(index);
-			distmat->removeMarker(index);
+			emit removeMarker(index);
 		}
 	});
 
@@ -414,12 +403,9 @@ void MainWindow::clearData()
 	toolbarActions.famsK->setVisible(false);
 	actionExportAnnotations->setVisible(false);
 
+	emit reset(false);
 	chart->clear();
 	chartView->setEnabled(false); // TODO: can markerWidget crash uninit. chartView?
-	heatmap->reset();
-	heatmapView->setEnabled(false);
-	distmat->reset();
-	distmatView->setEnabled(false);
 }
 
 void MainWindow::resetData()
@@ -436,11 +422,7 @@ void MainWindow::resetData()
 	/* set up marker controls */
 	updateMarkerControls();
 
-	/* set up heatmap+distmat (chart will set-up when new display comes available */
-	heatmap->reset(true);
-	heatmapView->setEnabled(true);
-	distmat->reset(true);
-	distmatView->setEnabled(true);
+	emit reset(true);
 }
 
 void MainWindow::updateData(const QString &display)
