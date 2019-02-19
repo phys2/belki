@@ -10,24 +10,20 @@ HeatmapScene *HeatmapView::scene() const
 	return qobject_cast<HeatmapScene*>(QGraphicsView::scene());
 }
 
+void HeatmapView::setColumnMode(bool single)
+{
+	if (single == singleColumn)
+		return;
+
+	singleColumn = single;
+	arrangeScene();
+}
+
 void HeatmapView::enterEvent(QEvent *)
 {
 	// steal focus for the interactive cursor with keyboard events
 	// TODO: needed in Heatmap view?
 	setFocus(Qt::MouseFocusReason);
-}
-
-void HeatmapView::keyReleaseEvent(QKeyEvent *event)
-{
-	QGraphicsView::keyReleaseEvent(event);
-	if (event->isAccepted())
-		return;
-
-	// TODO make toolbar button
-	if (event->key() == Qt::Key_S) {
-		singleColumn = !singleColumn;
-		arrangeScene();
-	}
 }
 
 void HeatmapView::wheelEvent(QWheelEvent *event)

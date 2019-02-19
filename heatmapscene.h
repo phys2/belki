@@ -90,6 +90,8 @@ protected:
 	std::vector<Profile*> profiles;
 	std::map<unsigned, Marker*> markers;
 	QVector<QColor> colorset;
+
+	QSize viewport; // size of the viewport in _screen_ coordinates
 	qreal pixelScale; // size of a pixel in scene coordinates
 };
 

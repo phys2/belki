@@ -749,6 +749,24 @@
     <string>D</string>
    </property>
   </action>
+  <action name="actionToggleSingleCol">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="object-columns">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>Single Column</string>
+   </property>
+   <property name="toolTip">
+    <string>Don't distribute heatmap along several columns</string>
+   </property>
+   <property name="shortcut">
+    <string>S</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>

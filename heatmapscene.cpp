@@ -52,12 +52,14 @@ void HeatmapScene::reset(bool haveData)
 	// save for later
 	layout.columnWidth = profiles[0]->boundingRect().width();
 
-	// fulfill current protein order
-	reorder();
+	// arrange screen in case we already got a view up
+	if (viewport.isValid())
+		rearrange(viewport);
 }
 
-void HeatmapScene::rearrange(QSize viewport)
+void HeatmapScene::rearrange(QSize newViewport)
 {
+	viewport = newViewport; // keep information in case we have to stop here
 	if (profiles.empty())
 		return;
 

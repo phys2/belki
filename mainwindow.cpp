@@ -243,7 +243,10 @@ void MainWindow::setupActions()
 	saveMarkersButton->setDefaultAction(actionSaveMarkers);
 	clearMarkersButton->setDefaultAction(actionClearMarkers);
 	profileViewButton->setDefaultAction(actionProfileView);
-	// DistMat
+
+	// Heatmap tab
+	toggleSinglecolButton->setDefaultAction(actionToggleSingleCol);
+	// DistMat tab
 	toggleDistdirButton->setDefaultAction(actionToggleDistdir);
 
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
@@ -322,6 +325,7 @@ void MainWindow::setupActions()
 		menu->popup(QCursor::pos());
 	});
 
+	connect(actionToggleSingleCol, &QAction::toggled, heatmapView, &HeatmapView::setColumnMode);
 	connect(actionToggleDistdir, &QAction::toggled, [this] (bool toggle) {
 		distmat->setDirection(toggle ? DistmatScene::Direction::PER_DIMENSION
 		                             : DistmatScene::Direction::PER_PROTEIN);
