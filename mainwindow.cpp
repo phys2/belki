@@ -141,7 +141,7 @@ void MainWindow::setupSignals()
 		chart->clearPartitions();
 		chart->updatePartitions();
 		emit recolor();
-		emit reorder();
+		emit reorder(); // TODO: implicates recolor() in distmat. However, we want to control order independently
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
 	});
