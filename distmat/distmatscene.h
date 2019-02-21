@@ -42,7 +42,7 @@ public:
 	};
 
 	struct Marker : public LegendItem {
-		Marker(DistmatScene* scene, unsigned sampleIndex, qreal coord);
+		Marker(DistmatScene* scene, unsigned sampleIndex);
 
 		unsigned sampleIndex;
 	};
@@ -83,6 +83,7 @@ protected:
 
 	void setDisplay();
 	void rearrange();
+	qreal computeCoord(unsigned sampleIndex);
 
 	Direction currentDirection = Direction::PER_PROTEIN;
 	std::map<Direction, Distmat> matrices;

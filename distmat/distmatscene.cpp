@@ -129,13 +129,11 @@ void DistmatScene::reorder()
 	/* reflect new order in clusterbars */
 	recolor();
 
-	/* reflect new order in markers (hack) */
-	std::vector<unsigned> old;
-	for (auto& [i, _] : markers)
-		old.push_back(i);
-	markers.clear();
-	for (auto i : old)
-		addMarker(i);
+	/* reflect new order in markers */
+	for (auto& [i, m] : markers) {
+		m.coordinate = computeCoord(m.sampleIndex);
+		m.rearrange(viewport.left(), vpScale);
+	}
 }
 
 void DistmatScene::recolor()
@@ -192,11 +190,7 @@ void DistmatScene::addMarker(unsigned sampleIndex)
 	if (markers.count(sampleIndex))
 		return;
 
-	auto d = data.peek();
-	auto pos = d->order.rankOf[sampleIndex];
-	auto coord = (qreal)(pos + 0.5) / d->proteins.size();
-
-	markers.try_emplace(sampleIndex, this, sampleIndex, coord);
+	markers.try_emplace(sampleIndex, this, sampleIndex);
 }
 
 void DistmatScene::removeMarker(unsigned sampleIndex)
@@ -251,6 +245,13 @@ void DistmatScene::updateColorset(QVector<QColor> colors)
 	// TODO: re-initialize markers
 }
 
+qreal DistmatScene::computeCoord(unsigned sampleIndex)
+{
+	auto d = data.peek();
+	auto pos = d->order.rankOf[sampleIndex];
+	return (qreal)(pos + 0.5) / d->proteins.size();
+}
+
 DistmatScene::LegendItem::LegendItem(qreal coord) : coordinate(coord) {}
 DistmatScene::LegendItem::LegendItem(DistmatScene *scene, qreal coord, QString title)
     : coordinate(coord)
@@ -282,8 +283,8 @@ void DistmatScene::LegendItem::setup(DistmatScene *scene, QString title, QColor 
 	rearrange(scene->viewport.left(), scene->vpScale);
 }
 
-DistmatScene::Marker::Marker(DistmatScene *scene, unsigned sampleIndex, qreal coord)
-    : LegendItem(coord), sampleIndex(sampleIndex)
+DistmatScene::Marker::Marker(DistmatScene *scene, unsigned sampleIndex)
+    : LegendItem(scene->computeCoord(sampleIndex)), sampleIndex(sampleIndex)
 {
 	auto title = scene->data.peek()->proteins[sampleIndex].name;
 	auto color = scene->colorset[(int)qHash(title) % scene->colorset.size()];
