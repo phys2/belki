@@ -116,10 +116,10 @@ void DistmatScene::reorder()
 	// note: although we have nothing to do here for PER_DIMENSION, we keep the
 	// state consistent for a future switch to PER_PROTEIN
 
-	if (matrices.count(currentDirection)) {
+	if (matrices.count(Direction::PER_PROTEIN)) {
 		/* re-do display with current ordering */
 		auto d = data.peek();
-		matrices[currentDirection].computeImage([&d] (int y, int x) {
+		matrices[Direction::PER_PROTEIN].computeImage([&d] (int y, int x) {
 			return cv::Point(d->order.index[x], d->order.index[y]);
 		});
 		if (currentDirection == Direction::PER_PROTEIN)
