@@ -161,7 +161,7 @@ bool Dataset::readSource(QTextStream in)
 	// ensure clustering is properly initialized if accessed
 	d.clustering = Clustering(d.proteins.size());
 
-	qDebug() << "read" << d.features.size() << "rows with" << len << "columns";
+	//qDebug() << "read" << d.features.size() << "rows with" << len << "columns";
 	if (d.features.empty() || len == 0)
 		return true;
 
