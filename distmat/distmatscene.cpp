@@ -13,7 +13,7 @@ DistmatScene::DistmatScene(Dataset &data)
 	display = new QGraphicsPixmapItem;
 	display->setShapeMode(QGraphicsPixmapItem::ShapeMode::BoundingRectShape);
 	display->setCursor(Qt::CursorShape::CrossCursor);
-	addItem(display);
+	addItem(display); // scene takes ownership and will clean it up
 
 	qreal offset = .1; // some "feel good" borders
 	setSceneRect({QPointF{-offset, -offset}, QPointF{1. + offset, 1. + offset}});
