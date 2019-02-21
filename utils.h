@@ -12,4 +12,15 @@ protected:
 	~NonCopyable() = default; /// Protected non-virtual destructor
 };
 
+struct OnlyMovable
+{
+	OnlyMovable(const OnlyMovable&) = delete;
+	OnlyMovable& operator=(const OnlyMovable&) = delete;
+	OnlyMovable(OnlyMovable&&) = default;
+	OnlyMovable& operator=(OnlyMovable&&) = default;
+
+protected:
+	OnlyMovable() = default;
+};
+
 #endif
