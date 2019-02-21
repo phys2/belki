@@ -33,10 +33,9 @@ public:
 		bool highlight = false;
 	};
 
-	struct Marker : NonCopyable // adds its items to the scene
+	struct Marker
 	{
 		Marker(HeatmapScene* scene, unsigned sampleIndex, const QPointF &pos);
-		~Marker() { delete label; delete line; delete backdrop; }
 
 		void rearrange(const QPointF &pos);
 
@@ -45,9 +44,10 @@ public:
 	protected:
 		HeatmapScene* scene() const { return qobject_cast<HeatmapScene*>(label->scene()); }
 
-		QGraphicsSimpleTextItem *label;
-		QGraphicsLineItem *line;
-		QGraphicsRectItem *backdrop;
+		// items are added to the scene, so we make them non-copyable
+		std::unique_ptr<QGraphicsSimpleTextItem> label;
+		std::unique_ptr<QGraphicsLineItem> line;
+		std::unique_ptr<QGraphicsRectItem> backdrop;
 	};
 
 	HeatmapScene(Dataset &data);
@@ -88,7 +88,7 @@ protected:
 	} layout;
 
 	std::vector<Profile*> profiles;
-	std::map<unsigned, Marker*> markers;
+	std::map<unsigned, Marker> markers;
 	QVector<QColor> colorset;
 
 	QSize viewport; // size of the viewport in _screen_ coordinates

@@ -63,10 +63,6 @@ Chart::Chart(Dataset &data) :
 	});
 }
 
-Chart::~Chart()
-{
-}
-
 void Chart::clear()
 {
 	master->clear();
@@ -76,8 +72,6 @@ void Chart::clear()
 
 void Chart::clearPartitions()
 {
-	for (auto s : partitions)
-		delete s.second;
 	partitions.clear();
 }
 
@@ -101,7 +95,7 @@ void Chart::display(const QString &set)
 
 	/* update other sets */
 	updatePartitions();
-	for (auto m : qAsConst(markers)) {
+	for (auto &[_, m] : markers) {
 		m->replace(0, master->pointsVector()[(int)m->sampleIndex]);
 	}
 }
@@ -119,14 +113,14 @@ void Chart::updatePartitions()
 		animate(0);
 
 		// series needed for soft clustering
-		partitions[-2] = (new Proteins("Unlabeled", Qt::gray, this));
-		partitions[-1] = (new Proteins("Mixed", Qt::darkGray, this));
+		partitions[-2] = std::make_unique<Proteins>("Unlabeled", Qt::gray, this);
+		partitions[-1] = std::make_unique<Proteins>("Mixed", Qt::darkGray, this);
 
 		// go through clusters in their designated order
 		for (auto i : d->clustering.order) {
 			auto &c = d->clustering.clusters[i];
 			auto s = new Proteins(c.name, c.color, this);
-			partitions[(int)i] = s;
+			partitions.try_emplace((int)i, s);
 			/* enable profile view updates on legend label hover */
 			auto lm = legend()->markers(s)[0];
 			connect(lm, &QtCharts::QLegendMarker::hovered, [this, s] (bool active) {
@@ -134,12 +128,12 @@ void Chart::updatePartitions()
 					return;
 				emit cursorChanged(s->samples, s->name());
 				for (auto& [_, p] : partitions)
-					p->redecorate(false, s == p);
+					p->redecorate(false, s == p.get());
 			});
 		}
 	} else {
-		for (auto s : partitions)
-			s.second->clear();
+		for (auto &[_, p] : partitions)
+			p->clear();
 	}
 
 	/* populate with proteins */
@@ -160,20 +154,19 @@ void Chart::updatePartitions()
 		partitions[target]->add(i, source[(int)i]);
 	}
 	// the partitions use deffered addition, which we need to trigger
-	for (auto p : partitions)
-		p.second->apply();
+	for (auto &[_, p] : partitions)
+		p->apply();
 
 	if (fresh) {
 		/* hide empty series from legend (in case of hard clustering) */
-		for (auto s : {partitions[-2], partitions[-1]})
+		for (auto s : {partitions[-2].get(), partitions[-1].get()})
 			if (s->pointsVector().empty())
 				removeSeries(s);
 
 		/* re-order marker series to come up on top of partitions */
 		// unfortunately, due to QCharts suckery, we need to re-create them
-		for (auto i = markers.begin(); i != markers.end(); ++i) {
-			delete i.value();
-			i.value() = new Marker(i.key(), this);
+		for (auto &[i, m] : markers) {
+			m.reset(new Marker(i, this));
 		}
 	}
 }
@@ -281,8 +274,8 @@ void Chart::togglePartitions(bool showPartitions)
 		return;
 
 	master->setVisible(!showPartitions);
-	for (auto s: partitions)
-		s.second->setVisible(showPartitions);
+	for (auto &[_, p]: partitions)
+		p->setVisible(showPartitions);
 }
 
 void Chart::updateColorset(QVector<QColor> colors)
@@ -313,29 +306,28 @@ void Chart::resetCursor()
 
 void Chart::addMarker(unsigned sampleIndex)
 {
-	if (markers.contains(sampleIndex))
+	if (markers.count(sampleIndex))
 		return; // already there
 
-	markers[sampleIndex] = new Marker(sampleIndex, this);
-
+	markers.emplace(sampleIndex, std::make_unique<Marker>(sampleIndex, this));
+	// TODO let the guys who call us do this instead of calling us
 	emit markerToggled(sampleIndex, true);
 }
 
 void Chart::removeMarker(unsigned sampleIndex)
 {
-	if (!markers.contains(sampleIndex))
+	if (!markers.count(sampleIndex))
 		return; // already gone
 
-	delete markers[sampleIndex];
-	markers.remove(sampleIndex);
+	markers.erase(sampleIndex);
+	// TODO let the guys who call us do this instead of calling us
 	emit markerToggled(sampleIndex, false);
 }
 
 void Chart::clearMarkers()
 {
-	qDeleteAll(markers);
 	markers.clear();
-	emit markersCleared();
+	emit markersCleared(); // TODO not our job
 }
 
 void Chart::animate(int msec) {

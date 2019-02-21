@@ -52,10 +52,10 @@ void DistmatScene::setDirection(DistmatScene::Direction direction)
 	 * note: we do not use individual signal handlers right now because these
 	 * items are not QObjects and lambda slots would never be cleaned up.
 	 */
-	for (auto l : dimensionLabels)
-		l->setVisible(direction == Direction::PER_DIMENSION);
+	for (auto &l : dimensionLabels)
+		l.setVisible(direction == Direction::PER_DIMENSION);
 	for (auto &[_, m] : markers)
-		m->setVisible(direction == Direction::PER_PROTEIN);
+		m.setVisible(direction == Direction::PER_PROTEIN);
 	clusterbars.setVisible(direction == Direction::PER_PROTEIN
 	                       && !data.peek()->clustering.empty());
 
@@ -95,11 +95,7 @@ void DistmatScene::reset(bool haveData)
 	matrices.clear();
 	display->setVisible(false);
 	clusterbars.setVisible(false);
-	for (auto l : dimensionLabels)
-		delete l;
 	dimensionLabels.clear();
-	for (auto &[_, m] : markers)
-		delete m;
 	markers.clear();
 
 	if (!haveData) {
@@ -109,7 +105,7 @@ void DistmatScene::reset(bool haveData)
 	// setup new dimension labels
 	auto dim = data.peek()->dimensions; // QStringList COW
 	for (int i = 0; i < dim.size(); ++i)
-		dimensionLabels.push_back(new LegendItem(this, (qreal)(i+0.5)/dim.size(), dim[i]));
+		dimensionLabels.emplace_back(this, (qreal)(i+0.5)/dim.size(), dim[i]);
 
 	// trigger computation (also set dimension label visibilty)
 	setDirection(currentDirection);
@@ -134,11 +130,12 @@ void DistmatScene::reorder()
 	recolor();
 
 	/* reflect new order in markers (hack) */
-	auto mCopy = markers;
-	for (auto& [i, m] : mCopy) {
-		removeMarker(i);
+	std::vector<unsigned> old;
+	for (auto& [i, _] : markers)
+		old.push_back(i);
+	markers.clear();
+	for (auto i : old)
 		addMarker(i);
-	}
 }
 
 void DistmatScene::recolor()
@@ -185,9 +182,9 @@ void DistmatScene::rearrange()
 
 	/* rescale & shift labels */
 	for (auto& [i, m] : markers)
-		m->rearrange(viewport.left(), vpScale);
-	for (auto l : dimensionLabels)
-		l->rearrange(viewport.left(), vpScale);
+		m.rearrange(viewport.left(), vpScale);
+	for (auto &l : dimensionLabels)
+		l.rearrange(viewport.left(), vpScale);
 }
 
 void DistmatScene::addMarker(unsigned sampleIndex)
@@ -199,7 +196,7 @@ void DistmatScene::addMarker(unsigned sampleIndex)
 	auto pos = d->order.rankOf[sampleIndex];
 	auto coord = (qreal)(pos + 0.5) / d->proteins.size();
 
-	markers[sampleIndex] = new Marker(this, sampleIndex, coord);
+	markers.try_emplace(sampleIndex, this, sampleIndex, coord);
 }
 
 void DistmatScene::removeMarker(unsigned sampleIndex)
@@ -207,7 +204,6 @@ void DistmatScene::removeMarker(unsigned sampleIndex)
 	if (!markers.count(sampleIndex))
 		return;
 
-	delete markers[sampleIndex];
 	markers.erase(sampleIndex);
 }
 
@@ -267,17 +263,17 @@ void DistmatScene::LegendItem::setup(DistmatScene *scene, QString title, QColor 
 	QBrush fill(QColor{0, 0, 0, 127});
 	QPen outline(color.dark(300));
 	outline.setCosmetic(true);
-	backdrop = scene->addRect({});
+	backdrop.reset(scene->addRect({}));
 	backdrop->setBrush(fill);
 	backdrop->setPen(outline);
 
-	line = scene->addLine({});
+	line.reset(scene->addLine({}));
 	QPen pen(color.darker(150));
 	pen.setCosmetic(true);
 	line->setPen(pen);
 
 	// do label last, so it will be on top of its backdrop
-	label = scene->addSimpleText(title);
+	label.reset(scene->addSimpleText(title));
 	auto font = label->font();
 	font.setBold(true);
 	label->setFont(font);
@@ -297,7 +293,7 @@ DistmatScene::Marker::Marker(DistmatScene *scene, unsigned sampleIndex, qreal co
 
 void DistmatScene::LegendItem::setVisible(bool visible)
 {
-	for (auto i : std::initializer_list<QGraphicsItem*>{backdrop, line, label})
+	for (auto i : std::initializer_list<QGraphicsItem*>{backdrop.get(), line.get(), label.get()})
 		i->setVisible(visible);
 }
 

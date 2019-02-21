@@ -15,14 +15,12 @@ void HeatmapScene::setScale(qreal scale)
 	pixelScale = scale;
 	// markers use pixelScale
 	for (auto& [i, m] : markers)
-		m->rearrange(profiles[i]->pos());
+		m.rearrange(profiles[i]->pos());
 }
 
 void HeatmapScene::reset(bool haveData)
 {
 	profiles.clear();
-	for (auto &[_, m] : markers)
-		delete m;
 	markers.clear();
 	clear(); // removes & deletes all items (ie. profiles)
 
@@ -99,7 +97,7 @@ void HeatmapScene::reorder()
 
 	// sync marker positions
 	for (auto& [i, m] : markers)
-		m->rearrange(profiles[i]->pos());
+		m.rearrange(profiles[i]->pos());
 }
 
 void HeatmapScene::updateColorset(QVector<QColor> colors)
@@ -115,7 +113,7 @@ void HeatmapScene::addMarker(unsigned sampleIndex)
 		return;
 
 	auto pos = profiles[sampleIndex]->pos();
-	markers[sampleIndex] = new Marker(this, sampleIndex, pos);
+	markers.try_emplace(sampleIndex, this, sampleIndex, pos);
 }
 
 void HeatmapScene::removeMarker(unsigned sampleIndex)
@@ -123,7 +121,6 @@ void HeatmapScene::removeMarker(unsigned sampleIndex)
 	if (!markers.count(sampleIndex))
 		return;
 
-	delete markers[sampleIndex];
 	markers.erase(sampleIndex);
 }
 
@@ -218,17 +215,17 @@ HeatmapScene::Marker::Marker(HeatmapScene *scene, unsigned sampleIndex, const QP
 	QBrush fill(QColor{0, 0, 0, 127});
 	QPen outline(color.dark(300));
 	outline.setCosmetic(true);
-	backdrop = scene->addRect({});
+	backdrop.reset(scene->addRect({}));
 	backdrop->setBrush(fill);
 	backdrop->setPen(outline);
 
-	line = scene->addLine({});
+	line.reset(scene->addLine({}));
 	QPen pen(color.darker(150));
 	pen.setCosmetic(true);
 	line->setPen(pen);
 
 	// do label last, so it will be on top of its backdrop
-	label = scene->addSimpleText(title);
+	label.reset(scene->addSimpleText(title));
 	auto font = label->font();
 	font.setBold(true);
 	label->setFont(font);

@@ -22,10 +22,9 @@ public:
 	};
 	Q_ENUM(Direction)
 
-	struct LegendItem : NonCopyable // adds its items to the scene
+	struct LegendItem
 	{
 		LegendItem(DistmatScene* scene, qreal coord, QString label);
-		~LegendItem() { delete label; delete line; delete backdrop; }
 
 		void setVisible(bool visible);
 		void rearrange(qreal right, qreal scale);
@@ -36,9 +35,10 @@ public:
 		LegendItem(qreal coord); // must be followed by a call to setup()
 		void setup(DistmatScene *scene, QString label, QColor color);
 
-		QGraphicsSimpleTextItem *label;
-		QGraphicsLineItem *line;
-		QGraphicsRectItem *backdrop;
+		// items are added to the scene, so we make them non-copyable
+		std::unique_ptr<QGraphicsSimpleTextItem> label;
+		std::unique_ptr<QGraphicsLineItem> line;
+		std::unique_ptr<QGraphicsRectItem> backdrop;
 	};
 
 	struct Marker : public LegendItem {
@@ -94,9 +94,9 @@ protected:
 
 	// annotations used in PER_PROTEIN:
 	Clusterbars clusterbars;
-	std::map<unsigned, Marker*> markers;
+	std::map<unsigned, Marker> markers;
 	// annotations used in PER_DIRECTION:
-	std::vector<LegendItem*> dimensionLabels;
+	std::vector<LegendItem> dimensionLabels;
 
 	/* geometry of the current view, used to re-arrange stuff into view */
 	QRectF viewport;

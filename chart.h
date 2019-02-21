@@ -45,7 +45,6 @@ public:
 	};
 
 	Chart(Dataset &data);
-    virtual ~Chart();
 
 	void clear();
 	void clearPartitions();
@@ -86,9 +85,9 @@ protected:
 
 	/* items in the scene */
 
-	Proteins *master;
-	std::unordered_map<int, Proteins*> partitions;
-	QMap<unsigned, Marker*> markers;
+	Proteins *master; // owned by chart
+	std::unordered_map<int, std::unique_ptr<Proteins>> partitions;
+	std::map<unsigned, std::unique_ptr<Marker>> markers;
 
 	QGraphicsEllipseItem *tracker;
 	QtCharts::QValueAxis *ax, *ay;
