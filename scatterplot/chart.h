@@ -50,7 +50,6 @@ public:
 	void clearPartitions();
 	void display(const QString& set);
 	void updatePartitions();
-	void clearMarkers();
 
 	void zoomAt(const QPointF &pos, qreal factor);
 	void undoZoom(bool full = false);
@@ -67,14 +66,12 @@ public slots:
 	void updateCursor(const QPointF &pos = {});
 	void togglePartitions(bool showPartitions);
 	void updateColorset(QVector<QColor> colors);
-	void addMarker(unsigned sampleIndex);
-	void removeMarker(unsigned sampleIndex);
+	void toggleMarker(unsigned sampleIndex, bool present);
 
 signals:
 	void areaChanged();
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
 	void markerToggled(unsigned sampleIndex, bool present);
-	void markersCleared();
 	void proteinStyleUpdated();
 
 protected:

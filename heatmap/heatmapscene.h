@@ -66,8 +66,7 @@ public slots:
 
 	void updateColorset(QVector<QColor> colors);
 
-	void addMarker(unsigned sampleIndex);
-	void removeMarker(unsigned sampleIndex);
+	void toggleMarker(unsigned sampleIndex, bool present);
 
 protected:
 	Dataset &data;

@@ -18,12 +18,12 @@ signals:
 	// inbound signals (that are wired to internal components)
 	void inUpdateColorset(QVector<QColor> colors);
 	void inReset(bool);
-	void inRecolor();
+	void inRepartition();
 	void inReorder();
-	void inAddMarker(unsigned sampleIndex);
-	void inRemoveMarker(unsigned sampleIndex);
+	void inToggleMarker(unsigned sampleIndex, bool present);
 
 	// signals emitted by us
+	void markerToggled(unsigned sampleIndex, bool present);
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
 };
 

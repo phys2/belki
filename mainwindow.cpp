@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 #include "dataset.h"
-#include "chart.h"
 #include "profilechart.h"
 #include "profilewindow.h"
 
@@ -11,7 +10,6 @@
 #include <QAbstractProxyModel>
 #include <QLabel>
 #include <QMessageBox>
-#include <QMenu>
 
 #include <QtDebug>
 
@@ -25,7 +23,6 @@ const QVector<QColor> tableau20 = {
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent), store(data),
-    chart(new Chart(data)),
     cursorChart(new ProfileChart),
     fileLabel(new QLabel(this)),
     io(new FileIO(this))
@@ -38,25 +35,22 @@ MainWindow::MainWindow(QWidget *parent) :
 	setupToolbar();
 
 	/* Views in tabs */
-	views = {heatmapTab, distmatTab};
+	views = {scatterTab, heatmapTab, distmatTab};
 	for (auto v : views) {
 		v->init(&data);
 		// connect singnalling into view
 		connect(this, &MainWindow::updateColorset, v, &Viewer::inUpdateColorset);
 		connect(this, &MainWindow::reset, v, &Viewer::inReset);
-		connect(this, &MainWindow::recolor, v, &Viewer::inRecolor);
+		connect(this, &MainWindow::repartition, v, &Viewer::inRepartition);
 		connect(this, &MainWindow::reorder, v, &Viewer::inReorder);
-		connect(this, &MainWindow::addMarker, v, &Viewer::inAddMarker);
-		connect(this, &MainWindow::removeMarker, v, &Viewer::inRemoveMarker);
+		connect(this, &MainWindow::toggleMarker, v, &Viewer::inToggleMarker);
 
 		// connect signalling out of view
+		connect(v, &Viewer::markerToggled, [this] (unsigned idx, bool present) {
+			this->markerItems[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
+		});
 		connect(v, &Viewer::cursorChanged, this, &MainWindow::updateCursorList);
 	}
-
-	/* main chart */
-	chartView->setChart(chart);
-	chartView->setRubberBand(QtCharts::QChartView::RectangleRubberBand);
-	chartView->setRenderHint(QPainter::Antialiasing);
 
 	/* cursor chart */
 	cursorPlot->setChart(cursorChart);
@@ -87,12 +81,7 @@ void MainWindow::setupToolbar()
 	// put stuff before other buttons
 	fileLabel->setText("<i>No file selected</i>");
 	toolBar->insertWidget(actionLoadDescriptions, fileLabel);
-
-	auto anchor = actionComputeDisplay;
-	toolBar->insertSeparator(anchor);
-	toolBar->insertWidget(anchor, transformLabel);
-	toolBar->insertWidget(anchor, transformSelect);
-	anchor = actionLoadAnnotations;
+	auto anchor = actionLoadAnnotations;
 	toolBar->insertSeparator(anchor);
 	toolBar->insertWidget(anchor, partitionLabel);
 
@@ -100,10 +89,10 @@ void MainWindow::setupToolbar()
 	toolbarActions.granularity = toolBar->insertWidget(actionExportAnnotations, granularitySlider);
 	toolbarActions.famsK = toolBar->insertWidget(actionExportAnnotations, famsKSlider);
 
-	// right-align screenshot & help button
+	// right-align help button
 	auto* spacer = new QWidget();
 	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	toolBar->insertWidget(actionSavePlot, spacer);
+	toolBar->insertWidget(actionHelp, spacer);
 
 	// remove container we picked from
 	topBar->deleteLater();
@@ -136,12 +125,9 @@ void MainWindow::setupSignals()
 		}
 	});
 	connect(&data, &Dataset::newSource, this, &MainWindow::resetData);
-	connect(&data, &Dataset::newDisplay, this, &MainWindow::updateData);
 	connect(&data, &Dataset::newClustering, this, [this] {
-		chart->clearPartitions();
-		chart->updatePartitions();
-		emit recolor();
-		emit reorder(); // TODO: implicates recolor() in distmat. However, we want to control order independently
+		emit repartition();
+		emit reorder(); // TODO: implicates repartition() in distmat. However, we want to control order independently
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
 	});
@@ -152,9 +138,6 @@ void MainWindow::setupSignals()
 		emit reorder();
 	});
 
-	/* notifications from views */
-	connect(chart, &Chart::cursorChanged, this, &MainWindow::updateCursorList);
-
 	/* signals for designated slots (for thread-affinity) */
 	connect(this, &MainWindow::openDataset, &store, &Storage::openDataset);
 	connect(this, &MainWindow::readAnnotations, &store, &Storage::readAnnotations);
@@ -163,21 +146,13 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::importAnnotations, &store, &Storage::importAnnotations);
 	connect(this, &MainWindow::importHierarchy, &store, &Storage::importHierarchy);
 	connect(this, &MainWindow::exportAnnotations, &store, &Storage::exportAnnotations);
-	connect(this, &MainWindow::computeDisplay, &data, &Dataset::computeDisplay);
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
 	connect(this, &MainWindow::runFAMS, &data, &Dataset::computeFAMS);
 	qRegisterMetaType<QVector<QColor>>();
 	connect(this, &MainWindow::updateColorset, &data, &Dataset::updateColorset);
-	connect(this, &MainWindow::updateColorset, chart, &Chart::updateColorset);
 	connect(this, &MainWindow::orderProteins, &data, &Dataset::orderProteins);
 
-	/* selecting display/partition/etc. always goes through GUI */
-	connect(transformSelect, &QComboBox::currentTextChanged, [this] (auto name) {
-		if (name.isEmpty())
-			return;
-		chart->display(name);
-		chartView->setEnabled(true);
-	});
+	/* selecting/altering partition */
 	connect(partitionSelect, QOverload<int>::of(&QComboBox::activated), [this] {
 		// clear partition-type dependant state
 		toolbarActions.granularity->setVisible(false);
@@ -278,11 +253,13 @@ void MainWindow::setupActions()
 
 		emit exportAnnotations(filename);
 	});
-	connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartitions);
-	for (auto v: views) {
-		// TODO: doesn't work (no effective change in dataset). Recolor, reorder, both?
-		connect(actionShowPartition, &QAction::toggled, v, &Viewer::inRecolor);
-	}
+	// TODO connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartitions);
+	// TODO: doesn't work (no effective change in dataset). Repartition, reorder, both?
+	connect(actionShowPartition, &QAction::toggled, this, &MainWindow::repartition);
+	connect(actionClearMarkers, &QAction::triggered, [this] {
+		for (auto i : qAsConst(this->markerItems))
+			i->setCheckState(Qt::Unchecked);
+	});
 	connect(actionLoadMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenMarkers);
 		if (filename.isEmpty())
@@ -301,25 +278,9 @@ void MainWindow::setupActions()
 				indices.append((unsigned)m->data().toInt());
 		store.exportMarkers(filename, indices);
 	});
-	connect(actionClearMarkers, &QAction::triggered, chart, &Chart::clearMarkers);
-	connect(actionSavePlot, &QAction::triggered, [this] {
-		io->renderToFile(chartView, {title, transformSelect->currentText()});
-	});
 
 	connect(actionProfileView, &QAction::triggered, [this] {
 		new ProfileWindow(cursorChart, this);
-	});
-
-	connect(actionComputeDisplay, &QAction::triggered, [this] {
-		auto methods = dimred::availableMethods();
-		auto menu = new QMenu(this);
-		for (const auto& m : methods) {
-			if (transformSelect->findText(m.id) >= 0)
-				continue;
-
-			menu->addAction(m.description, [this, m] { emit computeDisplay(m.name); });
-		}
-		menu->popup(QCursor::pos());
 	});
 }
 
@@ -335,24 +296,9 @@ void MainWindow::setupMarkerControls()
 	protSearch->setCompleter(cpl);
 	protList->setModel(cpl->completionModel());
 
-	/* synchronize with displays */
-	connect(chart, &Chart::markerToggled, [this] (unsigned idx, bool present) {
-		this->markerItems[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
-	});
-	connect(chart, &Chart::markersCleared, [this] {
-		for (auto i : qAsConst(this->markerItems))
-			i->setCheckState(Qt::Unchecked);
-	});
 	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
-		// TODO: use signal
 		auto index = (unsigned)i->data().toInt();
-		if (i->checkState() == Qt::Checked) {
-			chart->addMarker(index);
-			emit addMarker(index);
-		} else if (i->checkState() == Qt::Unchecked) {
-			chart->removeMarker(index);
-			emit removeMarker(index);
-		}
+		emit toggleMarker(index, i->checkState() == Qt::Checked);
 	});
 
 	auto toggler = [m] (QModelIndex i) {
@@ -387,14 +333,10 @@ void MainWindow::setupMarkerControls()
 
 void MainWindow::clearData()
 {
-	/* no displays */
-	transformSelect->clear();
-
 	/* no partitions except inbuilt mean-shift */
 	partitionSelect->clear();
 	partitionSelect->addItem("None", {0});
 	partitionSelect->addItem("Adaptive Mean Shift", {1});
-	// TODO
 
 	/* hide and disable widgets that need data or even more */
 	actionShowPartition->setChecked(false);
@@ -404,8 +346,6 @@ void MainWindow::clearData()
 	actionExportAnnotations->setVisible(false);
 
 	emit reset(false);
-	chart->clear();
-	chartView->setEnabled(false); // TODO: can markerWidget crash uninit. chartView?
 }
 
 void MainWindow::resetData()
@@ -423,12 +363,6 @@ void MainWindow::resetData()
 	updateMarkerControls();
 
 	emit reset(true);
-}
-
-void MainWindow::updateData(const QString &display)
-{
-	transformSelect->addItem(display); // duplicates ignored
-	transformSelect->setCurrentText(display);
 }
 
 void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)

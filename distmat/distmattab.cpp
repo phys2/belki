@@ -5,6 +5,11 @@ DistmatTab::DistmatTab(QWidget *parent) :
     Viewer(parent)
 {
 	setupUi(this);
+
+	// right-align screenshot button
+	auto* spacer = new QWidget();
+	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+	toolBar->insertWidget(actionSavePlot, spacer);
 }
 
 void DistmatTab::init(Dataset *data)
@@ -13,10 +18,9 @@ void DistmatTab::init(Dataset *data)
 
 	connect(this, &Viewer::inUpdateColorset, scene, &DistmatScene::updateColorset);
 	connect(this, &Viewer::inReset, scene, &DistmatScene::reset);
-	connect(this, &Viewer::inRecolor, scene, &DistmatScene::recolor);
+	connect(this, &Viewer::inRepartition, scene, &DistmatScene::recolor);
 	connect(this, &Viewer::inReorder, scene, &DistmatScene::reorder);
-	connect(this, &Viewer::inAddMarker, scene, &DistmatScene::addMarker);
-	connect(this, &Viewer::inRemoveMarker, scene, &DistmatScene::removeMarker);
+	connect(this, &Viewer::inToggleMarker, scene, &DistmatScene::toggleMarker);
 
 	connect(scene, &DistmatScene::cursorChanged, this, &Viewer::cursorChanged);
 

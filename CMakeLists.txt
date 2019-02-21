@@ -48,8 +48,6 @@ target_sources(belki PRIVATE resources.qrc gfx/breeze-subset.qrc)
 
 # main application
 target_sources(belki PRIVATE
-	chart.h chart.cpp
-	chartview.h chartview.cpp
 	dataset.h dataset.cpp
 	dimred.h dimred.cpp
 	fileio.h fileio.cpp
@@ -62,6 +60,7 @@ target_sources(belki PRIVATE
 	)
 
 # gui components (they add to target 'belki')
+add_subdirectory(scatterplot)
 add_subdirectory(heatmap)
 add_subdirectory(distmat)
 

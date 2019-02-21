@@ -107,21 +107,14 @@ void HeatmapScene::updateColorset(QVector<QColor> colors)
 	// TODO: re-initialize markers
 }
 
-void HeatmapScene::addMarker(unsigned sampleIndex)
+void HeatmapScene::toggleMarker(unsigned sampleIndex, bool present)
 {
-	if (markers.count(sampleIndex))
-		return;
-
-	auto pos = profiles[sampleIndex]->pos();
-	markers.try_emplace(sampleIndex, this, sampleIndex, pos);
-}
-
-void HeatmapScene::removeMarker(unsigned sampleIndex)
-{
-	if (!markers.count(sampleIndex))
-		return;
-
-	markers.erase(sampleIndex);
+	if (present) {
+		auto pos = profiles[sampleIndex]->pos();
+		markers.try_emplace(sampleIndex, this, sampleIndex, pos);
+	} else {
+		markers.erase(sampleIndex);
+	}
 }
 
 void HeatmapScene::recolor()

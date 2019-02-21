@@ -185,20 +185,12 @@ void DistmatScene::rearrange()
 		l.rearrange(viewport.left(), vpScale);
 }
 
-void DistmatScene::addMarker(unsigned sampleIndex)
+void DistmatScene::toggleMarker(unsigned sampleIndex, bool present)
 {
-	if (markers.count(sampleIndex))
-		return;
-
-	markers.try_emplace(sampleIndex, this, sampleIndex);
-}
-
-void DistmatScene::removeMarker(unsigned sampleIndex)
-{
-	if (!markers.count(sampleIndex))
-		return;
-
-	markers.erase(sampleIndex);
+	if (present)
+		markers.try_emplace(sampleIndex, this, sampleIndex);
+	else
+		markers.erase(sampleIndex);
 }
 
 void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)

@@ -61,6 +61,9 @@
    </layout>
   </widget>
   <widget class="QToolBar" name="toolBar">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
@@ -80,6 +83,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionToggleSingleCol"/>
+   <addaction name="actionSavePlot"/>
   </widget>
   <action name="actionToggleSingleCol">
    <property name="checkable">
@@ -97,6 +101,21 @@
    </property>
    <property name="shortcut">
     <string>S</string>
+   </property>
+  </action>
+  <action name="actionSavePlot">
+   <property name="icon">
+    <iconset theme="camera-photo">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="toolTip">
+    <string>Save the plot to SVG or PNG file</string>
+   </property>
+   <property name="shortcut">
+    <string>Print</string>
    </property>
   </action>
  </widget>

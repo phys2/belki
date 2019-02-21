@@ -2,7 +2,6 @@
 #define MAINWINDOW_H
 
 #include "ui_mainwindow.h"
-#include "dimred.h"
 #include "dataset.h"
 #include "storage.h"
 #include "fileio.h"
@@ -37,17 +36,15 @@ signals:
 	void importAnnotations(const QString &filename);
 	void importHierarchy(const QString &filename);
 	void exportAnnotations(const QString &filename);
-	void computeDisplay(const QString &name);
 	void calculatePartition(unsigned granularity);
 	void runFAMS();
 	void orderProteins(Dataset::OrderBy order);
 
 	// to views
 	void reset(bool haveData);
-	void recolor();
+	void repartition();
 	void reorder();
-	void addMarker(unsigned sampleIndex);
-	void removeMarker(unsigned sampleIndex);
+	void toggleMarker(unsigned sampleIndex, bool present);
 
 	// other signals
 	void updateColorset(QVector<QColor> colors);
@@ -58,7 +55,6 @@ public slots:
 
 	void clearData();
 	void resetData();
-	void updateData(const QString &display);
 	void updateCursorList(QVector<unsigned> samples, QString title);
 
 protected:
@@ -75,7 +71,6 @@ protected:
 	QString title;
 
 	std::vector<Viewer*> views;
-	Chart *chart;
 
 	ProfileChart *cursorChart;
 	QLabel *fileLabel;

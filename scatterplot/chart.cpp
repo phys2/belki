@@ -66,7 +66,7 @@ Chart::Chart(Dataset &data) :
 void Chart::clear()
 {
 	master->clear();
-	clearMarkers();
+	markers.clear();
 	clearPartitions();
 }
 
@@ -304,30 +304,15 @@ void Chart::resetCursor()
 	updateCursor();
 }
 
-void Chart::addMarker(unsigned sampleIndex)
+void Chart::toggleMarker(unsigned sampleIndex, bool present)
 {
-	if (markers.count(sampleIndex))
-		return; // already there
-
-	markers.emplace(sampleIndex, std::make_unique<Marker>(sampleIndex, this));
-	// TODO let the guys who call us do this instead of calling us
-	emit markerToggled(sampleIndex, true);
-}
-
-void Chart::removeMarker(unsigned sampleIndex)
-{
-	if (!markers.count(sampleIndex))
-		return; // already gone
-
-	markers.erase(sampleIndex);
-	// TODO let the guys who call us do this instead of calling us
-	emit markerToggled(sampleIndex, false);
-}
-
-void Chart::clearMarkers()
-{
-	markers.clear();
-	emit markersCleared(); // TODO not our job
+	if (present) {
+		if (markers.count(sampleIndex))
+			return; // already there
+		markers.emplace(sampleIndex, std::make_unique<Marker>(sampleIndex, this));
+	} else {
+		markers.erase(sampleIndex);
+	}
 }
 
 void Chart::animate(int msec) {
@@ -424,7 +409,7 @@ Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
 	/* allow to remove marker by clicking its legend entry */
 	auto lm = chart->legend()->markers(this)[0];
 	connect(lm, &QtCharts::QLegendMarker::clicked, [chart, sampleIndex] {
-		chart->removeMarker(sampleIndex);
+		emit chart->markerToggled(sampleIndex, false);
 	});
 
 	// follow style changes (note: receiver specified for cleanup on delete!)
