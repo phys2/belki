@@ -27,7 +27,7 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent), store(data),
     chart(new Chart(data)),
     cursorChart(new ProfileChart),
-    fileLabel(new QLabel),
+    fileLabel(new QLabel(this)),
     io(new FileIO(this))
 {
 	store.moveToThread(&dataThread);
@@ -326,8 +326,8 @@ void MainWindow::setupActions()
 void MainWindow::setupMarkerControls()
 {
 	/* setup completer with empty model */
-	auto m = new QStandardItemModel;
-	auto cpl = new QCompleter(m);
+	auto m = new QStandardItemModel(this);
+	auto cpl = new QCompleter(m, this);
 	cpl->setCaseSensitivity(Qt::CaseInsensitive);
 	// we expect model entries to be sorted
 	cpl->setModelSorting(QCompleter::CaseInsensitivelySortedModel);
