@@ -37,11 +37,19 @@ public:
 		bool highlighted = false;
 	};
 
-	struct Marker : QtCharts::QScatterSeries, NonCopyable // registers itself to the chart
+	struct Marker
 	{
 		Marker(unsigned sampleIndex, Chart* chart);
+		// remove+add graphicitems (used for z-ordering of chart elements)
+		void reAdd();
 
 		unsigned sampleIndex;
+
+		// items are added to the scene, so we make them non-copyable
+		std::unique_ptr<QtCharts::QScatterSeries> series;
+
+	protected:
+		void setup(Chart *chart);
 	};
 
 	Chart(Dataset &data);
@@ -84,7 +92,7 @@ protected:
 
 	Proteins *master; // owned by chart
 	std::unordered_map<int, std::unique_ptr<Proteins>> partitions;
-	std::map<unsigned, std::unique_ptr<Marker>> markers;
+	std::map<unsigned, Marker> markers;
 
 	QGraphicsEllipseItem *tracker;
 	QtCharts::QValueAxis *ax, *ay;

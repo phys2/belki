@@ -61,7 +61,7 @@ void ChartTab::init(Dataset *data)
 		scene->clearPartitions();
 		scene->updatePartitions();
 	});
-	// note: we ignore inReorder, as we don't use order
+	// note: we ignore inReorder, as we don't use protein order
 	connect(this, &Viewer::inToggleMarker, scene, &Chart::toggleMarker);
 
 	/* connect outgoing signals */

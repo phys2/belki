@@ -96,7 +96,7 @@ void Chart::display(const QString &set)
 	/* update other sets */
 	updatePartitions();
 	for (auto &[_, m] : markers) {
-		m->replace(0, master->pointsVector()[(int)m->sampleIndex]);
+		m.series->replace(0, master->pointsVector()[(int)m.sampleIndex]);
 	}
 }
 
@@ -166,7 +166,7 @@ void Chart::updatePartitions()
 		/* re-order marker series to come up on top of partitions */
 		// unfortunately, due to QCharts suckery, we need to re-create them
 		for (auto &[i, m] : markers) {
-			m.reset(new Marker(i, this));
+			m.reAdd();
 		}
 	}
 }
@@ -306,13 +306,10 @@ void Chart::resetCursor()
 
 void Chart::toggleMarker(unsigned sampleIndex, bool present)
 {
-	if (present) {
-		if (markers.count(sampleIndex))
-			return; // already there
-		markers.emplace(sampleIndex, std::make_unique<Marker>(sampleIndex, this));
-	} else {
+	if (present)
+		markers.try_emplace(sampleIndex, sampleIndex, this);
+	else
 		markers.erase(sampleIndex);
-	}
 }
 
 void Chart::animate(int msec) {
@@ -385,36 +382,54 @@ void Chart::Proteins::redecorate(bool full, bool hl)
 }
 
 Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
-    : sampleIndex(sampleIndex)
+    : sampleIndex(sampleIndex),
+      series(std::make_unique<QtCharts::QScatterSeries>())
 {
+	auto s = series.get();
 	auto label = chart->data.peek()->proteins[sampleIndex].name;
-	setName(label);
-	setPointLabelsFormat(label); // displays name over marker point
-	append(chart->master->pointsVector()[(int)sampleIndex]);
-	chart->addSeries(this);
+	s->setName(label);
 
-	attachAxis(chart->ax);
-	attachAxis(chart->ay);
-
-	setBorderColor(Qt::black);
-	setColor(chart->colorset[(int)qHash(label) % chart->colorset.size()]);
-	setMarkerShape(QtCharts::QScatterSeries::MarkerShapeRectangle);
-	setMarkerSize(chart->proteinStyle.size * 1.3333);
-	setPointLabelsVisible(true);
-	auto f = pointLabelsFont();
+	s->setPointLabelsFormat(label); // display name over marker point (TODO: own item)
+	auto f = s->pointLabelsFont(); // increase font size (do it only on creation)
 	f.setBold(true);
 	f.setPointSizeF(f.pointSizeF() * 1.3);
-	setPointLabelsFont(f);
+	s->setPointLabelsFont(f);
+
+	s->append(chart->master->pointsVector()[(int)sampleIndex]);
+
+	setup(chart);
+}
+
+void Chart::Marker::reAdd()
+{
+	auto chart = qobject_cast<Chart*>(series->chart());
+	chart->removeSeries(series.get());
+	setup(chart);
+}
+
+void Chart::Marker::setup(Chart *chart)
+{
+	auto s = series.get();
+	chart->addSeries(s);
+
+	s->attachAxis(chart->ax);
+	s->attachAxis(chart->ay);
+
+	s->setBorderColor(Qt::black);
+	s->setColor(chart->colorset[(int)qHash(s->name()) % chart->colorset.size()]);
+	s->setMarkerShape(QtCharts::QScatterSeries::MarkerShapeRectangle);
+	s->setMarkerSize(chart->proteinStyle.size * 1.3333);
+	s->setPointLabelsVisible(true);
 
 	/* allow to remove marker by clicking its legend entry */
-	auto lm = chart->legend()->markers(this)[0];
-	connect(lm, &QtCharts::QLegendMarker::clicked, [chart, sampleIndex] {
+	auto lm = chart->legend()->markers(s)[0];
+	connect(lm, &QtCharts::QLegendMarker::clicked, [chart, this] {
 		emit chart->markerToggled(sampleIndex, false);
 	});
 
 	// follow style changes (note: receiver specified for cleanup on delete!)
-	connect(chart, &Chart::proteinStyleUpdated, this, [chart,this] {
+	s->connect(chart, &Chart::proteinStyleUpdated, s, [chart, s] {
 		// we only care about size
-		setMarkerSize(chart->proteinStyle.size * 1.3333);
+		s->setMarkerSize(chart->proteinStyle.size * 1.3333);
 	});
 }
