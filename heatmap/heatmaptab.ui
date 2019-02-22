@@ -61,9 +61,6 @@
    </layout>
   </widget>
   <widget class="QToolBar" name="toolBar">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
    <property name="windowTitle">
     <string>toolBar</string>
    </property>

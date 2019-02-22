@@ -28,6 +28,9 @@ void HeatmapTab::init(Dataset *data)
 	connect(this, &Viewer::inReset, [this] (bool haveData) { setEnabled(haveData); });
 
 	connect(actionToggleSingleCol, &QAction::toggled, view, &HeatmapView::setColumnMode);
+	connect(actionSavePlot, &QAction::triggered, [this] {
+		emit renderExport(scene, "Heatmap");
+	});
 
 	view->setScene(scene);
 }

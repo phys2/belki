@@ -3,12 +3,18 @@
 
 #include <QObject>
 
+#include <map>
+
 class QMainWindow;
 
 class FileIO : public QObject
 {
 	Q_OBJECT
 public:
+	enum class FileType {
+		SVG, PDF, RASTERIMG
+	};
+
 	enum Role {
 		OpenDataset,
 		OpenDescriptions,
@@ -18,6 +24,7 @@ public:
 		SaveAnnotations,
 		SavePlot
 	};
+
 	struct RoleDef {
 		QString title;
 		QString filter;
@@ -38,10 +45,18 @@ signals:
 	void ioError(const QString &message);
 
 public slots:
-	void renderToFile(QWidget *source, const RenderMeta &meta, QString filename = {});
+	// use source::render() to create image file (source may be QWidget or QGraphicsScene)
+	void renderToFile(QObject *source, const RenderMeta &meta, QString filename = {});
 
 protected:
 	QMainWindow *parent; // anchor dialogs to main window
+	std::map<QString, FileType> filetypes = {
+	    {"svg", FileType::SVG},
+	    {"pdf", FileType::PDF},
+	    {"png", FileType::RASTERIMG},
+	    {"tiff", FileType::RASTERIMG},
+	    {"tif", FileType::RASTERIMG},
+	};
 };
 
 #endif // FILEIO_H

@@ -4,6 +4,8 @@
 #include <QMainWindow>
 
 class Dataset;
+class QGraphicsScene;
+class QGraphicsView;
 
 class Viewer : public QMainWindow
 {
@@ -25,6 +27,8 @@ signals:
 	// signals emitted by us
 	void markerToggled(unsigned sampleIndex, bool present);
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
+	void renderExport(QGraphicsView *source, QString description);
+	void renderExport(QGraphicsScene *source, QString description);
 };
 
 #endif // VIEWER_H

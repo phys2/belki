@@ -50,6 +50,11 @@ MainWindow::MainWindow(QWidget *parent) :
 			this->markerItems[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 		});
 		connect(v, &Viewer::cursorChanged, this, &MainWindow::updateCursorList);
+		auto renderSlot = [this] (auto r, auto d) {
+			io->renderToFile(r, {title, d});
+		};
+		connect(v, qOverload<QGraphicsView*, QString>(&Viewer::renderExport), renderSlot);
+		connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::renderExport), renderSlot);
 	}
 
 	/* cursor chart */

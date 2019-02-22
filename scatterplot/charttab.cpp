@@ -37,7 +37,7 @@ ChartTab::ChartTab(QWidget *parent) :
 		menu->popup(QCursor::pos());
 	});
 	connect(actionSavePlot, &QAction::triggered, [this] {
-// TODO		io->renderToFile(view, {title, transformSelect->currentText()});
+		emit renderExport(view, transformSelect->currentText());
 	});
 }
 

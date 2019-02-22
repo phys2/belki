@@ -31,6 +31,9 @@ void DistmatTab::init(Dataset *data)
 		scene->setDirection(toggle ? DistmatScene::Direction::PER_DIMENSION
 		                           : DistmatScene::Direction::PER_PROTEIN);
 	});
+	connect(actionSavePlot, &QAction::triggered, [this] {
+		emit renderExport(view, "Distance Matrix");
+	});
 
 	view->setScene(scene);
 }

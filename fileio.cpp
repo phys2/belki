@@ -6,6 +6,8 @@
 #include <QSvgGenerator>
 //#include <QPrinter> // for PDF support
 #include <QPainter>
+#include <QGraphicsScene>
+#include <QGraphicsView>
 
 #include <QtDebug>
 
@@ -43,19 +45,9 @@ QString FileIO::chooseFile(FileIO::Role purpose, QWidget *p)
 	return QFileDialog::getOpenFileName(p, params.title, {}, params.filter);
 }
 
-void FileIO::renderToFile(QWidget *source, const RenderMeta &meta, QString filename)
+template<typename Q>
+void render(Q *source, QRectF rect, int dpi, const QString &filename, FileIO::FileType filetype, const FileIO::RenderMeta &meta)
 {
-	if (filename.isEmpty())
-		filename = chooseFile(SavePlot, source->window());
-	if (filename.isEmpty())
-		return;
-
-	auto filetype = QFileInfo(filename).suffix().toLower();
-	if (filetype.isEmpty()) {
-		emit ioError("Please select a filename with suffix (e.g. .svg)!");
-		return;
-	}
-
 	auto renderer = [source] (QPaintDevice *target) {
 		QPainter p;
 		p.begin(target);
@@ -63,27 +55,70 @@ void FileIO::renderToFile(QWidget *source, const RenderMeta &meta, QString filen
 		p.end();
 	};
 
-	if (filetype == "svg") {
+	switch (filetype) {
+	case FileIO::FileType::SVG: {
 		QSvgGenerator svg;
 		svg.setFileName(filename);
-		svg.setSize(source->size());
-		svg.setViewBox(source->rect());
+		svg.setSize(rect.size().toSize());
+		svg.setViewBox(rect);
 		svg.setTitle(meta.title);
 		svg.setDescription(meta.description);
+		svg.setResolution(dpi);
 		renderer(&svg);
-	}
-	/*if (filetype == "pdf") { // TODO: this produces only a bitmap, so we disabled it for now
+	} break;
+	case FileIO::FileType::PDF: { // TODO: this produces only a bitmap, so we disabled it for now
 		// maybe use QPicture trick. also need to adapt page size
-		QPrinter pdf;
+		/*QPrinter pdf;
 		pdf.setOutputFormat(QPrinter::PdfFormat);
 		pdf.setOutputFileName(filename);
-		renderer(&pdf);
-	}*/
-	if (filetype == "png") {
+		renderer(&pdf);*/
+	} break;
+	case FileIO::FileType::RASTERIMG: {
 		const qreal scale = 1.; // 2.; // render in higher resolution
-		QPixmap pixmap(source->size()*scale);
+		QPixmap pixmap((rect.size()*scale).toSize());
+		pixmap.fill(Qt::transparent);
 		pixmap.setDevicePixelRatio(scale);
 		renderer(&pixmap);
 		pixmap.save(filename);
 	}
+	}
+}
+
+void FileIO::renderToFile(QObject *source, const RenderMeta &meta, QString filename)
+{
+	QWidget *parent = nullptr;
+	auto *v = qobject_cast<QGraphicsView*>(source);
+	auto *s = qobject_cast<QGraphicsScene*>(source);
+	// note: this method can easily be augmented with support for QWidget*
+	if (v)
+		parent = v->window();
+	if (s)
+		parent = s->views().first()->window();
+	if (!parent)
+		std::runtime_error("renderToFile() called with invalid source object!");
+
+	if (filename.isEmpty())
+		filename = chooseFile(SavePlot, parent);
+	if (filename.isEmpty())
+		return;
+
+	auto suffix = QFileInfo(filename).suffix().toLower();
+	if (suffix.isEmpty()) {
+		emit ioError("Please select a filename with suffix (e.g. .svg)!");
+		return;
+	}
+	auto filetype = filetypes.find(suffix);
+	if (filetype == filetypes.end()) {
+		emit ioError("Unsupported file type (filename suffix) specified!");
+		return;
+	}
+
+	if (v) {
+		auto b = v->backgroundBrush();
+		v->setBackgroundBrush(QBrush(Qt::BrushStyle::NoBrush));
+		render(v, v->contentsRect(), parent->logicalDpiX(), filename, filetype->second, meta);
+		v->setBackgroundBrush(b);
+	}
+	if (s)
+		render(s, s->sceneRect(), parent->logicalDpiX(), filename, filetype->second, meta);
 }
