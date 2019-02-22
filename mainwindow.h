@@ -62,7 +62,7 @@ protected:
 	void setupSignals();
 	void setupActions();
 	void setupMarkerControls();
-	void updateMarkerControls();
+	void resetMarkerControls();
 
 	QMap<unsigned, QStandardItem*> markerItems;
 	Dataset data;

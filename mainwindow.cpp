@@ -345,7 +345,11 @@ void MainWindow::clearData()
 	toolbarActions.famsK->setVisible(false);
 	actionExportAnnotations->setVisible(false);
 
+	/* reset views first (before our widgets emit signals) */
 	emit reset(false);
+
+	/* clear out markers */
+	resetMarkerControls();
 }
 
 void MainWindow::resetData()
@@ -356,13 +360,14 @@ void MainWindow::resetData()
 	setWindowTitle(QString("%1 – Belki").arg(title));
 	fileLabel->setText(QString("<b>%1</b>").arg(title));
 
+	/* reset views first (before our widgets emit signals) */
+	emit reset(true);
+
 	/* set up cursor chart */
 	cursorChart->setCategories(data.peek()->dimensions);
 
 	/* set up marker controls */
-	updateMarkerControls();
-
-	emit reset(true);
+	resetMarkerControls();
 }
 
 void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
@@ -414,12 +419,14 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	actionProfileView->setEnabled(true);
 }
 
-void MainWindow::updateMarkerControls()
+void MainWindow::resetMarkerControls()
 {
-	/* re-fill model */
 	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
+	/* clear model */
 	m->clear();
 	markerItems.clear();
+
+	/* re-fill model */
 	auto d = data.peek();
 	for (auto i : d->protIndex) { // use index to have it sorted (required!)
 		auto item = new QStandardItem;
@@ -431,7 +438,8 @@ void MainWindow::updateMarkerControls()
 		markerItems[i.second] = item;
 	}
 
-	markerWidget->setEnabled(true);
+	/* enable if we have data */
+	markerWidget->setEnabled(!markerItems.isEmpty());
 }
 
 void MainWindow::showHelp()
