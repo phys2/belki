@@ -38,11 +38,10 @@ signals:
 	void exportAnnotations(const QString &filename);
 	void calculatePartition(unsigned granularity);
 	void runFAMS();
-	void orderProteins(Dataset::OrderBy order);
 
 	// to views
 	void reset(bool haveData);
-	void repartition();
+	void repartition(bool withOrder);
 	void reorder();
 	void toggleMarker(unsigned sampleIndex, bool present);
 

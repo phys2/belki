@@ -53,8 +53,16 @@ MainWindow::MainWindow(QWidget *parent) :
 		auto renderSlot = [this] (auto r, auto d) {
 			io->renderToFile(r, {title, d});
 		};
-		connect(v, qOverload<QGraphicsView*, QString>(&Viewer::renderExport), renderSlot);
-		connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::renderExport), renderSlot);
+		connect(v, &Viewer::orderRequested, &data, &Dataset::changeOrder);
+		connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
+		connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
+
+		// gui synchronization between views
+		for (auto v2 : views) {
+			if (v2 == v)
+				continue;
+			connect(v, &Viewer::orderRequested, v2, &Viewer::changeOrder);
+		}
 	}
 
 	/* cursor chart */
@@ -129,19 +137,21 @@ void MainWindow::setupSignals()
 			partitionSelect->setCurrentText(n);
 		}
 	});
+
 	connect(&data, &Dataset::newSource, this, &MainWindow::resetData);
-	connect(&data, &Dataset::newClustering, this, [this] {
-		emit repartition();
-		emit reorder(); // TODO: implicates repartition() in distmat. However, we want to control order independently
+	connect(&data, &Dataset::newClustering, this, [this] (bool withOrder) {
+		emit repartition(withOrder);
 		actionShowPartition->setEnabled(true);
 		actionShowPartition->setChecked(true);
 	});
-	connect(&data, &Dataset::newHierarchy, this, [this] {
+	connect(&data, &Dataset::newHierarchy, this, [this] (bool withOrder) {
 		auto d = data.peek();
 		auto reasonable = std::min(d->proteins.size(), d->hierarchy.size()) / 4;
 		granularitySlider->setMaximum(reasonable);
-		emit reorder();
+		if (withOrder)
+			emit reorder();
 	});
+	connect(&data, &Dataset::newOrder, this, &MainWindow::reorder);
 
 	/* signals for designated slots (for thread-affinity) */
 	connect(this, &MainWindow::openDataset, &store, &Storage::openDataset);
@@ -155,7 +165,6 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::runFAMS, &data, &Dataset::computeFAMS);
 	qRegisterMetaType<QVector<QColor>>();
 	connect(this, &MainWindow::updateColorset, &data, &Dataset::updateColorset);
-	connect(this, &MainWindow::orderProteins, &data, &Dataset::orderProteins);
 
 	/* selecting/altering partition */
 	connect(partitionSelect, QOverload<int>::of(&QComboBox::activated), [this] {
@@ -173,11 +182,7 @@ void MainWindow::setupSignals()
 				actionShowPartition->setChecked(false);
 				actionShowPartition->setEnabled(false);
 				data.cancelFAMS();
-				// TODO: better to remove annotation instead of hiding it
-				/* TODO: does not currently work as expected!
-				 when protein order is updated, no signal is emitted. 
-				 leading to an inconsistent state in views rather than update */
-				// emit orderProteins(Dataset::OrderBy::FILE);
+				// TODO: tell data to remove the annotation (with re-order fallback)
 			} else if (v == 1) {
 				data.changeFAMS((unsigned)famsKSlider->value() * 0.01f);
 				emit runFAMS();

@@ -83,9 +83,11 @@ void Dataset::computeFAMS()
 	orderClusters(true);
 	colorClusters();
 
-	orderProteins(OrderBy::CLUSTERING);
+	bool reorder = d.order.synchronizing && d.order.reference == OrderBy::CLUSTERING;
+	if (reorder)
+		orderProteins(OrderBy::CLUSTERING);
 
-	emit newClustering();
+	emit newClustering(reorder);
 }
 
 void Dataset::changeFAMS(float k)
@@ -196,7 +198,8 @@ bool Dataset::readSource(QTextStream in)
 		d.featurePoints.push_back(std::move(points));
 	}
 
-	orderProteins(OrderBy::NAME);
+	/* calculate initial order */
+	orderProteins(d.order.reference);
 
 	emit newSource();
 	return true;
@@ -350,9 +353,11 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 	orderClusters(false);
 	colorClusters();
 
-	orderProteins(OrderBy::CLUSTERING);
+	bool reorder = d.order.synchronizing && d.order.reference == OrderBy::CLUSTERING;
+	if (reorder)
+		orderProteins(OrderBy::CLUSTERING);
 
-	emit newClustering();
+	emit newClustering(reorder);
 	return true;
 }
 
@@ -413,9 +418,15 @@ bool Dataset::readHierarchy(const QByteArray &json)
 			c.parent = (unsigned)node["parent"].toInt();
 	}
 
-	orderProteins(OrderBy::HIERARCHY);
+	/* re-order for both hierarchy or clustering being chosen as reference.
+	 * we will not re-order in calculatePartition() */
+	bool reorder = d.order.synchronizing;
+	reorder = reorder && (d.order.reference == OrderBy::HIERARCHY ||
+	                      d.order.reference == OrderBy::CLUSTERING);
+	if (reorder)
+		orderProteins(OrderBy::HIERARCHY);
 
-	emit newHierarchy();
+	emit newHierarchy(reorder);
 	return true;
 }
 
@@ -477,8 +488,8 @@ void Dataset::calculatePartition(unsigned granularity)
 	computeClusterCentroids();
 	orderClusters(true);
 	colorClusters();
-	// note: we do not re-order proteins as the hierarchy maintains precedence
 
+	// note: we do not re-order proteins as the hierarchy maintains precedence
 	emit newClustering();
 }
 
@@ -486,6 +497,19 @@ void Dataset::updateColorset(QVector<QColor> colors)
 {
 	colorset = colors;
 	colorClusters();
+}
+
+void Dataset::changeOrder(OrderBy reference, bool synchronize)
+{
+	QWriteLocker _(&l);
+	d.order.synchronizing = synchronize;
+	if (d.order.reference == reference)
+		return; // nothing to do
+
+	d.order.reference = reference; // save preference for future changes
+	orderProteins(reference);
+
+	emit newOrder();
 }
 
 void Dataset::pruneClusters()
@@ -563,16 +587,28 @@ void Dataset::colorClusters()
 	}
 }
 
-void Dataset::orderProteins(OrderBy by)
+void Dataset::orderProteins(OrderBy reference)
 {
-	Order target;
-	auto &index = target.index;
+	/* initialize replacement with current configuration */
+	// note that our argument 'reference' might _not_ be the configured one
+	Order target{d.order.reference, d.order.synchronizing, false, {}, {}};
 
+	/* use reasonable fallbacks */
+	if (reference == OrderBy::CLUSTERING && d.clustering.empty()) {
+		reference = OrderBy::HIERARCHY;
+		target.fallback = true;
+	}
+	if (reference == OrderBy::HIERARCHY && d.hierarchy.empty()) {
+		reference = OrderBy::NAME;
+		target.fallback = true;
+	}
+
+	auto &index = target.index;
 	auto byName = [this] (auto a, auto b) {
 		return d.proteins[a].name < d.proteins[b].name;
 	};
 
-	switch (by) {
+	switch (reference) {
 	/* order based on hierarchy */
 	case OrderBy::HIERARCHY: {
 		std::function<void(unsigned)> collect;
@@ -623,15 +659,14 @@ void Dataset::orderProteins(OrderBy by)
 		index.insert(index.end(), missing.begin(), missing.end());
 		break;
 	}
-	default: {
+	default:
 		/* replicate file order */
 		index.resize(d.proteins.size());
 		std::iota(index.begin(), index.end(), 0);
 
 		/* order based on name (some prots have common prefixes) */
-		if (by == OrderBy::NAME)
+		if (reference == OrderBy::NAME)
 			std::sort(index.begin(), index.end(), byName);
-	}
 	}
 
 	/* now fill the back-references */
@@ -675,4 +710,14 @@ QStringList Dataset::trimCrap(QStringList values)
 	values.replaceInStrings(QRegularExpression(match), "\\1");
 
 	return values;
+}
+
+const std::map<Dataset::OrderBy, QString> Dataset::availableOrders()
+{
+	return {
+		{OrderBy::FILE, "Position in File"},
+		{OrderBy::NAME, "Protein Name"},
+		{OrderBy::HIERARCHY, "Hierarchy"},
+		{OrderBy::CLUSTERING, "Cluster/Annotations"},
+	};
 }

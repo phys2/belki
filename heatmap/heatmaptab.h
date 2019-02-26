@@ -15,6 +15,8 @@ public:
 	void init(Dataset *data) override;
 
 protected:
+	void setupOrderUI();
+
 	HeatmapScene *scene;
 };
 

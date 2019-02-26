@@ -28,8 +28,8 @@ public:
 	enum class OrderBy {
 		FILE,
 		NAME,
-		CLUSTERING,
-		HIERARCHY
+		HIERARCHY,
+		CLUSTERING
 	};
 	Q_ENUM(OrderBy)
 
@@ -70,6 +70,10 @@ public:
 	};
 
 	struct Order {
+		OrderBy reference = OrderBy::HIERARCHY;
+		bool synchronizing = true; // re-calculate whenever the source changes
+		bool fallback = true; // enable one-off synchronization
+
 		std::vector<unsigned> index; // protein indices ordered
 		std::vector<unsigned> rankOf; // position of each protein in the order
 	};
@@ -116,6 +120,8 @@ public:
 		QReadWriteLock &l;
 	};
 
+	static const std::map<Dataset::OrderBy, QString> availableOrders();
+
 	View peek() { return View(d, l); }
 
 	void changeFAMS(float k); // to be called from different thread
@@ -124,8 +130,9 @@ public:
 signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
 	void newSource();
 	void newDisplay(const QString &name);
-	void newClustering();
-	void newHierarchy();
+	void newClustering(bool withOrder = false);
+	void newHierarchy(bool withOrder = false);
+	void newOrder();
 	void ioError(const QString &message);
 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
@@ -134,7 +141,7 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void computeFAMS();
 	void calculatePartition(unsigned granularity);
 	void updateColorset(QVector<QColor> colors);
-	void orderProteins(OrderBy by);
+	void changeOrder(OrderBy reference, bool synchronize);
 
 protected:
 	bool readSource(QTextStream in);
@@ -147,6 +154,7 @@ protected:
 	void computeClusterCentroids();
 	void orderClusters(bool genericNames);
 	void colorClusters();
+	void orderProteins(OrderBy reference);
 
 	QByteArray writeDisplay(const QString &name);
 	static QStringList trimCrap(QStringList values);

@@ -1,9 +1,10 @@
 #ifndef VIEWER_H
 #define VIEWER_H
 
+#include "dataset.h"
+
 #include <QMainWindow>
 
-class Dataset;
 class QGraphicsScene;
 class QGraphicsView;
 
@@ -19,16 +20,20 @@ public:
 signals:
 	// inbound signals (that are wired to internal components)
 	void inUpdateColorset(QVector<QColor> colors);
-	void inReset(bool);
-	void inRepartition();
+	void inReset(bool haveData);
+	void inRepartition(bool withOrder);
 	void inReorder();
 	void inToggleMarker(unsigned sampleIndex, bool present);
 
 	// signals emitted by us
 	void markerToggled(unsigned sampleIndex, bool present);
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
-	void renderExport(QGraphicsView *source, QString description);
-	void renderExport(QGraphicsScene *source, QString description);
+	void orderRequested(Dataset::OrderBy order, bool synchronize);
+	void exportRequested(QGraphicsView *source, QString description);
+	void exportRequested(QGraphicsScene *source, QString description);
+
+	// gui synchronization between views
+	void changeOrder(Dataset::OrderBy order, bool synchronize);
 };
 
 #endif // VIEWER_H
