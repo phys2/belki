@@ -13,7 +13,7 @@ using namespace tapkee;
 
 namespace dimred {
 
-std::vector<dimred::Method> availableMethods()
+const std::vector<dimred::Method> availableMethods()
 {
 	return {
 		{"PCA", "PCA 12", "Principal Component Analysis"},

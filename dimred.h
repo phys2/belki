@@ -14,7 +14,7 @@ namespace dimred {
 
 	QMap<QString, QVector<QPointF>> compute(QString method, QVector<std::vector<double>> &features);
 
-	std::vector<Method> availableMethods();
+	const std::vector<Method> availableMethods();
 }
 
 #endif // DIMRED_H
