@@ -165,7 +165,6 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::clearClusters, &data, &Dataset::clearClusters);
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
 	connect(this, &MainWindow::runFAMS, &data, &Dataset::computeFAMS);
-	qRegisterMetaType<QVector<QColor>>();
 	connect(this, &MainWindow::updateColorset, &data, &Dataset::updateColorset);
 
 	/* selecting/altering partition */

@@ -9,7 +9,9 @@
 
 int main(int argc, char *argv[])
 {
-	qRegisterMetaType<Dataset::OrderBy>(); // needed for queued connections
+	// register additional types needed in queued connections
+	qRegisterMetaType<QVector<QColor>>();
+	qRegisterMetaType<Dataset::OrderBy>();
 
 	QApplication a(argc, argv);
 
