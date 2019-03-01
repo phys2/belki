@@ -141,9 +141,10 @@ void MainWindow::setupSignals()
 
 	connect(&data, &Dataset::newSource, this, &MainWindow::resetData);
 	connect(&data, &Dataset::newClustering, this, [this] (bool withOrder) {
+		bool haveClustering = !(data.peek()->clustering.empty());
+		actionShowPartition->setEnabled(haveClustering);
+		actionShowPartition->setChecked(haveClustering);
 		emit repartition(withOrder);
-		actionShowPartition->setEnabled(true);
-		actionShowPartition->setChecked(true);
 	});
 	connect(&data, &Dataset::newHierarchy, this, [this] (bool withOrder) {
 		auto d = data.peek();
@@ -173,15 +174,12 @@ void MainWindow::setupSignals()
 		toolbarActions.granularity->setVisible(false);
 		toolbarActions.famsK->setVisible(false);
 		actionExportAnnotations->setVisible(false);
-		actionShowPartition->setEnabled(true);
 
 		// special items (TODO: better use an enum here, maybe include hierarchies)
 		if (partitionSelect->currentData().isValid()) {
 
 			auto v = partitionSelect->currentData().value<int>();
 			if (v == 0) {
-				actionShowPartition->setChecked(false);
-				actionShowPartition->setEnabled(false);
 				data.cancelFAMS();
 				emit clearClusters();
 			} else if (v == 1) {
