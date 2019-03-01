@@ -26,6 +26,7 @@ void HeatmapTab::init(Dataset *data)
 	});
 	connect(this, &Viewer::inReorder, scene, &HeatmapScene::reorder);
 	connect(this, &Viewer::inToggleMarker, scene, &HeatmapScene::toggleMarker);
+	connect(this, &Viewer::inTogglePartitions, scene, &HeatmapScene::togglePartitions);
 
 	connect(scene, &HeatmapScene::cursorChanged, this, &Viewer::cursorChanged);
 

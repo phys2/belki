@@ -48,16 +48,7 @@ void DistmatScene::setDirection(DistmatScene::Direction direction)
 		return;
 
 	currentDirection = direction;
-	/* change visibility of all annotations accordingly
-	 * note: we do not use individual signal handlers right now because these
-	 * items are not QObjects and lambda slots would never be cleaned up.
-	 */
-	for (auto &l : dimensionLabels)
-		l.setVisible(direction == Direction::PER_DIMENSION);
-	for (auto &[_, m] : markers)
-		m.setVisible(direction == Direction::PER_PROTEIN);
-	clusterbars.setVisible(direction == Direction::PER_PROTEIN
-	                       && !data.peek()->clustering.empty());
+	updateVisibilities();
 
 	/* set display if available */
 	if (matrices.count(direction)) {
@@ -94,7 +85,7 @@ void DistmatScene::reset(bool haveData)
 {
 	matrices.clear();
 	display->setVisible(false);
-	clusterbars.setVisible(false);
+	clusterbars.update({}); // clears
 	dimensionLabels.clear();
 	markers.clear();
 
@@ -164,9 +155,8 @@ void DistmatScene::recolor()
 	}
 
 	clusterbars.update(clusterbar);
-	clusterbars.setVisible(currentDirection == Direction::PER_PROTEIN);
-
 	rearrange();
+	updateVisibilities();
 }
 
 void DistmatScene::rearrange()
@@ -185,12 +175,27 @@ void DistmatScene::rearrange()
 		l.rearrange(viewport.left(), vpScale);
 }
 
+void DistmatScene::updateVisibilities()
+{
+	for (auto &l : dimensionLabels)
+		l.setVisible(currentDirection == Direction::PER_DIMENSION);
+	for (auto &[_, m] : markers)
+		m.setVisible(currentDirection == Direction::PER_PROTEIN);
+	clusterbars.setVisible(showPartitions && currentDirection == Direction::PER_PROTEIN);
+}
+
 void DistmatScene::toggleMarker(unsigned sampleIndex, bool present)
 {
 	if (present)
 		markers.try_emplace(sampleIndex, this, sampleIndex);
 	else
 		markers.erase(sampleIndex);
+}
+
+void DistmatScene::togglePartitions(bool show)
+{
+	showPartitions = show;
+	updateVisibilities();
 }
 
 void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
@@ -324,6 +329,11 @@ DistmatScene::Clusterbars::Clusterbars(DistmatScene *scene)
 
 void DistmatScene::Clusterbars::update(QImage content)
 {
+	if (content.isNull()) {
+		valid = false;
+		return;
+	}
+
 	/* scale and orient bars to fit around the [0, 0 – 1, 1] matrix item */
 	auto length = content.width();
 	std::map<Qt::Edge, QTransform> transforms = {
@@ -338,12 +348,13 @@ void DistmatScene::Clusterbars::update(QImage content)
 		v->setPixmap(p);
 		v->setTransform(transforms[k]);
 	}
+	valid = true;
 }
 
 void DistmatScene::Clusterbars::setVisible(bool visible)
 {
 	for (auto& [k, v] : items)
-		v->setVisible(visible);
+		v->setVisible(visible && valid);
 }
 
 void DistmatScene::Clusterbars::rearrange(QRectF target, qreal margin)

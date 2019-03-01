@@ -27,6 +27,7 @@ void DistmatTab::init(Dataset *data)
 	});
 	connect(this, &Viewer::inReorder, scene, &DistmatScene::reorder);
 	connect(this, &Viewer::inToggleMarker, scene, &DistmatScene::toggleMarker);
+	connect(this, &Viewer::inTogglePartitions, scene, &DistmatScene::togglePartitions);
 
 	connect(scene, &DistmatScene::cursorChanged, this, &Viewer::cursorChanged);
 

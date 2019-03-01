@@ -57,6 +57,7 @@ public:
 		void rearrange(QRectF target, qreal margin);
 
 	protected:
+		bool valid = false; // do items show valid content
 		std::map<Qt::Edge, QGraphicsPixmapItem*> items;
 	};
 
@@ -76,12 +77,14 @@ public slots:
 	void updateColorset(QVector<QColor> colors);
 
 	void toggleMarker(unsigned sampleIndex, bool present);
+	void togglePartitions(bool showPartitions);
 
 protected:
 	void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
 
 	void setDisplay();
 	void rearrange();
+	void updateVisibilities();
 	qreal computeCoord(unsigned sampleIndex);
 
 	Direction currentDirection = Direction::PER_PROTEIN;
@@ -93,6 +96,7 @@ protected:
 	QGraphicsPixmapItem *display;
 
 	// annotations used in PER_PROTEIN:
+	bool showPartitions = true;
 	Clusterbars clusterbars;
 	std::map<unsigned, Marker> markers;
 	// annotations used in PER_DIRECTION:

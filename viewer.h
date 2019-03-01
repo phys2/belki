@@ -24,6 +24,7 @@ signals:
 	void inRepartition(bool withOrder);
 	void inReorder();
 	void inToggleMarker(unsigned sampleIndex, bool present);
+	void inTogglePartitions(bool show);
 
 	// signals emitted by us
 	void markerToggled(unsigned sampleIndex, bool present);

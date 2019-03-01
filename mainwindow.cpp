@@ -44,6 +44,7 @@ MainWindow::MainWindow(QWidget *parent) :
 		connect(this, &MainWindow::repartition, v, &Viewer::inRepartition);
 		connect(this, &MainWindow::reorder, v, &Viewer::inReorder);
 		connect(this, &MainWindow::toggleMarker, v, &Viewer::inToggleMarker);
+		connect(this, &MainWindow::togglePartitions, v, &Viewer::inTogglePartitions);
 
 		// connect signalling out of view
 		connect(v, &Viewer::markerToggled, [this] (unsigned idx, bool present) {
@@ -264,9 +265,7 @@ void MainWindow::setupActions()
 
 		emit exportAnnotations(filename);
 	});
-	// TODO connect(actionShowPartition, &QAction::toggled, chart, &Chart::togglePartitions);
-	// TODO: doesn't work (no effective change in dataset). Repartition, reorder, both?
-	connect(actionShowPartition, &QAction::toggled, this, &MainWindow::repartition);
+	connect(actionShowPartition, &QAction::toggled, this, &MainWindow::togglePartitions);
 	connect(actionClearMarkers, &QAction::triggered, [this] {
 		for (auto i : qAsConst(this->markerItems))
 			i->setCheckState(Qt::Unchecked);

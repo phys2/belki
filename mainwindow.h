@@ -45,6 +45,7 @@ signals:
 	void repartition(bool withOrder);
 	void reorder();
 	void toggleMarker(unsigned sampleIndex, bool present);
+	void togglePartitions(bool show);
 
 	// other signals
 	void updateColorset(QVector<QColor> colors);

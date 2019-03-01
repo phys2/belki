@@ -67,6 +67,7 @@ public slots:
 	void updateColorset(QVector<QColor> colors);
 
 	void toggleMarker(unsigned sampleIndex, bool present);
+	void togglePartitions(bool showPartitions);
 
 protected:
 	Dataset &data;
@@ -88,6 +89,7 @@ protected:
 
 	std::vector<Profile*> profiles;
 	std::map<unsigned, Marker> markers;
+	bool showPartitions = true;
 	QVector<QColor> colorset;
 
 	QSize viewport; // size of the viewport in _screen_ coordinates

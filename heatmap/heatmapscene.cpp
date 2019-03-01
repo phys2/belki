@@ -117,10 +117,16 @@ void HeatmapScene::toggleMarker(unsigned sampleIndex, bool present)
 	}
 }
 
+void HeatmapScene::togglePartitions(bool show)
+{
+	showPartitions = show;
+	recolor();
+}
+
 void HeatmapScene::recolor()
 {
 	auto d = data.peek();
-	if (d->clustering.empty()) {
+	if (!showPartitions || d->clustering.empty()) {
 		for (auto &p : profiles)
 			p->setBrush(Qt::transparent);
 		update();
