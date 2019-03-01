@@ -36,6 +36,7 @@ signals:
 	void importAnnotations(const QString &filename);
 	void importHierarchy(const QString &filename);
 	void exportAnnotations(const QString &filename);
+	void clearClusters();
 	void calculatePartition(unsigned granularity);
 	void runFAMS();
 

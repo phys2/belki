@@ -36,6 +36,14 @@ void Dataset::computeDisplays()
 		computeDisplay("PCA");
 }
 
+void Dataset::clearClusters()
+{
+	QWriteLocker _(&l);
+	d.clustering = Clustering(d.proteins.size());
+
+	emit newClustering();
+}
+
 void Dataset::computeFAMS()
 {
 	// empty data shouldn't happen but right now can when a file cannot be read completely,

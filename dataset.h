@@ -51,7 +51,7 @@ public:
 	};
 
 	struct Clustering {
-		Clustering(size_t numProteins = 0) : memberships(numProteins) {}
+		explicit Clustering(size_t numProteins = 0) : memberships(numProteins) {}
 		bool empty() { return clusters.empty(); }
 
 		// cluster definitions
@@ -138,6 +138,7 @@ signals: // IMPORTANT: when connecting to lambda, provide target object pointer 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
 	void computeDisplay(const QString &name);
 	void computeDisplays();
+	void clearClusters();
 	void computeFAMS();
 	void calculatePartition(unsigned granularity);
 	void updateColorset(QVector<QColor> colors);

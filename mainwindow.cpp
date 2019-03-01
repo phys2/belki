@@ -161,6 +161,7 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::importAnnotations, &store, &Storage::importAnnotations);
 	connect(this, &MainWindow::importHierarchy, &store, &Storage::importHierarchy);
 	connect(this, &MainWindow::exportAnnotations, &store, &Storage::exportAnnotations);
+	connect(this, &MainWindow::clearClusters, &data, &Dataset::clearClusters);
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
 	connect(this, &MainWindow::runFAMS, &data, &Dataset::computeFAMS);
 	qRegisterMetaType<QVector<QColor>>();
@@ -182,7 +183,7 @@ void MainWindow::setupSignals()
 				actionShowPartition->setChecked(false);
 				actionShowPartition->setEnabled(false);
 				data.cancelFAMS();
-				// TODO: tell data to remove the annotation (with re-order fallback)
+				emit clearClusters();
 			} else if (v == 1) {
 				data.changeFAMS((unsigned)famsKSlider->value() * 0.01f);
 				emit runFAMS();
