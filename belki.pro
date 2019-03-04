@@ -49,22 +49,23 @@ HEADERS += \
     meanshift/fams.h \
     storage/qzip.h \
     storage/miniz.h \
-    chart.h \
     mainwindow.h \
     dataset.h \
     dimred.h \
-    chartview.h \
     fileio.h \
     profilewindow.h \
     profilechart.h \
     storage.h \
-    heatmap/heatmaptab.h \
-    heatmap/heatmapscene.h \
-    heatmap/heatmapview.h \
     distmat/distmattab.h \
     distmat/distmatscene.h \
     distmat/distmatview.h \
     distmat/distmat.h \
+    heatmap/heatmaptab.h \
+    heatmap/heatmapscene.h \
+    heatmap/heatmapview.h \
+    scatterplot/charttab.h \
+    scatterplot/chart.h \
+    scatterplot/chartview.h \
     utils.h \
     viewer.h
 
@@ -73,29 +74,31 @@ SOURCES += \
     meanshift/io.cpp \
     meanshift/mode_pruning.cpp \
     storage/miniz.c \
-    chart.cpp \
     main.cpp \
     mainwindow.cpp \
     dataset.cpp \
     dimred.cpp \
-    chartview.cpp \
     fileio.cpp \
     profilewindow.cpp \
     profilechart.cpp \
     storage.cpp \
-    heatmap/heatmaptab.cpp \
-    heatmap/heatmapscene.cpp \
-    heatmap/heatmapview.cpp \
     distmat/distmattab.cpp \
     distmat/distmatscene.cpp \
     distmat/distmatview.cpp \
-    distmat/distmat.cpp
+    distmat/distmat.cpp \
+    heatmap/heatmaptab.cpp \
+    heatmap/heatmapscene.cpp \
+    heatmap/heatmapview.cpp \
+    scatterplot/charttab.cpp \
+    scatterplot/chart.cpp \
+    scatterplot/chartview.cpp
 
 FORMS += \
     mainwindow.ui \
     profilewindow.ui \
+    distmat/distmattab.ui \
     heatmap/heatmaptab.ui \
-    distmat/distmattab.ui
+    scatterplot/charttab.ui
 
 RESOURCES += \
     resources.qrc \
