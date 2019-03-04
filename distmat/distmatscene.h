@@ -85,6 +85,7 @@ protected:
 	void setDisplay();
 	void rearrange();
 	void updateVisibilities();
+	void updateRenderQuality();
 	qreal computeCoord(unsigned sampleIndex);
 
 	Direction currentDirection = Direction::PER_PROTEIN;

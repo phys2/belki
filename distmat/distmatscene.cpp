@@ -23,22 +23,19 @@ void DistmatScene::setViewport(const QRectF &rect, qreal scale)
 {
 	viewport = rect;
 	vpScale = scale;
+
 	rearrange();
+	updateRenderQuality();
 }
 
 void DistmatScene::setDisplay()
 {
-	std::map<Direction, Qt::TransformationMode> quality = {
-	    {Direction::PER_PROTEIN, Qt::TransformationMode::SmoothTransformation},
-	    {Direction::PER_DIMENSION, Qt::TransformationMode::FastTransformation}
-	};
-	display->setTransformationMode(quality[currentDirection]);
-
 	display->setPixmap(matrices[currentDirection].image);
 
 	/* normalize display size on screen and also flip Y-axis */
 	auto scale = 1./display->boundingRect().width();
 	display->setTransform(QTransform::fromTranslate(0, 1).scale(scale, -scale));
+	updateRenderQuality();
 	display->setVisible(true);
 }
 
@@ -182,6 +179,16 @@ void DistmatScene::updateVisibilities()
 	for (auto &[_, m] : markers)
 		m.setVisible(currentDirection == Direction::PER_PROTEIN);
 	clusterbars.setVisible(showPartitions && currentDirection == Direction::PER_PROTEIN);
+}
+
+void DistmatScene::updateRenderQuality()
+{
+	auto pixelWidth = display->mapToScene({1, 1}).x() / vpScale;
+	if (pixelWidth < 2)
+		display->setTransformationMode(Qt::TransformationMode::SmoothTransformation);
+	else
+		display->setTransformationMode(Qt::TransformationMode::FastTransformation);
+	display->update();
 }
 
 void DistmatScene::toggleMarker(unsigned sampleIndex, bool present)
