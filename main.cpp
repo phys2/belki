@@ -7,6 +7,13 @@
 
 #include <iostream>
 
+#if defined(QT_STATIC) && defined(_WIN32)
+# include <QtPlugin>
+Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)
+Q_IMPORT_PLUGIN(QWindowsVistaStylePlugin)
+Q_IMPORT_PLUGIN(QSvgIconPlugin)
+#endif
+
 int main(int argc, char *argv[])
 {
 	// register additional types needed in queued connections

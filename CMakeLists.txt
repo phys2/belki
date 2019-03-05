@@ -74,9 +74,9 @@ target_include_directories(belki SYSTEM PUBLIC
 target_link_libraries(belki PUBLIC
 	OpenMP::OpenMP_CXX ${ARPACK_LIBRARIES} Eigen3::Eigen
 	Qt5::Widgets Qt5::Charts Qt5::Svg
-	#Qt5::QMinimalIntegrationPlugin Qt5::QWindowsDirect2DIntegrationPlugin
-	#Qt5::QXdgDesktopPortalThemePlugin Qt5::QSvgIconPlugin
-	#Qt5::QWindowsIntegrationPlugin Qt5::QWindowsVistaStylePlugin
+	#Qt5::QXdgDesktopPortalThemePlugin
+	Qt5::QSvgIconPlugin
+	Qt5::QWindowsIntegrationPlugin Qt5::QWindowsVistaStylePlugin
 	)
 
 if (STATIC_BUILD) # find* scripts fail for us due to custom nameing schemes
