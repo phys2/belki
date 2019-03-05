@@ -12,7 +12,6 @@ ChartTab::ChartTab(QWidget *parent) :
 
 	// setup toolbar
 	auto anchor = actionComputeDisplay;
-	toolBar->insertSeparator(anchor);
 	toolBar->insertWidget(anchor, transformLabel);
 	toolBar->insertWidget(anchor, transformSelect);
 

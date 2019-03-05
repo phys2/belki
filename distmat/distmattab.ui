@@ -98,9 +98,6 @@
    <property name="movable">
     <bool>false</bool>
    </property>
-   <property name="toolButtonStyle">
-    <enum>Qt::ToolButtonTextBesideIcon</enum>
-   </property>
    <property name="floatable">
     <bool>false</bool>
    </property>
@@ -138,7 +135,7 @@
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string/>
+    <string>Capture</string>
    </property>
    <property name="toolTip">
     <string>Save the plot to SVG or PNG file</string>
@@ -152,10 +149,11 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="lock"/>
+    <iconset theme="lock">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string/>
+    <string>Lock Order</string>
    </property>
    <property name="toolTip">
     <string>Do not re-order when reference changes</string>
