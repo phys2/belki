@@ -65,23 +65,5 @@ add_subdirectory(heatmap)
 add_subdirectory(distmat)
 
 ## link to modules
-target_include_directories(belki SYSTEM PUBLIC
-	${PROJECT_SOURCE_DIR}/include # for self-distributed Tapkee
-	${ARPACK_INCLUDE_DIRS}
-	${OpenCV_INCLUDE_DIRS}
-	)
-
-target_link_libraries(belki PUBLIC
-	OpenMP::OpenMP_CXX ${ARPACK_LIBRARIES} Eigen3::Eigen
-	Qt5::Widgets Qt5::Charts Qt5::Svg
-	#Qt5::QXdgDesktopPortalThemePlugin
-	Qt5::QSvgIconPlugin
-	Qt5::QWindowsIntegrationPlugin Qt5::QWindowsVistaStylePlugin
-	)
-
-if (STATIC_BUILD) # find* scripts fail for us due to custom nameing schemes
-	# sucks that the version is encoded in opencv static lib filenames
-	target_link_libraries(belki PUBLIC tbb_static opencv_imgproc401 opencv_core401)
-else()
-	target_link_libraries(belki PUBLIC TBB::tbb ${OpenCV_LIBRARIES})
-endif()
+target_include_directories(belki SYSTEM PUBLIC ${DEP_INCLUDES})
+target_link_libraries(belki PUBLIC ${DEP_LIBRARIES})
