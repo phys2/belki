@@ -365,6 +365,7 @@ void MainWindow::resetData()
 
 	title = store.name();
 	setWindowTitle(QString("%1 – Belki").arg(title));
+	setWindowFilePath(title);
 	fileLabel->setText(QString("<b>%1</b>").arg(title));
 
 	/* reset views first (before our widgets emit signals) */

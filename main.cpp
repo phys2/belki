@@ -34,7 +34,6 @@ int main(int argc, char *argv[])
 	if (argc >= 3)
 		window.importAnnotations(argv[2]);
 
-	// proof-of-concept, works with CMake build
-	// std::cout << "Running Belki " PROJECT_VERSION << std::endl;
+	std::cout << "Running Belki " PROJECT_VERSION << std::endl;
 	return a.exec();
 }
