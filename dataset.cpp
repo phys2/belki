@@ -569,6 +569,11 @@ void Dataset::orderClusters(bool genericNames)
 
 	QCollator col;
 	col.setNumericMode(true);
+	if (col("a", "a")) {
+		qDebug() << "Falling back to non-numeric sorting.";
+		col.setNumericMode(false);
+	}
+
 	col.setCaseSensitivity(Qt::CaseInsensitive);
 	std::function<bool(unsigned,unsigned)> byName = [&] (auto a, auto b) {
 		return col(cl[a].name, cl[b].name);
