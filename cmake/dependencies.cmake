@@ -38,7 +38,11 @@ endif()
 
 ## Qt
 set(QT_MODULES Widgets Charts Svg)
-set(QT_PLUGINS SvgIcon WindowsIntegration WindowsVistaStyle)
+if (STATIC_BUILD AND ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	# include plugins into static build on windows
+	# (we lack support for static on other platforms right now)
+	set(QT_PLUGINS SvgIcon WindowsIntegration WindowsVistaStyle)
+endif()
 
 # include core explicitely for AUTOMOC etc
 find_package(Qt5Core CONFIG REQUIRED)
