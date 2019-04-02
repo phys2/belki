@@ -21,8 +21,7 @@ DistmatScene::DistmatScene(Dataset &data)
 
 void DistmatScene::setViewport(const QRectF &rect, qreal scale)
 {
-	viewport = rect;
-	vpScale = scale;
+	GraphicsScene::setViewport(rect, scale);
 
 	rearrange();
 	updateRenderQuality();

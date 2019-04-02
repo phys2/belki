@@ -1,18 +1,18 @@
 #ifndef DISTMATSCENE_H
 #define DISTMATSCENE_H
 
+#include "widgets/graphicsscene.h"
 #include "dataset.h"
 #include "distmat.h"
 #include "utils.h"
 
-#include <QGraphicsScene>
 #include <QGraphicsRectItem>
 #include <QGraphicsSimpleTextItem>
 #include <QGraphicsLineItem>
 
 #include <map>
 
-class DistmatScene : public QGraphicsScene
+class DistmatScene : public GraphicsScene
 {
 	Q_OBJECT
 public:
@@ -63,7 +63,7 @@ public:
 
 	DistmatScene(Dataset &data);
 
-	void setViewport(const QRectF &rect, qreal scale);
+	void setViewport(const QRectF &rect, qreal scale) override;
 
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
@@ -102,10 +102,6 @@ protected:
 	std::map<unsigned, Marker> markers;
 	// annotations used in PER_DIRECTION:
 	std::vector<LegendItem> dimensionLabels;
-
-	/* geometry of the current view, used to re-arrange stuff into view */
-	QRectF viewport;
-	qreal vpScale;
 };
 
 #endif // DISTMATSCENE_H

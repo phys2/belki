@@ -53,14 +53,13 @@ target_sources(belki PRIVATE
 	dimred.h dimred.cpp
 	fileio.h fileio.cpp
 	mainwindow.h mainwindow.cpp mainwindow.ui
-	profilechart.h profilechart.cpp
-	profilewindow.h profilewindow.cpp profilewindow.ui
 	storage.h storage.cpp
 	utils.h
 	viewer.h
 	)
 
 # gui components (they add to target 'belki')
+add_subdirectory(widgets)
 add_subdirectory(scatterplot)
 add_subdirectory(heatmap)
 add_subdirectory(distmat)

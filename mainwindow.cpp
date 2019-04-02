@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "dataset.h"
-#include "profilechart.h"
-#include "profilewindow.h"
+#include "widgets/profilechart.h"
+#include "widgets/profilewindow.h"
 
 #include <QFileInfo>
 #include <QDir>

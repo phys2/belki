@@ -56,7 +56,7 @@
      </widget>
     </item>
     <item>
-     <widget class="DistmatView" name="view">
+     <widget class="GraphicsView" name="view">
       <property name="verticalScrollBarPolicy">
        <enum>Qt::ScrollBarAlwaysOff</enum>
       </property>
@@ -162,9 +162,9 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>DistmatView</class>
+   <class>GraphicsView</class>
    <extends>QGraphicsView</extends>
-   <header>distmat/distmatview.h</header>
+   <header>widgets/graphicsview.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

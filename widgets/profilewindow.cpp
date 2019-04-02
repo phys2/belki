@@ -39,8 +39,8 @@ ProfileWindow::ProfileWindow(ProfileChart *source, MainWindow *parent) :
 	}
 
 	/* we are a single popup thingy: self-show and self-delete on close */
-	setAttribute(Qt::WA_DeleteOnClose);
-	setAttribute(Qt::WA_ShowWithoutActivating);
+	//setAttribute(Qt::WA_DeleteOnClose); CAUSES CRASH IN QT :-/ FIXME Who's gonna delete?
+	//setAttribute(Qt::WA_ShowWithoutActivating); opens window in background (hidden)
 	show();
 }
 
