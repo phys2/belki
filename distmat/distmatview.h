@@ -14,8 +14,6 @@ protected:
 	// override for internal use (does not work through pointer! scene() is non-virtual)
 	DistmatScene *scene() const;
 
-	void enterEvent(QEvent *event) override;
-	void keyReleaseEvent(QKeyEvent *event) override;
 	void wheelEvent(QWheelEvent *event) override;
 	void resizeEvent(QResizeEvent *event) override;
 	void paintEvent(QPaintEvent *event) override;
