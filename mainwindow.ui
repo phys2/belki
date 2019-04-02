@@ -386,6 +386,11 @@
          <string>Distance Map</string>
         </attribute>
        </widget>
+       <widget class="FeatweightsTab" name="featweightsTab">
+        <attribute name="title">
+         <string>Feature Weighting</string>
+        </attribute>
+       </widget>
       </widget>
      </widget>
     </item>
@@ -569,6 +574,12 @@
    <class>ChartTab</class>
    <extends>QWidget</extends>
    <header>scatterplot/charttab.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FeatweightsTab</class>
+   <extends>QWidget</extends>
+   <header>featweights/featweightstab.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -63,6 +63,7 @@ add_subdirectory(widgets)
 add_subdirectory(scatterplot)
 add_subdirectory(heatmap)
 add_subdirectory(distmat)
+add_subdirectory(featweights)
 
 ## link to modules
 target_include_directories(belki SYSTEM PUBLIC ${DEP_INCLUDES})
