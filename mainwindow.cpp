@@ -75,6 +75,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	auto p = cursorInlet->palette();
 	p.setColor(QPalette::Window, p.color(QPalette::Base));
 	cursorInlet->setPalette(p);
+	// move button into chart (evil :D)
+	profileViewButton->setParent(cursorPlot);
+	profileViewButton->move(4, 4);
+	cursorTopBar->deleteLater();
 
 	setupMarkerControls();
 	setupSignals(); // after setupToolbar(), signal handlers rely on initialized actions
@@ -387,8 +391,7 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	cursorChart->clear();
 	if (samples.empty()) {
 		cursorList->clear();
-		// only change title label to avoid geometry change under Windows
-		cursorCaption->setDisabled(true);
+		cursorWidget->setDisabled(true);
 		actionProfileView->setDisabled(true);
 		return;
 	}
@@ -433,7 +436,7 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	}
 	cursorList->setText(text.arg(content));
 
-	cursorCaption->setEnabled(true);
+	cursorWidget->setEnabled(true);
 	actionProfileView->setEnabled(true);
 }
 
