@@ -49,6 +49,7 @@ target_sources(belki PRIVATE resources.qrc gfx/breeze-subset.qrc)
 
 # main application
 target_sources(belki PRIVATE
+	colormap.h colormap.cpp
 	dataset.h dataset.cpp
 	dimred.h dimred.cpp
 	fileio.h fileio.cpp
