@@ -284,7 +284,7 @@
     <string>Proteins under cursor</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>1</number>
+    <number>2</number>
    </attribute>
    <widget class="QWidget" name="cursorWidget">
     <property name="sizePolicy">
