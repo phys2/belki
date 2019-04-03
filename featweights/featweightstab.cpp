@@ -16,6 +16,7 @@ void FeatweightsTab::init(Dataset *data)
 {
 	scene = new FeatweightsScene(*data);
 
+	connect(this, &Viewer::inToggleMarker, scene, &FeatweightsScene::toggleMarker);
 	connect(this, &Viewer::inUpdateColorset, scene, &FeatweightsScene::updateColorset);
 	connect(this, &Viewer::inReset, scene, &FeatweightsScene::reset);
 

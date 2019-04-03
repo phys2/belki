@@ -9,7 +9,7 @@
 #include <QGraphicsSimpleTextItem>
 #include <QGraphicsLineItem>
 
-#include <map>
+#include <opencv2/core/core.hpp>
 
 class FeatweightsScene : public GraphicsScene
 {
@@ -24,18 +24,29 @@ signals:
 
 public slots:
 	void reset(bool haveData = false);
-
+	void toggleMarker(unsigned sampleIndex, bool present);
 	void updateColorset(QVector<QColor> colors);
 
 protected:
 	void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
+	void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
 
 	void setDisplay();
+	void computeWeights();
+	void computeImage();
 	void rearrange();
 
 	Dataset &data;
 	QVector<QColor> colorset;
 
+	std::set<unsigned> markers;
+
+	std::vector<std::vector<unsigned>> contours;
+	std::vector<double> weights;
+
+	std::function<QPointF(cv::Point_<unsigned>)> translate = [] (cv::Point_<unsigned>) { return QPointF(); };
+	cv::Mat1f matrix;
+	QPixmap image;
 	QGraphicsPixmapItem *display;
 };
 

@@ -132,6 +132,11 @@
         <string>Distance Map</string>
        </attribute>
       </widget>
+      <widget class="FeatweightsTab" name="featweightsTab">
+       <attribute name="title">
+        <string>Feature Weighting</string>
+       </attribute>
+      </widget>
      </widget>
     </item>
    </layout>
