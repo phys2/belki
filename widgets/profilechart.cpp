@@ -14,6 +14,7 @@
 ProfileChart::ProfileChart()
 {
 	/* small plot constructor */
+	setMargins({0, 10, 0, 0});
 
 	ax = new QtCharts::QBarCategoryAxis;
 	ay = new QtCharts::QValueAxis;
