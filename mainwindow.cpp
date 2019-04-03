@@ -422,6 +422,9 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	QString content;
 	QString tpl("<b><a href='https://uniprot.org/uniprot/%1_%2'>%1</a></b> <small>%3 <i>%4</i></small><br>");
 	for (auto i : qAsConst(samples)) {
+		 // highlight marker proteins
+		if (markerItems.contains(i) && markerItems[i]->checkState() == Qt::Checked)
+			content.append("<small>★</small>");
 		auto &p = d->proteins[i];
 		auto &m = d->clustering.memberships[i];
 		auto clusters = std::accumulate(m.begin(), m.end(), QStringList(),
