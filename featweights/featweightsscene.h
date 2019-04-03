@@ -15,6 +15,24 @@ class FeatweightsScene : public GraphicsScene
 {
 	Q_OBJECT
 public:
+
+	class WeightBar : public QGraphicsItem {
+	public:
+		WeightBar(QGraphicsItem *parent = nullptr);
+
+		QRectF boundingRect() const override { return {0, 0, 1, 1}; }
+		void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+
+	protected:
+		// override for internal use (does not work through pointer! scene() is non-virtual)
+		FeatweightsScene* scene() const { return qobject_cast<FeatweightsScene*>(QGraphicsItem::scene()); }
+
+		void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
+		void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
+
+		int highlight = -1;
+	};
+
 	FeatweightsScene(Dataset &data);
 
 	void setViewport(const QRectF &rect, qreal scale) override;
@@ -48,6 +66,7 @@ protected:
 	cv::Mat1f matrix;
 	QPixmap image;
 	QGraphicsPixmapItem *display;
+	WeightBar *weightBar;
 };
 
 #endif

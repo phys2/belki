@@ -18,10 +18,16 @@ FeatweightsScene::FeatweightsScene(Dataset &data)
 	display = new QGraphicsPixmapItem;
 	display->setShapeMode(QGraphicsPixmapItem::ShapeMode::BoundingRectShape);
 	display->setCursor(Qt::CursorShape::CrossCursor);
-	addItem(display); // scene takes ownership and will clean it up
 
-	qreal offset = .1; // some "feel good" borders
-	setSceneRect({QPointF{-offset, -offset}, QPointF{1. + offset, 1. + offset}});
+	weightBar = new WeightBar;
+	addItem(display); // scene takes ownership and will clean it up
+	addItem(weightBar);
+
+	qreal offset = .05; // some "feel good" borders
+	qreal wb = .1; // offset for weightbar below
+	setSceneRect({QPointF{-offset, -offset}, QPointF{1. + offset, 1. + offset + wb}});
+
+	weightBar->setTransform(QTransform::fromTranslate(0, 1.05).scale(1., 0.05));
 }
 
 void FeatweightsScene::setViewport(const QRectF &rect, qreal scale)
@@ -120,6 +126,7 @@ void FeatweightsScene::computeImage()
 void FeatweightsScene::reset(bool haveData)
 {
 	display->setVisible(false);
+	weightBar->setVisible(false);
 	markers.clear();
 	//dimensionLabels.clear();
 
@@ -133,6 +140,7 @@ void FeatweightsScene::reset(bool haveData)
 	    //dimensionLabels.emplace_back(this, (qreal)(i+0.5)/dim.size(), dim[i]);
 
 	computeWeights(); // will call computeImage(), setDisplay()
+	weightBar->setVisible(true);
 }
 
 void FeatweightsScene::toggleMarker(unsigned sampleIndex, bool present)
@@ -163,6 +171,10 @@ void FeatweightsScene::rearrange()
 
 void FeatweightsScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
+	QGraphicsScene::mouseMoveEvent(event);
+	if (event->isAccepted())
+		return;
+
 	if (!display->scene())
 		return; // nothing displayed right now
 
@@ -206,4 +218,66 @@ void FeatweightsScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 void FeatweightsScene::updateColorset(QVector<QColor> colors)
 {
 	colorset = colors;
+}
+
+FeatweightsScene::WeightBar::WeightBar(QGraphicsItem *parent)
+    : QGraphicsItem(parent)
+{
+	setAcceptHoverEvents(true);
+}
+
+void FeatweightsScene::WeightBar::paint(QPainter *painter, const QStyleOptionGraphicsItem*, QWidget*)
+{
+	QPen pen(Qt::white);
+	pen.setWidth(0);
+	painter->setPen(pen);
+	auto colors = scene()->colorset;
+
+	/* go over all components and perform a drawing op */
+	auto loop = [this] (auto func) {
+		qreal offset = 0.;
+		int index = 0;
+		for (auto &w : scene()->weights) {
+			func(index, QRectF(offset, 0, w, 1));
+			offset += w; ++index;
+		}
+	};
+
+	// first fill components
+	loop([&] (auto index, auto rect) {
+		auto color = colors[index % colors.size()];
+		painter->fillRect(rect, color);
+	});
+	// second draw highlight rect
+	loop([&] (auto index, auto rect) {
+		if (index == highlight)
+			painter->drawRect(rect);
+	});
+}
+
+void FeatweightsScene::WeightBar::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
+{
+	/* determine which component is hovered */
+	auto x = event->pos().x();
+	qreal offset = 0;
+	int index = 0;
+	for (auto &w : scene()->weights) {
+		offset += w;
+		if (x < offset)
+			break;
+		index++;
+	}
+
+	// set tooltip to reflect hovered component
+	this->setToolTip(scene()->data.peek()->dimensions[index]);
+
+	// highlight the hovered component
+	highlight = index;
+	update();
+}
+
+void FeatweightsScene::WeightBar::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
+{
+	highlight = -1;
+	update();
 }
