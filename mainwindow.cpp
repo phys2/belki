@@ -11,6 +11,8 @@
 #include <QLabel>
 #include <QMessageBox>
 
+#include <random>
+
 #include <QtDebug>
 
 constexpr auto hierarchyPostfix = " (Hierarchy)";
@@ -400,13 +402,18 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 
 	/* set up list */
 
-	// reduce set
-	const int showMax = 25;
+	// create format string and reduce set
+	auto total = samples.size();
+	const int showMax = 39;
 	auto text = QString("%1");
-	if (samples.size() > showMax) {
-		text.append(QString("… (%1 total)").arg(samples.size()));
-		samples.resize(showMax - 1);
+	if (total > showMax) {
+		text.append("… ");
+		// shuffle before cutting off
+		std::shuffle(samples.begin(), samples.end(), std::mt19937(0));
+		samples.resize(showMax);
 	}
+	text.append(QString("(%1 total)").arg(total));
+
 	// sort by name -- _after_ set reduction to get a broad representation
 	std::sort(samples.begin(), samples.end(), [&d] (const unsigned& a, const unsigned& b) {
 		return d->proteins[a].name < d->proteins[b].name;
