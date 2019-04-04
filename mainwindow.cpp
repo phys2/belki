@@ -405,9 +405,15 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 
 	/* set up list */
 
-	// create format string and reduce set
+	// determine how many lines we can fit
 	auto total = samples.size();
-	const int showMax = 39;
+	auto testFont = cursorList->currentFont(); // replicate link font
+	testFont.setBold(true);
+	testFont.setUnderline(true);
+	auto showMax = cursorList->contentsRect().height() /
+	        QFontMetrics(testFont).lineSpacing() - 1;
+
+	// create format string and reduce set
 	auto text = QString("%1");
 	if (total > showMax) {
 		text.append("… ");
