@@ -125,7 +125,7 @@ void FeatweightsScene::computeImage()
 
 	/* finally make a pixmap item out of it */
 	image = QPixmap::fromImage({colorMatrix.data, colorMatrix.cols, colorMatrix.rows,
-	                                (int)colorMatrix.step, QImage::Format_RGB888});
+	                            (int)colorMatrix.step, QImage::Format_RGB888});
 }
 
 void FeatweightsScene::computeMarkerContour()
