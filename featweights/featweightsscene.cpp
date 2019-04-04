@@ -37,13 +37,6 @@ FeatweightsScene::FeatweightsScene(Dataset &data)
 	weightBar->setTransform(QTransform::fromTranslate(0, 1.05).scale(1., 0.05));
 }
 
-void FeatweightsScene::setViewport(const QRectF &rect, qreal scale)
-{
-	GraphicsScene::setViewport(rect, scale);
-
-	rearrange();
-}
-
 void FeatweightsScene::setDisplay()
 {
 	display->setPixmap(image);
@@ -185,22 +178,6 @@ void FeatweightsScene::toggleMarker(unsigned sampleIndex, bool present)
 		markers.erase(sampleIndex);
 
 	computeWeights();
-}
-
-void FeatweightsScene::rearrange()
-{
-	/* rescale & shift clusterbars */
-	QPointF margin{15.*vpScale, 15.*vpScale};
-	auto topleft = viewport.topLeft() + margin;
-	auto botright = viewport.bottomRight() - margin;
-	qreal outerMargin = 10.*vpScale; // 10 pixels
-	//clusterbars.rearrange({topleft, botright}, outerMargin);
-
-	/* rescale & shift labels */
-	/*for (auto& [i, m] : markers)
-		m.rearrange(viewport.left(), vpScale);
-	for (auto &l : dimensionLabels)
-		l.rearrange(viewport.left(), vpScale);*/
 }
 
 void FeatweightsScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)

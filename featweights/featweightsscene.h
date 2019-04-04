@@ -35,8 +35,6 @@ public:
 
 	FeatweightsScene(Dataset &data);
 
-	void setViewport(const QRectF &rect, qreal scale) override;
-
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
 
@@ -52,7 +50,6 @@ protected:
 	void setDisplay();
 	void computeWeights();
 	void computeImage();
-	void rearrange();
 	void computeMarkerContour();
 
 	Dataset &data;
