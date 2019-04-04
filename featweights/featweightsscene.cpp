@@ -39,7 +39,7 @@ FeatweightsScene::FeatweightsScene(Dataset &data)
 
 void FeatweightsScene::setDisplay()
 {
-	display->setPixmap(image);
+	display->setPixmap(displayImage2 ? image2 : image);
 
 	/* normalize display size on screen and also flip X-axis */
 	auto br = display->boundingRect();
@@ -130,6 +130,7 @@ void FeatweightsScene::computeImage()
 	};
 
 	matrix = cv::Mat1f(bins, 0);
+	cv::Mat1f matrix2(bins, 0);
 
 	auto d = data.peek();
 	auto &feat = d->features;
@@ -152,25 +153,36 @@ void FeatweightsScene::computeImage()
 			auto y = std::min((int)(score / stepSize.height), matrix.rows - 1);
 			for (int yy = 0; yy <= y; ++yy)
 				matrix(yy, x)++;
+			if (markers.count(p)) {
+				for (int yy = 0; yy <= y; ++yy)
+					matrix2(yy, x)++;
+			}
 			contours[p][x] = y;
 		}
 	});
 
+	/* creates a heatmap image */
+	auto pixifier = [&] (cv::Mat &source, double scale, QPixmap& target) {
+		cv::Mat1b matrixB(source.rows, source.cols);
+		source.convertTo(matrixB, CV_8U, 255. * scale);
+
+		cv::Mat3b colorMatrix;
+		cv::applyColorMap(matrixB, colorMatrix, colormap::magma);
+
+		// finally make a pixmap item out of it
+		target = QPixmap::fromImage({colorMatrix.data, colorMatrix.cols, colorMatrix.rows,
+		                             (int)colorMatrix.step, QImage::Format_RGB888});
+	};
+
+	// first matrix
 	cv::Mat matrixL;
 	cv::log(matrix, matrixL);
+	double scale = 1./std::log(feat.size()); // count in lower-left corner
+	pixifier(matrixL, scale, image);
 
-	double scale = 255./std::log(feat.size()); // count in lower-left corner
-	//scale = 255; // count in lower-left corner
-
-	cv::Mat1b matrixB(matrix.rows, matrix.cols);
-	matrixL.convertTo(matrixB, CV_8U, scale);
-
-	cv::Mat3b colorMatrix;
-	cv::applyColorMap(matrixB, colorMatrix, colormap::magma);
-
-	/* finally make a pixmap item out of it */
-	image = QPixmap::fromImage({colorMatrix.data, colorMatrix.cols, colorMatrix.rows,
-	                            (int)colorMatrix.step, QImage::Format_RGB888});
+	/* create heatmap image for second matrix */
+	cv::Mat matrixR = matrix2 / matrix;
+	pixifier(matrixR, 1., image2);
 }
 
 void FeatweightsScene::computeMarkerContour()
@@ -223,6 +235,13 @@ void FeatweightsScene::toggleMarker(unsigned sampleIndex, bool present)
 		markers.erase(sampleIndex);
 
 	computeWeights();
+}
+
+void FeatweightsScene::toggleImage(bool useSecond)
+{
+	displayImage2 = useSecond;
+	if (display->isVisible())
+		setDisplay(); // refresh
 }
 
 void FeatweightsScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)

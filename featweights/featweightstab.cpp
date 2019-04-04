@@ -30,6 +30,8 @@ void FeatweightsTab::init(Dataset *data)
 		emit exportRequested(view, "Distance Matrix");
 	});
 
+	connect(actionToggleChart, &QAction::toggled, scene, &FeatweightsScene::toggleImage);
+
 	connect(weightingSelect, QOverload<int>::of(&QComboBox::activated),
 	        scene, &FeatweightsScene::changeWeighting);
 	scene->changeWeighting(weightingSelect->currentIndex());
@@ -39,8 +41,8 @@ void FeatweightsTab::init(Dataset *data)
 
 void FeatweightsTab::setupWeightingUI()
 {
-	auto anchor = actionSavePlot;
-	//toolBar->insertSeparator(anchor);
+	auto anchor = actionToggleChart;
+	toolBar->insertSeparator(anchor);
 	toolBar->insertWidget(anchor, weightingLabel);
 	toolBar->insertWidget(anchor, weightingSelect);
 

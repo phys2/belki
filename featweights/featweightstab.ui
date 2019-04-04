@@ -131,6 +131,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionToggleChart"/>
    <addaction name="actionSavePlot"/>
   </widget>
   <action name="actionSavePlot">
@@ -146,6 +147,23 @@
    </property>
    <property name="shortcut">
     <string>Print</string>
+   </property>
+  </action>
+  <action name="actionToggleChart">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="draw-star"/>
+   </property>
+   <property name="text">
+    <string>Performance Chart</string>
+   </property>
+   <property name="toolTip">
+    <string>Display relative yield</string>
+   </property>
+   <property name="shortcut">
+    <string>D</string>
    </property>
   </action>
  </widget>

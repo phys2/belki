@@ -41,6 +41,7 @@ signals:
 public slots:
 	void reset(bool haveData = false);
 	void toggleMarker(unsigned sampleIndex, bool present);
+	void toggleImage(bool useSecond);
 	void updateColorset(QVector<QColor> colors);
 	void changeWeighting(int weighting);
 
@@ -61,10 +62,11 @@ protected:
 	std::vector<std::vector<unsigned>> contours;
 	std::vector<double> weights;
 	int weighting; // TODO enum
+	bool displayImage2 = false; // TODO variable name
 
 	std::function<QPointF(cv::Point_<unsigned>)> translate = [] (cv::Point_<unsigned>) { return QPointF(); };
 	cv::Mat1f matrix;
-	QPixmap image;
+	QPixmap image, image2;
 	QGraphicsPixmapItem *display;
 	QGraphicsPathItem *markerContour;
 	WeightBar *weightBar;
