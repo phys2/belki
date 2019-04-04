@@ -30,7 +30,7 @@ FeatweightsScene::FeatweightsScene(Dataset &data)
 	display->setShapeMode(QGraphicsPixmapItem::ShapeMode::BoundingRectShape);
 	display->setCursor(Qt::CursorShape::CrossCursor);
 
-	QPen pen(Qt::white);
+	QPen pen(Qt::green);
 	pen.setWidth(0);
 	markerContour->setPen(pen);
 
