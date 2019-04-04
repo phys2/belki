@@ -53,6 +53,7 @@ protected:
 	void computeWeights();
 	void computeImage();
 	void rearrange();
+	void computeMarkerContour();
 
 	Dataset &data;
 	QVector<QColor> colorset;
@@ -66,6 +67,7 @@ protected:
 	cv::Mat1f matrix;
 	QPixmap image;
 	QGraphicsPixmapItem *display;
+	QGraphicsPathItem *markerContour;
 	WeightBar *weightBar;
 };
 

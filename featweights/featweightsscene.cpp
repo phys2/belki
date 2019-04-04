@@ -16,16 +16,23 @@ FeatweightsScene::FeatweightsScene(Dataset &data)
     : data(data)
 {
 	display = new QGraphicsPixmapItem;
-	display->setShapeMode(QGraphicsPixmapItem::ShapeMode::BoundingRectShape);
-	display->setCursor(Qt::CursorShape::CrossCursor);
-
+	markerContour = new QGraphicsPathItem;
 	weightBar = new WeightBar;
-	addItem(display); // scene takes ownership and will clean it up
+	// note: scene takes ownership and will clean them up
+	addItem(display);
+	addItem(markerContour);
 	addItem(weightBar);
 
 	qreal offset = .05; // some "feel good" borders
 	qreal wb = .1; // offset for weightbar below
 	setSceneRect({QPointF{-offset, -offset}, QPointF{1. + offset, 1. + offset + wb}});
+
+	display->setShapeMode(QGraphicsPixmapItem::ShapeMode::BoundingRectShape);
+	display->setCursor(Qt::CursorShape::CrossCursor);
+
+	QPen pen(Qt::white);
+	pen.setWidth(0);
+	markerContour->setPen(pen);
 
 	weightBar->setTransform(QTransform::fromTranslate(0, 1.05).scale(1., 0.05));
 }
@@ -44,8 +51,12 @@ void FeatweightsScene::setDisplay()
 	/* normalize display size on screen and also flip X-axis */
 	auto br = display->boundingRect();
 	auto scaleX = 1./br.width(), scaleY = 1./br.height();
-	display->setTransform(QTransform::fromTranslate(0, 1).scale(scaleX, -scaleY));
-	display->setVisible(true);
+	auto transform = QTransform::fromTranslate(0, 1).scale(scaleX, -scaleY);
+
+	for (auto &i : std::vector<QGraphicsItem*>{display, markerContour}) {
+		i->setTransform(transform);
+		i->setVisible(true);
+	}
 }
 
 void FeatweightsScene::computeWeights()
@@ -68,6 +79,7 @@ void FeatweightsScene::computeWeights()
 	}
 
 	computeImage();
+	computeMarkerContour();
 	setDisplay();
 }
 
@@ -123,10 +135,32 @@ void FeatweightsScene::computeImage()
 	                                (int)colorMatrix.step, QImage::Format_RGB888});
 }
 
+void FeatweightsScene::computeMarkerContour()
+{
+	if (markers.empty()) {
+		markerContour->setPath({});
+		return;
+	}
+
+	QPolygonF target;
+	// add two points for each bin
+	for (unsigned x = 0; x < contours[0].size(); ++x) {
+		auto y = std::numeric_limits<unsigned>::max();
+		for (auto p : markers) {
+			y = std::min(y, contours[p][x]);
+		}
+		target << QPointF(x, y+1) << QPointF(x+1, y+1);
+	}
+
+	QPainterPath p;
+	p.addPolygon(target);
+	markerContour->setPath(p);
+}
+
 void FeatweightsScene::reset(bool haveData)
 {
-	display->setVisible(false);
-	weightBar->setVisible(false);
+	for (auto &i : std::vector<QGraphicsItem*>{display, markerContour, weightBar})
+		i->setVisible(false);
 	markers.clear();
 	//dimensionLabels.clear();
 
