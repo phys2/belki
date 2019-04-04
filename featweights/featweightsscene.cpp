@@ -71,7 +71,7 @@ void FeatweightsScene::computeWeights()
 				weights[dim] += feat[(int)m][dim];
 			}
 		};
-		W bullyWeighter = [&] (size_t dim) {
+		W relativeWeighter = [&] (size_t dim) { // weight against own baseline
 			// collect baseline first
 			double baseline = std::accumulate(feat.begin(), feat.end(), 0.,
 			                                  [dim,n=1./feat.size()] (auto a, auto &p) {
@@ -84,7 +84,23 @@ void FeatweightsScene::computeWeights()
 					weights[dim] += value / baseline;
 			}
 		};
-		std::vector<W> weighters{simpleWeighter, bullyWeighter};
+		W bullyWeighter = [&] (size_t dim) { // weight against competition's baseline
+			for (auto& m : markers) {
+				// collect per-marker baseline first
+				double baseline = 0;
+				auto n = 1./(weights.size() - 1);
+				for (unsigned d = 0; d < weights.size(); ++d) {
+					if (d != dim)
+						baseline += feat[(int)m][d] * n;
+				}
+				if (baseline < 0.001)
+					baseline = 1.;
+				auto value = feat[(int)m][dim];
+				if (value > baseline)
+					weights[dim] += value / baseline;
+			}
+		};
+		std::vector<W> weighters{simpleWeighter, relativeWeighter, bullyWeighter};
 
 		weights.resize(len, 0.);
 		tbb::parallel_for((size_t)0, weights.size(), weighters[weighting - 1]);

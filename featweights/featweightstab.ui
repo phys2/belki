@@ -69,6 +69,11 @@
            <string>Relative Target Distance</string>
           </property>
          </item>
+         <item>
+          <property name="text">
+           <string>Offset Target Distance</string>
+          </property>
+         </item>
         </widget>
        </item>
       </layout>
