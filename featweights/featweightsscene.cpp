@@ -78,7 +78,7 @@ void FeatweightsScene::computeWeights()
 
 void FeatweightsScene::computeImage()
 {
-	cv::Size bins = {200, 200}; // TODO: adapt to screen
+	cv::Size bins = {400, 400}; // TODO: adapt to screen
 	cv::Size2d stepSize = {1./(bins.width), 1./(bins.height)};
 	translate = [bins,stepSize] (cv::Point_<unsigned> idx) {
 		return QPointF(idx.x * stepSize.width, idx.y * stepSize.height);
