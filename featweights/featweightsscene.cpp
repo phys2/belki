@@ -55,21 +55,50 @@ void FeatweightsScene::setDisplay()
 void FeatweightsScene::computeWeights()
 {
 	auto d = data.peek();
-	auto &feat = d->features;
+	auto len = (unsigned)d->dimensions.size();
+	if (!len)
+		return;
 
-	std::vector<double> score((unsigned)d->dimensions.size());
-	tbb::parallel_for((size_t)0, score.size(), [&] (size_t dim) {
-		for (auto& m : markers) {
-			score[dim] += feat[(int)m][dim];
+	weights.clear();
+
+	/* calculate weights if appr. method selected and markers available */
+	if (weighting > 0 && !markers.empty()) {
+		auto &feat = d->features;
+
+		using W = std::function<void(size_t)>;
+		W simpleWeighter = [&] (size_t dim) {
+			for (auto& m : markers) {
+				weights[dim] += feat[(int)m][dim];
+			}
+		};
+		W bullyWeighter = [&] (size_t dim) {
+			// collect baseline first
+			double baseline = std::accumulate(feat.begin(), feat.end(), 0.,
+			                                  [dim,n=1./feat.size()] (auto a, auto &p) {
+				return a += p[dim] * n;
+			});
+
+			for (auto& m : markers) {
+				auto value = feat[(int)m][dim];
+				if (value > baseline)
+					weights[dim] += value / baseline;
+			}
+		};
+		std::vector<W> weighters{simpleWeighter, bullyWeighter};
+
+		weights.resize(len, 0.);
+		tbb::parallel_for((size_t)0, weights.size(), weighters[weighting - 1]);
+		auto total = cv::sum(weights)[0];
+		if (total > 0.001) {
+			std::for_each(weights.begin(), weights.end(), [s=1./total] (double &v) { v *= s; });
+		} else {
+			weights.clear(); // undo our useless weights
 		}
-	});
-	auto total = cv::sum(score)[0];
-	if (total < 0.001) {
-		weights.assign((unsigned)score.size(), 1./(double)score.size());
-	} else {
-		std::for_each(score.begin(), score.end(), [s=1./total] (double &v) { v *= s; });
-		weights = std::move(score);
 	}
+
+	/* fallback to unweighted */
+	if (weights.empty())
+		weights.assign(len, 1./(double)len);
 
 	computeImage();
 	computeMarkerContour();
@@ -162,7 +191,7 @@ void FeatweightsScene::reset(bool haveData)
 	}
 
 	// setup new dimension labels
-	auto dim = data.peek()->dimensions; // QStringList COW
+	//auto dim = data.peek()->dimensions; // QStringList COW
 	//for (int i = 0; i < dim.size(); ++i)
 	    //dimensionLabels.emplace_back(this, (qreal)(i+0.5)/dim.size(), dim[i]);
 
@@ -229,6 +258,12 @@ void FeatweightsScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 void FeatweightsScene::updateColorset(QVector<QColor> colors)
 {
 	colorset = colors;
+}
+
+void FeatweightsScene::changeWeighting(int w)
+{
+	weighting = w;
+	computeWeights();
 }
 
 FeatweightsScene::WeightBar::WeightBar(QGraphicsItem *parent)

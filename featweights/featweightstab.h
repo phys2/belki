@@ -15,6 +15,7 @@ public:
 	void init(Dataset *data) override;
 
 protected:
+	void setupWeightingUI();
 
 	FeatweightsScene *scene;
 };

@@ -42,6 +42,7 @@ public slots:
 	void reset(bool haveData = false);
 	void toggleMarker(unsigned sampleIndex, bool present);
 	void updateColorset(QVector<QColor> colors);
+	void changeWeighting(int weighting);
 
 protected:
 	void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
@@ -59,6 +60,7 @@ protected:
 
 	std::vector<std::vector<unsigned>> contours;
 	std::vector<double> weights;
+	int weighting; // TODO enum
 
 	std::function<QPointF(cv::Point_<unsigned>)> translate = [] (cv::Point_<unsigned>) { return QPointF(); };
 	cv::Mat1f matrix;

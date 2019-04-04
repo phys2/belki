@@ -5,6 +5,7 @@ FeatweightsTab::FeatweightsTab(QWidget *parent) :
     Viewer(parent)
 {
 	setupUi(this);
+	setupWeightingUI();
 
 	// right-align screenshot button
 	auto* spacer = new QWidget();
@@ -29,5 +30,19 @@ void FeatweightsTab::init(Dataset *data)
 		emit exportRequested(view, "Distance Matrix");
 	});
 
+	connect(weightingSelect, QOverload<int>::of(&QComboBox::activated),
+	        scene, &FeatweightsScene::changeWeighting);
+	scene->changeWeighting(weightingSelect->currentIndex());
+
 	view->setScene(scene);
+}
+
+void FeatweightsTab::setupWeightingUI()
+{
+	auto anchor = actionSavePlot;
+	//toolBar->insertSeparator(anchor);
+	toolBar->insertWidget(anchor, weightingLabel);
+	toolBar->insertWidget(anchor, weightingSelect);
+
+	weightingBar->deleteLater();
 }
