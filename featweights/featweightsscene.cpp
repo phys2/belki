@@ -228,11 +228,6 @@ FeatweightsScene::WeightBar::WeightBar(QGraphicsItem *parent)
 
 void FeatweightsScene::WeightBar::paint(QPainter *painter, const QStyleOptionGraphicsItem*, QWidget*)
 {
-	QPen pen(Qt::white);
-	pen.setWidth(0);
-	painter->setPen(pen);
-	auto colors = scene()->colorset;
-
 	/* go over all components and perform a drawing op */
 	auto loop = [this] (auto func) {
 		qreal offset = 0.;
@@ -243,15 +238,36 @@ void FeatweightsScene::WeightBar::paint(QPainter *painter, const QStyleOptionGra
 		}
 	};
 
-	// first fill components
+	/* first fill components */
+	auto colors = scene()->colorset;
 	loop([&] (auto index, auto rect) {
 		auto color = colors[index % colors.size()];
 		painter->fillRect(rect, color);
 	});
-	// second draw highlight rect
+	/* second draw highlight rect */
+	QPen pen(Qt::white);
+	pen.setWidth(0);
+	painter->setPen(pen);
 	loop([&] (auto index, auto rect) {
 		if (index == highlight)
 			painter->drawRect(rect);
+	});
+	/* third draw text */
+	painter->setPen(Qt::black);
+	auto font = painter->font();
+	font.setBold(true);
+	painter->setFont(font);
+	// need to hack around scaling so font is not warped, way too large
+	qreal scale = 0.015;
+	auto sceneScale = sceneTransform().mapRect(boundingRect());
+	auto ratio = sceneScale.height()/sceneScale.width();
+	painter->scale(ratio*scale, scale);
+	auto t = QTransform::fromScale(1./(scale*ratio), 1./scale);
+	loop([&] (auto, auto rect) {
+		auto text = (rect.width() < 0.01 ? "/"
+		                                 : QString::number(rect.width(), 'f', 2).mid(1));
+		auto drawRect = t.mapRect(rect).adjusted(-20, 0, 20, 0); // let text overflow
+		painter->drawText(drawRect, Qt::AlignCenter, text);
 	});
 }
 
