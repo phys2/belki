@@ -41,7 +41,7 @@ void FeatweightsTab::init(Dataset *data)
 
 void FeatweightsTab::setupWeightingUI()
 {
-	auto anchor = actionToggleChart;
+	auto anchor = actionSavePlot;
 	toolBar->insertSeparator(anchor);
 	toolBar->insertWidget(anchor, weightingLabel);
 	toolBar->insertWidget(anchor, weightingSelect);
