@@ -351,11 +351,8 @@ void FeatweightsScene::WeightBar::paint(QPainter *painter, const QStyleOptionGra
 	});
 	/* third draw text */
 	painter->setPen(Qt::black);
-	auto font = painter->font();
-	font.setBold(true);
-	painter->setFont(font);
 	// need to hack around scaling so font is not warped, way too large
-	qreal scale = 0.015;
+	qreal scale = 0.02;
 	auto sceneScale = sceneTransform().mapRect(boundingRect());
 	auto ratio = sceneScale.height()/sceneScale.width();
 	painter->scale(ratio*scale, scale);
