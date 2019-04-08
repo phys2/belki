@@ -70,21 +70,15 @@ void Distmat::computeImage(const TranslateFun &translate)
 	default:
 		cv::minMaxLoc(matrix, &minVal, &maxVal);
 	}
-	double scale = 255./(maxVal - minVal);
 
 	/* convert to Mat1b and reorder at the same time */
+	double scale = 255./(maxVal - minVal);
 	cv::Mat1b matrixB(matrix.rows, matrix.cols);
-	std::vector<cv::Point_<size_t>> coords;
 	tbb::parallel_for(0, matrix.rows, [&] (int y) {
 		for (int x = 0; x <= y; ++x)
 			matrixB(y, x) = matrixB(x, y)
 			        = (uchar)((matrix(translate(y, x)) - minVal)*scale);
 	});
 
-	cv::Mat3b colorMatrix;
-	cv::applyColorMap(matrixB, colorMatrix, colormap::magma);
-
-	/* finally make a pixmap item out of it */
-	image = QPixmap::fromImage({colorMatrix.data, colorMatrix.cols, colorMatrix.rows,
-	                                (int)colorMatrix.step, QImage::Format_RGB888});
+	image = colormap::apply(matrixB);
 }
