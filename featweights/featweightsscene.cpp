@@ -15,6 +15,8 @@
 FeatweightsScene::FeatweightsScene(Dataset &data)
     : data(data)
 {
+	qRegisterMetaType<FeatweightsScene::Weighting>();
+
 	display = new QGraphicsPixmapItem;
 	markerContour = new QGraphicsPathItem;
 	weightBar = new WeightBar;
@@ -39,7 +41,7 @@ FeatweightsScene::FeatweightsScene(Dataset &data)
 
 void FeatweightsScene::setDisplay()
 {
-	display->setPixmap(displayImage2 ? image2 : image);
+	display->setPixmap(images[imageIndex]);
 
 	/* normalize display size on screen and also flip X-axis */
 	auto br = display->boundingRect();
@@ -62,16 +64,16 @@ void FeatweightsScene::computeWeights()
 	weights.clear();
 
 	/* calculate weights if appr. method selected and markers available */
-	if (weighting > 0 && !markers.empty()) {
+	if (weighting != Weighting::UNWEIGHTED && !markers.empty()) {
 		auto &feat = d->features;
 
-		using W = std::function<void(size_t)>;
-		W simpleWeighter = [&] (size_t dim) {
+		std::map<Weighting, std::function<void(size_t)>> weighters;
+		weighters[Weighting::ABSOLUTE] = [&] (size_t dim) {
 			for (auto& m : markers) {
 				weights[dim] += feat[(int)m][dim];
 			}
 		};
-		W relativeWeighter = [&] (size_t dim) { // weight against own baseline
+		weighters[Weighting::RELATIVE] = [&] (size_t dim) { // weight against own baseline
 			// collect baseline first
 			double baseline = std::accumulate(feat.begin(), feat.end(), 0.,
 			                                  [dim,n=1./feat.size()] (auto a, auto &p) {
@@ -84,14 +86,14 @@ void FeatweightsScene::computeWeights()
 					weights[dim] += value / baseline;
 			}
 		};
-		W bullyWeighter = [&] (size_t dim) { // weight against competition's baseline
+		weighters[Weighting::OFFSET] = [&] (size_t dim) { // weight against competition's baseline
 			for (auto& m : markers) {
 				// collect per-marker baseline first
 				double baseline = 0;
 				auto n = 1./(weights.size() - 1);
-				for (unsigned d = 0; d < weights.size(); ++d) {
-					if (d != dim)
-						baseline += feat[(int)m][d] * n;
+				for (unsigned i = 0; i < weights.size(); ++i) {
+					if (i != dim)
+						baseline = std::max(baseline, feat[(int)m][i] * n);
 				}
 				if (baseline < 0.001)
 					baseline = 1.;
@@ -100,26 +102,9 @@ void FeatweightsScene::computeWeights()
 					weights[dim] += value / baseline;
 			}
 		};
-		W bullyMaxWeighter = [&] (size_t dim) { // weight against competition's baseline
-			for (auto& m : markers) {
-				// collect per-marker baseline first
-				double baseline = 0;
-				auto n = 1./(weights.size() - 1);
-				for (unsigned d = 0; d < weights.size(); ++d) {
-					if (d != dim)
-						baseline = std::max(baseline, feat[(int)m][d] * n);
-				}
-				if (baseline < 0.001)
-					baseline = 1.;
-				auto value = feat[(int)m][dim];
-				if (value > baseline)
-					weights[dim] += value / baseline;
-			}
-		};
-		std::vector<W> weighters{simpleWeighter, relativeWeighter, bullyWeighter, bullyMaxWeighter};
 
 		weights.resize(len, 0.);
-		tbb::parallel_for((size_t)0, weights.size(), weighters[weighting - 1]);
+		tbb::parallel_for((size_t)0, weights.size(), weighters[weighting]);
 		auto total = cv::sum(weights)[0];
 		if (total > 0.001) {
 			std::for_each(weights.begin(), weights.end(), [s=1./total] (double &v) { v *= s; });
@@ -146,7 +131,7 @@ void FeatweightsScene::computeImage()
 	};
 
 	matrix = cv::Mat1f(bins, 0);
-	cv::Mat1f matrix2(bins, 0);
+	cv::Mat1f relmatrix(bins, 0);
 
 	auto d = data.peek();
 	auto &feat = d->features;
@@ -154,7 +139,7 @@ void FeatweightsScene::computeImage()
 	                                              std::vector<unsigned>((unsigned)bins.width));
 
 	/* go through critera x (0…1) and, for each protein, measure achieved score y
-	 * using the features that pass critera. Then increment in matrix accordingly.
+	 * using the features that pass critera. Then increment in matrices accordingly.
 	 * Also, store the contour for each protein (in matrix-coordinates)
 	 * Outer loop over x instead of proteins so threads do not interfer when writing
 	 * to matrix */
@@ -167,38 +152,25 @@ void FeatweightsScene::computeImage()
 					score += weights[dim];
 			}
 			auto y = std::min((int)(score / stepSize.height), matrix.rows - 1);
-			for (int yy = 0; yy <= y; ++yy)
+			for (int yy = 0; yy <= y; ++yy) // increase absolute count
 				matrix(yy, x)++;
 			if (markers.count(p)) {
-				for (int yy = 0; yy <= y; ++yy)
-					matrix2(yy, x)++;
+				for (int yy = 0; yy <= y; ++yy) // increase relative count
+					relmatrix(yy, x)++;
 			}
 			contours[p][x] = y;
 		}
 	});
 
-	/* creates a heatmap image */
-	auto pixifier = [&] (cv::Mat &source, double scale, QPixmap& target) {
-		cv::Mat1b matrixB(source.rows, source.cols);
-		source.convertTo(matrixB, CV_8U, 255. * scale);
-
-		cv::Mat3b colorMatrix;
-		cv::applyColorMap(matrixB, colorMatrix, colormap::magma);
-
-		// finally make a pixmap item out of it
-		target = QPixmap::fromImage({colorMatrix.data, colorMatrix.cols, colorMatrix.rows,
-		                             (int)colorMatrix.step, QImage::Format_RGB888});
-	};
-
-	// first matrix
+	// apply on abs. matrix (use log-scale)
 	cv::Mat matrixL;
 	cv::log(matrix, matrixL);
-	double scale = 1./std::log(feat.size()); // count in lower-left corner
-	pixifier(matrixL, scale, image);
+	double scale = 1./std::log(feat.size()); // max. count (in lower-left corner)
+	images[0] = colormap::apply(matrixL, scale);
 
-	/* create heatmap image for second matrix */
-	cv::Mat matrixR = matrix2 / matrix;
-	pixifier(matrixR, 1., image2);
+	// apply on rel. matrix
+	cv::Mat matrixR = relmatrix / matrix;
+	images[1] = colormap::apply(matrixR, 1.);
 }
 
 void FeatweightsScene::computeMarkerContour()
@@ -253,9 +225,9 @@ void FeatweightsScene::toggleMarker(unsigned sampleIndex, bool present)
 	computeWeights();
 }
 
-void FeatweightsScene::toggleImage(bool useSecond)
+void FeatweightsScene::toggleImage(bool useAlternate)
 {
-	displayImage2 = useSecond;
+	imageIndex = (useAlternate ? 1 : 0);
 	if (display->isVisible())
 		setDisplay(); // refresh
 }
@@ -311,7 +283,7 @@ void FeatweightsScene::updateColorset(QVector<QColor> colors)
 	colorset = colors;
 }
 
-void FeatweightsScene::changeWeighting(int w)
+void FeatweightsScene::changeWeighting(Weighting w)
 {
 	weighting = w;
 	computeWeights();

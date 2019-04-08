@@ -52,33 +52,8 @@
        <item>
         <widget class="QComboBox" name="weightingSelect">
          <property name="currentIndex">
-          <number>1</number>
+          <number>-1</number>
          </property>
-         <item>
-          <property name="text">
-           <string>Unweighted</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Absolute Target Distance</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Relative Target Distance</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Offset Target Distance</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Max Offset Target Distance</string>
-          </property>
-         </item>
         </widget>
        </item>
       </layout>

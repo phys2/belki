@@ -32,9 +32,11 @@ void FeatweightsTab::init(Dataset *data)
 
 	connect(actionToggleChart, &QAction::toggled, scene, &FeatweightsScene::toggleImage);
 
-	connect(weightingSelect, QOverload<int>::of(&QComboBox::activated),
-	        scene, &FeatweightsScene::changeWeighting);
-	scene->changeWeighting(weightingSelect->currentIndex());
+	auto syncWeighting = [this] {
+		scene->changeWeighting(weightingSelect->currentData().value<FeatweightsScene::Weighting>());
+	};
+	connect(weightingSelect, QOverload<int>::of(&QComboBox::activated), syncWeighting);
+	syncWeighting();
 
 	view->setScene(scene);
 }
@@ -45,6 +47,16 @@ void FeatweightsTab::setupWeightingUI()
 	toolBar->insertSeparator(anchor);
 	toolBar->insertWidget(anchor, weightingLabel);
 	toolBar->insertWidget(anchor, weightingSelect);
+
+	for (auto &[v, n] : std::map<FeatweightsScene::Weighting, QString>{
+	    {FeatweightsScene::Weighting::UNWEIGHTED, "Unweighted"},
+	    {FeatweightsScene::Weighting::ABSOLUTE, "Absolute Target Distance"},
+	    {FeatweightsScene::Weighting::RELATIVE, "Relative Target Distance"},
+	    {FeatweightsScene::Weighting::OFFSET, "Offset Target Distance"},
+    }) {
+		weightingSelect->addItem(n, QVariant::fromValue(v));
+	}
+	weightingSelect->setCurrentIndex(1);
 
 	weightingBar->deleteLater();
 }

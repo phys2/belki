@@ -15,6 +15,13 @@ class FeatweightsScene : public GraphicsScene
 {
 	Q_OBJECT
 public:
+	enum class Weighting {
+		UNWEIGHTED,
+		ABSOLUTE,
+		RELATIVE,
+		OFFSET
+	};
+	Q_ENUM(Weighting)
 
 	class WeightBar : public QGraphicsItem {
 	public:
@@ -41,9 +48,9 @@ signals:
 public slots:
 	void reset(bool haveData = false);
 	void toggleMarker(unsigned sampleIndex, bool present);
-	void toggleImage(bool useSecond);
+	void toggleImage(bool useAlternate);
 	void updateColorset(QVector<QColor> colors);
-	void changeWeighting(int weighting);
+	void changeWeighting(Weighting weighting);
 
 protected:
 	void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
@@ -61,12 +68,12 @@ protected:
 
 	std::vector<std::vector<unsigned>> contours;
 	std::vector<double> weights;
-	int weighting; // TODO enum
-	bool displayImage2 = false; // TODO variable name
+	Weighting weighting = Weighting::UNWEIGHTED;
+	unsigned imageIndex = 0; // index in images to display
 
 	std::function<QPointF(cv::Point_<unsigned>)> translate = [] (cv::Point_<unsigned>) { return QPointF(); };
 	cv::Mat1f matrix;
-	QPixmap image, image2;
+	std::array<QPixmap, 2> images;
 	QGraphicsPixmapItem *display;
 	QGraphicsPathItem *markerContour;
 	WeightBar *weightBar;
