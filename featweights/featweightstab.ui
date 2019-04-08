@@ -96,8 +96,11 @@
    </layout>
   </widget>
   <widget class="QToolBar" name="toolBar">
+   <property name="contextMenuPolicy">
+    <enum>Qt::PreventContextMenu</enum>
+   </property>
    <property name="windowTitle">
-    <string>toolBar</string>
+    <string>Feature Weighting Tools</string>
    </property>
    <property name="movable">
     <bool>false</bool>
@@ -134,7 +137,8 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="draw-star"/>
+    <iconset theme="draw-star">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Performance Chart</string>
