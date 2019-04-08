@@ -141,10 +141,13 @@
     <enum>Qt::NoContextMenu</enum>
    </property>
    <property name="windowTitle">
-    <string>toolBar</string>
+    <string>Main Toolbar</string>
    </property>
    <property name="movable">
     <bool>false</bool>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::BottomToolBarArea|Qt::TopToolBarArea</set>
    </property>
    <property name="floatable">
     <bool>false</bool>

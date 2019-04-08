@@ -68,8 +68,11 @@
    </layout>
   </widget>
   <widget class="QToolBar" name="toolBar">
+   <property name="contextMenuPolicy">
+    <enum>Qt::PreventContextMenu</enum>
+   </property>
    <property name="windowTitle">
-    <string>toolBar</string>
+    <string>Plot Tools</string>
    </property>
    <property name="movable">
     <bool>false</bool>
