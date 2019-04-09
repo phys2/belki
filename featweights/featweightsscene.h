@@ -11,6 +11,9 @@
 
 #include <opencv2/core/core.hpp>
 
+#undef ABSOLUTE // defined by wingdi.h
+#undef RELATIVE // defined by wingdi.h
+
 class FeatweightsScene : public GraphicsScene
 {
 	Q_OBJECT
