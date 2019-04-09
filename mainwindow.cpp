@@ -224,6 +224,7 @@ void MainWindow::setupActions()
 	/* Shortcuts (standard keys not available in UI Designer) */
 	actionLoadDataset->setShortcut(QKeySequence::StandardKey::Open);
 	actionHelp->setShortcut(QKeySequence::StandardKey::HelpContents);
+	actionQuit->setShortcut(QKeySequence::StandardKey::Quit);
 
 	/* Buttons to be wired to actions */
 	loadMarkersButton->setDefaultAction(actionLoadMarkers);
@@ -231,6 +232,7 @@ void MainWindow::setupActions()
 	clearMarkersButton->setDefaultAction(actionClearMarkers);
 	profileViewButton->setDefaultAction(actionProfileView);
 
+	connect(actionQuit, &QAction::triggered, [] { QApplication::exit(); });
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 	connect(actionLoadDataset, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenDataset);

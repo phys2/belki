@@ -446,6 +446,8 @@
     <addaction name="separator"/>
     <addaction name="actionLoadAnnotations"/>
     <addaction name="actionExportAnnotations"/>
+    <addaction name="separator"/>
+    <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuMarkers">
     <property name="title">
@@ -593,6 +595,14 @@
    </property>
    <property name="toolTip">
     <string>Load a .tsv description file</string>
+   </property>
+  </action>
+  <action name="actionQuit">
+   <property name="icon">
+    <iconset theme="application-exit"/>
+   </property>
+   <property name="text">
+    <string>Save &amp;&amp; &amp;Quit</string>
    </property>
   </action>
  </widget>
