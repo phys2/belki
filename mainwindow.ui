@@ -90,7 +90,7 @@
           <number>10</number>
          </property>
          <property name="maximum">
-          <number>150</number>
+          <number>200</number>
          </property>
          <property name="value">
           <number>90</number>
@@ -164,11 +164,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionLoadDataset"/>
-   <addaction name="actionLoadDescriptions"/>
-   <addaction name="actionLoadAnnotations"/>
    <addaction name="actionShowPartition"/>
-   <addaction name="actionExportAnnotations"/>
-   <addaction name="actionHelp"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget">
    <property name="features">
@@ -287,7 +283,7 @@
     <string>Proteins under cursor</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>2</number>
+    <number>1</number>
    </attribute>
    <widget class="QWidget" name="cursorWidget">
     <property name="sizePolicy">
@@ -437,13 +433,53 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1881</width>
+     <height>42</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+    <addaction name="actionLoadDataset"/>
+    <addaction name="actionLoadDescriptions"/>
+    <addaction name="separator"/>
+    <addaction name="actionLoadAnnotations"/>
+    <addaction name="actionExportAnnotations"/>
+    <addaction name="separator"/>
+    <addaction name="actionQuit"/>
+   </widget>
+   <widget class="QMenu" name="menuMarkers">
+    <property name="title">
+     <string>&amp;Markers</string>
+    </property>
+    <addaction name="actionLoadMarkers"/>
+    <addaction name="actionSaveMarkers"/>
+    <addaction name="separator"/>
+    <addaction name="actionClearMarkers"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>&amp;Help</string>
+    </property>
+    <addaction name="actionHelp"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuMarkers"/>
+   <addaction name="menuHelp"/>
+  </widget>
   <action name="actionLoadDataset">
    <property name="icon">
     <iconset theme="document-open">
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string>Load Dataset</string>
+    <string>&amp;Load Dataset</string>
    </property>
    <property name="toolTip">
     <string>Load a .tsv peak volumnes file</string>
@@ -455,7 +491,7 @@
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string>Help</string>
+    <string>Quick &amp;Help</string>
    </property>
   </action>
   <action name="actionLoadMarkers">
@@ -464,7 +500,7 @@
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string>Load Markers</string>
+    <string>&amp;Load Markers</string>
    </property>
    <property name="toolTip">
     <string>Load a text file with list of marker protein names</string>
@@ -476,7 +512,7 @@
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string>Save Markers</string>
+    <string>&amp;Save Markers</string>
    </property>
    <property name="toolTip">
     <string>Save a text file with list of marker protein names</string>
@@ -488,7 +524,7 @@
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string>Clear Markers</string>
+    <string>&amp;Clear Markers</string>
    </property>
    <property name="toolTip">
     <string>Remove all current markers</string>
@@ -518,7 +554,7 @@
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string>Load Annotations</string>
+    <string>Load &amp;Annotations</string>
    </property>
    <property name="toolTip">
     <string>Load a .tsv annotition file</string>
@@ -548,7 +584,7 @@
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string>Export Annotations</string>
+    <string>&amp;Export Annotations</string>
    </property>
    <property name="toolTip">
     <string>Save current annotations to a .tsv file</string>
@@ -560,10 +596,18 @@
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string>Load Descriptions</string>
+    <string>Load &amp;Descriptions</string>
    </property>
    <property name="toolTip">
     <string>Load a .tsv description file</string>
+   </property>
+  </action>
+  <action name="actionQuit">
+   <property name="icon">
+    <iconset theme="application-exit"/>
+   </property>
+   <property name="text">
+    <string>Save &amp;&amp; &amp;Quit</string>
    </property>
   </action>
  </widget>

@@ -24,6 +24,11 @@
         <file alias="actions/24/help-about.svg">breeze/actions/24/help-about.svg</file>
         <file alias="actions/32/help-about.svg">breeze/actions/32/help-about.svg</file>
         <file alias="actions/symbolic/help-about-symbolic.svg">breeze/actions/symbolic/help-about-symbolic.svg</file>
+        <file alias="actions/16/application-exit.svg">breeze/actions/16/application-exit.svg</file>
+        <file alias="actions/22/application-exit.svg">breeze/actions/22/application-exit.svg</file>
+        <file alias="actions/24/application-exit.svg">breeze/actions/24/application-exit.svg</file>
+        <file alias="actions/32/application-exit.svg">breeze/actions/32/application-exit.svg</file>
+        <file alias="actions/symbolic/application-exit-symbolic.svg">breeze/actions/symbolic/application-exit-symbolic.svg</file>
         <file alias="actions/16/edit-delete.svg">breeze/actions/16/edit-delete.svg</file>
         <file alias="actions/22/edit-delete.svg">breeze/actions/22/edit-delete.svg</file>
         <file alias="actions/24/edit-delete.svg">breeze/actions/24/edit-delete.svg</file>

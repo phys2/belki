@@ -98,21 +98,17 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupToolbar()
 {
-	// put stuff before other buttons
+	// put filename and some space before partition area
+	auto anchor = actionShowPartition;
 	fileLabel->setText("<i>No file selected</i>");
-	toolBar->insertWidget(actionLoadDescriptions, fileLabel);
-	auto anchor = actionLoadAnnotations;
+	toolBar->insertWidget(anchor, fileLabel);
 	toolBar->insertSeparator(anchor);
+
+	// fill-up partition area
 	toolBar->insertWidget(anchor, partitionLabel);
-
 	toolbarActions.partitions = toolBar->insertWidget(anchor, partitionSelect);
-	toolbarActions.granularity = toolBar->insertWidget(actionExportAnnotations, granularitySlider);
-	toolbarActions.famsK = toolBar->insertWidget(actionExportAnnotations, famsKSlider);
-
-	// right-align help button
-	auto* spacer = new QWidget();
-	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	toolBar->insertWidget(actionHelp, spacer);
+	toolbarActions.granularity = toolBar->addWidget(granularitySlider);
+	toolbarActions.famsK = toolBar->addWidget(famsKSlider);
 
 	// remove container we picked from
 	topBar->deleteLater();
@@ -179,7 +175,7 @@ void MainWindow::setupSignals()
 		// clear partition-type dependant state
 		toolbarActions.granularity->setVisible(false);
 		toolbarActions.famsK->setVisible(false);
-		actionExportAnnotations->setVisible(false);
+		actionExportAnnotations->setEnabled(false);
 
 		// special items (TODO: better use an enum here, maybe include hierarchies)
 		if (partitionSelect->currentData().isValid()) {
@@ -192,7 +188,7 @@ void MainWindow::setupSignals()
 				data.changeFAMS((unsigned)famsKSlider->value() * 0.01f);
 				emit runFAMS();
 				toolbarActions.famsK->setVisible(true);
-				actionExportAnnotations->setVisible(true);
+				actionExportAnnotations->setEnabled(true);
 			}
 			return;
 		}
@@ -211,7 +207,7 @@ void MainWindow::setupSignals()
 			emit readHierarchy(n);
 			emit calculatePartition((unsigned)granularitySlider->value());
 			toolbarActions.granularity->setVisible(true);
-			actionExportAnnotations->setVisible(true);
+			actionExportAnnotations->setEnabled(true);
 		} else {
 			emit readAnnotations(name);
 		}
@@ -228,6 +224,7 @@ void MainWindow::setupActions()
 	/* Shortcuts (standard keys not available in UI Designer) */
 	actionLoadDataset->setShortcut(QKeySequence::StandardKey::Open);
 	actionHelp->setShortcut(QKeySequence::StandardKey::HelpContents);
+	actionQuit->setShortcut(QKeySequence::StandardKey::Quit);
 
 	/* Buttons to be wired to actions */
 	loadMarkersButton->setDefaultAction(actionLoadMarkers);
@@ -235,6 +232,7 @@ void MainWindow::setupActions()
 	clearMarkersButton->setDefaultAction(actionClearMarkers);
 	profileViewButton->setDefaultAction(actionProfileView);
 
+	connect(actionQuit, &QAction::triggered, [] { QApplication::exit(); });
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 	connect(actionLoadDataset, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenDataset);
@@ -356,7 +354,7 @@ void MainWindow::clearData()
 	actionShowPartition->setEnabled(false);
 	toolbarActions.granularity->setVisible(false);
 	toolbarActions.famsK->setVisible(false);
-	actionExportAnnotations->setVisible(false);
+	actionExportAnnotations->setEnabled(false);
 
 	/* reset views first (before our widgets emit signals) */
 	emit reset(false);
