@@ -49,5 +49,8 @@
         <file alias="actions/symbolic/list-add-symbolic.svg">breeze/actions/symbolic/list-add-symbolic.svg</file>
         <file alias="actions/16/lock.svg">breeze/actions/16/lock.svg</file>
         <file alias="actions/22/lock.svg">breeze/actions/22/lock.svg</file>
+        <file alias="actions/16/draw-star.svg">breeze/actions/16/draw-star.svg</file>
+        <file alias="actions/22/draw-star.svg">breeze/actions/22/draw-star.svg</file>
+        <file alias="actions/24/draw-star.svg">breeze/actions/24/draw-star.svg</file>
     </qresource>
 </RCC>
