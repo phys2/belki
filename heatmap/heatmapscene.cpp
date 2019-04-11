@@ -208,27 +208,26 @@ void HeatmapScene::Profile::hoverLeaveEvent(QGraphicsSceneHoverEvent*)
 
 HeatmapScene::Marker::Marker(HeatmapScene *scene, unsigned sampleIndex, const QPointF &pos)
 {
-	auto title = scene->data.peek()->proteins[sampleIndex].name;
-	auto color = scene->colorset[(int)qHash(title) % scene->colorset.size()];
+	auto meta = scene->data.peek()->proteins[sampleIndex];
 
 	QBrush fill(QColor{0, 0, 0, 127});
-	QPen outline(color.dark(300));
+	QPen outline(meta.color.dark(300));
 	outline.setCosmetic(true);
 	backdrop.reset(scene->addRect({}));
 	backdrop->setBrush(fill);
 	backdrop->setPen(outline);
 
 	line.reset(scene->addLine({}));
-	QPen pen(color.darker(150));
+	QPen pen(meta.color.darker(150));
 	pen.setCosmetic(true);
 	line->setPen(pen);
 
 	// do label last, so it will be on top of its backdrop
-	label.reset(scene->addSimpleText(title));
+	label.reset(scene->addSimpleText(meta.name));
 	auto font = label->font();
 	font.setBold(true);
 	label->setFont(font);
-	label->setBrush(color);
+	label->setBrush(meta.color);
 
 	rearrange(pos);
 }
