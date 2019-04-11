@@ -207,6 +207,7 @@ void HeatmapScene::Profile::hoverLeaveEvent(QGraphicsSceneHoverEvent*)
 }
 
 HeatmapScene::Marker::Marker(HeatmapScene *scene, unsigned sampleIndex, const QPointF &pos)
+    : sampleIndex(sampleIndex)
 {
 	auto meta = scene->data.peek()->proteins[sampleIndex];
 
