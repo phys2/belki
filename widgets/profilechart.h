@@ -45,6 +45,7 @@ protected:
 	struct {
 		std::vector<qreal> mean;
 		std::vector<qreal> stddev;
+		std::vector<qreal> min, max;
 	} stats;
 
 	// axes

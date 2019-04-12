@@ -133,18 +133,41 @@ void ProfileChart::finalize(bool fresh)
 		s->setPen(pen);
 	};
 
-	// setup and add QAreaSeries for stddev
-	auto addStddev = [&] {
-		auto upper = new QtCharts::QLineSeries, lower = new QtCharts::QLineSeries;
-		for (unsigned i = 0; i < stats.mean.size(); ++i) {
-			upper->append(i, stats.mean[i] + stats.stddev[i]);
-			lower->append(i, stats.mean[i] - stats.stddev[i]);
-		}
-		auto s = new QtCharts::QAreaSeries(upper, lower);
-		add(s, false);
-		s->setName("σ (SD)");
-		s->setColor(Qt::gray);
-		s->setBorderColor(Qt::gray);
+	// setup and add QAreaSeries for range and stddev
+	auto addBgAreas = [&] {
+		auto create = [&] (auto source) {
+			auto upper = new QtCharts::QLineSeries, lower = new QtCharts::QLineSeries;
+			for (unsigned i = 0; i < stats.mean.size(); ++i) {
+				auto [u, l] = source(i);
+				upper->append(i, u);
+				lower->append(i, l);
+			}
+			auto s = new QtCharts::QAreaSeries(upper, lower);
+			add(s, false);
+			return s;
+		};
+
+		// create range series (min-max)
+		auto s1 = create([&] (unsigned i) -> std::pair<qreal,qreal> {
+			return {stats.max[i], stats.min[i]};
+		});
+		s1->setName("Range");
+		auto p = s1->pen(); // border
+		p.setColor(Qt::lightGray);
+		p.setWidthF(0);
+		s1->setPen(p);
+		auto b = s1->brush(); // fill
+		b.setColor(Qt::lightGray);
+		b.setStyle(Qt::BrushStyle::BDiagPattern);
+		s1->setBrush(b);
+
+		// create stddev series
+		auto s2 = create([&] (unsigned i) -> std::pair<qreal,qreal> {
+			return {stats.mean[i] + stats.stddev[i], stats.mean[i] - stats.stddev[i]};
+		});
+		s2->setName("σ (SD)");
+		s2->setColor(Qt::gray);
+		s2->setBorderColor(Qt::gray);
 	};
 
 	// add individual series (in order, after area series)
@@ -170,8 +193,9 @@ void ProfileChart::finalize(bool fresh)
 	};
 
 	/* add everything in stacking order, based on conditions */
-	if (outer)
-		addStddev();
+	if (outer) {
+		addBgAreas();
+	}
 	if (!reduced)
 		addIndividuals(false);
 	if (outer)
@@ -188,9 +212,10 @@ void ProfileChart::computeStats()
 	auto d = data.peek();
 	auto len = (size_t)d->dimensions.size();
 
-	stats.mean.resize(len);
-	stats.stddev.resize(len);
-	/* compute mean+stddev per-dimension */
+	for (auto v : {&stats.mean, &stats.stddev, &stats.min, &stats.max})
+		v->resize(len);
+
+	/* compute statistics per-dimension */
 	for (size_t i = 0; i < len; ++i) {
 		std::vector<double> f(content.size());
 		for (size_t j = 0; j < content.size(); ++j)
@@ -199,5 +224,6 @@ void ProfileChart::computeStats()
 		cv::meanStdDev(f, m, s);
 		stats.mean[i] = m[0];
 		stats.stddev[i] = s[0];
+		cv::minMaxLoc(f, &stats.min[i], &stats.max[i]);
 	}
 }
