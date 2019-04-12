@@ -31,12 +31,10 @@ ProfileWindow::ProfileWindow(ProfileChart *source, MainWindow *parent) :
 	connect(actionShowAverage, &QAction::toggled, chart, &ProfileChart::toggleAverage);
 
 	actionShowIndividual->setChecked(true); // cheap trick: let next one trigger
-	actionShowIndividual->setChecked(chart->content.size() < 50);
-	if (!chart->stats.mean.empty()) {
-		actionShowAverage->setChecked(true);
-	} else {
-		actionShowAverage->setDisabled(true);
-	}
+	actionShowIndividual->setChecked(chart->numProfiles() < 50);
+
+	actionShowAverage->setEnabled(chart->haveStats());
+	actionShowAverage->setChecked(chart->haveStats());
 
 	/* we are a single popup thingy: self-show and self-delete on close */
 	//setAttribute(Qt::WA_DeleteOnClose); CAUSES CRASH IN QT :-/ FIXME Who's gonna delete?

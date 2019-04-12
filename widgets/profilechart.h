@@ -22,20 +22,14 @@ public:
 	ProfileChart(Dataset &data);
 	ProfileChart(ProfileChart *source);
 
+	unsigned numProfiles() { return content.size(); }
+	bool haveStats() { return !stats.mean.empty(); }
+
 	void setCategories(QStringList categories);
 
 	void clear(); // need to be called before addSample calls
 	void addSample(unsigned index, bool marker = false);
 	void finalize(bool fresh = true); // need to be called after addSample calls
-
-	/* statistics representing the data */
-	struct {
-		std::vector<qreal> mean;
-		std::vector<qreal> stddev;
-	} stats;
-
-	/* indices of proteins shown in the graph, as markers or not */
-	std::vector<std::pair<unsigned, bool>> content;
 
 signals:
 	void toggleLabels(bool on);
@@ -45,10 +39,19 @@ signals:
 protected:
 	void computeStats(); // helper to finalize()
 
+	/* indices of proteins shown in the graph, as markers or not */
+	std::vector<std::pair<unsigned, bool>> content;
+	/* statistics representing the data */
+	struct {
+		std::vector<qreal> mean;
+		std::vector<qreal> stddev;
+	} stats;
+
+	// axes
+	QtCharts::QAbstractAxis *ax, *ay;
+
 	// data source
 	Dataset &data;
-
-	QtCharts::QAbstractAxis *ax, *ay;
 };
 
 #endif // PROFILECHART_H

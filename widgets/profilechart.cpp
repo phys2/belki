@@ -27,7 +27,7 @@ ProfileChart::ProfileChart(Dataset &data)
 }
 
 ProfileChart::ProfileChart(ProfileChart *source)
-    : data(source->data)
+    : content(source->content), stats(source->stats), data(source->data)
 {
 	/* big, labelled plot constructor */
 	auto ax = new QtCharts::QCategoryAxis;
@@ -62,11 +62,9 @@ ProfileChart::ProfileChart(ProfileChart *source)
 	toggleLabels(false);
 	connect(this, &ProfileChart::toggleLabels, toggleLabels);
 
-	/* copy over content
-	 * Series are non-copyable, so we just recreate them */
+	/* Series are non-copyable, so we just recreate them */
 	stats = source->stats;
-	for (auto i : source->content)
-		addSample(i.first, i.second);
+	content = source->content;
 	finalize(false);
 }
 
@@ -91,24 +89,25 @@ void ProfileChart::addSample(unsigned index, bool marker)
 void ProfileChart::finalize(bool fresh)
 {
 	auto d = data.peek();
-
-	if (fresh) {
+	if (fresh)
 		computeStats();
-		// small view, sort by name but marked last (for z-index)
-		std::sort(content.begin(), content.end(), [&d] (auto a, auto b) {
-			if (a.second != b.second)
-				return b.second;
-			return d->proteins[a.first].name < d->proteins[b.first].name;
-		});
-	} else {
-		// big view, sort by name only
-		std::sort(content.begin(), content.end(), [&d] (auto a, auto b) {
-			return d->proteins[a.first].name < d->proteins[b.first].name;
-		});
-	}
 
 	bool reduced = fresh && content.size() >= 25;
-	bool outer = (!fresh || reduced) && !stats.mean.empty();
+	bool outer = (!fresh || reduced) && haveStats();
+
+	std::function<bool(const std::pair<unsigned,bool> &a, const std::pair<unsigned,bool> & b)>
+	byName = [&d] (auto a, auto b) {
+		if (a.second != b.second)
+			return b.second;
+		return d->proteins[a.first].name < d->proteins[b.first].name;
+	};
+	auto byMarkedThenName = [byName] (auto a, auto b) {
+		if (a.second != b.second)
+			return b.second;
+		return byName(a, b);
+	};
+	// sort by name, but in small view, put marked last (for z-index)
+	std::sort(content.begin(), content.end(), fresh ? byMarkedThenName : byName);
 
 	// add & wire a series
 	auto add = [this] (QtCharts::QAbstractSeries *s, bool isIndiv, bool isMarker = false) {
