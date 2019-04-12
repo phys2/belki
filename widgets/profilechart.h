@@ -1,6 +1,8 @@
 #ifndef PROFILECHART_H
 #define PROFILECHART_H
 
+#include "dataset.h"
+
 #include <QStringList>
 #include <QChart>
 
@@ -17,13 +19,13 @@ class ProfileChart : public QtCharts::QChart
 	Q_OBJECT
 
 public:
-	ProfileChart();
+	ProfileChart(Dataset &data);
 	ProfileChart(ProfileChart *source);
 
 	void setCategories(QStringList categories);
 
 	void clear(); // need to be called before addSample calls
-	void addSample(QString name, QVector<QPointF> points);
+	void addSample(unsigned index, bool marker = false);
 	void finalize(bool fresh = true); // need to be called after addSample calls
 
 	/* statistics representing the data */
@@ -32,8 +34,8 @@ public:
 		std::vector<qreal> stddev;
 	} stats;
 
-	/* only the individual series in the graph */
-	std::vector<QtCharts::QLineSeries*> content;
+	/* indices of proteins shown in the graph, as markers or not */
+	std::vector<std::pair<unsigned, bool>> content;
 
 signals:
 	void toggleLabels(bool on);
@@ -42,6 +44,9 @@ signals:
 
 protected:
 	void computeStats(); // helper to finalize()
+
+	// data source
+	Dataset &data;
 
 	QtCharts::QAbstractAxis *ax, *ay;
 };
