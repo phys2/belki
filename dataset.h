@@ -33,6 +33,15 @@ public:
 	};
 	Q_ENUM(OrderBy)
 
+	struct Range {
+		explicit Range(const std::vector<std::vector<double>>& source);
+		Range() = default;
+		Range(double min, double max) : min(min), max(max) {}
+
+		double min;
+		double max;
+	};
+
 	struct Protein {
 		// first part of protein name, used as identifier
 		QString name;
@@ -95,6 +104,7 @@ public:
 
 		// original data
 		std::vector<std::vector<double>> features;
+		Range featureRange;
 		// pre-cached set of points
 		std::vector<QVector<QPointF>> featurePoints;
 

@@ -176,27 +176,21 @@ bool Dataset::readSource(QTextStream in)
 	if (d.features.empty() || len == 0)
 		return true;
 
+	Range range(d.features);
 	/* normalize, if needed */
-	auto minVal = d.features[0][0], maxVal = d.features[0][0];
-	for (auto in : d.features) {
-		double mi, ma;
-		cv::minMaxLoc(in, &mi, &ma);
-		minVal = std::min(minVal, mi);
-		maxVal = std::max(maxVal, ma);
-	}
-	if (minVal < 0 || maxVal > 1) { // simple heuristic to auto-normalize
+	if (range.min < 0 || range.max > 1) { // simple heuristic to auto-normalize
 		emit ioError(QString("Values outside expected range (instead [%1, %2])."
-		                     "<br>Normalizing to [0, 1].").arg(minVal).arg(maxVal));
-		//maxVal = std::log1p(maxVal);
-		//minVal = std::log1p(minVal);
-		auto scale = 1. / (maxVal - minVal);
+		                     "<br>Normalizing to [0, 1].").arg(range.min).arg(range.max));
+		// cut off negative values
+		range.min = 0.;
+		auto scale = 1. / (range.max - range.min);
 		for (auto &v : d.features) {
-			std::for_each(v.begin(), v.end(), [minVal, scale] (double &e) {
-				//e = std::log1p(e);
-				e = (e - minVal) * scale;
+			std::for_each(v.begin(), v.end(), [min=range.min, scale] (double &e) {
+				e = std::max(e - min, 0.) * scale;
 			});
 		}
 	}
+	d.featureRange = {0., 1.}; // TODO: we enforced normalization (make config.)
 
 	/* pre-cache features as QPoints for plotting */
 	for (auto in : d.features) {
@@ -733,4 +727,15 @@ const std::map<Dataset::OrderBy, QString> Dataset::availableOrders()
 		{OrderBy::HIERARCHY, "Hierarchy"},
 		{OrderBy::CLUSTERING, "Cluster/Annotations"},
 	};
+}
+
+Dataset::Range::Range(const std::vector<std::vector<double> > &source)
+    : min(source.empty() ? 0. : source[0][0]), max(source.empty() ? 0. : source[0][0])
+{
+	for (auto in : source) {
+		double mi, ma;
+		cv::minMaxLoc(in, &mi, &ma);
+		min = std::min(min, mi);
+		max = std::max(max, ma);
+	}
 }
