@@ -94,6 +94,7 @@ public:
 		unsigned find(const QString &name) {
 			return protIndex.at(name.split('_').front());
 		}
+		bool hasScores() { return !scores.empty(); }
 
 		QStringList dimensions;
 
@@ -107,6 +108,9 @@ public:
 		Range featureRange;
 		// pre-cached set of points
 		std::vector<QVector<QPointF>> featurePoints;
+		// measurement scores
+		std::vector<std::vector<double>> scores;
+		Range scoreRange;
 
 		// feature reduced point sets
 		QMap<QString, QVector<QPointF>> display;

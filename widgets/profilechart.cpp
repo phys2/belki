@@ -186,6 +186,15 @@ void ProfileChart::finalize(bool fresh)
 			}
 			s->setColor(color);
 			s->setName(title);
+
+			if (d->hasScores()) { // visualize scores through points along polyline
+				s->setPointsVisible(true);
+				// note: a copy of the relevant scores is stored in the lambda object
+				s->setDynamicPointSize([s=d->scores[index],max=d->scoreRange.max] (int index) {
+					return s[(size_t)index] * 3./max;
+				});
+			}
+
 			s->replace(d->featurePoints[index]);
 		}
 	};
