@@ -114,7 +114,7 @@ void Dataset::cancelFAMS()
 
 bool Dataset::readSource(QTextStream in)
 {
-	QWriteLocker _(&l);
+	cancelFAMS(); // abort unwanted calculation
 
 	auto header = in.readLine().split("\t");
 	header.pop_front(); // first column
@@ -123,13 +123,11 @@ bool Dataset::readSource(QTextStream in)
 		return false;
 	}
 
-	/* re-initialize data – no return false from this point on! */
-	cancelFAMS();
-	d = Public();
+	Public target;
 
 	/* fill it up */
-	d.dimensions = trimCrap(std::move(header));
-	auto len = d.dimensions.size();
+	target.dimensions = trimCrap(std::move(header));
+	auto len = target.dimensions.size();
 	while (!in.atEnd()) {
 		auto line = in.readLine().split("\t");
 		if (line.empty() || line[0].isEmpty())
@@ -148,7 +146,7 @@ bool Dataset::readSource(QTextStream in)
 		p.species = (parts.size() > 1 ? parts.back() : "RAT"); // wild guess
 
 		/* check index */
-		if (d.protIndex.find(p.name) != d.protIndex.end())
+		if (target.protIndex.find(p.name) != target.protIndex.end())
 			emit ioError(QString("Multiples of protein '%1' found in the dataset!").arg(p.name));
 
 		/* read coefficients */
@@ -165,18 +163,20 @@ bool Dataset::readSource(QTextStream in)
 		}
 
 		/* append */
-		d.protIndex[p.name] = d.proteins.size();
-		d.proteins.push_back(std::move(p));
-		d.features.push_back(std::move(coeffs));
+		target.protIndex[p.name] = target.proteins.size();
+		target.proteins.push_back(std::move(p));
+		target.features.push_back(std::move(coeffs));
 	}
 	// ensure clustering is properly initialized if accessed
-	d.clustering = Clustering(d.proteins.size());
+	target.clustering = Clustering(target.proteins.size());
 
 	//qDebug() << "read" << d.features.size() << "rows with" << len << "columns";
-	if (d.features.empty() || len == 0)
-		return true;
+	if (target.features.empty() || len == 0) {
+		emit ioError(QString("Could not read any valid data rows from file!"));
+		return false;
+	}
 
-	Range range(d.features);
+	Range range(target.features);
 	/* normalize, if needed */
 	if (range.min < 0 || range.max > 1) { // simple heuristic to auto-normalize
 		emit ioError(QString("Values outside expected range (instead [%1, %2])."
@@ -184,21 +184,25 @@ bool Dataset::readSource(QTextStream in)
 		// cut off negative values
 		range.min = 0.;
 		auto scale = 1. / (range.max - range.min);
-		for (auto &v : d.features) {
+		for (auto &v : target.features) {
 			std::for_each(v.begin(), v.end(), [min=range.min, scale] (double &e) {
 				e = std::max(e - min, 0.) * scale;
 			});
 		}
 	}
-	d.featureRange = {0., 1.}; // TODO: we enforced normalization (make config.)
+	target.featureRange = {0., 1.}; // TODO: we enforced normalization (make config.)
 
 	/* pre-cache features as QPoints for plotting */
-	for (auto in : d.features) {
+	for (auto in : target.features) {
 		QVector<QPointF> points(in.size());
 		for (size_t i = 0; i < in.size(); ++i)
 			points[i] = {(qreal)i, in[i]};
-		d.featurePoints.push_back(std::move(points));
+		target.featurePoints.push_back(std::move(points));
 	}
+
+	/* time to flip */
+	QWriteLocker _(&l);
+	d = std::move(target);
 
 	/* calculate initial order */
 	orderProteins(d.order.reference);
