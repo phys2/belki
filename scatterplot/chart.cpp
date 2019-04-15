@@ -416,7 +416,7 @@ void Chart::Marker::setup(Chart *chart)
 	s->attachAxis(chart->ay);
 
 	s->setBorderColor(Qt::black);
-	s->setColor(chart->colorset[(int)qHash(s->name()) % chart->colorset.size()]);
+	s->setColor(chart->data.peek()->proteins[sampleIndex].color);
 	s->setMarkerShape(QtCharts::QScatterSeries::MarkerShapeRectangle);
 	s->setMarkerSize(chart->proteinStyle.size * 1.3333);
 	s->setPointLabelsVisible(true);

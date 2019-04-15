@@ -40,6 +40,8 @@ public:
 		QString species;
 		// description, if any
 		QString description;
+		// random or user-set color
+		QColor color;
 	};
 
 	struct Cluster {

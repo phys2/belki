@@ -289,9 +289,8 @@ void DistmatScene::LegendItem::setup(DistmatScene *scene, QString title, QColor 
 DistmatScene::Marker::Marker(DistmatScene *scene, unsigned sampleIndex)
     : LegendItem(scene->computeCoord(sampleIndex)), sampleIndex(sampleIndex)
 {
-	auto title = scene->data.peek()->proteins[sampleIndex].name;
-	auto color = scene->colorset[(int)qHash(title) % scene->colorset.size()];
-	setup(scene, title, color);
+	auto meta = scene->data.peek()->proteins[sampleIndex];
+	setup(scene, meta.name, meta.color);
 	setVisible(scene->currentDirection == Direction::PER_PROTEIN);
 }
 

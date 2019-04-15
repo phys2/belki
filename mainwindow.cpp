@@ -25,7 +25,7 @@ const QVector<QColor> tableau20 = {
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent), store(data),
-    cursorChart(new ProfileChart),
+    cursorChart(new ProfileChart(data)),
     fileLabel(new QLabel(this)),
     io(new FileIO(this))
 {
@@ -394,11 +394,16 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 		return;
 	}
 
-	auto d = data.peek();
+	/* determine marker proteins contained in samples */
+	std::set<unsigned> markers;
+	for (auto i : qAsConst(samples)) {
+		if (markerItems.contains(i) && markerItems[i]->checkState() == Qt::Checked)
+			markers.insert(i);
+	}
 
 	/* set up plot */
 	for (auto i : qAsConst(samples))
-		cursorChart->addSample(d->proteins[i].name, d->featurePoints[i]);
+		cursorChart->addSample(i, markers.count(i));
 	cursorChart->finalize();
 
 	/* set up list */
@@ -422,6 +427,7 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	text.append(QString("(%1 total)").arg(total));
 
 	// sort by name -- _after_ set reduction to get a broad representation
+	auto d = data.peek();
 	std::sort(samples.begin(), samples.end(), [&d] (const unsigned& a, const unsigned& b) {
 		return d->proteins[a].name < d->proteins[b].name;
 	});
@@ -430,7 +436,7 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	QString tpl("<b><a href='https://uniprot.org/uniprot/%1_%2'>%1</a></b> <small>%3 <i>%4</i></small><br>");
 	for (auto i : qAsConst(samples)) {
 		 // highlight marker proteins
-		if (markerItems.contains(i) && markerItems[i]->checkState() == Qt::Checked)
+		if (markers.count(i))
 			content.append("<small>★</small>");
 		auto &p = d->proteins[i];
 		auto &m = d->clustering.memberships[i];

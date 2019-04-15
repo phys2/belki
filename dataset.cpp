@@ -144,6 +144,7 @@ bool Dataset::readSource(QTextStream in)
 		Protein p;
 		auto parts = line[0].split("_");
 		p.name = parts.front();
+		p.color = colorset[(int)qHash(p.name) % colorset.size()];
 		p.species = (parts.size() > 1 ? parts.back() : "RAT"); // wild guess
 
 		/* check index */
