@@ -63,8 +63,6 @@ ProfileChart::ProfileChart(ProfileChart *source)
 	connect(this, &ProfileChart::toggleLabels, toggleLabels);
 
 	/* Series are non-copyable, so we just recreate them */
-	stats = source->stats;
-	content = source->content;
 	finalize(false);
 }
 
@@ -76,7 +74,7 @@ void ProfileChart::setCategories(QStringList categories)
 
 void ProfileChart::clear()
 {
-	stats = {{}, {}};
+	stats = {};
 	content.clear();
 	removeAllSeries();
 }
