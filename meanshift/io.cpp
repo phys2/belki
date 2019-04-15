@@ -27,7 +27,7 @@ bool FAMS::importPoints(const std::vector<std::vector<double>>& features, bool n
 		auto &target = dataholder[i];
 		target.resize(d_);
 
-		float factor = 65535.;
+		double factor = 65535.;
 		if (normalize) {
 			double n = cv::norm(source, cv::NORM_L2);
 			if (n == 0.)

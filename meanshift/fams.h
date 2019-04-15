@@ -166,14 +166,14 @@ public:
 	void ComputeRealBandwidths(unsigned int h);
 
 	// conversion functions
-	inline float ushort2value(unsigned short in) const
+	inline double ushort2value(unsigned short in) const
 	{
-		return (float)in * (maxVal_ - minVal_) / 65535.f + minVal_;
+		return in * (maxVal_ - minVal_) / 65535. + minVal_;
 	}
 	template <typename T>
-	inline T value2ushort(float in) const
+	inline T value2ushort(double in) const
 	{
-		float scale = 65535.f / (maxVal_ - minVal_);
+		double scale = 65535. / (maxVal_ - minVal_);
 		return (in - minVal_) / scale;
 	}
 
@@ -261,7 +261,7 @@ protected:
 				   size_t allowance = std::numeric_limits<size_t>::max());
 
 	// interval of input data
-	float minVal_, maxVal_;
+	double minVal_, maxVal_;
 
 	// input points
 	std::vector<Point> datapoints;
