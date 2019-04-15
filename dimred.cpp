@@ -37,7 +37,7 @@ const std::vector<dimred::Method> availableMethods()
 	};
 }
 
-QMap<QString, QVector<QPointF>> compute(QString m, QVector<std::vector<double> > &features)
+QMap<QString, QVector<QPointF>> compute(QString m, const std::vector<std::vector<double>> &features)
 {
 	std::cout << "Computing " << m.toStdString() << std::endl;
 
@@ -64,47 +64,47 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<std::vector<double> >
 	auto parametrized = initialize().withParameters(p);
 	auto nFeat = features.size();
 
-	std::map<QString, std::function<double(int, int)>> dist = {
-	    {"L1", [&features] (int i, int j) {
-		    return cv::norm(features[i], features[j], cv::NORM_L1);
-	    }},
-	    {"L2", [&features] (int i, int j) {
-		    return cv::norm(features[i], features[j], cv::NORM_L2);
-	    }},
-	    {"NL2", [&features] (int i, int j) {
-		    cv::Mat1d mi(features[i]), mj(features[j]);
+	std::map<QString, std::function<double(size_t, size_t)>> distFun = {
+		{"L1", [&features] (size_t i, size_t j) {
+			return cv::norm(features[i], features[j], cv::NORM_L1);
+		}},
+		{"L2", [&features] (size_t i, size_t j) {
+			return cv::norm(features[i], features[j], cv::NORM_L2);
+		}},
+		{"NL2", [&features] (size_t i, size_t j) {
+			cv::Mat1d mi(features[i]), mj(features[j]);
 			mi /= cv::norm(mi);
 			mj /= cv::norm(mj);
 			return cv::norm(mi, mj); // TODO: use cv::NORM_L2SQR?
-	    }},
-	    {"COS", [&features] (int i, int j) {
-		    cv::Mat1d mi(features[i]), mj(features[j]);
+		}},
+		{"COS", [&features] (size_t i, size_t j) {
+			cv::Mat1d mi(features[i]), mj(features[j]);
 			return mi.dot(mj) / (cv::norm(mi) * cv::norm(mj));
-	    }},
-	    {"EMD", [&features] (int i, int j) {
-		    cv::Mat1f mi(features[i].size(), 1 + 1, 1.f); // weight + value
+		}},
+		{"EMD", [&features] (size_t i, size_t j) {
+			cv::Mat1f mi(features[i].size(), 1 + 1, 1.f); // weight + value
 			cv::Mat1f mj(features[i].size(), 1 + 1, 1.f); // weight + value
 			std::copy(features[i].cbegin(), features[i].cend(), mi.begin() + 1);
 			std::copy(features[j].cbegin(), features[j].cend(), mj.begin() + 1);
 			// use L1 here as we have scalar inputs anyway
 			return cv::EMD(mi, mj, cv::DIST_L1);
-	    }},
-    };
+		}},
+	};
 
 	auto precomputeDistances = [&] (auto callback, bool kernel = false) {
 		std::vector<IndexType> indices((unsigned)nFeat);
 		DenseMatrix distances(nFeat, nFeat);
 
 		std::cerr << "computing distances for " << nFeat << " points" << std::endl;
-		tbb::parallel_for(int(0), nFeat, [&] (int i) {
+		tbb::parallel_for(size_t(0), nFeat, [&] (size_t i) {
 			if (i % 10)
 				std::cerr << ".";
-			indices[(unsigned)i] = i;
+			indices[i] = i;
 
 			// fill diagonal
 			distances(i, i) = 0;
 
-			for (int j = i + 1; j < nFeat; ++j) {
+			for (size_t j = i + 1; j < nFeat; ++j) {
 
 				auto dist = callback(i, j);
 				// fill symmetrically
@@ -122,12 +122,12 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<std::vector<double> >
 	TapkeeOutput output;
 	// custom distance
 	if (m.startsWith("MDS") || m.startsWith("Diff ")) {
-		auto [indices, distances] = precomputeDistances(dist[m.split(" ").last()]);
+		auto [indices, distances] = precomputeDistances(distFun[m.split(" ").last()]);
 		precomputed_distance_callback d(distances);
 		output = parametrized.withDistance(d).embedUsing(indices);
 	// custom kernel
 	} else if (m.startsWith("kPCA")) {
-		auto [indices, distances] = precomputeDistances(dist[m.split(" ").last()], true);
+		auto [indices, distances] = precomputeDistances(distFun[m.split(" ").last()], true);
 		precomputed_kernel_callback k(distances);
 		output = parametrized.withKernel(k).embedUsing(indices);
 	// plain work on features
@@ -135,8 +135,8 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<std::vector<double> >
 		// setup feature matrix
 		IndexType nrows = features[0].size();
 		DenseMatrix featmat(nrows, nFeat);
-		for (int i = 0; i < nFeat; ++i)
-			featmat.col(i) = Eigen::Map<DenseVector>(features[i].data(), nrows);
+		for (size_t i = 0; i < nFeat; ++i)
+			featmat.col(i) = Eigen::Map<const DenseVector>(features[i].data(), nrows);
 
 		output = parametrized.embedUsing(featmat);
 	}
@@ -149,7 +149,7 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<std::vector<double> >
 		QMap<QString, QVector<QPointF>> ret;
 		for (const auto& [name, cols] : map) {
 			auto points = QVector<QPointF>(nFeat);
-			for (int i = 0; i < nFeat; ++i)
+			for (size_t i = 0; i < nFeat; ++i)
 				points[i] = {output.embedding(i, cols.first), output.embedding(i, cols.second)};
 			ret.insert(name, points);
 		}
@@ -158,7 +158,7 @@ QMap<QString, QVector<QPointF>> compute(QString m, QVector<std::vector<double> >
 
 	// plain 2D
 	QVector<QPointF> points(nFeat);
-	for (int i = 0; i < nFeat; ++i)
+	for (size_t i = 0; i < nFeat; ++i)
 		points[i] = {output.embedding(i, 0), output.embedding(i, 1)};
 	return {{m, points}};
 }

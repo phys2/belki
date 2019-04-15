@@ -166,7 +166,7 @@ bool Dataset::readSource(QTextStream in)
 		/* append */
 		d.protIndex[p.name] = d.proteins.size();
 		d.proteins.push_back(std::move(p));
-		d.features.append(std::move(coeffs));
+		d.features.push_back(std::move(coeffs));
 	}
 	// ensure clustering is properly initialized if accessed
 	d.clustering = Clustering(d.proteins.size());
@@ -177,7 +177,7 @@ bool Dataset::readSource(QTextStream in)
 
 	/* normalize, if needed */
 	auto minVal = d.features[0][0], maxVal = d.features[0][0];
-	for (auto in : qAsConst(d.features)) {
+	for (auto in : d.features) {
 		double mi, ma;
 		cv::minMaxLoc(in, &mi, &ma);
 		minVal = std::min(minVal, mi);
@@ -189,8 +189,7 @@ bool Dataset::readSource(QTextStream in)
 		//maxVal = std::log1p(maxVal);
 		//minVal = std::log1p(minVal);
 		auto scale = 1. / (maxVal - minVal);
-		for (int i = 0; i < d.features.size(); ++i) {
-			auto &v = d.features[i];
+		for (auto &v : d.features) {
 			std::for_each(v.begin(), v.end(), [minVal, scale] (double &e) {
 				//e = std::log1p(e);
 				e = (e - minVal) * scale;
@@ -199,7 +198,7 @@ bool Dataset::readSource(QTextStream in)
 	}
 
 	/* pre-cache features as QPoints for plotting */
-	for (auto in : qAsConst(d.features)) {
+	for (auto in : d.features) {
 		QVector<QPointF> points(in.size());
 		for (size_t i = 0; i < in.size(); ++i)
 			points[i] = {(qreal)i, in[i]};
@@ -227,7 +226,7 @@ void Dataset::readDisplay(const QString& name, const QByteArray &tsv)
 
 	QWriteLocker _(&l);
 
-	if (data.size() != d.features.size())
+	if (data.size() != (int)d.features.size())
 		return ioError(QString("Display %1 length does not match source length!").arg(name));
 
 	d.display[name] = std::move(data);
@@ -550,7 +549,7 @@ void Dataset::computeClusterCentroids()
 
 	for (unsigned i = 0; i < cl.memberships.size(); ++i) {
 		for (auto ci : cl.memberships[i])
-			cv::add(cl.clusters[ci].mode, d.features[(int)i], cl.clusters[ci].mode);
+			cv::add(cl.clusters[ci].mode, d.features[i], cl.clusters[ci].mode);
 	}
 
 	for (auto& [_, c] : cl.clusters) {
@@ -647,7 +646,7 @@ void Dataset::orderProteins(OrderBy reference)
 				if (seen.count(i))
 					continue; // protein was part of bigger cluster
 				if (d.clustering.memberships[i].count(ci)) {
-					double dist = cv::norm(d.features[(int)i],
+					double dist = cv::norm(d.features[i],
 					        d.clustering.clusters[ci].mode, cv::NORM_L2SQR);
 					members.push_back({i, dist});
 					seen.insert(i);

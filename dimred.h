@@ -4,6 +4,7 @@
 #include <QVector>
 #include <QMap>
 #include <QPointF>
+#include <vector>
 
 namespace dimred {
     struct Method {
@@ -12,7 +13,8 @@ namespace dimred {
 		QString description;
 	};
 
-	QMap<QString, QVector<QPointF>> compute(QString method, QVector<std::vector<double>> &features);
+	QMap<QString, QVector<QPointF>>
+	compute(QString method, const std::vector<std::vector<double> > &features);
 
 	const std::vector<Method> availableMethods();
 }

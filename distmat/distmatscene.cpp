@@ -64,11 +64,11 @@ void DistmatScene::setDirection(DistmatScene::Direction direction)
 	case Direction::PER_DIMENSION:
 		auto d = data.peek();
 		// re-arrange data to obtain per-dimension feature vectors
-		QVector<std::vector<double> >
-		        features(d->dimensions.size(), std::vector<double>((size_t)d->features.size()));
-		for (int i = 0; i < d->features.size(); ++i) {
+		std::vector<std::vector<double>>
+		        features((size_t)d->dimensions.size(), std::vector<double>(d->features.size()));
+		for (size_t i = 0; i < d->features.size(); ++i) {
 			for (size_t j = 0; j < d->features[i].size(); ++j) {
-				features[j][(size_t)i] = d->features[i][j];
+				features[j][i] = d->features[i][j];
 			}
 		}
 		m.computeMatrix(features);

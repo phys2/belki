@@ -21,7 +21,7 @@ struct Distmat
 
 	static std::map<Measure, MeasureFun> measures();
 
-	void computeMatrix(const QVector<std::vector<double>> &features);
+	void computeMatrix(const std::vector<std::vector<double>> &features);
 	void computeImage(const TranslateFun &translate);
 
 	Measure measure = Measure::CROSSCORREL;

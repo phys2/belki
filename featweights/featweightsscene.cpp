@@ -70,18 +70,18 @@ void FeatweightsScene::computeWeights()
 		std::map<Weighting, std::function<void(size_t)>> weighters;
 		weighters[Weighting::ABSOLUTE] = [&] (size_t dim) {
 			for (auto& m : markers) {
-				weights[dim] += feat[(int)m][dim];
+				weights[dim] += feat[m][dim];
 			}
 		};
 		weighters[Weighting::RELATIVE] = [&] (size_t dim) { // weight against own baseline
 			// collect baseline first
-			double baseline = std::accumulate(feat.begin(), feat.end(), 0.,
+			double baseline = std::accumulate(feat.cbegin(), feat.cend(), 0.,
 			                                  [dim,n=1./feat.size()] (auto a, auto &p) {
 				return a += p[dim] * n;
 			});
 
 			for (auto& m : markers) {
-				auto value = feat[(int)m][dim];
+				auto value = feat[m][dim];
 				if (value > baseline)
 					weights[dim] += value / baseline;
 			}
@@ -93,11 +93,11 @@ void FeatweightsScene::computeWeights()
 				auto n = 1./(weights.size() - 1);
 				for (unsigned i = 0; i < weights.size(); ++i) {
 					if (i != dim)
-						baseline = std::max(baseline, feat[(int)m][i] * n);
+						baseline = std::max(baseline, feat[m][i] * n);
 				}
 				if (baseline < 0.001)
 					baseline = 1.;
-				auto value = feat[(int)m][dim];
+				auto value = feat[m][dim];
 				if (value > baseline)
 					weights[dim] += value / baseline;
 			}
@@ -135,7 +135,7 @@ void FeatweightsScene::computeImage()
 
 	auto d = data.peek();
 	auto &feat = d->features;
-	contours = std::vector<std::vector<unsigned>>((unsigned)feat.size(),
+	contours = std::vector<std::vector<unsigned>>(feat.size(),
 	                                              std::vector<unsigned>((unsigned)bins.width));
 
 	/* go through critera x (0…1) and, for each protein, measure achieved score y
@@ -144,7 +144,7 @@ void FeatweightsScene::computeImage()
 	 * Outer loop over x instead of proteins so threads do not interfer when writing
 	 * to matrix */
 	tbb::parallel_for(0, matrix.cols, [&] (int x) {
-		for (int p = 0; p < feat.size(); ++p) {
+		for (size_t p = 0; p < feat.size(); ++p) {
 			auto thresh = x * stepSize.width;
 			double score = 0;
 			for (unsigned dim = 0; dim < weights.size(); dim++) {

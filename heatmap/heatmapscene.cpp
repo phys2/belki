@@ -31,10 +31,10 @@ void HeatmapScene::reset(bool haveData)
 	auto d = data.peek();
 
 	/* build up scene with new data */
-	profiles.resize((unsigned)d->features.size());
+	profiles.resize(d->features.size());
 	for (unsigned i = 0; i < profiles.size(); ++i) {
 		// setup profile graphics item
-		auto h = new Profile(i, d->features[(int)i]);
+		auto h = new Profile(i, d->features[i]);
 		h->setBrush(Qt::transparent);
 
 		// add to scene and our own container

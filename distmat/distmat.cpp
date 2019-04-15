@@ -33,7 +33,7 @@ std::map<Distmat::Measure, Distmat::MeasureFun> Distmat::measures()
 	};
 }
 
-void Distmat::computeMatrix(const QVector<std::vector<double> > &features)
+void Distmat::computeMatrix(const std::vector<std::vector<double>> &features)
 {
 	auto sidelen = features.size();
 	matrix = cv::Mat1f(sidelen, sidelen);
