@@ -68,7 +68,7 @@ public:
 		float k = 1; // k * sqrt(N) is number of neighbors used for construction
 
 		/// static bandwidth
-		float bandwidth = 0;
+		double bandwidth = 0;
 
 		/// minimum number of points per reported mode (after pruning)
 		int pruneMinN = 50;
