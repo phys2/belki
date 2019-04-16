@@ -152,7 +152,7 @@ HeatmapScene::Profile::Profile(unsigned index, Dataset::View &d)
 	                             d->featureRange.scale(), d->featureRange.min);
 	if (d->hasScores()) {
 		// apply score colormap flipped (low scores are better)
-		scores = Colormap::stoplight.apply(cv::Mat(d->scores[index]) * -1.,
+		scores = Colormap::stoplight_mild.apply(cv::Mat(d->scores[index]) * -1.,
 		                         d->scoreRange.scale(), -d->scoreRange.max);
 	}
 	setAcceptHoverEvents(true);

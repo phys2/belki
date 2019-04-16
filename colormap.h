@@ -27,7 +27,7 @@ struct Colormap {
 	static Colormap magma;
 
 	// Red to green color map (for score displays, red == bad, green == good)
-	static Colormap stoplight;
+	static Colormap stoplight, stoplight_mild;
 };
 
 #endif
