@@ -80,5 +80,5 @@ void Distmat::computeImage(const TranslateFun &translate)
 			        = (uchar)((matrix(translate(y, x)) - minVal)*scale);
 	});
 
-	image = colormap::apply(matrixB);
+	image = Colormap::pixmap(Colormap::magma.apply(matrixB));
 }

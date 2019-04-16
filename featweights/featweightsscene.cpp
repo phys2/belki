@@ -166,11 +166,11 @@ void FeatweightsScene::computeImage()
 	cv::Mat matrixL;
 	cv::log(matrix, matrixL);
 	double scale = 1./std::log(feat.size()); // max. count (in lower-left corner)
-	images[0] = colormap::apply(matrixL, scale);
+	images[0] = Colormap::pixmap(Colormap::magma.apply(matrixL, scale));
 
 	// apply on rel. matrix
 	cv::Mat matrixR = relmatrix / matrix;
-	images[1] = colormap::apply(matrixR, 1.);
+	images[1] = Colormap::pixmap(Colormap::magma.apply(matrixR, 1.));
 }
 
 void FeatweightsScene::computeMarkerContour()
