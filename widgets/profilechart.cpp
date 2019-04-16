@@ -95,8 +95,6 @@ void ProfileChart::finalize(bool fresh)
 
 	std::function<bool(const std::pair<unsigned,bool> &a, const std::pair<unsigned,bool> & b)>
 	byName = [&d] (auto a, auto b) {
-		if (a.second != b.second)
-			return b.second;
 		return d->proteins[a.first].name < d->proteins[b.first].name;
 	};
 	auto byMarkedThenName = [byName] (auto a, auto b) {
