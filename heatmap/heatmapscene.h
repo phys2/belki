@@ -22,6 +22,8 @@ public:
 		unsigned index;
 		// feature vector as alpha values (0…255)
 		cv::Mat1b features;
+		// scores as color values (RGB)
+		cv::Mat3b scores;
 
 	protected:
 		// override for internal use (does not work through pointer! scene() is non-virtual)

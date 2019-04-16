@@ -150,6 +150,10 @@ HeatmapScene::Profile::Profile(unsigned index, Dataset::View &d)
 {
 	features = Colormap::prepare(cv::Mat(d->features[index]),
 	                             d->featureRange.scale(), d->featureRange.min);
+	if (d->hasScores()) {
+		// apply score colormap flipped (low scores are better)
+		scores = Colormap::stoplight.apply(cv::Mat(d->scores[index]) * -1.,
+		                         d->scoreRange.scale(), -d->scoreRange.max);
 	}
 	setAcceptHoverEvents(true);
 }
@@ -186,6 +190,8 @@ void HeatmapScene::Profile::paint(QPainter *painter, const QStyleOptionGraphicsI
 	                  highlight ? s.cursor : bg);
 
 	for (auto i = 0; i < features.rows; ++i) {
+		if (!scores.empty())
+			fg = Colormap::qcolor(scores(i, 0));
 		fg.setAlpha(features(i, 0));
 		QRectF r(s.margin + i * s.expansion, 0, s.expansion, 1);
 		painter->fillRect(r, fg);
