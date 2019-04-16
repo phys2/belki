@@ -34,10 +34,13 @@ void DistmatTab::init(Dataset *data)
 	// we are good to go on reset(true), but not on reset(false)
 	connect(this, &Viewer::inReset, [this] (bool haveData) { setEnabled(haveData); });
 
-	connect(actionToggleDistdir, &QAction::toggled, [this] (bool toggle) {
+	auto toggleDirection = [this] (bool toggle) {
 		scene->setDirection(toggle ? DistmatScene::Direction::PER_DIMENSION
 		                           : DistmatScene::Direction::PER_PROTEIN);
-	});
+	};
+	connect(actionToggleDistdir, &QAction::toggled, toggleDirection);
+	toggleDirection(actionToggleDistdir->isChecked());
+
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, "Distance Matrix");
 	});

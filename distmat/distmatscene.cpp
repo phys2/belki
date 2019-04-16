@@ -44,6 +44,9 @@ void DistmatScene::setDirection(DistmatScene::Direction direction)
 		return;
 
 	currentDirection = direction;
+	if (dimensionLabels.empty())
+		return; // na data yet!
+
 	updateVisibilities();
 
 	/* set display if available */
