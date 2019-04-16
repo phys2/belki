@@ -3,6 +3,7 @@
 
 #include <QPainter>
 #include <QGraphicsItem>
+#include <QGraphicsSceneHoverEvent>
 
 HeatmapScene::HeatmapScene(Dataset &data) : data(data)
 {
@@ -211,6 +212,18 @@ void HeatmapScene::Profile::hoverLeaveEvent(QGraphicsSceneHoverEvent*)
 {
 	highlight = false;
 	update();
+}
+
+void HeatmapScene::Profile::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
+{
+	// display a tooltip to expose the dimension the mouse is over
+	auto s = scene()->style;
+	auto index = int((event->pos().x() - s.margin) / s.expansion);
+	if (index < 0 || index >= features.rows) {
+		setToolTip({});
+		return;
+	}
+	setToolTip(scene()->data.peek()->dimensions.at(index));
 }
 
 HeatmapScene::Marker::Marker(HeatmapScene *scene, unsigned sampleIndex, const QPointF &pos)
