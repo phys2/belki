@@ -54,6 +54,7 @@ public:
 
 	Chart(Dataset &data);
 
+	void setTitles(const QString &x, const QString &y);
 	void clear();
 	void clearPartitions();
 	void display(const QVector<QPointF> &coords);

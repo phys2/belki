@@ -1,6 +1,14 @@
 <RCC>
     <qresource prefix="/icons/Breeze">
         <file alias="index.theme">breeze/index.theme</file>
+        <file alias="actions/16/arrow-left.svg">breeze/actions/16/arrow-left.svg</file>
+        <file alias="actions/22/arrow-left.svg">breeze/actions/22/arrow-left.svg</file>
+        <file alias="actions/24/arrow-left.svg">breeze/actions/24/arrow-left.svg</file>
+        <file alias="actions/32/arrow-left.svg">breeze/actions/32/arrow-left.svg</file>
+        <file alias="actions/16/arrow-right.svg">breeze/actions/16/arrow-right.svg</file>
+        <file alias="actions/22/arrow-right.svg">breeze/actions/22/arrow-right.svg</file>
+        <file alias="actions/24/arrow-right.svg">breeze/actions/24/arrow-right.svg</file>
+        <file alias="actions/32/arrow-right.svg">breeze/actions/32/arrow-right.svg</file>
         <file alias="actions/16/document-open.svg">breeze/actions/16/document-open.svg</file>
         <file alias="actions/22/document-open.svg">breeze/actions/22/document-open.svg</file>
         <file alias="actions/24/document-open.svg">breeze/actions/24/document-open.svg</file>

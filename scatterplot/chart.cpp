@@ -29,8 +29,6 @@ Chart::Chart(Dataset &data) :
 
 	addAxis(ax, Qt::AlignBottom);
 	addAxis(ay, Qt::AlignLeft);
-	ax->setTitleText("dim 1");
-	ay->setTitleText("dim 2");
 
 	/* set up master series */
 	master = new Proteins("All proteins", Qt::gray, this);
@@ -61,6 +59,12 @@ Chart::Chart(Dataset &data) :
 		setAnimationDuration(1000);
 		setAnimationOptions(SeriesAnimations);
 	});
+}
+
+void Chart::setTitles(const QString &x, const QString &y)
+{
+	ax->setTitleText(x);
+	ay->setTitleText(y);
 }
 
 void Chart::clear()
@@ -389,7 +393,7 @@ Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
 	auto label = chart->data.peek()->proteins[sampleIndex].name;
 	s->setName(label);
 
-	s->setPointLabelsFormat(label); // display name over marker point (TODO: own item)
+	s->setPointLabelsFormat(label);
 	auto f = s->pointLabelsFont(); // increase font size (do it only on creation)
 	f.setBold(true);
 	f.setPointSizeF(f.pointSizeF() * 1.3);

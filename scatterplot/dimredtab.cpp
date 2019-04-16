@@ -1,17 +1,17 @@
-#include "charttab.h"
+#include "dimredtab.h"
 #include "chart.h"
 #include "dimred.h"
 
 #include <QMenu>
 
-ChartTab::ChartTab(QWidget *parent) :
+DimredTab::DimredTab(QWidget *parent) :
     Viewer(parent)
 {
 	setupUi(this);
 	view->setRubberBand(QtCharts::QChartView::RectangleRubberBand); // TODO: issue #5
 
 	// setup toolbar
-	auto anchor = actionComputeDisplay;
+	auto anchor = actionCycleBackward;
 	toolBar->insertWidget(anchor, transformLabel);
 	toolBar->insertWidget(anchor, transformSelect);
 
@@ -23,7 +23,15 @@ ChartTab::ChartTab(QWidget *parent) :
 	// remove container we picked from
 	topBar->deleteLater();
 
-	/* connect toolbar actions (that don't depend on data/scene */
+	/* connect toolbar actions (that don't depend on data/scene) */
+	connect(actionCycleForward, &QAction::triggered, [this] {
+		auto s = transformSelect;
+		s->setCurrentIndex((s->currentIndex() + 1) % s->count());
+	});
+	connect(actionCycleBackward, &QAction::triggered, [this] {
+		auto s = transformSelect;
+		s->setCurrentIndex((s->count() + s->currentIndex() - 1) % s->count());
+	});
 	connect(actionComputeDisplay, &QAction::triggered, [this] {
 		auto methods = dimred::availableMethods();
 		auto menu = new QMenu(this);
@@ -40,21 +48,19 @@ ChartTab::ChartTab(QWidget *parent) :
 	});
 }
 
-void ChartTab::init(Dataset *data)
+void DimredTab::init(Dataset *data)
 {
 	scene = new Chart(*data);
+	scene->setTitles("dim 1", "dim 2");
 	view->setChart(scene);
 
 	/* connect incoming/pass-through signals */
 	connect(this, &Viewer::inUpdateColorset, scene, &Chart::updateColorset);
-	connect(this, &Viewer::inReset, this, [this] (bool haveData) {
+	connect(this, &Viewer::inReset, this, [this] (bool) {
 		// no displays
 		transformSelect->clear();
 		scene->clear();
 		setEnabled(false);
-
-		if (haveData)
-			return; // not of our interest right now
 	});
 	connect(this, &Viewer::inRepartition, this, [this] {
 		scene->clearPartitions();
@@ -76,7 +82,7 @@ void ChartTab::init(Dataset *data)
 		scene->display(d->display[name]);
 		setEnabled(true);
 	});
-	connect(this, &ChartTab::computeDisplay, data, &Dataset::computeDisplay);
+	connect(this, &DimredTab::computeDisplay, data, &Dataset::computeDisplay);
 	connect(data, &Dataset::newDisplay, this, [this] (const QString &display) {
 		transformSelect->addItem(display); // duplicates ignored
 		transformSelect->setCurrentText(display);

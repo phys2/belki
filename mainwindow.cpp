@@ -37,7 +37,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	setupToolbar();
 
 	/* Views in tabs */
-	views = {scatterTab, heatmapTab, distmatTab, featweightsTab};
+	views = {dimredTab, scatterTab, heatmapTab, distmatTab, featweightsTab};
 	for (auto v : views) {
 		v->init(&data);
 		// connect singnalling into view

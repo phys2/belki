@@ -109,11 +109,16 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
-      <widget class="ChartTab" name="scatterTab">
+      <widget class="DimredTab" name="dimredTab">
        <attribute name="title">
         <string>Visualization</string>
+       </attribute>
+      </widget>
+      <widget class="ScatterTab" name="scatterTab">
+       <attribute name="title">
+        <string>Scatter Plot</string>
        </attribute>
       </widget>
       <widget class="HeatmapTab" name="heatmapTab">
@@ -604,7 +609,8 @@
   </action>
   <action name="actionQuit">
    <property name="icon">
-    <iconset theme="application-exit"/>
+    <iconset theme="application-exit">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Save &amp;&amp; &amp;Quit</string>
@@ -630,15 +636,21 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>ChartTab</class>
-   <extends>QWidget</extends>
-   <header>scatterplot/charttab.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>FeatweightsTab</class>
    <extends>QWidget</extends>
    <header>featweights/featweightstab.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>DimredTab</class>
+   <extends>QWidget</extends>
+   <header>scatterplot/dimredtab.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ScatterTab</class>
+   <extends>QWidget</extends>
+   <header>scatterplot/scattertab.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

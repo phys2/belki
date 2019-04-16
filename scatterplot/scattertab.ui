@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>ChartTab</class>
- <widget class="QMainWindow" name="ChartTab">
+ <class>ScatterTab</class>
+ <widget class="QMainWindow" name="ScatterTab">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -43,14 +43,18 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QLabel" name="transformLabel">
+        <widget class="QLabel" name="dimensionLabel">
          <property name="text">
-          <string>Transformation:</string>
+          <string>Dimension:</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="transformSelect"/>
+        <widget class="QComboBox" name="dimensionSelect">
+         <property name="sizeAdjustPolicy">
+          <enum>QComboBox::AdjustToContents</enum>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -86,21 +90,10 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionComputeDisplay"/>
+   <addaction name="actionCycleBackward"/>
+   <addaction name="actionCycleForward"/>
    <addaction name="actionSavePlot"/>
   </widget>
-  <action name="actionComputeDisplay">
-   <property name="icon">
-    <iconset theme="list-add">
-     <normaloff>.</normaloff>.</iconset>
-   </property>
-   <property name="text">
-    <string>Compute New</string>
-   </property>
-   <property name="toolTip">
-    <string>Select a new display transform to compute</string>
-   </property>
-  </action>
   <action name="actionSavePlot">
    <property name="icon">
     <iconset theme="camera-photo">
@@ -114,6 +107,36 @@
    </property>
    <property name="shortcut">
     <string>Print</string>
+   </property>
+  </action>
+  <action name="actionCycleForward">
+   <property name="icon">
+    <iconset theme="arrow-right">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>Cycle Forward</string>
+   </property>
+   <property name="toolTip">
+    <string>Cycle dimension forward</string>
+   </property>
+   <property name="shortcut">
+    <string>Right</string>
+   </property>
+  </action>
+  <action name="actionCycleBackward">
+   <property name="icon">
+    <iconset theme="arrow-left">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>Cycle Backward</string>
+   </property>
+   <property name="toolTip">
+    <string>Cycle dimension backwards</string>
+   </property>
+   <property name="shortcut">
+    <string>Left</string>
    </property>
   </action>
  </widget>

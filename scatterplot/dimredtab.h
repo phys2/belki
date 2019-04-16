@@ -1,17 +1,17 @@
-#ifndef CHARTTAB_H
-#define CHARTTAB_H
+#ifndef DIMREDTAB_H
+#define DIMREDTAB_H
 
-#include "ui_charttab.h"
+#include "ui_dimredtab.h"
 #include "viewer.h"
 
 class Chart;
 
-class ChartTab : public Viewer, private Ui::ChartTab
+class DimredTab : public Viewer, private Ui::DimredTab
 {
 	Q_OBJECT
 
 public:
-	explicit ChartTab(QWidget *parent = nullptr);
+	explicit DimredTab(QWidget *parent = nullptr);
 	void init(Dataset *data) override;
 
 signals:
@@ -21,4 +21,4 @@ protected:
 	Chart *scene; // owned by view
 };
 
-#endif // CHARTTAB_H
+#endif
