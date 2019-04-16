@@ -14,14 +14,14 @@ public:
 
 	struct Profile : public QAbstractGraphicsShapeItem
 	{
-		Profile(unsigned index, const std::vector<double> &features, QGraphicsItem *parent = nullptr);
+		Profile(unsigned index, Dataset::View &data);
 
 		QRectF boundingRect() const override;
 		void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
 		unsigned index;
-		 // feature vector (own copy), TODO: we could avoid a copy but would need to lock dataset…
-		std::vector<double> features;
+		// feature vector as alpha values (0…255)
+		cv::Mat1b features;
 
 	protected:
 		// override for internal use (does not work through pointer! scene() is non-virtual)

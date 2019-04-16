@@ -1,9 +1,8 @@
 #include "heatmapscene.h"
+#include "colormap.h"
 
 #include <QPainter>
 #include <QGraphicsItem>
-
-#include <QtDebug>
 
 HeatmapScene::HeatmapScene(Dataset &data) : data(data)
 {
@@ -34,7 +33,7 @@ void HeatmapScene::reset(bool haveData)
 	profiles.resize(d->features.size());
 	for (unsigned i = 0; i < profiles.size(); ++i) {
 		// setup profile graphics item
-		auto h = new Profile(i, d->features[i]);
+		auto h = new Profile(i, d);
 		h->setBrush(Qt::transparent);
 
 		// add to scene and our own container
@@ -146,17 +145,19 @@ void HeatmapScene::recolor()
 	update();
 }
 
-HeatmapScene::Profile::Profile(unsigned index, const std::vector<double> &features, QGraphicsItem *parent)
-    : QAbstractGraphicsShapeItem(parent),
-      index(index), features(features)
+HeatmapScene::Profile::Profile(unsigned index, Dataset::View &d)
+    : index(index)
 {
+	features = Colormap::prepare(cv::Mat(d->features[index]),
+	                             d->featureRange.scale(), d->featureRange.min);
+	}
 	setAcceptHoverEvents(true);
 }
 
 QRectF HeatmapScene::Profile::boundingRect() const
 {
 	auto s = scene()->style;
-	return {0, 0, 2. * s.margin + (qreal)features.size() * s.expansion, 1};
+	return {0, 0, 2. * s.margin + features.rows * s.expansion, 1};
 }
 
 void HeatmapScene::Profile::paint(QPainter *painter, const QStyleOptionGraphicsItem*, QWidget*)
@@ -181,11 +182,11 @@ void HeatmapScene::Profile::paint(QPainter *painter, const QStyleOptionGraphicsI
 	if (b.color() != Qt::transparent)
 		painter->fillRect(QRectF(0, 0, s.margin, 1), b.color());
 
-	painter->fillRect(QRectF(s.margin, 0, (qreal)features.size() * s.expansion, 1),
+	painter->fillRect(QRectF(s.margin, 0, features.rows * s.expansion, 1),
 	                  highlight ? s.cursor : bg);
 
-	for (unsigned i = 0; i < features.size(); ++i) {
-		fg.setAlphaF(features[i]);
+	for (auto i = 0; i < features.rows; ++i) {
+		fg.setAlpha(features(i, 0));
 		QRectF r(s.margin + i * s.expansion, 0, s.expansion, 1);
 		painter->fillRect(r, fg);
 	}
