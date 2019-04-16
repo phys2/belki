@@ -50,6 +50,7 @@ void ScatterTab::init(Dataset *data)
 		// we can only display if have scores on y-axis
 		setEnabled(haveData && data->peek()->hasScores());
 
+		view->setVisible(isEnabled());
 		if (!isEnabled()) {
 			dimensionSelect->clear();
 			scene->clear();
