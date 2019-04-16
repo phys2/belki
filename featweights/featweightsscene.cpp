@@ -378,7 +378,7 @@ void FeatweightsScene::WeightBar::hoverMoveEvent(QGraphicsSceneHoverEvent *event
 	update();
 }
 
-void FeatweightsScene::WeightBar::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
+void FeatweightsScene::WeightBar::hoverLeaveEvent(QGraphicsSceneHoverEvent *)
 {
 	highlight = -1;
 	update();
