@@ -6,7 +6,6 @@
 
 HeatmapScene::HeatmapScene(Dataset &data) : data(data)
 {
-
 }
 
 void HeatmapScene::setScale(qreal scale)
@@ -19,9 +18,10 @@ void HeatmapScene::setScale(qreal scale)
 
 void HeatmapScene::reset(bool haveData)
 {
+	layout = {};
 	profiles.clear();
 	markers.clear();
-	clear(); // removes & deletes all items (ie. profiles)
+	clear(); // removes & deletes all items (ie. profiles, markers)
 
 	if (!haveData) {
 		return;

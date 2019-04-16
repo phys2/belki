@@ -83,7 +83,7 @@ protected:
 	} style;
 
 	struct {
-		unsigned rows, columns = 1;
+		unsigned rows = 0, columns = 1;
 		qreal columnWidth = 0.;
 	} layout;
 
