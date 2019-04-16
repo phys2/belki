@@ -7,10 +7,25 @@ FeatweightsTab::FeatweightsTab(QWidget *parent) :
 	setupUi(this);
 	setupWeightingUI();
 
+	auto anchor = actionSavePlot;
+
+	// plug-in score stuff
+	toolBar->insertSeparator(anchor);
+	scoreActions.push_back(toolBar->insertWidget(anchor, scoreLabel));
+	scoreActions.push_back(toolBar->insertWidget(anchor, scoreSlider));
+	connect(scoreSlider, &QSlider::valueChanged, [this] (int v) {
+		// note: ensure fixed text width to avoid the slider jumping around
+		auto text = QString("Score thresh.: <b>%1</b> ")
+		        .arg(QString::number(v * 0.01, 'f', 2));
+		scoreLabel->setText(text);
+	});
+
 	// right-align screenshot button
 	auto* spacer = new QWidget();
 	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	toolBar->insertWidget(actionSavePlot, spacer);
+
+	stockpile->deleteLater();
 }
 
 void FeatweightsTab::init(Dataset *data)
@@ -23,8 +38,21 @@ void FeatweightsTab::init(Dataset *data)
 
 	connect(scene, &FeatweightsScene::cursorChanged, this, &Viewer::cursorChanged);
 
-	// we are good to go on reset(true), but not on reset(false)
-	connect(this, &Viewer::inReset, [this] (bool haveData) { setEnabled(haveData); });
+	connect(this, &Viewer::inReset, [this, data] (bool haveData) {
+		// we are good to go on reset(true), but not on reset(false)
+		setEnabled(haveData);
+
+		// adapt score state
+		auto d = data->peek();
+		for (auto i : scoreActions)
+			i->setVisible(haveData && d->hasScores());
+		if (d->hasScores()) {
+			scoreSlider->setMinimum((int)(d->scoreRange.min * 100));
+			scoreSlider->setMaximum((int)(d->scoreRange.max * 100));
+			scoreSlider->setTickInterval(scoreSlider->maximum() / 10); // TODO round numbers
+			scoreSlider->setValue(scoreSlider->maximum());
+		}
+	});
 
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, "Distance Matrix");
@@ -37,6 +65,10 @@ void FeatweightsTab::init(Dataset *data)
 	};
 	connect(weightingSelect, QOverload<int>::of(&QComboBox::activated), syncWeighting);
 	syncWeighting();
+
+	connect(scoreSlider, &QSlider::valueChanged, [this] (int v) {
+		scene->applyScoreThreshold(v * 0.01);
+	});
 
 	view->setScene(scene);
 }
@@ -57,6 +89,4 @@ void FeatweightsTab::setupWeightingUI()
 		weightingSelect->addItem(n, QVariant::fromValue(v));
 	}
 	weightingSelect->setCurrentIndex(1);
-
-	weightingBar->deleteLater();
 }

@@ -54,6 +54,7 @@ public slots:
 	void toggleImage(bool useAlternate);
 	void updateColorset(QVector<QColor> colors);
 	void changeWeighting(Weighting weighting);
+	void applyScoreThreshold(double threshold);
 
 protected:
 	void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
@@ -65,6 +66,7 @@ protected:
 	void computeMarkerContour();
 
 	Dataset &data;
+	std::vector<std::vector<double>> clippedFeatures; // score threshold applied
 	QVector<QColor> colorset;
 
 	std::set<unsigned> markers;

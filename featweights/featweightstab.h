@@ -4,7 +4,10 @@
 #include "ui_featweightstab.h"
 #include "viewer.h"
 
+#include <vector>
+
 class FeatweightsScene;
+class QAction;
 
 class FeatweightsTab : public Viewer, private Ui::FeatweightsTab
 {
@@ -15,6 +18,8 @@ public:
 	void init(Dataset *data) override;
 
 protected:
+	std::vector<QAction*> scoreActions;
+
 	void setupWeightingUI();
 
 	FeatweightsScene *scene;

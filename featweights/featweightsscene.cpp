@@ -65,7 +65,8 @@ void FeatweightsScene::computeWeights()
 
 	/* calculate weights if appr. method selected and markers available */
 	if (weighting != Weighting::UNWEIGHTED && !markers.empty()) {
-		auto &feat = d->features;
+		// use original data if no score threshold was applied
+		auto &feat = (clippedFeatures.empty() ? d->features : clippedFeatures);
 
 		std::map<Weighting, std::function<void(size_t)>> weighters;
 		weighters[Weighting::ABSOLUTE] = [&] (size_t dim) {
@@ -134,7 +135,8 @@ void FeatweightsScene::computeImage()
 	cv::Mat1f relmatrix(bins, 0);
 
 	auto d = data.peek();
-	auto &feat = d->features;
+	// use original data if no score threshold was applied
+	auto &feat = (clippedFeatures.empty() ? d->features : clippedFeatures);
 	contours = std::vector<std::vector<unsigned>>(feat.size(),
 	                                              std::vector<unsigned>((unsigned)bins.width));
 
@@ -195,11 +197,29 @@ void FeatweightsScene::computeMarkerContour()
 	markerContour->setPath(p);
 }
 
+void FeatweightsScene::applyScoreThreshold(double threshold)
+{
+	// apply threshold as an upper limit
+	auto d = data.peek();
+	clippedFeatures.resize(d->features.size());
+	tbb::parallel_for(size_t(0), d->features.size(), [&] (size_t p) {
+		auto &source = d->features[p];
+		auto &score = d->scores[p];
+		auto &target = clippedFeatures[p];
+		target.resize(source.size());
+		for (size_t i = 0; i < source.size(); ++i)
+			target[i] = (score[i] <= threshold ? source[i] : 0.);
+	});
+
+	computeWeights();
+}
+
 void FeatweightsScene::reset(bool haveData)
 {
 	for (auto &i : std::vector<QGraphicsItem*>{display, markerContour, weightBar})
 		i->setVisible(false);
 	markers.clear();
+	clippedFeatures.clear();
 	//dimensionLabels.clear();
 
 	if (!haveData) {
