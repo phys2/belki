@@ -38,6 +38,8 @@ public:
 		Range() = default;
 		Range(double min, double max) : min(min), max(max) {}
 
+		double scale();
+
 		double min;
 		double max;
 	};

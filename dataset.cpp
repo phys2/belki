@@ -743,3 +743,8 @@ Dataset::Range::Range(const std::vector<std::vector<double> > &source)
 		max = std::max(max, ma);
 	}
 }
+
+double Dataset::Range::scale()
+{
+	return 1./(max - min);
+}
