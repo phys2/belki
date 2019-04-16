@@ -69,10 +69,11 @@ void ChartTab::init(Dataset *data)
 	connect(scene, &Chart::cursorChanged, this, &Viewer::cursorChanged);
 
 	/* setup transform select in relationship with dataset */
-	connect(transformSelect, &QComboBox::currentTextChanged, [this] (auto name) {
-		if (name.isEmpty())
+	connect(transformSelect, &QComboBox::currentTextChanged, [this, data] (auto name) {
+		auto d = data->peek();
+		if (name.isEmpty() || !d->display.contains(name))
 			return;
-		scene->display(name);
+		scene->display(d->display[name]);
 		setEnabled(true);
 	});
 	connect(this, &ChartTab::computeDisplay, data, &Dataset::computeDisplay);

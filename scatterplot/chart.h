@@ -56,7 +56,7 @@ public:
 
 	void clear();
 	void clearPartitions();
-	void display(const QString& set);
+	void display(const QVector<QPointF> &coords);
 	void updatePartitions();
 
 	void zoomAt(const QPointF &pos, qreal factor);

@@ -75,7 +75,7 @@ void Chart::clearPartitions()
 	partitions.clear();
 }
 
-void Chart::display(const QString &set)
+void Chart::display(const QVector<QPointF> &coords)
 {
 	/* disable fancy transition on full reset */
 	animate(master->pointsVector().empty() ? 0 : 1000);
@@ -84,7 +84,7 @@ void Chart::display(const QString &set)
 	zoom = {};
 
 	/* update point set */
-	master->replace(data.peek()->display[set]);
+	master->replace(coords);
 
 	/* update ranges cheap & dirty */
 	auto bbox = QPolygonF(master->pointsVector()).boundingRect();
