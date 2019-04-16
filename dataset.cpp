@@ -211,6 +211,139 @@ bool Dataset::readSource(QTextStream in)
 	return true;
 }
 
+bool Dataset::readScoredSource(QTextStream in)
+{
+	cancelFAMS(); // abort unwanted calculation
+
+	auto header = in.readLine().split("\t");
+	header.pop_front(); // first column
+	if (header.contains("") || header.removeDuplicates()) {
+		emit ioError("Malformed header: Duplicate or empty columns!");
+		return false;
+	}
+	if (header.size() == 0 || header.first() != "Protein") {
+		emit ioError("Could not parse file!<p>The first column must contain protein names.</p>");
+		return false;
+	}
+	int nameCol = header.indexOf("Pair");
+	int featureCol = header.indexOf("Dist");
+	int scoreCol = header.indexOf("Score");
+	if (nameCol == -1 || featureCol == -1 || scoreCol == -1) {
+		emit ioError("Could not parse file!<p>Not all necessary columns found.</p>");
+		return false;
+	}
+
+	Public target;
+
+	/* fill it up */
+	std::map<QString, unsigned> dimensions;
+	while (!in.atEnd()) {
+		auto line = in.readLine().split("\t");
+		if (line.empty() || line[0].isEmpty())
+			break; // early EOF
+
+		if (line.size() < header.size()) {
+			emit ioError(QString("Stopped at '%1', incomplete row!").arg(line[0]));
+			break; // avoid message flood
+		}
+
+		/* determine protein index */
+		size_t row; // the protein id we are altering
+		auto index = target.protIndex.find(line[0].split('_').front());
+		if (index == target.protIndex.end()) {
+			/* setup metadata */
+			Protein p;
+			auto parts = line[0].split("_");
+			p.name = parts.front();
+			p.color = colorset[(int)qHash(p.name) % colorset.size()];
+			p.species = (parts.size() > 1 ? parts.back() : "RAT"); // wild guess
+			target.proteins.push_back(std::move(p));
+			target.protIndex[p.name] = target.proteins.size();
+			row = target.proteins.size();
+		} else {
+			row = index->second;
+		}
+
+		/* determine dimension index */
+		size_t col; // the dimension we are altering
+		index = dimensions.find(line[nameCol]);
+		if (index == dimensions.end()) {
+			target.dimensions.append(line[nameCol]);
+			dimensions[line[nameCol]] = target.dimensions.size();
+			col = target.dimensions.size();
+		} else {
+			col = index->second;
+		}
+
+		/* read coefficients */
+		bool success = true;
+		bool ok;
+		double feat, score;
+		feat = line[featureCol].toDouble(&ok);
+		success = success && ok;
+		score = line[scoreCol].toDouble(&ok);
+		if (!success) {
+			auto err = QString("Stopped at protein '%1', malformed row!").arg(target.proteins[row].name);
+			emit ioError(err);
+			break; // avoid message flood
+		}
+
+		/* append/insert features and scores */
+		target.features.resize(std::max(target.features.size(), row+1));
+		auto &f = target.features[row];
+		f.resize(std::max(f.size(), col+1));
+		f[col] = feat;
+		target.scores.resize(std::max(target.scores.size(), row+1));
+		auto &s = target.scores[row];
+		s.resize(std::max(s.size(), col+1));
+		s[col] = feat;
+	}
+
+	// ensure clustering is properly initialized if accessed
+	target.clustering = Clustering(target.proteins.size());
+
+	if (target.features.empty() || target.dimensions.empty()) {
+		emit ioError(QString("Could not read any valid data rows from file!"));
+		return false;
+	}
+
+	/* setup ranges */
+	Range range(target.features);
+	/* normalize, if needed */
+	if (range.min < 0 || range.max > 1) { // simple heuristic to auto-normalize
+		emit ioError(QString("Values outside expected range (instead [%1, %2])."
+		                     "<br>Normalizing to [0, 1].").arg(range.min).arg(range.max));
+		// cut off negative values
+		range.min = 0.;
+		auto scale = 1. / (range.max - range.min);
+		for (auto &v : target.features) {
+			std::for_each(v.begin(), v.end(), [min=range.min, scale] (double &e) {
+				e = std::max(e - min, 0.) * scale;
+			});
+		}
+	}
+	target.featureRange = {0., 1.}; // TODO: we enforced normalization (make config.)
+	target.scoreRange = Range(target.scores);
+
+	/* pre-cache features as QPoints for plotting */
+	for (auto in : target.features) {
+		QVector<QPointF> points(in.size());
+		for (size_t i = 0; i < in.size(); ++i)
+			points[i] = {(qreal)i, in[i]};
+		target.featurePoints.push_back(std::move(points));
+	}
+
+	/* time to flip */
+	QWriteLocker _(&l);
+	d = std::move(target);
+
+	/* calculate initial order */
+	orderProteins(d.order.reference);
+
+	emit newSource();
+	return true;
+}
+
 void Dataset::readDisplay(const QString& name, const QByteArray &tsv)
 {
 	QTextStream in(tsv);
