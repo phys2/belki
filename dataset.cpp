@@ -259,10 +259,10 @@ bool Dataset::readScoredSource(QTextStream in)
 			p.species = (parts.size() > 1 ? parts.back() : "RAT"); // wild guess
 			target.proteins.push_back(std::move(p));
 			auto len = target.proteins.size();
-			target.protIndex[p.name] = len - 1;
-			row = len - 1;
 			target.features.resize(len, std::vector<double>(dimensions.size()));
 			target.scores.resize(len, std::vector<double>(dimensions.size()));
+			row = len - 1;
+			target.protIndex[p.name] = row;
 		} else {
 			row = index->second;
 		}
@@ -273,12 +273,12 @@ bool Dataset::readScoredSource(QTextStream in)
 		if (index == dimensions.end()) {
 			target.dimensions.append(line[nameCol]);
 			auto len = target.dimensions.size();
-			dimensions[line[nameCol]] = len - 1;
-			col = len - 1;
 			for (auto &i : target.features)
 				i.resize(len);
 			for (auto &i : target.scores)
 				i.resize(len);
+			col = len - 1;
+			dimensions[line[nameCol]] = col;
 		} else {
 			col = index->second;
 		}
