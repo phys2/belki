@@ -300,7 +300,7 @@ bool Dataset::readScoredSource(QTextStream &in)
 
 		/* fill-in features and scores */
 		target.features[row][col] = feat;
-		target.scores[row][col] = score;
+		target.scores[row][col] = std::max(score, 0.); // TODO temporary clipping
 	}
 
 	// ensure clustering is properly initialized if accessed
