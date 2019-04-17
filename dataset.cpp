@@ -114,6 +114,8 @@ void Dataset::cancelFAMS()
 
 bool Dataset::readSource(QTextStream in)
 {
+	return readScoredSource(in); // TODO
+
 	cancelFAMS(); // abort unwanted calculation
 
 	auto header = in.readLine().split("\t");
@@ -211,7 +213,7 @@ bool Dataset::readSource(QTextStream in)
 	return true;
 }
 
-bool Dataset::readScoredSource(QTextStream in)
+bool Dataset::readScoredSource(QTextStream &in)
 {
 	cancelFAMS(); // abort unwanted calculation
 
