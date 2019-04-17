@@ -216,7 +216,6 @@ bool Dataset::readScoredSource(QTextStream in)
 	cancelFAMS(); // abort unwanted calculation
 
 	auto header = in.readLine().split("\t");
-	header.pop_front(); // first column
 	if (header.contains("") || header.removeDuplicates()) {
 		emit ioError("Malformed header: Duplicate or empty columns!");
 		return false;
@@ -249,7 +248,8 @@ bool Dataset::readScoredSource(QTextStream in)
 
 		/* determine protein index */
 		size_t row; // the protein id we are altering
-		auto index = target.protIndex.find(line[0].split('_').front());
+		auto n = line[0].split('_').front();
+		auto index = target.protIndex.find(n);
 		if (index == target.protIndex.end()) {
 			/* setup metadata */
 			Protein p;
@@ -262,7 +262,7 @@ bool Dataset::readScoredSource(QTextStream in)
 			target.features.resize(len, std::vector<double>(dimensions.size()));
 			target.scores.resize(len, std::vector<double>(dimensions.size()));
 			row = len - 1;
-			target.protIndex[p.name] = row;
+			target.protIndex[n] = row; // TODO: why doesn't it work with p.name?
 		} else {
 			row = index->second;
 		}
