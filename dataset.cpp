@@ -258,8 +258,11 @@ bool Dataset::readScoredSource(QTextStream in)
 			p.color = colorset[(int)qHash(p.name) % colorset.size()];
 			p.species = (parts.size() > 1 ? parts.back() : "RAT"); // wild guess
 			target.proteins.push_back(std::move(p));
-			target.protIndex[p.name] = target.proteins.size();
-			row = target.proteins.size();
+			auto len = target.proteins.size();
+			target.protIndex[p.name] = len - 1;
+			row = len - 1;
+			target.features.resize(len, std::vector<double>(dimensions.size()));
+			target.scores.resize(len, std::vector<double>(dimensions.size()));
 		} else {
 			row = index->second;
 		}
@@ -269,8 +272,13 @@ bool Dataset::readScoredSource(QTextStream in)
 		index = dimensions.find(line[nameCol]);
 		if (index == dimensions.end()) {
 			target.dimensions.append(line[nameCol]);
-			dimensions[line[nameCol]] = target.dimensions.size();
-			col = target.dimensions.size();
+			auto len = target.dimensions.size();
+			dimensions[line[nameCol]] = len - 1;
+			col = len - 1;
+			for (auto &i : target.features)
+				i.resize(len);
+			for (auto &i : target.scores)
+				i.resize(len);
 		} else {
 			col = index->second;
 		}
@@ -288,15 +296,9 @@ bool Dataset::readScoredSource(QTextStream in)
 			break; // avoid message flood
 		}
 
-		/* append/insert features and scores */
-		target.features.resize(std::max(target.features.size(), row+1));
-		auto &f = target.features[row];
-		f.resize(std::max(f.size(), col+1));
-		f[col] = feat;
-		target.scores.resize(std::max(target.scores.size(), row+1));
-		auto &s = target.scores[row];
-		s.resize(std::max(s.size(), col+1));
-		s[col] = feat;
+		/* fill-in features and scores */
+		target.features[row][col] = feat;
+		target.scores[row][col] = score;
 	}
 
 	// ensure clustering is properly initialized if accessed
