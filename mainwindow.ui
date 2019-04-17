@@ -615,6 +615,9 @@
    <property name="text">
     <string>Save &amp;&amp; &amp;Quit</string>
    </property>
+   <property name="menuRole">
+    <enum>QAction::QuitRole</enum>
+   </property>
   </action>
  </widget>
  <customwidgets>
