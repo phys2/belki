@@ -77,7 +77,7 @@ protected:
 
 	struct {
 		QColor bg = Qt::white, fg = Qt::black;
-		QColor cursor = Qt::red;
+		QColor cursor = Qt::blue;
 		bool inverted = true;
 		bool mixin = true;
 
