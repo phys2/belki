@@ -18,6 +18,8 @@ signals:
 	void computeDisplay(const QString &name); // to data&storage thread
 
 protected:
+	void updateComputeMenu();
+
 	Chart *scene; // owned by view
 };
 

@@ -3,6 +3,7 @@
 #include "dimred.h"
 
 #include <QMenu>
+#include <QToolButton>
 
 DimredTab::DimredTab(QWidget *parent) :
     Viewer(parent)
@@ -20,6 +21,10 @@ DimredTab::DimredTab(QWidget *parent) :
 	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	toolBar->insertWidget(actionSavePlot, spacer);
 
+	// let compute button display menu without holding mouse
+	auto btn = qobject_cast<QToolButton*>(toolBar->widgetForAction(actionComputeDisplay));
+	btn->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);
+
 	// remove container we picked from
 	topBar->deleteLater();
 
@@ -31,17 +36,6 @@ DimredTab::DimredTab(QWidget *parent) :
 	connect(actionCycleBackward, &QAction::triggered, [this] {
 		auto s = transformSelect;
 		s->setCurrentIndex((s->count() + s->currentIndex() - 1) % s->count());
-	});
-	connect(actionComputeDisplay, &QAction::triggered, [this] {
-		auto methods = dimred::availableMethods();
-		auto menu = new QMenu(this);
-		for (const auto& m : methods) {
-			if (transformSelect->findText(m.id) >= 0)
-				continue;
-
-			menu->addAction(m.description, [this, m] { emit computeDisplay(m.name); });
-		}
-		menu->popup(QCursor::pos());
 	});
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, transformSelect->currentText());
@@ -61,6 +55,9 @@ void DimredTab::init(Dataset *data)
 		transformSelect->clear();
 		scene->clear();
 		setEnabled(false);
+
+		// note: as we are disabled the user has no chance to compute a display!
+		// luckily, PCA is always computed by default
 	});
 	connect(this, &Viewer::inRepartition, this, [this] {
 		scene->clearPartitions();
@@ -86,5 +83,19 @@ void DimredTab::init(Dataset *data)
 	connect(data, &Dataset::newDisplay, this, [this] (const QString &display) {
 		transformSelect->addItem(display); // duplicates ignored
 		transformSelect->setCurrentText(display);
+		// remove from offered calculations
+		updateComputeMenu();
 	});
+}
+
+void DimredTab::updateComputeMenu() {
+	auto methods = dimred::availableMethods();
+	auto menu = new QMenu(this->window());
+	for (const auto& m : methods) {
+		if (transformSelect->findText(m.id) >= 0)
+			continue;
+
+		menu->addAction(m.description, [this, m] { emit computeDisplay(m.name); });
+	}
+	actionComputeDisplay->setMenu(menu);
 }
