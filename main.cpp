@@ -20,6 +20,10 @@ int main(int argc, char *argv[])
 	qRegisterMetaType<QVector<QColor>>();
 	qRegisterMetaType<Dataset::OrderBy>();
 
+	// revisit these at a later time
+	//QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+	//QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
 	QApplication a(argc, argv);
 
 	// setup icons we ship as fallback for theme icons
