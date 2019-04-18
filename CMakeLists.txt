@@ -25,13 +25,13 @@ export_version(main.cpp)
 ## PLATFORM SUPPORT
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	set_target_properties(belki PROPERTIES LINK_FLAGS_RELEASE "-Wl,-subsystem,windows")
-	target_sources(belki PRIVATE gfx/windows.rc)
-	export_version(gfx/windows.rc)
+	target_sources(belki PRIVATE resources/windows.rc)
+	export_version(resources/windows.rc)
 endif()
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darvin")
 	set(MACOSX_BUNDLE_ICON_FILE icon.icns)
-	set_source_files_properties(gfx/icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-	target_sources(belki PRIVATE gfx/icon.icns)
+	set_source_files_properties(resources/icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+	target_sources(belki PRIVATE resources/icon.icns)
 endif()
 
 ## SOURCES
@@ -45,7 +45,11 @@ target_sources(belki PRIVATE
 target_sources(belki PRIVATE storage/qzip.h storage/miniz.h storage/miniz.c)
 
 # resources
-target_sources(belki PRIVATE resources.qrc gfx/breeze-subset.qrc)
+target_sources(belki PRIVATE
+	resources/index.qrc
+	resources/icons-stock/index.qrc
+	resources/icons-custom/index.qrc
+	)
 
 # main application
 target_sources(belki PRIVATE

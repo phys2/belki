@@ -14,8 +14,8 @@
    <string>Belki</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="resources.qrc">
-    <normaloff>:/icons/appicon</normaloff>:/icons/appicon</iconset>
+   <iconset resource="resources/index.qrc">
+    <normaloff>:/appicon</normaloff>:/appicon</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -543,8 +543,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="resources.qrc">
-     <normaloff>:/icons/show-partition</normaloff>:/icons/show-partition</iconset>
+    <iconset resource="resources/icons-custom/index.qrc">
+     <normaloff>:/icons/show-partition.svg</normaloff>:/icons/show-partition.svg</iconset>
    </property>
    <property name="text">
     <string>Show Partition</string>
@@ -658,7 +658,8 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="resources.qrc"/>
+  <include location="resources/index.qrc"/>
+  <include location="resources/icons-custom/index.qrc"/>
  </resources>
  <connections/>
 </ui>

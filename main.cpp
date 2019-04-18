@@ -22,9 +22,11 @@ int main(int argc, char *argv[])
 
 	QApplication a(argc, argv);
 
-	// setup our custom icon theme if there is no system theme (e.g. OSX, Windows)
-	if (QIcon::themeName().isEmpty() || QIcon::themeName() == "hicolor")
-		QIcon::setThemeName("Breeze");
+	// setup icons we ship as fallback for theme icons
+	QIcon::setFallbackSearchPaths(QIcon::fallbackSearchPaths() << ":/icons");
+	// on non-theme platforms, we need to tell Qt to even _try_
+	if (QIcon::themeName().isEmpty())
+		QIcon::setThemeName("hicolor");
 
 	MainWindow window;
 	window.show();

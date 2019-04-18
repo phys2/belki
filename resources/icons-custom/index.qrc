@@ -1,0 +1,8 @@
+<RCC>
+	<qresource prefix="/icons">
+		<file>show-partition.svg</file>
+		<file>show-average.svg</file>
+		<file>show-individual.svg</file>
+		<file>show-labels.svg</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,20 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>application-exit.svg</file>
+        <file>arrow-left.svg</file>
+        <file>arrow-right.svg</file>
+        <file>camera-photo.svg</file>
+        <file>document-export.svg</file>
+        <file>document-open.svg</file>
+        <file>document-preview.svg</file>
+        <file>document-save.svg</file>
+        <file>draw-star.svg</file>
+        <file>edit-delete.svg</file>
+        <file>help-about.svg</file>
+        <file>index.qrc</file>
+        <file>list-add.svg</file>
+        <file>lock.svg</file>
+        <file>object-columns.svg</file>
+        <file>view-fullscreen.svg</file>
+    </qresource>
+</RCC>
