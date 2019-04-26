@@ -19,6 +19,7 @@ int main(int argc, char *argv[])
 	// register additional types needed in queued connections
 	qRegisterMetaType<QVector<QColor>>();
 	qRegisterMetaType<Dataset::OrderBy>();
+	qRegisterMetaType<Dataset::Configuration>();
 
 	// revisit these at a later time
 	//QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);

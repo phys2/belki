@@ -91,6 +91,14 @@ public:
 		std::vector<unsigned> rankOf; // position of each protein in the order
 	};
 
+	// a configuration that describes processing resulting in a dataset
+	struct Configuration {
+		QString name; // user-specified identifier
+
+		unsigned parent = 0; // index of the dataset this one was spawned from
+		std::vector<unsigned> bands; // the feature bands that were kept
+	};
+
 	struct Public {
 		// helper for finding proteins, name may contain species, throws
 		unsigned find(const QString &name) {
@@ -100,9 +108,12 @@ public:
 
 		QStringList dimensions;
 
+		// meta information for this dataset
+		Configuration conf;
+
 		std::map<QString, unsigned> protIndex; // map indentifiers to index in vectors
 
-		// meta data
+		// protein meta data (TODO: keep outside of dataset and have pointer in dataset?)
 		std::vector<Protein> proteins;
 
 		// original data
@@ -138,9 +149,11 @@ public:
 		QReadWriteLock &l;
 	};
 
+	Dataset();
+
 	static const std::map<Dataset::OrderBy, QString> availableOrders();
 
-	View peek() { return View(d, l); }
+	View peek() { return View(*d, l); }
 
 	void changeFAMS(float k); // to be called from different thread
 	void cancelFAMS(); // can be called from different thread
@@ -179,7 +192,11 @@ protected:
 	QByteArray writeDisplay(const QString &name);
 	static QStringList trimCrap(QStringList values);
 
-	Public d;
+	// vector of loaded datasets
+	std::vector<Public> datasets;
+	// the currently used/exposed dataset in datasets
+	Public *d;
+	// lock that we use when accessing datasets
 	QReadWriteLock l{QReadWriteLock::RecursionMode::Recursive};
 
 	struct {
@@ -189,5 +206,7 @@ protected:
 
 	QVector<QColor> colorset = {Qt::black};
 };
+
+Q_DECLARE_METATYPE(Dataset::Configuration)
 
 #endif // DATASET_H
