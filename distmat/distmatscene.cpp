@@ -95,7 +95,7 @@ void DistmatScene::reset(bool haveData)
 	// setup new dimension labels
 	auto dim = data.peek()->dimensions; // QStringList COW
 	for (int i = 0; i < dim.size(); ++i)
-		dimensionLabels.emplace_back(this, (qreal)(i+0.5)/dim.size(), dim[i]);
+		dimensionLabels.emplace_back(this, (qreal)(i+0.5)/dim.size(), dim.at(i));
 
 	// trigger computation (also set dimension label visibilty)
 	setDirection(currentDirection);
@@ -146,7 +146,7 @@ void DistmatScene::recolor()
 			clusterbar.setPixelColor(i, 0, Qt::transparent);
 			break;
 		case 1:
-			clusterbar.setPixelColor(i, 0, cl.clusters[*assoc.begin()].color);
+			clusterbar.setPixelColor(i, 0, cl.clusters.at(*assoc.begin()).color);
 			break;
 		default:
 			clusterbar.setPixelColor(i, 0, Qt::white);

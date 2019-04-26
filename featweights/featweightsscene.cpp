@@ -371,7 +371,7 @@ void FeatweightsScene::WeightBar::hoverMoveEvent(QGraphicsSceneHoverEvent *event
 	}
 
 	// set tooltip to reflect hovered component
-	this->setToolTip(scene()->data.peek()->dimensions[index]);
+	this->setToolTip(scene()->data.peek()->dimensions.at(index));
 
 	// highlight the hovered component
 	highlight = index;

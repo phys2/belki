@@ -890,7 +890,7 @@ Dataset::Range::Range(const std::vector<std::vector<double> > &source)
 	}
 }
 
-double Dataset::Range::scale()
+double Dataset::Range::scale() const
 {
 	return 1./(max - min);
 }

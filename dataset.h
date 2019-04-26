@@ -38,7 +38,7 @@ public:
 		Range() = default;
 		Range(double min, double max) : min(min), max(max) {}
 
-		double scale();
+		double scale() const;
 
 		double min;
 		double max;
@@ -65,7 +65,7 @@ public:
 
 	struct Clustering {
 		explicit Clustering(size_t numProteins = 0) : memberships(numProteins) {}
-		bool empty() { return clusters.empty(); }
+		bool empty() const { return clusters.empty(); }
 
 		// cluster definitions
 		std::unordered_map<unsigned, Cluster> clusters;
@@ -101,10 +101,10 @@ public:
 
 	struct Public {
 		// helper for finding proteins, name may contain species, throws
-		unsigned find(const QString &name) {
+		unsigned find(const QString &name) const {
 			return protIndex.at(name.split('_').front());
 		}
-		bool hasScores() { return !scores.empty(); }
+		bool hasScores() const { return !scores.empty(); }
 
 		QStringList dimensions;
 
@@ -138,14 +138,14 @@ public:
 	};
 
 	struct View {
-		View(Public &d, QReadWriteLock &l) : data(d), l(l) { l.lockForRead(); }
+		View(const Public &d, QReadWriteLock &l) : data(d), l(l) { l.lockForRead(); }
 		View(const View&) = delete;
 		View(View&& o) : data(o.data), l(o.l) {}
 		~View() { l.unlock(); }
-		Public& operator()() { return data; }
-		Public* operator->() { return &data; }
+		const Public& operator()() { return data; }
+		const Public* operator->() { return &data; }
 	protected:
-		Public &data;
+		const Public &data;
 		QReadWriteLock &l;
 	};
 

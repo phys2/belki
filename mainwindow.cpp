@@ -441,7 +441,7 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 		auto &p = d->proteins[i];
 		auto &m = d->clustering.memberships[i];
 		auto clusters = std::accumulate(m.begin(), m.end(), QStringList(),
-		    [&d] (QStringList a, unsigned b) { return a << d->clustering.clusters[b].name; });
+		    [&d] (QStringList a, unsigned b) { return a << d->clustering.clusters.at(b).name; });
 		content.append(tpl.arg(p.name, p.species, clusters.join(", "), p.description));
 	}
 	cursorList->setText(text.arg(content));
