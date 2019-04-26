@@ -191,6 +191,7 @@ protected:
 
 	QByteArray writeDisplay(const QString &name);
 	static QStringList trimCrap(QStringList values);
+	static std::vector<QVector<QPointF>> pointify(const std::vector<std::vector<double>> &in);
 
 	// vector of loaded datasets
 	std::vector<Public> datasets;

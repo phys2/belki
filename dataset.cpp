@@ -202,12 +202,7 @@ bool Dataset::readSource(QTextStream in)
 	target.featureRange = {0., 1.}; // TODO: we enforced normalization (make config.)
 
 	/* pre-cache features as QPoints for plotting */
-	for (auto in : target.features) {
-		QVector<QPointF> points(in.size());
-		for (size_t i = 0; i < in.size(); ++i)
-			points[i] = {(qreal)i, in[i]};
-		target.featurePoints.push_back(std::move(points));
-	}
+	target.featurePoints = pointify(target.features);
 
 	/* time to flip */ // TODO: create new entry in datasets instead
 	QWriteLocker _(&l);
@@ -337,12 +332,7 @@ bool Dataset::readScoredSource(QTextStream &in)
 	target.scoreRange = Range(target.scores);
 
 	/* pre-cache features as QPoints for plotting */
-	for (auto in : target.features) {
-		QVector<QPointF> points(in.size());
-		for (size_t i = 0; i < in.size(); ++i)
-			points[i] = {(qreal)i, in[i]};
-		target.featurePoints.push_back(std::move(points));
-	}
+	target.featurePoints = pointify(target.features);
 
 	/* time to flip */ // TODO: create new entry in datasets instead
 	QWriteLocker _(&l);
@@ -831,6 +821,18 @@ void Dataset::orderProteins(OrderBy reference)
 
 	QWriteLocker _(&l);
 	d->order = target;
+}
+
+std::vector<QVector<QPointF>> Dataset::pointify(const std::vector<std::vector<double> > &in)
+{
+	std::vector<QVector<QPointF>> ret;
+	for (auto f : in) {
+		QVector<QPointF> points(f.size());
+		for (size_t i = 0; i < f.size(); ++i)
+			points[i] = {(qreal)i, f[i]};
+		ret.push_back(std::move(points));
+	}
+	return ret;
 }
 
 QStringList Dataset::trimCrap(QStringList values)
