@@ -276,7 +276,7 @@ bool Dataset::readScoredSource(QTextStream &in)
 		index = dimensions.find(line[nameCol]);
 		if (index == dimensions.end()) {
 			target.dimensions.append(line[nameCol]);
-			auto len = target.dimensions.size();
+			auto len = (size_t)target.dimensions.size();
 			for (auto &i : target.features)
 				i.resize(len);
 			for (auto &i : target.scores)
