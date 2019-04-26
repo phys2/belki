@@ -266,7 +266,8 @@ QVector<unsigned> Storage::importMarkers(const QString &filename)
 
 	QVector<unsigned> ret;
 	QTextStream in(&f);
-	auto d = data.peek(); // TODO: avoid acquiring read lock in writer thread!
+	// TODO: it is not obvious here but this method is not called from writer thread!
+	auto d = data.peek();
 	while (!in.atEnd()) {
 		QString name;
 		in >> name;
@@ -286,7 +287,8 @@ void Storage::exportMarkers(const QString &filename, const QVector<unsigned> &in
 		return ioError(QString("Could not write file %1!").arg(filename));
 
 	QTextStream out(&f);
-	auto d = data.peek(); // TODO: avoid acquiring read lock in writer thread!
+	// TODO: it is not obvious here but this method is not called from writer thread!
+	auto d = data.peek();
 	for (auto i : indices) {
 		auto &p = d->proteins[i];
 		out << p.name;
