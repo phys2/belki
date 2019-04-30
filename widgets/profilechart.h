@@ -1,12 +1,11 @@
 #ifndef PROFILECHART_H
 #define PROFILECHART_H
 
-#include "dataset.h"
-
 #include <QStringList>
 #include <QChart>
 
 class ProfileWindow;
+class Dataset;
 
 namespace QtCharts {
 class QAreaSeries;

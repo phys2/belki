@@ -1,5 +1,6 @@
 #include "profilechart.h"
 #include "profilewindow.h"
+#include "dataset.h"
 
 #include <QLineSeries>
 #include <QAreaSeries>
@@ -10,10 +11,10 @@
 #include <opencv2/core/core.hpp>
 
 
+/* small, inset plot constructor */
 ProfileChart::ProfileChart(Dataset &data)
     : data(data)
 {
-	/* small plot constructor */
 	setMargins({0, 10, 0, 0});
 
 	ax = new QtCharts::QBarCategoryAxis;
@@ -26,10 +27,10 @@ ProfileChart::ProfileChart(Dataset &data)
 	legend()->hide();
 }
 
+/* big, labelled plot constructor */
 ProfileChart::ProfileChart(ProfileChart *source)
     : content(source->content), stats(source->stats), data(source->data)
 {
-	/* big, labelled plot constructor */
 	auto ax = new QtCharts::QCategoryAxis;
 	this->ax = ax; // keep QCategoryAxis* in this method
 	ay = new QtCharts::QValueAxis;
