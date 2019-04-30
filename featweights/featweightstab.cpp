@@ -30,13 +30,13 @@ FeatweightsTab::FeatweightsTab(QWidget *parent) :
 
 void FeatweightsTab::init(Dataset *data)
 {
-	scene = new FeatweightsScene(*data);
+	scene = std::make_unique<FeatweightsScene>(*data);
 
-	connect(this, &Viewer::inToggleMarker, scene, &FeatweightsScene::toggleMarker);
-	connect(this, &Viewer::inUpdateColorset, scene, &FeatweightsScene::updateColorset);
-	connect(this, &Viewer::inReset, scene, &FeatweightsScene::reset);
+	connect(this, &Viewer::inToggleMarker, scene.get(), &FeatweightsScene::toggleMarker);
+	connect(this, &Viewer::inUpdateColorset, scene.get(), &FeatweightsScene::updateColorset);
+	connect(this, &Viewer::inReset, scene.get(), &FeatweightsScene::reset);
 
-	connect(scene, &FeatweightsScene::cursorChanged, this, &Viewer::cursorChanged);
+	connect(scene.get(), &FeatweightsScene::cursorChanged, this, &Viewer::cursorChanged);
 
 	connect(this, &Viewer::inReset, [this, data] (bool haveData) {
 		// we are good to go on reset(true), but not on reset(false)
@@ -58,7 +58,7 @@ void FeatweightsTab::init(Dataset *data)
 		emit exportRequested(view, "Distance Matrix");
 	});
 
-	connect(actionToggleChart, &QAction::toggled, scene, &FeatweightsScene::toggleImage);
+	connect(actionToggleChart, &QAction::toggled, scene.get(), &FeatweightsScene::toggleImage);
 
 	auto syncWeighting = [this] {
 		scene->changeWeighting(weightingSelect->currentData().value<FeatweightsScene::Weighting>());
@@ -70,7 +70,7 @@ void FeatweightsTab::init(Dataset *data)
 		scene->applyScoreThreshold(v * 0.01);
 	});
 
-	view->setScene(scene);
+	view->setScene(scene.get());
 }
 
 void FeatweightsTab::setupWeightingUI()

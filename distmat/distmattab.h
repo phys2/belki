@@ -4,6 +4,8 @@
 #include "ui_distmattab.h"
 #include "viewer.h"
 
+#include <memory>
+
 class DistmatScene;
 
 class DistmatTab : public Viewer, private Ui::DistmatTab
@@ -17,7 +19,7 @@ public:
 protected:
 	void setupOrderUI();
 
-	DistmatScene *scene;
+	std::unique_ptr<DistmatScene> scene;
 };
 
 #endif // distmatTAB_H

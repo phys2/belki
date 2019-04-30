@@ -4,6 +4,8 @@
 #include "ui_heatmaptab.h"
 #include "viewer.h"
 
+#include <memory>
+
 class HeatmapScene;
 
 class HeatmapTab : public Viewer, private Ui::HeatmapTab
@@ -17,7 +19,7 @@ public:
 protected:
 	void setupOrderUI();
 
-	HeatmapScene *scene;
+	std::unique_ptr<HeatmapScene> scene;
 };
 
 #endif // HEATMAPTAB_H

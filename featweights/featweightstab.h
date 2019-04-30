@@ -5,6 +5,7 @@
 #include "viewer.h"
 
 #include <vector>
+#include <memory>
 
 class FeatweightsScene;
 class QAction;
@@ -22,7 +23,7 @@ protected:
 
 	void setupWeightingUI();
 
-	FeatweightsScene *scene;
+	std::unique_ptr<FeatweightsScene> scene;
 };
 
 #endif

@@ -15,21 +15,21 @@ DistmatTab::DistmatTab(QWidget *parent) :
 
 void DistmatTab::init(Dataset *data)
 {
-	scene = new DistmatScene(*data);
+	scene = std::make_unique<DistmatScene>(*data);
 
-	connect(this, &Viewer::inUpdateColorset, scene, &DistmatScene::updateColorset);
-	connect(this, &Viewer::inReset, scene, &DistmatScene::reset);
+	connect(this, &Viewer::inUpdateColorset, scene.get(), &DistmatScene::updateColorset);
+	connect(this, &Viewer::inReset, scene.get(), &DistmatScene::reset);
 	connect(this, &Viewer::inRepartition, [this] (bool withOrder) {
 		if (withOrder)
 			scene->reorder(); // implies recolor()
 		else
 			scene->recolor();
 	});
-	connect(this, &Viewer::inReorder, scene, &DistmatScene::reorder);
-	connect(this, &Viewer::inToggleMarker, scene, &DistmatScene::toggleMarker);
-	connect(this, &Viewer::inTogglePartitions, scene, &DistmatScene::togglePartitions);
+	connect(this, &Viewer::inReorder, scene.get(), &DistmatScene::reorder);
+	connect(this, &Viewer::inToggleMarker, scene.get(), &DistmatScene::toggleMarker);
+	connect(this, &Viewer::inTogglePartitions, scene.get(), &DistmatScene::togglePartitions);
 
-	connect(scene, &DistmatScene::cursorChanged, this, &Viewer::cursorChanged);
+	connect(scene.get(), &DistmatScene::cursorChanged, this, &Viewer::cursorChanged);
 
 	// we are good to go on reset(true), but not on reset(false)
 	connect(this, &Viewer::inReset, [this] (bool haveData) { setEnabled(haveData); });
@@ -45,7 +45,7 @@ void DistmatTab::init(Dataset *data)
 		emit exportRequested(view, "Distance Matrix");
 	});
 
-	view->setScene(scene);
+	view->setScene(scene.get());
 }
 
 /* Note: shared code between DistmatTab and HeatmapTab */

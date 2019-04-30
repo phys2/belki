@@ -15,30 +15,30 @@ HeatmapTab::HeatmapTab(QWidget *parent) :
 
 void HeatmapTab::init(Dataset *data)
 {
-	scene = new HeatmapScene(*data);
+	scene = std::make_unique<HeatmapScene>(*data);
 
-	connect(this, &Viewer::inUpdateColorset, scene, &HeatmapScene::updateColorset);
-	connect(this, &Viewer::inReset, scene, &HeatmapScene::reset);
+	connect(this, &Viewer::inUpdateColorset, scene.get(), &HeatmapScene::updateColorset);
+	connect(this, &Viewer::inReset, scene.get(), &HeatmapScene::reset);
 	connect(this, &Viewer::inRepartition, [this] (bool withOrder) {
 		if (withOrder)
 			scene->reorder();
 		scene->recolor();
 	});
-	connect(this, &Viewer::inReorder, scene, &HeatmapScene::reorder);
-	connect(this, &Viewer::inToggleMarker, scene, &HeatmapScene::toggleMarker);
-	connect(this, &Viewer::inTogglePartitions, scene, &HeatmapScene::togglePartitions);
+	connect(this, &Viewer::inReorder, scene.get(), &HeatmapScene::reorder);
+	connect(this, &Viewer::inToggleMarker, scene.get(), &HeatmapScene::toggleMarker);
+	connect(this, &Viewer::inTogglePartitions, scene.get(), &HeatmapScene::togglePartitions);
 
-	connect(scene, &HeatmapScene::cursorChanged, this, &Viewer::cursorChanged);
+	connect(scene.get(), &HeatmapScene::cursorChanged, this, &Viewer::cursorChanged);
 
 	// we are good to go on reset(true), but not on reset(false)
 	connect(this, &Viewer::inReset, [this] (bool haveData) { setEnabled(haveData); });
 
 	connect(actionToggleSingleCol, &QAction::toggled, view, &HeatmapView::setColumnMode);
 	connect(actionSavePlot, &QAction::triggered, [this] {
-		emit exportRequested(scene, "Heatmap");
+		emit exportRequested(scene.get(), "Heatmap");
 	});
 
-	view->setScene(scene);
+	view->setScene(scene.get());
 }
 
 /* Note: shared code between DistmatTab and HeatmapTab */
