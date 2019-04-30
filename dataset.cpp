@@ -39,7 +39,7 @@ void Dataset::computeDisplay(const QString& name)
 void Dataset::computeDisplays()
 {
 	/* compute PCA displays as a fast starting point */
-	if (!d->display.contains("PCA 12"))
+	if (!d->display.count("PCA 12"))
 		computeDisplay("PCA");
 }
 
@@ -371,7 +371,7 @@ QByteArray Dataset::writeDisplay(const QString &name)
 	// note: no read lock as we are write thread
 	QByteArray ret;
 	QTextStream out(&ret, QIODevice::WriteOnly);
-	auto &data = d->display[name];
+	auto &data = d->display.at(name);
 	for (auto it = data.constBegin(); it != data.constEnd(); ++it)
 		out << it->x() << "\t" << it->y() << endl;
 

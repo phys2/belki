@@ -126,7 +126,7 @@ public:
 		Range scoreRange;
 
 		// feature reduced point sets
-		QMap<QString, QVector<QPointF>> display;
+		std::map<QString, QVector<QPointF>> display;
 
 		// clusters / hierarchy, if available
 		Clustering clustering;

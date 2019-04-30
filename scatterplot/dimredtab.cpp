@@ -74,9 +74,9 @@ void DimredTab::init(Dataset *data)
 	/* setup transform select in relationship with dataset */
 	connect(transformSelect, &QComboBox::currentTextChanged, [this, data] (auto name) {
 		auto d = data->peek();
-		if (name.isEmpty() || !d->display.contains(name))
+		if (name.isEmpty() || !d->display.count(name))
 			return;
-		scene->display(d->display[name]);
+		scene->display(d->display.at(name));
 		setEnabled(true);
 	});
 	connect(this, &DimredTab::computeDisplay, data, &Dataset::computeDisplay);
