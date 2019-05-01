@@ -61,12 +61,13 @@ public:
 		std::map<Qt::Edge, QGraphicsPixmapItem*> items;
 	};
 
-	DistmatScene(Dataset &data);
+	DistmatScene(Dataset &data, bool dialogMode = false);
 
 	void setViewport(const QRectF &rect, qreal scale) override;
 
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
+	void selectionChanged(const std::vector<bool> dimensionSelected);
 
 public slots:
 	void reset(bool haveData = false);
@@ -81,6 +82,7 @@ public slots:
 
 protected:
 	void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
+	void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
 
 	void setDisplay();
 	void rearrange();
@@ -96,12 +98,17 @@ protected:
 
 	QGraphicsPixmapItem *display;
 
+	// we are used in a dialog
+	bool dialogMode;
 	// annotations used in PER_PROTEIN:
 	bool showPartitions = true;
 	Clusterbars clusterbars;
 	std::map<unsigned, Marker> markers;
 	// annotations used in PER_DIRECTION:
-	std::vector<LegendItem> dimensionLabels;
+	std::map<unsigned, LegendItem> dimensionLabels;
+
+	// dialog mode: selectable dimensions
+	std::vector<bool> dimensionSelected;
 };
 
 #endif // DISTMATSCENE_H

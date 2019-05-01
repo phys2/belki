@@ -7,16 +7,22 @@
 
 #include <QtDebug>
 
-DistmatScene::DistmatScene(Dataset &data)
-    : data(data), clusterbars(this)
+DistmatScene::DistmatScene(Dataset &data, bool dialogMode)
+    : data(data),
+      dialogMode(dialogMode),
+      clusterbars(this)
 {
 	display = new QGraphicsPixmapItem;
 	display->setShapeMode(QGraphicsPixmapItem::ShapeMode::BoundingRectShape);
-	display->setCursor(Qt::CursorShape::CrossCursor);
+	if (!dialogMode)
+		display->setCursor(Qt::CursorShape::CrossCursor);
 	addItem(display); // scene takes ownership and will clean it up
 
-	qreal offset = .1; // some "feel good" borders
-	setSceneRect({QPointF{-offset, -offset}, QPointF{1. + offset, 1. + offset}});
+	qreal offset = (dialogMode ? .01 : .1); // some "feel good" borders
+	QRectF rect{QPointF{-offset, -offset}, QPointF{1. + offset, 1. + offset}};
+	if (dialogMode) // hack: provide extra space for labels, educated guess
+		rect.adjust(-1., 0, 0, 0);
+	setSceneRect(rect);
 }
 
 void DistmatScene::setViewport(const QRectF &rect, qreal scale)
@@ -86,6 +92,7 @@ void DistmatScene::reset(bool haveData)
 	display->setVisible(false);
 	clusterbars.update({}); // clears
 	dimensionLabels.clear();
+	dimensionSelected.clear();
 	markers.clear();
 
 	if (!haveData) {
@@ -94,8 +101,9 @@ void DistmatScene::reset(bool haveData)
 
 	// setup new dimension labels
 	auto dim = data.peek()->dimensions; // QStringList COW
+	dimensionSelected.resize((size_t)dim.size(), true); // all dims selected by default
 	for (int i = 0; i < dim.size(); ++i)
-		dimensionLabels.emplace_back(this, (qreal)(i+0.5)/dim.size(), dim.at(i));
+		dimensionLabels.try_emplace((size_t)i, this, (qreal)(i+0.5)/dim.size(), dim.at(i));
 
 	// trigger computation (also set dimension label visibilty)
 	setDirection(currentDirection);
@@ -168,16 +176,16 @@ void DistmatScene::rearrange()
 	clusterbars.rearrange({topleft, botright}, outerMargin);
 
 	/* rescale & shift labels */
-	for (auto& [i, m] : markers)
+	for (auto &[_, m] : markers)
 		m.rearrange(viewport.left(), vpScale);
-	for (auto &l : dimensionLabels)
+	for (auto &[_, l] : dimensionLabels)
 		l.rearrange(viewport.left(), vpScale);
 }
 
 void DistmatScene::updateVisibilities()
 {
-	for (auto &l : dimensionLabels)
-		l.setVisible(currentDirection == Direction::PER_DIMENSION);
+	for (auto &[i, l] : dimensionLabels)
+		l.setVisible(currentDirection == Direction::PER_DIMENSION && dimensionSelected[i]);
 	for (auto &[_, m] : markers)
 		m.setVisible(currentDirection == Direction::PER_PROTEIN);
 	clusterbars.setVisible(showPartitions && currentDirection == Direction::PER_PROTEIN);
@@ -244,6 +252,22 @@ void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 	emit cursorChanged({idx.x, idx.y});
 }
 
+void DistmatScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
+{
+	if (dialogMode && display->scene() && currentDirection == Direction::PER_DIMENSION) {
+		// see mouseMoveEvent()
+		auto y = (unsigned)display->mapFromScene(event->scenePos()).y();
+		if (y < dimensionSelected.size()) {
+			dimensionSelected[y] = !dimensionSelected[y];
+			updateVisibilities();
+			emit selectionChanged(dimensionSelected);
+			event->accept();
+		}
+	}
+
+	QGraphicsScene::mouseReleaseEvent(event);
+}
+
 void DistmatScene::updateColorset(QVector<QColor> colors)
 {
 	colorset = colors;
@@ -267,17 +291,23 @@ DistmatScene::LegendItem::LegendItem(DistmatScene *scene, qreal coord, QString t
 
 void DistmatScene::LegendItem::setup(DistmatScene *scene, QString title, QColor color)
 {
-	QBrush fill(QColor{0, 0, 0, 127});
-	QPen outline(color.dark(300));
-	outline.setCosmetic(true);
-	backdrop.reset(scene->addRect({}));
-	backdrop->setBrush(fill);
-	backdrop->setPen(outline);
+	QColor bgColor{0, 0, 0, 127};
+	if (scene->dialogMode) {
+		color = Qt::black;
+		bgColor = {255, 255, 255, 191};
+	}
 
 	line.reset(scene->addLine({}));
 	QPen pen(color.darker(150));
 	pen.setCosmetic(true);
 	line->setPen(pen);
+
+	QBrush fill(bgColor);
+	QPen outline(color.dark(300));
+	outline.setCosmetic(true);
+	backdrop.reset(scene->addRect({}));
+	backdrop->setBrush(fill);
+	backdrop->setPen(outline);
 
 	// do label last, so it will be on top of its backdrop
 	label.reset(scene->addSimpleText(title));
