@@ -3,4 +3,5 @@ target_sources(belki PRIVATE
 	graphicsview.h graphicsview.cpp
 	profilechart.h profilechart.cpp
 	profilewindow.h profilewindow.cpp profilewindow.ui
+	spawndialog.h spawndialog.cpp spawndialog.ui
 	)

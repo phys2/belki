@@ -2,6 +2,7 @@
 #include "dataset.h"
 #include "widgets/profilechart.h"
 #include "widgets/profilewindow.h"
+#include "widgets/spawndialog.h"
 
 #include <QFileInfo>
 #include <QDir>
@@ -294,6 +295,14 @@ void MainWindow::setupActions()
 		store.exportMarkers(filename, indices);
 	});
 
+	connect(actionSplice, &QAction::triggered, [this] {
+		auto s = new SpawnDialog(data, this);
+		// spawn dialog deletes itself, should also kill connection+lambda, right?
+		connect(s, &SpawnDialog::spawn, [this] (const Dataset::Configuration& config) {
+			emit spawn(config, dimredTab->currentMethod().second.toString());
+		});
+	});
+
 	connect(actionProfileView, &QAction::triggered, [this] {
 		new ProfileWindow(cursorChart, this);
 	});
@@ -361,6 +370,7 @@ void MainWindow::clearData()
 	partitionSelect->addItem("Adaptive Mean Shift", {1});
 
 	/* hide and disable widgets that need data or even more */
+	actionSplice->setEnabled(false);
 	toolbarActions.partitions->setEnabled(false);
 	actionShowPartition->setChecked(false);
 	actionShowPartition->setEnabled(false);
@@ -389,6 +399,7 @@ void MainWindow::resetData()
 	resetMarkerControls();
 
 	/* re-enable actions that depend only on data */
+	actionSplice->setEnabled(true);
 	toolbarActions.partitions->setEnabled(true);
 }
 

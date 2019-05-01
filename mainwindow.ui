@@ -491,7 +491,14 @@
     </property>
     <addaction name="actionHelp"/>
    </widget>
+   <widget class="QMenu" name="menuDataset">
+    <property name="title">
+     <string>&amp;Dataset</string>
+    </property>
+    <addaction name="actionSplice"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuDataset"/>
    <addaction name="menuMarkers"/>
    <addaction name="menuHelp"/>
   </widget>
@@ -634,6 +641,18 @@
    </property>
    <property name="menuRole">
     <enum>QAction::QuitRole</enum>
+   </property>
+  </action>
+  <action name="actionSplice">
+   <property name="icon">
+    <iconset theme="document-new-from-template">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Splice dataset</string>
+   </property>
+   <property name="toolTip">
+    <string>Create a new dataset from the features of the current dataset</string>
    </property>
   </action>
  </widget>
