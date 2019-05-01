@@ -33,7 +33,7 @@ void Dataset::select(unsigned index)
 	emit selectedDataset();
 
 	for (auto &[i, _] : d->display)
-		emit newDisplay(i, i.split(" ").first()); // TODO: hack
+		emit newDisplay(i);
 
 	if (!d->clustering.empty())
 		emit newClustering(false);
@@ -89,18 +89,11 @@ void Dataset::spawn(const Configuration& conf, QString initialDisplay)
 	computeDisplays();
 
 	// current display
-	if (initialDisplay.isEmpty())
-		return;
-
-	const auto &ref = dimred::availableMethods();
-	if (std::none_of(ref.begin(), ref.end(), [&] (auto m) {
-		return m.name == initialDisplay && d->display.count(m.id);
-	})) {
+	if (!initialDisplay.isEmpty() && !d->display.count(initialDisplay))
 		computeDisplay(initialDisplay);
-	}
 }
 
-void Dataset::computeDisplay(const QString& name)
+void Dataset::computeDisplay(const QString& request)
 {
 	// empty data shouldn't happen but right now can when a file cannot be read completely,
 	// in the future this should result in IOError already earlier
@@ -108,15 +101,15 @@ void Dataset::computeDisplay(const QString& name)
 		return;
 
 	// note: no read lock as we are write thread
-	auto result = dimred::compute(name, d->features);
+	auto result = dimred::compute(request, d->features);
 
 	QWriteLocker _(&l);
-	for (auto fullname : result.keys()) {
-		d->display[fullname] = result[fullname]; // TODO move
+	for (auto name : result.keys()) {
+		d->display[name] = result[name]; // TODO move
 
 		// TODO: lookup in datasets[d->conf->parent].displays and perform rigid registration
 
-		emit newDisplay(fullname, name);
+		emit newDisplay(name);
 	}
 }
 
@@ -448,7 +441,7 @@ void Dataset::readDisplay(const QString& name, const QByteArray &tsv)
 		return ioError(QString("Display %1 length does not match source length!").arg(name));
 
 	d->display[name] = std::move(data);
-	emit newDisplay(name, name.split(" ").first()); // TODO: evil hack
+	emit newDisplay(name);
 }
 
 QByteArray Dataset::writeDisplay(const QString &name)

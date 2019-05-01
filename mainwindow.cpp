@@ -299,7 +299,7 @@ void MainWindow::setupActions()
 		auto s = new SpawnDialog(data, this);
 		// spawn dialog deletes itself, should also kill connection+lambda, right?
 		connect(s, &SpawnDialog::spawn, [this] (const Dataset::Configuration& config) {
-			emit spawn(config, dimredTab->currentMethod().second.toString());
+			emit spawn(config, dimredTab->currentMethod());
 		});
 	});
 

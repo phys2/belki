@@ -80,8 +80,8 @@ void DimredTab::init(Dataset *data)
 		setEnabled(true);
 	});
 	connect(this, &DimredTab::computeDisplay, data, &Dataset::computeDisplay);
-	connect(data, &Dataset::newDisplay, this, [this] (const QString &display, const QString &trigger) {
-		transformSelect->addItem(display, trigger);
+	connect(data, &Dataset::newDisplay, this, [this] (const QString &display) {
+		transformSelect->addItem(display);
 		// select new item
 		transformSelect->setCurrentText(display);
 		// remove from offered calculations
@@ -89,9 +89,9 @@ void DimredTab::init(Dataset *data)
 	});
 }
 
-std::pair<QString, QVariant> DimredTab::currentMethod() const
+QString DimredTab::currentMethod() const
 {
-	return {transformSelect->currentText(), transformSelect->currentData()};
+	return transformSelect->currentText();
 }
 
 void DimredTab::updateComputeMenu() {

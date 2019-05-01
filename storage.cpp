@@ -17,22 +17,25 @@ constexpr int storage_version = 1;
 Storage::Storage(Dataset &data)
     : data(data)
 {
-	connect(&data, &Dataset::newDisplay, [this] (auto name, auto trigger) {
-		if (!container)
-			return;
-
-		auto entryname = "input/" + sourcename + "/displays/" + name + ".tsv";
-		if (container->has_file(entryname))
-			return; // do not save redundant copies
-
-		auto tsv = this->data.writeDisplay(name);
-		container->write(entryname, tsv);
-	});
+	connect(&data, &Dataset::newDisplay, this, &Storage::storeDisplay);
 }
 
 Storage::~Storage()
 {
 	close(true);
+}
+
+void Storage::storeDisplay(const QString &name)
+{
+	if (!container)
+		return;
+
+	auto entryname = "input/" + sourcename + "/displays/" + name + ".tsv";
+	if (container->has_file(entryname))
+		return; // do not save redundant copies
+
+	auto tsv = data.writeDisplay(name);
+	container->write(entryname, tsv);
 }
 
 void Storage::openDataset(const QString &filename)

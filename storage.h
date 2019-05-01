@@ -33,6 +33,7 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void exportAnnotations(const QString &filename);
 
 protected:
+	void storeDisplay(const QString& name);
 	void freadError(const QString &filename);
 
 	void close(bool save = false);
