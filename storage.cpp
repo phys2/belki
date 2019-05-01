@@ -7,6 +7,7 @@
 #include <QCryptographicHash> // for checksum
 #include <QTextStream>
 #include <QRegularExpression>
+#include <QRegularExpressionMatch>
 #include <QtDebug>
 
 /* storage version, increase on breaking changes */
@@ -69,10 +70,12 @@ void Storage::openDataset(const QString &filename)
 	auto calc_checksum = [] (auto data) { return QCryptographicHash::hash(data, QCryptographicHash::Sha256).toHex(); };
 	auto read_auxiliary = [this] (auto &contents) {
 		// displays – read at start
-		auto re = QString("^input/%1/displays/.*\\.tsv$").arg(QRegularExpression::escape(sourcename));
-		auto de = contents.filter(QRegularExpression(re));
+		auto re = QRegularExpression(
+		              QString("^input/%1/displays/(?<name>.*)\\.tsv$")
+		              .arg(QRegularExpression::escape(sourcename)));
+		auto de = contents.filter(re);
 		for (auto &d : qAsConst(de))
-			data.readDisplay(QFileInfo(d).completeBaseName(), container->read(d));
+			data.readDisplay(re.match(d).captured("name"), container->read(d));
 
 		// annotations
 		auto an = contents.filter(QRegularExpression("^annotations/.*\\.tsv$"));

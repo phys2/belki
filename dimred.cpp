@@ -143,8 +143,10 @@ QMap<QString, QVector<QPointF>> compute(QString m, const std::vector<std::vector
 
 	// store result chart-readable: 3D → 2D
 	if (m.startsWith("PCA") || m.startsWith("kPCA") || m.startsWith("MDS")) {
+		// hack: ensure the name does not yet contain dimension markers
+		m = m.split("/").first();
 		std::map<QString, std::pair<int, int>> map = {
-		    {{m + " 12"}, {0, 1}}, {{m + " 13"}, {0, 2}}, {{m + " 23"}, {1, 2}}
+		    {{m + "/12"}, {0, 1}}, {{m + "/13"}, {0, 2}}, {{m + "/23"}, {1, 2}}
 		};
 		QMap<QString, QVector<QPointF>> ret;
 		for (const auto& [name, cols] : map) {
