@@ -47,7 +47,11 @@
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="partitionSelect"/>
+        <widget class="QComboBox" name="partitionSelect">
+         <property name="sizeAdjustPolicy">
+          <enum>QComboBox::AdjustToContents</enum>
+         </property>
+        </widget>
        </item>
        <item>
         <widget class="QSlider" name="granularitySlider">
