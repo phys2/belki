@@ -387,6 +387,12 @@ void MainWindow::clearData()
 
 void MainWindow::resetData()
 {
+	/* save marker names to carry them over */
+	std::vector<QString> markedProteins;
+	for (auto m : qAsConst(this->markerItems))
+		if (m->checkState() == Qt::Checked)
+			markedProteins.push_back(m->text());
+
 	clearData();
 
 	/* reset views first (before our widgets emit signals) */
@@ -401,6 +407,14 @@ void MainWindow::resetData()
 	/* re-enable actions that depend only on data */
 	actionSplice->setEnabled(true);
 	toolbarActions.partitions->setEnabled(true);
+
+	/* restore markers from names */
+	auto d = data.peek();
+	for (auto &name : markedProteins) {
+		try {
+			this->markerItems[d->find(name)]->setCheckState(Qt::Checked);
+		} catch (std::out_of_range&) {}
+	}
 }
 
 void MainWindow::newData(unsigned index)
