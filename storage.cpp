@@ -30,6 +30,9 @@ void Storage::storeDisplay(const QString &name)
 	if (!container)
 		return;
 
+	if (data.d->conf.parent < 0)
+		return; // TODO: temporary hack to avoid saving from sliced data
+
 	auto entryname = "input/" + sourcename + "/displays/" + name + ".tsv";
 	if (container->has_file(entryname))
 		return; // do not save redundant copies

@@ -95,7 +95,7 @@ public:
 	struct Configuration {
 		QString name; // user-specified identifier
 
-		unsigned parent = 0; // index of the dataset this one was spawned from
+		int parent = -1; // index of the dataset this one was spawned from
 		std::vector<unsigned> bands; // the feature bands that were kept
 	};
 
