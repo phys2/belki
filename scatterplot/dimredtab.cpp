@@ -89,6 +89,11 @@ void DimredTab::init(Dataset *data)
 	});
 }
 
+std::pair<QString, QVariant> DimredTab::currentMethod() const
+{
+	return {transformSelect->currentText(), transformSelect->currentData()};
+}
+
 void DimredTab::updateComputeMenu() {
 	auto methods = dimred::availableMethods();
 	auto menu = new QMenu(this->window());

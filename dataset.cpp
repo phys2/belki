@@ -52,9 +52,12 @@ void Dataset::computeDisplay(const QString& name)
 	auto result = dimred::compute(name, d->features);
 
 	QWriteLocker _(&l);
-	for (auto name : result.keys()) {
-		d->display[name] = result[name];
-		emit newDisplay(name);
+	for (auto fullname : result.keys()) {
+		d->display[fullname] = result[fullname]; // TODO move
+
+		// TODO: lookup in datasets[d->conf->parent].displays and perform rigid registration
+
+		emit newDisplay(fullname, name);
 	}
 }
 
@@ -386,7 +389,7 @@ void Dataset::readDisplay(const QString& name, const QByteArray &tsv)
 		return ioError(QString("Display %1 length does not match source length!").arg(name));
 
 	d->display[name] = std::move(data);
-	emit newDisplay(name);
+	emit newDisplay(name, name.split(" ").first()); // TODO: evil hack
 }
 
 QByteArray Dataset::writeDisplay(const QString &name)

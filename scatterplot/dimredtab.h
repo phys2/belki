@@ -14,6 +14,8 @@ public:
 	explicit DimredTab(QWidget *parent = nullptr);
 	void init(Dataset *data) override;
 
+	std::pair<QString, QVariant> currentMethod() const;
+
 signals:
 	void computeDisplay(const QString &name); // to data&storage thread
 

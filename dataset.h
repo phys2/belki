@@ -161,7 +161,7 @@ public:
 signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
 	void selectedDataset();
 	void newDataset(unsigned id);
-	void newDisplay(const QString &name);
+	void newDisplay(const QString &name, const QString &trigger);
 	void newClustering(bool withOrder = false);
 	void newHierarchy(bool withOrder = false);
 	void newOrder();
