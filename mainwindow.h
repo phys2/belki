@@ -30,6 +30,7 @@ public:
 signals:
 	// to Dataset/Storage thread
 	void selectDataset(unsigned index);
+	void spawn(const Dataset::Configuration& config, QString initialDisplay = {});
 	void openDataset(const QString &filename);
 	void readAnnotations(const QString &name);
 	void readHierarchy(const QString &name);

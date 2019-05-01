@@ -164,6 +164,7 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::importHierarchy, &store, &Storage::importHierarchy);
 	connect(this, &MainWindow::exportAnnotations, &store, &Storage::exportAnnotations);
 	connect(this, &MainWindow::selectDataset, &data, &Dataset::select);
+	connect(this, &MainWindow::spawn, &data, &Dataset::spawn);
 	connect(this, &MainWindow::clearClusters, &data, &Dataset::clearClusters);
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
 	connect(this, &MainWindow::runFAMS, &data, &Dataset::computeFAMS);

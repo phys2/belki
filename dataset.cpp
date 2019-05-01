@@ -8,6 +8,7 @@
 #include <QRegularExpression>
 #include <QCollator>
 
+#include <tbb/parallel_for_each.h>
 #include <unordered_set>
 
 #include <QDebug>
@@ -39,6 +40,64 @@ void Dataset::select(unsigned index)
 	if (!d->hierarchy.empty())
 		emit newHierarchy(false);
 	// TODO: synchronization of GUI order states and the order in the data
+}
+
+void Dataset::spawn(const Configuration& conf, QString initialDisplay)
+{
+	const Public &source = datasets[conf.parent];
+	Public target;
+	target.conf = conf;
+
+	// only carry over dimensions we keep
+	for (auto i : conf.bands)
+		target.dimensions.append(source.dimensions.at((size_t)i));
+
+	target.protIndex = source.protIndex;
+	target.proteins = source.proteins;
+
+	// only carry over features/scores we keep
+	auto fill_stripped = [&conf] (const auto &source, auto &target) {
+		target.resize(source.size(), std::vector<double>(conf.bands.size()));
+		tbb::parallel_for(size_t(0), target.size(), [&] (size_t i) {
+			for (size_t x = 0; x < conf.bands.size(); ++x)
+				target[i][x] = source[i][conf.bands[x]];
+		});
+	};
+
+	fill_stripped(source.features, target.features);
+	target.featureRange = source.featureRange; // note: no adaptive handling yet
+	target.featurePoints = pointify(target.features);
+
+	if (source.hasScores()) {
+		fill_stripped(source.scores, target.scores);
+		target.scoreRange = Range(target.scores);
+	}
+
+	target.clustering = source.clustering;
+	target.hierarchy = source.hierarchy;
+	target.order = source.order;
+
+	{
+		QWriteLocker _(&l);
+		datasets.push_back(std::move(target));
+		d = &datasets.back();
+		emit newDataset(datasets.size() - 1);
+	}
+
+	/* also compute displays expected by the user */
+	// standard set
+	computeDisplays();
+
+	// current display
+	if (initialDisplay.isEmpty())
+		return;
+
+	const auto &ref = dimred::availableMethods();
+	if (std::none_of(ref.begin(), ref.end(), [&] (auto m) {
+		return m.name == initialDisplay && d->display.count(m.id);
+	})) {
+		computeDisplay(initialDisplay);
+	}
 }
 
 void Dataset::computeDisplay(const QString& name)

@@ -169,6 +169,7 @@ signals: // IMPORTANT: when connecting to lambda, provide target object pointer 
 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
 	void select(unsigned index); // reset d*
+	void spawn(const Configuration& config, QString initialDisplay = {});
 	void computeDisplay(const QString &name);
 	void computeDisplays();
 	void clearClusters();
