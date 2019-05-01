@@ -11,6 +11,9 @@ GraphicsScene *GraphicsView::scene() const
 
 void GraphicsView::wheelEvent(QWheelEvent *event)
 {
+	if (!scrollingEnabled)
+		return;
+
 	auto anchor = transformationAnchor();
 	setTransformationAnchor(AnchorUnderMouse);
 	auto angle = event->angleDelta().y();

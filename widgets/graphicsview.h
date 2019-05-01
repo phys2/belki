@@ -9,6 +9,8 @@ class GraphicsView : public QGraphicsView
 {
 	Q_OBJECT
 
+	Q_PROPERTY(bool scrollingEnabled MEMBER scrollingEnabled)
+
 public:
 	using QGraphicsView::QGraphicsView;
 
@@ -19,6 +21,8 @@ protected:
 	void wheelEvent(QWheelEvent *event) override;
 	void resizeEvent(QResizeEvent *event) override;
 	void paintEvent(QPaintEvent *event) override;
+
+	bool scrollingEnabled = true;
 
 	std::pair<QTransform, QSize> lastViewport;
 };
