@@ -29,6 +29,7 @@ public:
 
 signals:
 	// to Dataset/Storage thread
+	void selectDataset(unsigned index);
 	void openDataset(const QString &filename);
 	void readAnnotations(const QString &name);
 	void readHierarchy(const QString &name);
@@ -54,16 +55,19 @@ public slots:
 	void showHelp();
 	void displayError(const QString &message);
 
-	void clearData();
 	void resetData();
+	void newData(unsigned index);
 	void updateCursorList(QVector<unsigned> samples, QString title);
 
 protected:
+	void clearData();
+
 	void setupToolbar();
 	void setupSignals();
 	void setupActions();
 	void setupMarkerControls();
 	void resetMarkerControls();
+	void setFilename(QString name);
 
 	QMap<unsigned, QStandardItem*> markerItems;
 	Dataset data;
@@ -74,10 +78,10 @@ protected:
 	std::vector<Viewer*> views;
 
 	ProfileChart *cursorChart;
-	QLabel *fileLabel;
 	FileIO *io;
 
 	struct {
+		QAction *datasets;
 		QAction *partitions;
 		QAction *granularity;
 		QAction *famsK;

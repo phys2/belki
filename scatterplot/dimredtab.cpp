@@ -80,8 +80,9 @@ void DimredTab::init(Dataset *data)
 		setEnabled(true);
 	});
 	connect(this, &DimredTab::computeDisplay, data, &Dataset::computeDisplay);
-	connect(data, &Dataset::newDisplay, this, [this] (const QString &display) {
-		transformSelect->addItem(display); // duplicates ignored
+	connect(data, &Dataset::newDisplay, this, [this] (const QString &display, const QString &trigger) {
+		transformSelect->addItem(display, trigger);
+		// select new item
 		transformSelect->setCurrentText(display);
 		// remove from offered calculations
 		updateComputeMenu();

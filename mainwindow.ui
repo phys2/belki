@@ -23,6 +23,20 @@
      <widget class="QWidget" name="topBar" native="true">
       <layout class="QHBoxLayout" name="_2">
        <item>
+        <widget class="QLabel" name="datasetLabel">
+         <property name="text">
+          <string>Dataset:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="datasetSelect">
+         <property name="sizeAdjustPolicy">
+          <enum>QComboBox::AdjustToContents</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QLabel" name="partitionLabel">
          <property name="text">
           <string>Partition:</string>

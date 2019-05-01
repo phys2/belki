@@ -13,8 +13,6 @@
 
 #include <random>
 
-#include <QtDebug>
-
 constexpr auto hierarchyPostfix = " (Hierarchy)";
 const QVector<QColor> tableau20 = {
     {31, 119, 180}, {174, 199, 232}, {255, 127, 14}, {255, 187, 120},
@@ -26,7 +24,6 @@ const QVector<QColor> tableau20 = {
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent), store(data),
     cursorChart(new ProfileChart(data)),
-    fileLabel(new QLabel(this)),
     io(new FileIO(this))
 {
 	store.moveToThread(&dataThread);
@@ -98,10 +95,10 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupToolbar()
 {
-	// put filename and some space before partition area
+	// put datasets and some space before partition area
 	auto anchor = actionShowPartition;
-	fileLabel->setText("<i>No file selected</i>");
-	toolBar->insertWidget(anchor, fileLabel);
+	toolBar->insertWidget(anchor, datasetLabel);
+	toolbarActions.datasets = toolBar->insertWidget(anchor, datasetSelect);
 	toolBar->insertSeparator(anchor);
 
 	// fill-up partition area
@@ -141,7 +138,8 @@ void MainWindow::setupSignals()
 		}
 	});
 
-	connect(&data, &Dataset::newSource, this, &MainWindow::resetData);
+	connect(&data, &Dataset::selectedDataset, this, &MainWindow::resetData);
+	connect(&data, &Dataset::newDataset, this, &MainWindow::newData);
 	connect(&data, &Dataset::newClustering, this, [this] (bool withOrder) {
 		bool haveClustering = !(data.peek()->clustering.empty());
 		actionShowPartition->setEnabled(haveClustering);
@@ -165,10 +163,16 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::importAnnotations, &store, &Storage::importAnnotations);
 	connect(this, &MainWindow::importHierarchy, &store, &Storage::importHierarchy);
 	connect(this, &MainWindow::exportAnnotations, &store, &Storage::exportAnnotations);
+	connect(this, &MainWindow::selectDataset, &data, &Dataset::select);
 	connect(this, &MainWindow::clearClusters, &data, &Dataset::clearClusters);
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
 	connect(this, &MainWindow::runFAMS, &data, &Dataset::computeFAMS);
 	connect(this, &MainWindow::updateColorset, &data, &Dataset::updateColorset);
+
+	/* selecting dataset */
+	connect(datasetSelect, QOverload<int>::of(&QComboBox::activated), [this] {
+		emit selectDataset((unsigned)datasetSelect->currentData().toInt());
+	});
 
 	/* selecting/altering partition */
 	connect(partitionSelect, QOverload<int>::of(&QComboBox::activated), [this] {
@@ -240,7 +244,6 @@ void MainWindow::setupActions()
 			return;
 		// avoid queueing signals from widgets referencing old data
 		clearData();
-		fileLabel->setText(QString("<i>Calculating…</i>"));
 		emit openDataset(filename);
 	});
 	connect(actionLoadDescriptions, &QAction::triggered, [this] {
@@ -344,12 +347,20 @@ void MainWindow::setupMarkerControls()
 
 void MainWindow::clearData()
 {
-	/* no partitions except inbuilt mean-shift */
+	// TODO: if we do a hard reset we would have to do this…
+	/* does not work with the current call order in newData()
+	datasetSelect.clear();
+	toolbarActions.datasets->setEnabled(false);
+	*/
+	setFilename({}); // TODO belongs to hard reset
+
+	/* reset partitions: none except inbuilt mean-shift */
 	partitionSelect->clear();
 	partitionSelect->addItem("None", {0});
 	partitionSelect->addItem("Adaptive Mean Shift", {1});
 
 	/* hide and disable widgets that need data or even more */
+	toolbarActions.partitions->setEnabled(false);
 	actionShowPartition->setChecked(false);
 	actionShowPartition->setEnabled(false);
 	toolbarActions.granularity->setVisible(false);
@@ -359,18 +370,13 @@ void MainWindow::clearData()
 	/* reset views first (before our widgets emit signals) */
 	emit reset(false);
 
-	/* clear out markers */
+	/* clear out markers TODO issue #18 */
 	resetMarkerControls();
 }
 
 void MainWindow::resetData()
 {
 	clearData();
-
-	title = store.name();
-	setWindowTitle(QString("%1 – Belki").arg(title));
-	setWindowFilePath(title);
-	fileLabel->setText(QString("<b>%1</b>").arg(title));
 
 	/* reset views first (before our widgets emit signals) */
 	emit reset(true);
@@ -380,6 +386,24 @@ void MainWindow::resetData()
 
 	/* set up marker controls */
 	resetMarkerControls();
+
+	/* re-enable actions that depend only on data */
+	toolbarActions.partitions->setEnabled(true);
+}
+
+void MainWindow::newData(unsigned index)
+{
+	// TODO wronge place to do this in new storage concept
+	setFilename(store.name());
+
+	/* add to datasets */
+	auto name = data.peek()->conf.name;
+	datasetSelect->addItem(name, index);
+	datasetSelect->setCurrentText(name);
+	toolbarActions.datasets->setEnabled(true);
+
+	/* re-init everything */
+	resetData();
 }
 
 void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
@@ -471,6 +495,18 @@ void MainWindow::resetMarkerControls()
 
 	/* enable if we have data */
 	markerWidget->setEnabled(!markerItems.isEmpty());
+}
+
+void MainWindow::setFilename(QString name)
+{
+	if (name.isEmpty()) {
+		setWindowTitle("Belki");
+		setWindowFilePath({});
+		return;
+	}
+
+	setWindowTitle(QString("%1 – Belki").arg(name));
+	setWindowFilePath(name);
 }
 
 void MainWindow::showHelp()

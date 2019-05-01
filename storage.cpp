@@ -16,7 +16,7 @@ constexpr int storage_version = 1;
 Storage::Storage(Dataset &data)
     : data(data)
 {
-	connect(&data, &Dataset::newDisplay, [this] (auto name) {
+	connect(&data, &Dataset::newDisplay, [this] (auto name, auto trigger) {
 		if (!container)
 			return;
 

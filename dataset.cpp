@@ -14,9 +14,31 @@
 
 Dataset::Dataset()
 // start with an empty dataset and make it current
-    : datasets({{}}), d(&datasets.front())
+    : datasets(1), d(&datasets.front())
 {
 
+}
+
+void Dataset::select(unsigned index)
+{
+	// TODO: this whole method looks extremely suspicious
+
+	if (index == (d - &datasets[0]))
+		return;
+
+	QWriteLocker _(&l);
+	d = &datasets[index];
+
+	emit selectedDataset();
+
+	for (auto &[i, _] : d->display)
+		emit newDisplay(i, i.split(" ").first()); // TODO: hack
+
+	if (!d->clustering.empty())
+		emit newClustering(false);
+	if (!d->hierarchy.empty())
+		emit newHierarchy(false);
+	// TODO: synchronization of GUI order states and the order in the data
 }
 
 void Dataset::computeDisplay(const QString& name)
@@ -211,7 +233,7 @@ bool Dataset::readSource(QTextStream in)
 	/* calculate initial order */
 	orderProteins(d->order.reference);
 
-	emit newSource();
+	emit newDataset(0); // TODO
 	return true;
 }
 
@@ -237,6 +259,7 @@ bool Dataset::readScoredSource(QTextStream &in)
 	}
 
 	Public target;
+	target.conf.name = "Source"; // TODO
 
 	/* fill it up */
 	std::map<QString, unsigned> dimensions;
@@ -341,7 +364,7 @@ bool Dataset::readScoredSource(QTextStream &in)
 	/* calculate initial order */
 	orderProteins(d->order.reference);
 
-	emit newSource();
+	emit newDataset(0); // TODO
 	return true;
 }
 

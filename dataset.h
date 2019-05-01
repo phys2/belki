@@ -159,7 +159,8 @@ public:
 	void cancelFAMS(); // can be called from different thread
 
 signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
-	void newSource();
+	void selectedDataset();
+	void newDataset(unsigned id);
 	void newDisplay(const QString &name);
 	void newClustering(bool withOrder = false);
 	void newHierarchy(bool withOrder = false);
@@ -167,6 +168,7 @@ signals: // IMPORTANT: when connecting to lambda, provide target object pointer 
 	void ioError(const QString &message);
 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
+	void select(unsigned index); // reset d*
 	void computeDisplay(const QString &name);
 	void computeDisplays();
 	void clearClusters();
