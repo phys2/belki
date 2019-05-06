@@ -8,7 +8,9 @@
 SpawnDialog::SpawnDialog(Dataset &d, QWidget *parent) :
     QDialog(parent), data(d)
 {
-	auto dim = size_t(data.peek()->dimensions.size());
+	auto d_ = data.peek();
+	source_id = data.current();
+	unsigned dim = d_->dimensions.size();
 
 	// select all by default (mirroring scene state)
 	selected.resize(dim, true);
@@ -55,7 +57,7 @@ void SpawnDialog::submit()
 	Dataset::Configuration conf;
 	// TODO: we should know ids of all datasets (including selected),
 	// once the dataset selector is implemented
-	conf.parent = 0;
+	conf.parent = source_id;
 	for (unsigned i = 0; i < selected.size(); ++i)
 		if (selected[i])
 			conf.bands.push_back(i);

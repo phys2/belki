@@ -154,6 +154,9 @@ public:
 	static const std::map<Dataset::OrderBy, QString> availableOrders();
 
 	View peek() { return View(*d, l); }
+	unsigned current() {  // TODO: temporary until we have a better interface!
+		return d - &datasets[0];
+	}
 
 	void changeFAMS(float k); // to be called from different thread
 	void cancelFAMS(); // can be called from different thread

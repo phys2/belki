@@ -23,6 +23,7 @@ protected:
 	void updateValidity();
 	void submit();
 
+	unsigned source_id;
 	std::vector<bool> selected;
 
 	std::unique_ptr<DistmatScene> scene;
