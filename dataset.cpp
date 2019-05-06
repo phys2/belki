@@ -196,9 +196,9 @@ void Dataset::cancelFAMS()
 	changeFAMS(-1);
 }
 
-bool Dataset::readSource(QTextStream in)
+bool Dataset::readSource(QTextStream in, const QString &name)
 {
-	return readScoredSource(in); // TODO
+	return readScoredSource(in, name); // TODO
 
 	cancelFAMS(); // abort unwanted calculation
 
@@ -292,7 +292,7 @@ bool Dataset::readSource(QTextStream in)
 	return true;
 }
 
-bool Dataset::readScoredSource(QTextStream &in)
+bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 {
 	cancelFAMS(); // abort unwanted calculation
 
@@ -314,7 +314,7 @@ bool Dataset::readScoredSource(QTextStream &in)
 	}
 
 	Public target;
-	target.conf.name = "Source"; // TODO
+	target.conf.name = name; // TODO
 
 	/* fill it up */
 	std::map<QString, unsigned> dimensions;

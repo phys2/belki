@@ -179,8 +179,8 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void changeOrder(OrderBy reference, bool synchronize);
 
 protected:
-	bool readSource(QTextStream in);
-	bool readScoredSource(QTextStream &in);
+	bool readSource(QTextStream in, const QString& name);
+	bool readScoredSource(QTextStream &in, const QString& name);
 	bool readDescriptions(const QByteArray &tsv);
 	bool readAnnotations(const QByteArray &tsv);
 	bool readHierarchy(const QByteArray &json);

@@ -121,7 +121,7 @@ void Storage::openDataset(const QString &filename)
 		}
 		sourcename = QFileInfo(in.constFirst()).completeBaseName();
 		// parse
-		auto success = data.readSource(QTextStream(container->read("input/" + sourcename + ".tsv")));
+		auto success = data.readSource(QTextStream(container->read("input/" + sourcename + ".tsv")), sourcename);
 		if (!success) {
 			close();
 			return;
@@ -137,7 +137,7 @@ void Storage::openDataset(const QString &filename)
 		auto tsv = f.readAll();
 
 		// parse
-		auto success = data.readSource(QTextStream(tsv));
+		auto success = data.readSource(QTextStream(tsv), sourcename);
 		if (!success)
 			return;
 		auto checksum = calc_checksum(tsv);
