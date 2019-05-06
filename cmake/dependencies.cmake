@@ -12,7 +12,7 @@ list(APPEND DEP_INCLUDES
 	${PROJECT_SOURCE_DIR}/include # for self-distributed Tapkee
 	${ARPACK_INCLUDE_DIRS}
 	)
-list(APPEND DEP_LIBRARIES OpenMP::OpenMP_CXX ${ARPACK_LIBRARIES} Eigen3::Eigen)
+list(APPEND DEP_LIBRARIES OpenMP::OpenMP_CXX ${ARPACK_LDFLAGS} Eigen3::Eigen)
 
 ## Intel TBB
 if (STATIC_BUILD)
