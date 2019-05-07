@@ -4,6 +4,7 @@
 #include "widgets/profilewindow.h"
 #include "widgets/spawndialog.h"
 
+#include <QTreeWidget>
 #include <QFileInfo>
 #include <QDir>
 #include <QCompleter>
@@ -96,6 +97,15 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupToolbar()
 {
+	// setup datasets selection model+view
+	datasetTree = new QTreeWidget(this);
+	datasetTree->setHeaderHidden(true);
+	datasetTree->setFrameShape(QFrame::Shape::NoFrame);
+	datasetTree->setSelectionMode(QTreeWidget::SelectionMode::NoSelection);
+	datasetTree->setItemsExpandable(false);
+	datasetSelect->setModel(datasetTree->model());
+	datasetSelect->setView(datasetTree);
+
 	// put datasets and some space before partition area
 	auto anchor = actionShowPartition;
 	toolBar->insertWidget(anchor, datasetLabel);
@@ -359,7 +369,8 @@ void MainWindow::clearData()
 {
 	// TODO: if we do a hard reset we would have to do this…
 	/* does not work with the current call order in newData()
-	datasetSelect.clear();
+	datasetTree->clear();
+	datasetItems.clear();
 	toolbarActions.datasets->setEnabled(false);
 	*/
 	setFilename({}); // TODO belongs to hard reset
@@ -419,13 +430,24 @@ void MainWindow::resetData()
 
 void MainWindow::newData(unsigned index)
 {
+	auto d = data.peek();
+
 	// TODO wronge place to do this in new storage concept
 	setFilename(store.name());
 
 	/* add to datasets */
-	auto name = data.peek()->conf.name;
-	datasetSelect->addItem(name, index);
-	datasetSelect->setCurrentText(name);
+	auto p = d->conf.parent;
+	auto parent = (p < 0 ?
+	                   datasetTree->invisibleRootItem() // top level
+	                 : datasetItems.at((size_t)p));
+	auto item = new QTreeWidgetItem(parent);
+	item->setExpanded(true);
+	item->setText(0, d->conf.name);
+	item->setData(0, Qt::UserRole, index);
+	datasetItems[index] = item;
+
+	/* make current selection (current dataset state!) and enable control */
+	setSelectedDataset(index);
 	toolbarActions.datasets->setEnabled(true);
 
 	/* re-init everything */
@@ -533,6 +555,19 @@ void MainWindow::setFilename(QString name)
 
 	setWindowTitle(QString("%1 – Belki").arg(name));
 	setWindowFilePath(name);
+}
+
+void MainWindow::setSelectedDataset(unsigned index)
+{
+	/* this is a tad tricky to do due to Qt interface limitations */
+	// make item current in tree to get hold of its index
+	datasetTree->setCurrentItem(datasetItems.at(index));
+	// make item's parent reference point and provide index in relation to parent
+	datasetSelect->setRootModelIndex(datasetTree->currentIndex().parent());
+	datasetSelect->setCurrentIndex(datasetTree->currentIndex().row());
+	// reset combobox to display full tree again
+	datasetTree->setCurrentItem(datasetTree->invisibleRootItem());
+	datasetSelect->setRootModelIndex(datasetTree->currentIndex());
 }
 
 void MainWindow::showHelp()

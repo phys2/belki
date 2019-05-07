@@ -15,6 +15,8 @@ class Chart; // TODO remove
 class QLabel;
 class ProfileChart;
 class QStandardItem;
+class QTreeWidget;
+class QTreeWidgetItem;
 
 class MainWindow : public QMainWindow, private Ui::MainWindow
 {
@@ -69,15 +71,18 @@ protected:
 	void setupMarkerControls();
 	void resetMarkerControls();
 	void setFilename(QString name);
+	void setSelectedDataset(unsigned index);
 
-	QMap<unsigned, QStandardItem*> markerItems;
 	Dataset data;
 	Storage store;
 	QThread dataThread;
 	QString title;
 
-	std::vector<Viewer*> views;
+	QTreeWidget *datasetTree;
+	std::map<unsigned, QTreeWidgetItem*> datasetItems;
+	QMap<unsigned, QStandardItem*> markerItems;
 
+	std::vector<Viewer*> views;
 	ProfileChart *cursorChart;
 	FileIO *io;
 
