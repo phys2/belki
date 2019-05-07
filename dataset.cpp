@@ -412,14 +412,19 @@ bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 	/* pre-cache features as QPoints for plotting */
 	target.featurePoints = pointify(target.features);
 
-	/* time to flip */ // TODO: create new entry in datasets instead
+	/* time to flip/add */
 	QWriteLocker _(&l);
-	*d = std::move(target);
+	if (d->dimensions.empty()) { // replace
+		*d = std::move(target);
+	} else { // append
+		datasets.push_back(std::move(target));
+		select(datasets.size() - 1);
+	}
 
 	/* calculate initial order */
 	orderProteins(d->order.reference);
 
-	emit newDataset(0); // TODO
+	emit newDataset(current()); // TODO
 	return true;
 }
 
