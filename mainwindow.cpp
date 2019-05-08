@@ -182,12 +182,12 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::updateColorset, &data, &Dataset::updateColorset);
 
 	/* selecting dataset */
-	connect(datasetSelect, QOverload<int>::of(&QComboBox::activated), [this] {
+	connect(datasetSelect, qOverload<int>(&QComboBox::activated), [this] {
 		emit selectDataset((unsigned)datasetSelect->currentData().toInt());
 	});
 
 	/* selecting/altering partition */
-	connect(partitionSelect, QOverload<int>::of(&QComboBox::activated), [this] {
+	connect(partitionSelect, qOverload<int>(&QComboBox::activated), [this] {
 		// clear partition-type dependant state
 		toolbarActions.granularity->setVisible(false);
 		toolbarActions.famsK->setVisible(false);
