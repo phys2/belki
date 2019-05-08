@@ -54,15 +54,43 @@
    </item>
    <item>
     <layout class="QFormLayout" name="formLayout">
-     <item row="0" column="0">
+     <item row="1" column="0">
       <widget class="QLabel" name="label_2">
        <property name="text">
         <string>Dataset Name:</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
+     <item row="1" column="1">
       <widget class="QLineEdit" name="nameEdit"/>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="scoreLabel">
+       <property name="text">
+        <string>Score cutoff:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QDoubleSpinBox" name="scoreSpinBox">
+         <property name="specialValueText">
+          <string>None</string>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="scoreNote">
+         <property name="text">
+          <string>&lt;small&gt;No proteins affected&lt;/small&gt;</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
     </layout>
    </item>

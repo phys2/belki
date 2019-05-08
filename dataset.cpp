@@ -66,13 +66,16 @@ void Dataset::spawn(const Configuration& conf, QString initialDisplay)
 	};
 
 	fill_stripped(source.features, target.features);
-	target.featureRange = source.featureRange; // note: no adaptive handling yet
-	target.featurePoints = pointify(target.features);
-
 	if (source.hasScores()) {
 		fill_stripped(source.scores, target.scores);
 		target.scoreRange = Range(target.scores);
+
+		if (conf.scoreThresh > 0.)
+			features::apply_cutoff(target.features, target.scores, conf.scoreThresh);
 	}
+
+	target.featureRange = source.featureRange; // note: no adaptive handling yet
+	target.featurePoints = pointify(target.features);
 
 	target.clustering = source.clustering;
 	target.hierarchy = source.hierarchy;

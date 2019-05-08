@@ -97,6 +97,7 @@ public:
 
 		int parent = -1; // index of the dataset this one was spawned from
 		std::vector<unsigned> bands; // the feature bands that were kept
+		double scoreThresh = 0.; // score cutoff that was applied
 	};
 
 	struct Public {

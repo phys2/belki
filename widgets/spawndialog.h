@@ -19,12 +19,18 @@ public:
 signals:
 	void spawn(const Dataset::Configuration& config);
 
+public slots:
+	void updateState();
+
 protected:
 	void updateValidity();
 	void submit();
 
+	void updateScoreEffect();
+
 	unsigned source_id;
 	std::vector<bool> selected;
+	unsigned scoreEffect = 0; // number of proteins affected by score cutoff
 
 	std::unique_ptr<DistmatScene> scene;
 	QPushButton *okButton; // cached, owned by Ui::SpawnDialog

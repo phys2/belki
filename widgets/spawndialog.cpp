@@ -1,16 +1,17 @@
 #include "spawndialog.h"
 #include "distmat/distmatscene.h"
 #include "mainwindow.h" // to emit signal. could also chain it.
+#include "compute/features.h"
 
 #include <QPushButton>
 #include <QFontMetrics>
 
-SpawnDialog::SpawnDialog(Dataset &d, QWidget *parent) :
-    QDialog(parent), data(d)
+SpawnDialog::SpawnDialog(Dataset &data, QWidget *parent) :
+    QDialog(parent), data(data)
 {
-	auto d_ = data.peek();
+	auto d = data.peek();
 	source_id = data.current();
-	unsigned dim = d_->dimensions.size();
+	unsigned dim = d->dimensions.size();
 
 	// select all by default (mirroring scene state)
 	selected.resize(dim, true);
@@ -20,6 +21,11 @@ SpawnDialog::SpawnDialog(Dataset &d, QWidget *parent) :
 	okButton = buttonBox->button(QDialogButtonBox::StandardButton::Ok);
 	setModal(true);
 	setSizeGripEnabled(true);
+	if (d->hasScores()) {
+		scoreSpinBox->setMaximum(d->scoreRange.max);
+	} else {
+		formLayout->removeRow(scoreLabel);
+	}
 	updateValidity();
 
 	// let's blend in
@@ -36,16 +42,14 @@ SpawnDialog::SpawnDialog(Dataset &d, QWidget *parent) :
 	auto aspect = scene->sceneRect().width() / scene->sceneRect().height();
 	view->setMinimumSize({int(heightEstimate * aspect), heightEstimate});
 
-	auto updater = [this] (const std::vector<bool> &s) {
+	connect(scene.get(), &DistmatScene::selectionChanged, [this] (const auto &s) {
 		selected = s;
-		QString desc;
-		for (unsigned i = 0; i < selected.size(); ++i)
-			desc.append((selected[i] ? QString::number(i + 1) : "_"));
-		nameEdit->setPlaceholderText(desc);
-		updateValidity();
-	};
-
-	connect(scene.get(), &DistmatScene::selectionChanged, updater);
+		updateState();
+	});
+	connect(scoreSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged), [this] {
+		updateScoreEffect();
+		updateState();
+	});
 	connect(this, &QDialog::accepted, this, &SpawnDialog::submit);
 	connect(this, &QDialog::rejected, [this] { deleteLater(); });
 
@@ -55,17 +59,38 @@ SpawnDialog::SpawnDialog(Dataset &d, QWidget *parent) :
 void SpawnDialog::submit()
 {
 	Dataset::Configuration conf;
-	// TODO: we should know ids of all datasets (including selected),
-	// once the dataset selector is implemented
-	conf.parent = source_id;
-	for (unsigned i = 0; i < selected.size(); ++i)
-		if (selected[i])
-			conf.bands.push_back(i);
 	conf.name = nameEdit->text();
 	if (conf.name.isEmpty())
 	    conf.name = nameEdit->placeholderText();
+	conf.parent = source_id;
+
+	for (unsigned i = 0; i < selected.size(); ++i)
+		if (selected[i])
+			conf.bands.push_back(i);
+	conf.scoreThresh = scoreSpinBox->value();
+
 	emit spawn(conf);
 	deleteLater();
+}
+
+void SpawnDialog::updateState()
+{
+	updateValidity();
+
+	// update default name
+	bool subset = false;
+	QString desc;
+	for (unsigned i = 0; i < selected.size(); ++i) {
+		desc.append((selected[i] ? QString::number(i + 1) : "_"));
+		if (!selected[i])
+			subset = true;
+	}
+	if (!subset)
+		desc = ""; // reset
+	if (scoreEffect)
+		desc.append((desc.isEmpty() ? "S<" : " - S<")
+					+ QString::number(scoreSpinBox->value()));
+	nameEdit->setPlaceholderText(desc);
 }
 
 void SpawnDialog::updateValidity()
@@ -73,8 +98,16 @@ void SpawnDialog::updateValidity()
 	bool valid = true;
 
 	auto sum = std::accumulate(selected.begin(), selected.end(), unsigned(0));
-	// TODO: right now we only allow sub-selection to spawn. but when we introduce
-	// other spawning parameters, it can make sense to spawn full selection.
-	valid = valid && sum > 1 && sum < selected.size();
+	// Ensure that there is any real change in the data
+	valid = valid && sum > 1 && (sum < selected.size() || scoreEffect);
 	okButton->setEnabled(valid);
+}
+
+void SpawnDialog::updateScoreEffect()
+{
+	auto d = data.peek();
+	scoreEffect = features::cutoff_effect(d->scores, scoreSpinBox->value());
+
+	QString format{"<small>%1 / %2 proteins affected</small>"};
+	scoreNote->setText(format.arg(scoreEffect).arg(d->scores.size()));
 }
