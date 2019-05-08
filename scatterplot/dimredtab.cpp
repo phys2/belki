@@ -1,6 +1,6 @@
 #include "dimredtab.h"
 #include "chart.h"
-#include "dimred.h"
+#include "compute/dimred.h"
 
 #include <QMenu>
 #include <QToolButton>

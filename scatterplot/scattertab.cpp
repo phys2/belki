@@ -1,6 +1,5 @@
 #include "scattertab.h"
 #include "chart.h"
-#include "dimred.h"
 
 #include <QMenu>
 #include <QDebug>

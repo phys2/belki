@@ -55,7 +55,6 @@ target_sources(belki PRIVATE
 target_sources(belki PRIVATE
 	colormap.h colormap.cpp
 	dataset.h dataset.cpp
-	dimred.h dimred.cpp
 	fileio.h fileio.cpp
 	mainwindow.h mainwindow.cpp mainwindow.ui
 	storage.h storage.cpp
@@ -63,7 +62,8 @@ target_sources(belki PRIVATE
 	viewer.h
 	)
 
-# gui components (they add to target 'belki')
+# components (they add to target 'belki')
+add_subdirectory(compute)
 add_subdirectory(widgets)
 add_subdirectory(scatterplot)
 add_subdirectory(heatmap)

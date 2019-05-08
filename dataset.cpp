@@ -1,5 +1,6 @@
 #include "dataset.h"
-#include "dimred.h"
+#include "compute/dimred.h"
+#include "compute/features.h"
 
 #include <QDataStream>
 #include <QJsonDocument>

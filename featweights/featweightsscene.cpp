@@ -1,6 +1,6 @@
 #include "featweightsscene.h"
-
 #include "colormap.h"
+#include "compute/features.h"
 
 #include <QPainter>
 #include <QGraphicsPixmapItem>
@@ -199,17 +199,9 @@ void FeatweightsScene::computeMarkerContour()
 
 void FeatweightsScene::applyScoreThreshold(double threshold)
 {
-	// apply threshold as an upper limit
 	auto d = data.peek();
-	clippedFeatures.resize(d->features.size());
-	tbb::parallel_for(size_t(0), d->features.size(), [&] (size_t p) {
-		auto &source = d->features[p];
-		auto &score = d->scores[p];
-		auto &target = clippedFeatures[p];
-		target.resize(source.size());
-		for (size_t i = 0; i < source.size(); ++i)
-			target[i] = (score[i] <= threshold ? source[i] : 0.);
-	});
+	clippedFeatures = d->features;
+	features::apply_cutoff(clippedFeatures, d->scores, threshold);
 
 	computeWeights();
 }
