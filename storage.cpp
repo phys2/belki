@@ -98,7 +98,7 @@ void Storage::openDataset(const QString &filename)
 
 	if (filetype == "zip") {
 		// check version
-		container = new qzip::Zip; // TODO use class member
+		container = std::make_unique<qzip::Zip>();
 		try {
 			container->load(filename);
 		} catch (std::runtime_error& e) {
@@ -144,7 +144,7 @@ void Storage::openDataset(const QString &filename)
 
 		auto zipname = fi.path() + "/" + sourcename + ".zip";
 
-		container = new qzip::Zip;
+		container = std::make_unique<qzip::Zip>();
 		if (QFileInfo(zipname).exists()) {
 			container->load(zipname);
 			auto contents = container->names();
@@ -312,8 +312,7 @@ void Storage::close(bool save)
 	if (container && save)
 		container->save();
 
-	delete container;
-	container = nullptr;
+	container.reset();
 }
 
 void Storage::freadError(const QString &filename)

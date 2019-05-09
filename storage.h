@@ -1,8 +1,10 @@
 #ifndef STORAGE_H
 #define STORAGE_H
 
-#include <QObject>
 #include "dataset.h"
+
+#include <QObject>
+#include <memory>
 
 namespace qzip { class Zip; }
 
@@ -40,7 +42,7 @@ protected:
 
 	QString sourcename; // a file can have several source data in general, we only support/select one right now
 
-	qzip::Zip *container = nullptr;
+	std::unique_ptr<qzip::Zip> container;
 
 	Dataset &data;
 };
