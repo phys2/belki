@@ -8,11 +8,22 @@
 
 namespace features {
 
-using featvec = std::vector<std::vector<double>>;
+using vec = std::vector<std::vector<double>>;
 
-unsigned cutoff_effect(const featvec& source, double threshold);
+struct Range {
+	explicit Range(const vec& source);
+	Range() = default;
+	Range(double min, double max) : min(min), max(max) {}
+
+	double scale() const;
+
+	double min;
+	double max;
+};
+
+unsigned cutoff_effect(const vec& source, double threshold);
 // apply threshold on scores (_upper_ limit) by erasing corresp. features
-void apply_cutoff(featvec& feats, const featvec &scores, double threshold);
+void apply_cutoff(vec& feats, const vec &scores, double threshold);
 
 }
 

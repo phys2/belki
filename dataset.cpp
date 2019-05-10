@@ -1,6 +1,5 @@
 #include "dataset.h"
 #include "compute/dimred.h"
-#include "compute/features.h"
 
 #include <QDataStream>
 #include <QJsonDocument>
@@ -68,7 +67,7 @@ void Dataset::spawn(const Configuration& conf, QString initialDisplay)
 	fill_stripped(source.features, target.features);
 	if (source.hasScores()) {
 		fill_stripped(source.scores, target.scores);
-		target.scoreRange = Range(target.scores);
+		target.scoreRange = features::Range(target.scores);
 
 		if (conf.scoreThresh > 0.)
 			features::apply_cutoff(target.features, target.scores, conf.scoreThresh);
@@ -266,7 +265,7 @@ bool Dataset::readSource(QTextStream in, const QString &name)
 		return false;
 	}
 
-	Range range(target.features);
+	features::Range range(target.features);
 	/* normalize, if needed */
 	if (range.min < 0 || range.max > 1) { // simple heuristic to auto-normalize
 		emit ioError(QString("Values outside expected range (instead [%1, %2])."
@@ -396,7 +395,7 @@ bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 	}
 
 	/* setup ranges */
-	Range range(target.features);
+	features::Range range(target.features);
 	/* normalize, if needed */
 	if (range.min < 0 || range.max > 1) { // simple heuristic to auto-normalize
 		emit ioError(QString("Values outside expected range (instead [%1, %2])."
@@ -411,7 +410,7 @@ bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 		}
 	}
 	target.featureRange = {0., 1.}; // TODO: we enforced normalization (make config.)
-	target.scoreRange = Range(target.scores);
+	target.scoreRange = features::Range(target.scores);
 
 	/* pre-cache features as QPoints for plotting */
 	target.featurePoints = pointify(target.features);
@@ -964,20 +963,4 @@ const std::map<Dataset::OrderBy, QString> Dataset::availableOrders()
 		{OrderBy::HIERARCHY, "Hierarchy"},
 		{OrderBy::CLUSTERING, "Cluster/Annotations"},
 	};
-}
-
-Dataset::Range::Range(const std::vector<std::vector<double> > &source)
-    : min(source.empty() ? 0. : source[0][0]), max(source.empty() ? 0. : source[0][0])
-{
-	for (auto in : source) {
-		double mi, ma;
-		cv::minMaxLoc(in, &mi, &ma);
-		min = std::min(min, mi);
-		max = std::max(max, ma);
-	}
-}
-
-double Dataset::Range::scale() const
-{
-	return 1./(max - min);
 }

@@ -2,6 +2,7 @@
 #define DATASET_H
 
 #include "utils.h"
+#include "compute/features.h"
 #include "meanshift/fams.h"
 
 #include <QString>
@@ -32,17 +33,6 @@ public:
 		CLUSTERING
 	};
 	Q_ENUM(OrderBy)
-
-	struct Range {
-		explicit Range(const std::vector<std::vector<double>>& source);
-		Range() = default;
-		Range(double min, double max) : min(min), max(max) {}
-
-		double scale() const;
-
-		double min;
-		double max;
-	};
 
 	struct Protein {
 		// first part of protein name, used as identifier
@@ -118,13 +108,13 @@ public:
 		std::vector<Protein> proteins;
 
 		// original data
-		std::vector<std::vector<double>> features;
-		Range featureRange;
+		features::vec features;
+		features::Range featureRange;
 		// pre-cached set of points
 		std::vector<QVector<QPointF>> featurePoints;
 		// measurement scores
-		std::vector<std::vector<double>> scores;
-		Range scoreRange;
+		features::vec scores;
+		features::Range scoreRange;
 
 		// feature reduced point sets
 		std::map<QString, QVector<QPointF>> display;

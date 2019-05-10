@@ -6,7 +6,7 @@
 
 namespace features {
 
-unsigned cutoff_effect(const featvec &source, double threshold)
+unsigned cutoff_effect(const vec &source, double threshold)
 {
 	auto check = [&] (size_t index) {
 		const auto &v = source[index];
@@ -22,15 +22,31 @@ unsigned cutoff_effect(const featvec &source, double threshold)
 	}, std::plus<unsigned>());
 }
 
-void apply_cutoff(featvec &feats, const featvec &scores, double threshold)
+void apply_cutoff(vec &feats, const vec &scores, double threshold)
 {
-	featvec ret(feats.size());
+	vec ret(feats.size());
 	tbb::parallel_for(size_t(0), feats.size(), [&] (size_t p) {
 		auto &feat = feats[p];
 		auto &score = scores[p];
 		for (size_t i = 0; i < feat.size(); ++i)
 			feat[i] = (score[i] <= threshold ? feat[i] : 0.);
 	});
+}
+
+Range::Range(const std::vector<std::vector<double> > &source)
+    : min(source.empty() ? 0. : source[0][0]), max(source.empty() ? 0. : source[0][0])
+{
+	for (auto in : source) {
+		double mi, ma;
+		cv::minMaxLoc(in, &mi, &ma);
+		min = std::min(min, mi);
+		max = std::max(max, ma);
+	}
+}
+
+double Range::scale() const
+{
+	return 1./(max - min);
 }
 
 }
