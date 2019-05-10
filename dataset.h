@@ -1,6 +1,7 @@
 #ifndef DATASET_H
 #define DATASET_H
 
+#include "utils.h"
 #include "meanshift/fams.h"
 
 #include <QString>
@@ -9,7 +10,6 @@
 #include <QList>
 #include <QPointF>
 #include <QColor>
-#include <QReadWriteLock>
 #include <QTextStream>
 #include <QByteArray>
 
@@ -138,17 +138,7 @@ public:
 		Order order;
 	};
 
-	struct View {
-		View(const Public &d, QReadWriteLock &l) : data(d), l(l) { l.lockForRead(); }
-		View(const View&) = delete;
-		View(View&& o) : data(o.data), l(o.l) {}
-		~View() { l.unlock(); }
-		const Public& operator()() { return data; }
-		const Public* operator->() { return &data; }
-	protected:
-		const Public &data;
-		QReadWriteLock &l;
-	};
+	using View = ::View<Public>;
 
 	Dataset();
 
