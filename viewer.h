@@ -1,6 +1,7 @@
 #ifndef VIEWER_H
 #define VIEWER_H
 
+#include "proteindb.h"
 #include "dataset.h"
 
 #include <QMainWindow>
@@ -23,11 +24,11 @@ signals:
 	void inReset(bool haveData);
 	void inRepartition(bool withOrder);
 	void inReorder();
-	void inToggleMarker(unsigned sampleIndex, bool present);
+	void inToggleMarker(ProteinId id, bool present);
 	void inTogglePartitions(bool show);
 
 	// signals emitted by us
-	void markerToggled(unsigned sampleIndex, bool present);
+	void markerToggled(ProteinId id, bool present);
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
 	void orderRequested(Dataset::OrderBy order, bool synchronize);
 	void exportRequested(QGraphicsView *source, QString description);

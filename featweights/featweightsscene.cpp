@@ -68,10 +68,17 @@ void FeatweightsScene::computeWeights()
 		// use original data if no score threshold was applied
 		auto &feat = (clippedFeatures.empty() ? d->features : clippedFeatures);
 
+		/* compose set of voters by all marker proteins found in current dataset */
+		std::vector<const std::vector<double>*> voters;
+		for (auto& m : markers) {
+			try { voters.push_back(&feat[d->protIndex.at(m)]); } catch (...) {}
+		}
+
+		/* setup weighters */
 		std::map<Weighting, std::function<void(size_t)>> weighters;
 		weighters[Weighting::ABSOLUTE] = [&] (size_t dim) {
-			for (auto& m : markers) {
-				weights[dim] += feat[m][dim];
+			for (auto f : voters) {
+				weights[dim] += (*f)[dim];
 			}
 		};
 		weighters[Weighting::RELATIVE] = [&] (size_t dim) { // weight against own baseline
@@ -81,29 +88,30 @@ void FeatweightsScene::computeWeights()
 				return a += p[dim] * n;
 			});
 
-			for (auto& m : markers) {
-				auto value = feat[m][dim];
+			for (auto f : voters) {
+				auto value = (*f)[dim];
 				if (value > baseline)
 					weights[dim] += value / baseline;
 			}
 		};
 		weighters[Weighting::OFFSET] = [&] (size_t dim) { // weight against competition's baseline
-			for (auto& m : markers) {
+			for (auto f : voters) {
 				// collect per-marker baseline first
 				double baseline = 0;
 				auto n = 1./(weights.size() - 1);
 				for (unsigned i = 0; i < weights.size(); ++i) {
 					if (i != dim)
-						baseline = std::max(baseline, feat[m][i] * n);
+						baseline = std::max(baseline, (*f)[i] * n);
 				}
 				if (baseline < 0.001)
 					baseline = 1.;
-				auto value = feat[m][dim];
+				auto value = (*f)[dim];
 				if (value > baseline)
 					weights[dim] += value / baseline;
 			}
 		};
 
+		/* apply weighting and normalize */
 		weights.resize(len, 0.);
 		tbb::parallel_for((size_t)0, weights.size(), weighters[weighting]);
 		auto total = cv::sum(weights)[0];
@@ -227,12 +235,12 @@ void FeatweightsScene::reset(bool haveData)
 	weightBar->setVisible(true);
 }
 
-void FeatweightsScene::toggleMarker(unsigned sampleIndex, bool present)
+void FeatweightsScene::toggleMarker(ProteinId id, bool present)
 {
 	if (present)
-		markers.insert(sampleIndex);
+		markers.insert(id);
 	else
-		markers.erase(sampleIndex);
+		markers.erase(id);
 
 	computeWeights();
 }

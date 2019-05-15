@@ -11,6 +11,7 @@
 #include <QGraphicsLineItem>
 
 #include <map>
+#include <unordered_map>
 
 class DistmatScene : public GraphicsScene
 {
@@ -42,7 +43,7 @@ public:
 	};
 
 	struct Marker : public LegendItem {
-		Marker(DistmatScene* scene, unsigned sampleIndex);
+		Marker(DistmatScene* scene, unsigned sampleIndex, ProteinId id);
 
 		unsigned sampleIndex;
 	};
@@ -77,7 +78,7 @@ public slots:
 
 	void updateColorset(QVector<QColor> colors);
 
-	void toggleMarker(unsigned sampleIndex, bool present);
+	void toggleMarker(ProteinId id, bool present);
 	void togglePartitions(bool showPartitions);
 
 protected:
@@ -103,7 +104,7 @@ protected:
 	// annotations used in PER_PROTEIN:
 	bool showPartitions = true;
 	Clusterbars clusterbars;
-	std::map<unsigned, Marker> markers;
+	std::unordered_map<ProteinId, Marker> markers;
 	// annotations used in PER_DIRECTION:
 	std::map<unsigned, LegendItem> dimensionLabels;
 

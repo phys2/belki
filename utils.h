@@ -2,6 +2,9 @@
 #define UTILS_H
 
 #include <QReadWriteLock>
+#include <QString>
+#include <QHash>
+#include <functional>
 
 class NonCopyable
 {
@@ -25,9 +28,17 @@ protected:
 	OnlyMovable() = default;
 };
 
+struct RWLockable {
+	mutable QReadWriteLock l{QReadWriteLock::RecursionMode::Recursive};
+
+	auto rlock() { return QReadLocker(&l); }
+	auto wlock() { return QWriteLocker(&l); }
+};
+
 template<typename T>
 struct View {
 	View(const T &d, QReadWriteLock &l) : data(d), l(l) { l.lockForRead(); }
+	View(const T &d) : View(d, d.l) {}
 	View(const View&) = delete;
 	View(View&& o) : data(o.data), l(o.l) {}
 	~View() { l.unlock(); }
@@ -37,5 +48,13 @@ protected:
 	const T &data;
 	QReadWriteLock &l;
 };
+
+namespace std {
+  template<> struct hash<QString> {
+    std::size_t operator()(const QString& s) const {
+      return qHash(s);
+    }
+  };
+}
 
 #endif

@@ -13,9 +13,10 @@
 
 #include <QDebug>
 
-Dataset::Dataset()
-// start with an empty dataset and make it current
-    : datasets(1), d(&datasets.front())
+Dataset::Dataset(ProteinDB &proteins)
+    : proteins(proteins),
+      // start with an empty dataset and make it current
+      datasets(1), d(&datasets.front())
 {
 
 }
@@ -53,7 +54,7 @@ void Dataset::spawn(const Configuration& conf, QString initialDisplay)
 		target.dimensions.append(source.dimensions.at((size_t)i));
 
 	target.protIndex = source.protIndex;
-	target.proteins = source.proteins;
+	target.protIds = source.protIds;
 
 	// only carry over features/scores we keep
 	auto fill_stripped = [&conf] (const auto &source, auto &target) {
@@ -126,7 +127,7 @@ void Dataset::computeDisplays()
 void Dataset::clearClusters()
 {
 	QWriteLocker _(&l);
-	d->clustering = Clustering(d->proteins.size());
+	d->clustering = Clustering(d->protIds.size());
 
 	emit newClustering();
 }
@@ -158,7 +159,7 @@ void Dataset::computeFAMS()
 
 	fams->pruneModes();
 
-	Clustering cl(d->proteins.size());
+	Clustering cl(d->protIds.size());
 	auto modes = meanshift.fams->exportModes();
 	for (unsigned i = 0; i < modes.size(); ++i)
 		cl.clusters[i] = {QString("Cluster #%1").arg(i+1), {}, 0, modes[i]};
@@ -217,6 +218,7 @@ bool Dataset::readSource(QTextStream in, const QString &name)
 	/* fill it up */
 	target.dimensions = trimCrap(std::move(header));
 	auto len = target.dimensions.size();
+	std::set<QString> seen; // names of read proteins
 	while (!in.atEnd()) {
 		auto line = in.readLine().split("\t");
 		if (line.empty() || line[0].isEmpty())
@@ -228,15 +230,13 @@ bool Dataset::readSource(QTextStream in, const QString &name)
 		}
 
 		/* setup metadata */
-		Protein p;
-		auto parts = line[0].split("_");
-		p.name = parts.front();
-		p.color = colorset[(int)qHash(p.name) % colorset.size()];
-		p.species = (parts.size() > 1 ? parts.back() : "RAT"); // wild guess
+		auto protid = proteins.add(line[0]);
+		auto name = proteins.peek()->proteins[protid].name;
 
-		/* check index */
-		if (target.protIndex.find(p.name) != target.protIndex.end())
-			emit ioError(QString("Multiples of protein '%1' found in the dataset!").arg(p.name));
+		/* check duplicates */
+		if (seen.count(name))
+			emit ioError(QString("Multiples of protein '%1' found in the dataset!").arg(name));
+		seen.insert(name);
 
 		/* read coefficients */
 		bool success = true;
@@ -247,17 +247,17 @@ bool Dataset::readSource(QTextStream in, const QString &name)
 			success = success && ok;
 		}
 		if (!success) {
-			emit ioError(QString("Stopped at protein '%1', malformed row!").arg(p.name));
+			emit ioError(QString("Stopped at protein '%1', malformed row!").arg(name));
 			break; // avoid message flood
 		}
 
 		/* append */
-		target.protIndex[p.name] = target.proteins.size();
-		target.proteins.push_back(std::move(p));
+		target.protIndex[protid] = target.protIds.size();
+		target.protIds.push_back(protid);
 		target.features.push_back(std::move(coeffs));
 	}
 	// ensure clustering is properly initialized if accessed
-	target.clustering = Clustering(target.proteins.size());
+	target.clustering = Clustering(target.protIds.size());
 
 	//qDebug() << "read" << d.features.size() << "rows with" << len << "columns";
 	if (target.features.empty() || len == 0) {
@@ -331,31 +331,27 @@ bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 			break; // avoid message flood
 		}
 
+		/* setup metadata */
+		auto protid = proteins.add(line[0]);
+
 		/* determine protein index */
 		size_t row; // the protein id we are altering
-		auto n = line[0].split('_').front();
-		auto index = target.protIndex.find(n);
+		auto index = target.protIndex.find(protid);
 		if (index == target.protIndex.end()) {
-			/* setup metadata */
-			Protein p;
-			auto parts = line[0].split("_");
-			p.name = parts.front();
-			p.color = colorset[(int)qHash(p.name) % colorset.size()];
-			p.species = (parts.size() > 1 ? parts.back() : "RAT"); // wild guess
-			target.proteins.push_back(std::move(p));
-			auto len = target.proteins.size();
+			target.protIds.push_back(protid);
+			auto len = target.protIds.size();
 			target.features.resize(len, std::vector<double>(dimensions.size()));
 			target.scores.resize(len, std::vector<double>(dimensions.size()));
 			row = len - 1;
-			target.protIndex[n] = row; // TODO: why doesn't it work with p.name?
+			target.protIndex[protid] = row;
 		} else {
 			row = index->second;
 		}
 
 		/* determine dimension index */
 		size_t col; // the dimension we are altering
-		index = dimensions.find(line[nameCol]);
-		if (index == dimensions.end()) {
+		auto dIndex = dimensions.find(line[nameCol]);
+		if (dIndex == dimensions.end()) {
 			target.dimensions.append(line[nameCol]);
 			auto len = (size_t)target.dimensions.size();
 			for (auto &i : target.features)
@@ -365,7 +361,7 @@ bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 			col = len - 1;
 			dimensions[line[nameCol]] = col;
 		} else {
-			col = index->second;
+			col = dIndex->second;
 		}
 
 		/* read coefficients */
@@ -376,7 +372,8 @@ bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 		success = success && ok;
 		score = line[scoreCol].toDouble(&ok);
 		if (!success) {
-			auto err = QString("Stopped at protein '%1', malformed row!").arg(target.proteins[row].name);
+			auto name = proteins.peek()->proteins[protid].name;
+			auto err = QString("Stopped at protein '%1', malformed row!").arg(name);
 			emit ioError(err);
 			break; // avoid message flood
 		}
@@ -387,7 +384,7 @@ bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 	}
 
 	// ensure clustering is properly initialized if accessed
-	target.clustering = Clustering(target.proteins.size());
+	target.clustering = Clustering(target.protIds.size());
 
 	if (target.features.empty() || target.dimensions.empty()) {
 		emit ioError(QString("Could not read any valid data rows from file!"));
@@ -464,6 +461,7 @@ QByteArray Dataset::writeDisplay(const QString &name)
 	return ret;
 }
 
+// TODO: move to storage, only deals with ProteinDB
 bool Dataset::readDescriptions(const QByteArray &tsv)
 {
 	QTextStream in(tsv);
@@ -474,11 +472,9 @@ bool Dataset::readDescriptions(const QByteArray &tsv)
 		return false;
 	}
 
-	QWriteLocker _(&l);
-
 	/* ensure we have data to annotate */
-	if (d->proteins.empty()) {
-		emit ioError("Please load protein profiles first!");
+	if (proteins.peek()->proteins.empty()) {
+		emit ioError("Please load proteins first!");
 		return false;
 	}
 
@@ -488,13 +484,9 @@ bool Dataset::readDescriptions(const QByteArray &tsv)
 		if (line.size() < 2)
 			continue;
 
-		auto name = line[0];
-		try {
-			auto p = d->find(name);
-			d->proteins[p].description = line[1];
-		} catch (std::out_of_range&) {
-			qDebug() << "Ignored" << name << "(unknown)";
-		}
+		bool success = proteins.addDescription(line[0], line[1]);
+		if (!success)
+			qDebug() << "Ignored" << line[0] << "(unknown)";
 	}
 	return true;
 }
@@ -502,12 +494,12 @@ bool Dataset::readDescriptions(const QByteArray &tsv)
 bool Dataset::readAnnotations(const QByteArray &tsv)
 {
 	/* ensure we have data to annotate */
-	if (d->proteins.empty()) {
+	if (d->protIds.empty()) {
 		emit ioError("Please load protein profiles first!");
 		return false;
 	}
 
-	Clustering cl(d->proteins.size());
+	Clustering cl(d->protIds.size());
 
 	QTextStream in(tsv);
 	// we use SkipEmptyParts for chomping at the end, but dangerous…
@@ -528,7 +520,7 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 
 			for (auto &name : qAsConst(line)) {
 				try {
-					auto p = d->find(name);
+					auto p = d->protIndex.at(proteins.peek()->find(name));
 					cl.memberships[p].insert(clusterIndex);
 					cl.clusters[clusterIndex].size++;
 				} catch (std::out_of_range&) {
@@ -556,7 +548,7 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 			auto name = line[0];
 			line.removeFirst();
 			try {
-				auto p = d->find(name);
+				auto p = d->protIndex.at(proteins.peek()->find(name));
 				for (auto i = 0; i < header.size(); ++i) { // run over header to only allow valid columns
 					if (line[i].isEmpty() || line[i].contains(QRegularExpression("^\\s*$")))
 						continue;
@@ -598,7 +590,7 @@ bool Dataset::readHierarchy(const QByteArray &json)
 	QWriteLocker _(&l);
 
 	/* ensure we have data to annotate */
-	if (d->proteins.empty()) {
+	if (d->protIds.empty()) {
 		emit ioError("Please load protein profiles first!");
 		return false;
 	}
@@ -607,8 +599,8 @@ bool Dataset::readHierarchy(const QByteArray &json)
 	auto &container = d->hierarchy;
 
 	// some preparation. we can expect at least as much clusters:
-	container.reserve(2 * d->proteins.size()); // binary tree
-	container.resize(d->proteins.size()); // cluster-per-protein
+	container.reserve(2 * d->protIds.size()); // binary tree
+	container.resize(d->protIds.size()); // cluster-per-protein
 
 	for (auto it = nodes.constBegin(); it != nodes.constEnd(); ++it) {
 		unsigned id = it.key().toUInt();
@@ -624,7 +616,7 @@ bool Dataset::readHierarchy(const QByteArray &json)
 		if (content.size() == 1) {
 			auto name = content[0].toString();
 			try {
-				c.protein = (int)d->find(name);
+				c.protein = (int)d->protIndex.at(proteins.peek()->find(name));
 			} catch (std::out_of_range&) {
 				qDebug() << "Ignored" << name << "(unknown)";
 				c.protein = -1;
@@ -684,7 +676,7 @@ void Dataset::calculatePartition(unsigned granularity)
 	}
 
 	/* set up clustering based on candidates */
-	Clustering cl(d->proteins.size());
+	Clustering cl(d->protIds.size());
 
 	// helper to recursively assign all proteins to clusters
 	std::function<void(unsigned, unsigned)> flood;
@@ -744,7 +736,7 @@ void Dataset::pruneClusters()
 
 	/* defragment clusters (un-assign and remove small clusters) */
 	// TODO: make configurable; instead keep X biggest clusters?
-	auto minSize = unsigned(0.005f * (float)d->proteins.size());
+	auto minSize = unsigned(0.005f * (float)d->protIds.size());
 	auto &c = d->clustering.clusters;
 	auto it = c.begin();
 	while (it != c.end()) {
@@ -834,9 +826,11 @@ void Dataset::orderProteins(OrderBy reference)
 		target.fallback = true;
 	}
 
+	auto p = proteins.peek();
 	auto &index = target.index;
-	auto byName = [this] (auto a, auto b) {
-		return d->proteins[a].name < d->proteins[b].name;
+
+	auto byName = [this,&p] (auto a, auto b) {
+		return d->lookup(p, a).name < d->lookup(p, b).name;
 	};
 
 	switch (reference) {
@@ -861,7 +855,7 @@ void Dataset::orderProteins(OrderBy reference)
 		for (auto ci : d->clustering.order) {
 			// assemble all affected proteins, and their spread from cluster core
 			std::vector<std::pair<unsigned, double>> members;
-			for (unsigned i = 0; i < d->proteins.size(); ++i) {
+			for (unsigned i = 0; i < d->protIds.size(); ++i) {
 				if (seen.count(i))
 					continue; // protein was part of bigger cluster
 				if (d->clustering.memberships[i].count(ci)) {
@@ -882,7 +876,7 @@ void Dataset::orderProteins(OrderBy reference)
 
 		// add all proteins not covered yet
 		std::vector<unsigned> missing;
-		for (unsigned i = 0; i < d->proteins.size(); ++i) {
+		for (unsigned i = 0; i < d->protIds.size(); ++i) {
 			if (!seen.count(i))
 				missing.push_back(i);
 		}
@@ -892,7 +886,7 @@ void Dataset::orderProteins(OrderBy reference)
 	}
 	default:
 		/* replicate file order */
-		index.resize(d->proteins.size());
+		index.resize(d->protIds.size());
 		std::iota(index.begin(), index.end(), 0);
 
 		/* order based on name (some prots have common prefixes) */

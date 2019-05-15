@@ -12,6 +12,7 @@
 #include <QAbstractProxyModel>
 #include <QLabel>
 #include <QMessageBox>
+#include <QTimer>
 
 #include <random>
 
@@ -24,7 +25,7 @@ const QVector<QColor> tableau20 = {
     {188, 189, 34}, {219, 219, 141}, {23, 190, 207}, {158, 218, 229}};
 
 MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent), store(data),
+    QMainWindow(parent), data(proteins), store(data),
     cursorChart(new ProfileChart(data)),
     io(new FileIO(this))
 {
@@ -44,12 +45,14 @@ MainWindow::MainWindow(QWidget *parent) :
 		connect(this, &MainWindow::reset, v, &Viewer::inReset);
 		connect(this, &MainWindow::repartition, v, &Viewer::inRepartition);
 		connect(this, &MainWindow::reorder, v, &Viewer::inReorder);
-		connect(this, &MainWindow::toggleMarker, v, &Viewer::inToggleMarker);
 		connect(this, &MainWindow::togglePartitions, v, &Viewer::inTogglePartitions);
+		// TODO: right place? also wrong interface (index/protid) right now!
+		connect(&proteins, &ProteinDB::markerToggled, v, &Viewer::inToggleMarker);
 
 		// connect signalling out of view
-		connect(v, &Viewer::markerToggled, [this] (unsigned idx, bool present) {
-			this->markerItems[idx]->setCheckState(present ? Qt::Checked : Qt::Unchecked);
+		connect(v, &Viewer::markerToggled, [this] (ProteinId id, bool present) {
+			// this will signal to ProteinDB
+			this->markerItems.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 		});
 		connect(v, &Viewer::cursorChanged, this, &MainWindow::updateCursorList);
 		auto renderSlot = [this] (auto r, auto d) {
@@ -124,11 +127,16 @@ void MainWindow::setupToolbar()
 
 void MainWindow::setupSignals()
 {
-	/** signals **/
 	/* error dialogs */
 	connect(&store, &Storage::ioError, this, &MainWindow::displayError);
 	connect(&data, &Dataset::ioError, this, &MainWindow::displayError);
 	connect(io, &FileIO::ioError, this, &MainWindow::displayError);
+
+	/* notifications from Protein db */
+	connect(&proteins, &ProteinDB::proteinAdded, this, &MainWindow::addProtein);
+	connect(&proteins, &ProteinDB::markerToggled, this, [this] (auto id, bool present) {
+		this->markerItems.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
+	});
 
 	/* notifications from data/storage thread */
 	connect(&store, &Storage::newAnnotations, this, [this] (auto name, bool loaded) {
@@ -159,7 +167,7 @@ void MainWindow::setupSignals()
 	});
 	connect(&data, &Dataset::newHierarchy, this, [this] (bool withOrder) {
 		auto d = data.peek();
-		auto reasonable = std::min(d->proteins.size(), d->hierarchy.size()) / 4;
+		auto reasonable = std::min(d->protIds.size(), d->hierarchy.size()) / 4;
 		granularitySlider->setMaximum(reasonable);
 		if (withOrder)
 			emit reorder();
@@ -180,6 +188,8 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::calculatePartition, &data, &Dataset::calculatePartition);
 	connect(this, &MainWindow::runFAMS, &data, &Dataset::computeFAMS);
 	connect(this, &MainWindow::updateColorset, &data, &Dataset::updateColorset);
+
+	connect(this, &MainWindow::updateColorset, [this] (const auto &c) { proteins.updateColorset(c); });
 
 	/* selecting dataset */
 	connect(datasetSelect, qOverload<int>(&QComboBox::activated), [this] {
@@ -282,27 +292,18 @@ void MainWindow::setupActions()
 		emit exportAnnotations(filename);
 	});
 	connect(actionShowPartition, &QAction::toggled, this, &MainWindow::togglePartitions);
-	connect(actionClearMarkers, &QAction::triggered, [this] {
-		for (auto i : qAsConst(this->markerItems))
-			i->setCheckState(Qt::Unchecked);
-	});
+	connect(actionClearMarkers, &QAction::triggered, &proteins, &ProteinDB::clearMarkers);
 	connect(actionLoadMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenMarkers);
 		if (filename.isEmpty())
 			return;
-		for (auto i : store.importMarkers(filename)) {
-			this->markerItems[i]->setCheckState(Qt::Checked);
-		}
+		store.importMarkers(filename);
 	});
 	connect(actionSaveMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::SaveMarkers);
 		if (filename.isEmpty())
 			return;
-		QVector<unsigned> indices;
-		for (auto m : qAsConst(this->markerItems))
-			if (m->checkState() == Qt::Checked)
-				indices.append((unsigned)m->data().toInt());
-		store.exportMarkers(filename, indices);
+		store.exportMarkers(filename);
 	});
 
 	connect(actionSplice, &QAction::triggered, [this] {
@@ -330,9 +331,14 @@ void MainWindow::setupMarkerControls()
 	protSearch->setCompleter(cpl);
 	protList->setModel(cpl->completionModel());
 
+	connect(this, &MainWindow::reset, this, &MainWindow::resetMarkerControls);
+
 	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
-		auto index = (unsigned)i->data().toInt();
-		emit toggleMarker(index, i->checkState() == Qt::Checked);
+		auto id = ProteinId(i->data().toInt());
+		if (i->checkState() == Qt::Checked)
+			proteins.addMarker(id);
+		else
+			proteins.removeMarker(id);
 	});
 
 	auto toggler = [m] (QModelIndex i) {
@@ -342,6 +348,8 @@ void MainWindow::setupMarkerControls()
 		if (!proxy)
 			return; // sorry, can't do this!
 		auto item = m->itemFromIndex(proxy->mapToSource(i));
+		if (!item->isEnabled())
+			return;
 		item->setCheckState(item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked);
 	};
 
@@ -391,19 +399,10 @@ void MainWindow::clearData()
 
 	/* reset views first (before our widgets emit signals) */
 	emit reset(false);
-
-	/* clear out markers TODO issue #18 */
-	resetMarkerControls();
 }
 
 void MainWindow::resetData()
 {
-	/* save marker names to carry them over */
-	std::vector<QString> markedProteins;
-	for (auto m : qAsConst(this->markerItems))
-		if (m->checkState() == Qt::Checked)
-			markedProteins.push_back(m->text());
-
 	clearData();
 
 	/* reset views first (before our widgets emit signals) */
@@ -412,20 +411,9 @@ void MainWindow::resetData()
 	/* set up cursor chart */
 	cursorChart->setCategories(data.peek()->dimensions);
 
-	/* set up marker controls */
-	resetMarkerControls();
-
 	/* re-enable actions that depend only on data */
 	actionSplice->setEnabled(true);
 	toolbarActions.partitions->setEnabled(true);
-
-	/* restore markers from names */
-	auto d = data.peek();
-	for (auto &name : markedProteins) {
-		try {
-			this->markerItems[d->find(name)]->setCheckState(Qt::Checked);
-		} catch (std::out_of_range&) {}
-	}
 }
 
 void MainWindow::newData(unsigned index)
@@ -467,9 +455,11 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	}
 
 	/* determine marker proteins contained in samples */
+	auto d = data.peek();
+	auto p = proteins.peek();
 	std::set<unsigned> markers;
 	for (auto i : qAsConst(samples)) {
-		if (markerItems.contains(i) && markerItems[i]->checkState() == Qt::Checked)
+		if (p->markers.count(d->protIds[i]))
 			markers.insert(i);
 	}
 
@@ -499,9 +489,8 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	text.append(QString("(%1 total)").arg(total));
 
 	// sort by name -- _after_ set reduction to get a broad representation
-	auto d = data.peek();
-	std::sort(samples.begin(), samples.end(), [&d] (const unsigned& a, const unsigned& b) {
-		return d->proteins[a].name < d->proteins[b].name;
+	std::sort(samples.begin(), samples.end(), [&d,&p] (unsigned a, unsigned b) {
+		return d->lookup(p, a).name < d->lookup(p, b).name;
 	});
 	// compose list
 	QString content;
@@ -510,11 +499,11 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 		 // highlight marker proteins
 		if (markers.count(i))
 			content.append("<small>★</small>");
-		auto &p = d->proteins[i];
+		auto &prot = d->lookup(p, i);
 		auto &m = d->clustering.memberships[i];
 		auto clusters = std::accumulate(m.begin(), m.end(), QStringList(),
 		    [&d] (QStringList a, unsigned b) { return a << d->clustering.clusters.at(b).name; });
-		content.append(tpl.arg(p.name, p.species, clusters.join(", "), p.description));
+		content.append(tpl.arg(prot.name, prot.species, clusters.join(", "), prot.description));
 	}
 	cursorList->setText(text.arg(content));
 
@@ -524,25 +513,20 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 
 void MainWindow::resetMarkerControls()
 {
-	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
-	/* clear model */
-	m->clear();
-	markerItems.clear();
-
-	/* re-fill model */
+	/* enable only proteins that are found in current dataset */
 	auto d = data.peek();
-	for (auto i : d->protIndex) { // use index to have it sorted (required!)
-		auto item = new QStandardItem;
-		item->setText(d->proteins[i.second].name);
-		item->setData(i.second);
-		item->setCheckable(true);
-		item->setCheckState(Qt::Unchecked);
-		m->appendRow(item);
-		markerItems[i.second] = item;
-	}
+	for (auto& [id, item] : markerItems)
+		item->setEnabled(d->protIndex.count(id));
+}
 
-	/* enable if we have data */
-	markerWidget->setEnabled(!markerItems.isEmpty());
+void MainWindow::ensureSortedMarkerItems()
+{
+	if (markerWidget->isEnabled()) // already in good state
+		return;
+
+	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
+	m->sort(0);
+	markerWidget->setEnabled(true); // we are in good state now
 }
 
 void MainWindow::setFilename(QString name)
@@ -585,4 +569,25 @@ void MainWindow::showHelp()
 void MainWindow::displayError(const QString &message)
 {
 	QMessageBox::critical(this, "An error occured", message);
+}
+
+void MainWindow::addProtein(ProteinId id)
+{
+	/* setup new item */
+	auto item = new QStandardItem;
+	item->setText(proteins.peek()->proteins[id].name);
+	item->setData(id);
+	item->setCheckable(true);
+	item->setCheckState(Qt::Unchecked);
+	// expect new protein not to be in current dataset (yet)
+	item->setEnabled(false);
+
+	/* add item to model */
+	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
+	m->appendRow(item);
+	markerItems[id] = item;
+
+	/* ensure items are sorted in the end, but defer sorting */
+	markerWidget->setEnabled(false); // we are "dirty"
+	QTimer::singleShot(0, this, &MainWindow::ensureSortedMarkerItems);
 }

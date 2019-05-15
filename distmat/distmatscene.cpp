@@ -128,7 +128,7 @@ void DistmatScene::reorder()
 	recolor();
 
 	/* reflect new order in markers */
-	for (auto& [i, m] : markers) {
+	for (auto& [_, m] : markers) {
 		m.coordinate = computeCoord(m.sampleIndex);
 		m.rearrange(viewport.left(), vpScale);
 	}
@@ -201,12 +201,15 @@ void DistmatScene::updateRenderQuality()
 	display->update();
 }
 
-void DistmatScene::toggleMarker(unsigned sampleIndex, bool present)
+void DistmatScene::toggleMarker(ProteinId id, bool present)
 {
-	if (present)
-		markers.try_emplace(sampleIndex, this, sampleIndex);
-	else
-		markers.erase(sampleIndex);
+	if (present) {
+		try {
+			markers.try_emplace(id, this, data.peek()->protIndex.at(id), id);
+		} catch (...) {}
+	} else {
+		markers.erase(id);
+	}
 }
 
 void DistmatScene::togglePartitions(bool show)
@@ -279,7 +282,7 @@ qreal DistmatScene::computeCoord(unsigned sampleIndex)
 {
 	auto d = data.peek();
 	auto pos = d->order.rankOf[sampleIndex];
-	return (qreal)(pos + 0.5) / d->proteins.size();
+	return (qreal)(pos + 0.5) / d->protIds.size();
 }
 
 DistmatScene::LegendItem::LegendItem(qreal coord) : coordinate(coord) {}
@@ -319,11 +322,11 @@ void DistmatScene::LegendItem::setup(DistmatScene *scene, QString title, QColor 
 	rearrange(scene->viewport.left(), scene->vpScale);
 }
 
-DistmatScene::Marker::Marker(DistmatScene *scene, unsigned sampleIndex)
+DistmatScene::Marker::Marker(DistmatScene *scene, unsigned sampleIndex, ProteinId id)
     : LegendItem(scene->computeCoord(sampleIndex)), sampleIndex(sampleIndex)
 {
-	auto meta = scene->data.peek()->proteins[sampleIndex];
-	setup(scene, meta.name, meta.color);
+	const auto protein = scene->data.proteins.peek()->proteins[id];
+	setup(scene, protein.name, protein.color);
 	setVisible(scene->currentDirection == Direction::PER_PROTEIN);
 }
 

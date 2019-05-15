@@ -94,9 +94,11 @@ void ProfileChart::finalize(bool fresh)
 	bool reduced = fresh && content.size() >= 25;
 	bool outer = (!fresh || reduced) && haveStats();
 
+	auto p = data.proteins.peek();
+
 	std::function<bool(const std::pair<unsigned,bool> &a, const std::pair<unsigned,bool> & b)>
-	byName = [&d] (auto a, auto b) {
-		return d->proteins[a.first].name < d->proteins[b.first].name;
+	byName = [&d,&p] (auto a, auto b) {
+		return d->lookup(p, a.first).name < d->lookup(p, b.first).name;
 	};
 	auto byMarkedThenName = [byName] (auto a, auto b) {
 		if (a.second != b.second)
@@ -149,10 +151,10 @@ void ProfileChart::finalize(bool fresh)
 			return {stats.max[i], stats.min[i]};
 		});
 		s1->setName("Range");
-		auto p = s1->pen(); // border
-		p.setColor(Qt::lightGray);
-		p.setWidthF(0);
-		s1->setPen(p);
+		auto pen = s1->pen(); // border
+		pen.setColor(Qt::lightGray);
+		pen.setWidthF(0);
+		s1->setPen(pen);
 		auto b = s1->brush(); // fill
 		b.setColor(Qt::lightGray);
 		b.setStyle(Qt::BrushStyle::BDiagPattern);
@@ -175,13 +177,13 @@ void ProfileChart::finalize(bool fresh)
 
 			auto s = new QtCharts::QLineSeries;
 			add(s, true, isMarker);
-			QString title = (isMarker ? "<small>★</small>" : "") + d->proteins[index].name;
+			QString title = (isMarker ? "<small>★</small>" : "") + d->lookup(p, index).name;
 			// color only markers in small view
-			QColor color = (isMarker || !fresh ? d->proteins[index].color : Qt::black);
+			QColor color = (isMarker || !fresh ? d->lookup(p, index).color : Qt::black);
 			if (isMarker && !fresh) { // acentuate markers in big view
-				auto p = s->pen();
-				p.setWidthF(3. * p.widthF());
-				s->setPen(p);
+				auto pen = s->pen();
+				pen.setWidthF(3. * pen.widthF());
+				s->setPen(pen);
 			}
 			s->setColor(color);
 			s->setName(title);

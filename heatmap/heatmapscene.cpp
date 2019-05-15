@@ -13,8 +13,8 @@ void HeatmapScene::setScale(qreal scale)
 {
 	pixelScale = scale;
 	// markers use pixelScale
-	for (auto& [i, m] : markers)
-		m.rearrange(profiles[i]->pos());
+	for (auto& [_, m] : markers)
+		m.rearrange(profiles[m.sampleIndex]->pos());
 }
 
 void HeatmapScene::reset(bool haveData)
@@ -96,8 +96,8 @@ void HeatmapScene::reorder()
 	}
 
 	// sync marker positions
-	for (auto& [i, m] : markers)
-		m.rearrange(profiles[i]->pos());
+	for (auto& [_, m] : markers)
+		m.rearrange(profiles[m.sampleIndex]->pos());
 }
 
 void HeatmapScene::updateColorset(QVector<QColor> colors)
@@ -107,13 +107,16 @@ void HeatmapScene::updateColorset(QVector<QColor> colors)
 	// TODO: re-initialize markers
 }
 
-void HeatmapScene::toggleMarker(unsigned sampleIndex, bool present)
+void HeatmapScene::toggleMarker(ProteinId id, bool present)
 {
 	if (present) {
-		auto pos = profiles[sampleIndex]->pos();
-		markers.try_emplace(sampleIndex, this, sampleIndex, pos);
+		try {
+			auto index = data.peek()->protIndex.at(id);
+			auto pos = profiles[index]->pos();
+			markers.try_emplace(id, this, index, pos);
+		} catch (...) {}
 	} else {
-		markers.erase(sampleIndex);
+		markers.erase(id);
 	}
 }
 
@@ -229,7 +232,8 @@ void HeatmapScene::Profile::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
 HeatmapScene::Marker::Marker(HeatmapScene *scene, unsigned sampleIndex, const QPointF &pos)
     : sampleIndex(sampleIndex)
 {
-	auto meta = scene->data.peek()->proteins[sampleIndex];
+	auto p = scene->data.proteins.peek();
+	auto &meta = scene->data.peek()->lookup(p, sampleIndex);
 
 	QBrush fill(QColor{0, 0, 0, 127});
 	QPen outline(meta.color.dark(300));

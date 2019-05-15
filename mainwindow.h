@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include "ui_mainwindow.h"
+#include "proteindb.h"
 #include "dataset.h"
 #include "storage.h"
 #include "fileio.h"
@@ -10,6 +11,8 @@
 #include <QThread>
 
 #include <memory>
+#include <map>
+#include <unordered_map>
 
 class Chart; // TODO remove
 class QLabel;
@@ -48,7 +51,6 @@ signals:
 	void reset(bool haveData);
 	void repartition(bool withOrder);
 	void reorder();
-	void toggleMarker(unsigned sampleIndex, bool present);
 	void togglePartitions(bool show);
 
 	// other signals
@@ -57,6 +59,8 @@ signals:
 public slots:
 	void showHelp();
 	void displayError(const QString &message);
+
+	void addProtein(ProteinId id);
 
 	void resetData();
 	void newData(unsigned index);
@@ -70,9 +74,11 @@ protected:
 	void setupActions();
 	void setupMarkerControls();
 	void resetMarkerControls();
+	void ensureSortedMarkerItems();
 	void setFilename(QString name);
 	void setSelectedDataset(unsigned index);
 
+	ProteinDB proteins;
 	Dataset data;
 	Storage store;
 	QThread dataThread;
@@ -80,7 +86,7 @@ protected:
 
 	QTreeWidget *datasetTree;
 	std::map<unsigned, QTreeWidgetItem*> datasetItems;
-	QMap<unsigned, QStandardItem*> markerItems;
+	std::unordered_map<ProteinId, QStandardItem*> markerItems;
 
 	std::vector<Viewer*> views;
 	ProfileChart *cursorChart;

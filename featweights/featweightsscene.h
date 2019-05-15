@@ -11,6 +11,8 @@
 
 #include <opencv2/core/core.hpp>
 
+#include <unordered_set>
+
 #undef ABSOLUTE // defined by wingdi.h
 #undef RELATIVE // defined by wingdi.h
 
@@ -50,7 +52,7 @@ signals:
 
 public slots:
 	void reset(bool haveData = false);
-	void toggleMarker(unsigned sampleIndex, bool present);
+	void toggleMarker(ProteinId id, bool present);
 	void toggleImage(bool useAlternate);
 	void updateColorset(QVector<QColor> colors);
 	void changeWeighting(Weighting weighting);
@@ -69,7 +71,7 @@ protected:
 	std::vector<std::vector<double>> clippedFeatures; // score threshold applied
 	QVector<QColor> colorset;
 
-	std::set<unsigned> markers;
+	std::unordered_set<ProteinId> markers;
 
 	std::vector<std::vector<unsigned>> contours;
 	std::vector<double> weights;

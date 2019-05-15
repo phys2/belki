@@ -169,7 +169,7 @@ void Chart::updatePartitions()
 
 		/* re-order marker series to come up on top of partitions */
 		// unfortunately, due to QCharts suckery, we need to re-create them
-		for (auto &[i, m] : markers) {
+		for (auto &[_, m] : markers) {
 			m.reAdd();
 		}
 	}
@@ -308,12 +308,15 @@ void Chart::resetCursor()
 	updateCursor();
 }
 
-void Chart::toggleMarker(unsigned sampleIndex, bool present)
+void Chart::toggleMarker(ProteinId id, bool present)
 {
-	if (present)
-		markers.try_emplace(sampleIndex, sampleIndex, this);
-	else
-		markers.erase(sampleIndex);
+	if (present) {
+		try {
+			markers.try_emplace(id, data.peek()->protIndex.at(id), id, this);
+		} catch (...) {}
+	} else {
+		markers.erase(id);
+	}
 }
 
 void Chart::animate(int msec) {
@@ -385,12 +388,12 @@ void Chart::Proteins::redecorate(bool full, bool hl)
 	setColor(fillColor);
 }
 
-Chart::Marker::Marker(unsigned sampleIndex, Chart *chart)
-    : sampleIndex(sampleIndex),
+Chart::Marker::Marker(unsigned sampleIndex, ProteinId id, Chart *chart)
+    : sampleIndex(sampleIndex), sampleId(id),
       series(std::make_unique<QtCharts::QScatterSeries>())
 {
 	auto s = series.get();
-	auto label = chart->data.peek()->proteins[sampleIndex].name;
+	auto label = chart->data.proteins.peek()->proteins[sampleId].name;
 	s->setName(label);
 
 	s->setPointLabelsFormat(label);
@@ -420,7 +423,7 @@ void Chart::Marker::setup(Chart *chart)
 	s->attachAxis(chart->ay);
 
 	s->setBorderColor(Qt::black);
-	s->setColor(chart->data.peek()->proteins[sampleIndex].color);
+	s->setColor(chart->data.proteins.peek()->proteins[sampleId].color);
 	s->setMarkerShape(QtCharts::QScatterSeries::MarkerShapeRectangle);
 	s->setMarkerSize(chart->proteinStyle.size * 1.3333);
 	s->setPointLabelsVisible(true);
@@ -428,7 +431,7 @@ void Chart::Marker::setup(Chart *chart)
 	/* allow to remove marker by clicking its legend entry */
 	auto lm = chart->legend()->markers(s)[0];
 	connect(lm, &QtCharts::QLegendMarker::clicked, [chart, this] {
-		emit chart->markerToggled(sampleIndex, false);
+		emit chart->markerToggled(sampleId, false);
 	});
 
 	// follow style changes (note: receiver specified for cleanup on delete!)

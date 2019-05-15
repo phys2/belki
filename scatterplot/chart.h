@@ -39,11 +39,12 @@ public:
 
 	struct Marker
 	{
-		Marker(unsigned sampleIndex, Chart* chart);
+		Marker(unsigned sampleIndex, ProteinId id, Chart* chart);
 		// remove+add graphicitems (used for z-ordering of chart elements)
 		void reAdd();
 
 		unsigned sampleIndex;
+		ProteinId sampleId;
 
 		// items are added to the scene, so we make them non-copyable
 		std::unique_ptr<QtCharts::QScatterSeries> series;
@@ -75,12 +76,12 @@ public slots:
 	void updateCursor(const QPointF &pos = {});
 	void togglePartitions(bool showPartitions);
 	void updateColorset(QVector<QColor> colors);
-	void toggleMarker(unsigned sampleIndex, bool present);
+	void toggleMarker(ProteinId id, bool present);
 
 signals:
 	void areaChanged();
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
-	void markerToggled(unsigned sampleIndex, bool present);
+	void markerToggled(ProteinId id, bool present);
 	void proteinStyleUpdated();
 
 protected:
@@ -93,7 +94,7 @@ protected:
 
 	Proteins *master; // owned by chart
 	std::unordered_map<int, std::unique_ptr<Proteins>> partitions;
-	std::map<unsigned, Marker> markers;
+	std::map<ProteinId, Marker> markers;
 
 	QGraphicsEllipseItem *tracker;
 	QtCharts::QValueAxis *ax, *ay;

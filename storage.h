@@ -17,8 +17,8 @@ public:
 
 	QString name() { return sourcename; }
 
-	QVector<unsigned> importMarkers(const QString &filename);
-	void exportMarkers(const QString &filename, const QVector<unsigned> &indices);
+	void importMarkers(const QString &filename);
+	void exportMarkers(const QString &filename);
 
 signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
 	void ioError(const QString &message);

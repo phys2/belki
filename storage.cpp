@@ -244,6 +244,7 @@ void Storage::exportAnnotations(const QString &filename)
 
 	QTextStream out(&f);
 	auto d = data.peek(); // TODO: avoid acquiring read lock in writer thread!
+	auto p = data.proteins.peek();
 
 	// write header
 	out << "Protein Name";
@@ -252,10 +253,10 @@ void Storage::exportAnnotations(const QString &filename)
 	out << endl;
 
 	// write associations
-	for (unsigned i = 0; i < d->proteins.size(); ++i) {
-		auto &p = d->proteins[i];
+	for (unsigned i = 0; i < d->protIds.size(); ++i) {
+		auto &protein = p->proteins[d->protIds[i]];
 		auto &m = d->clustering.memberships[i];
-		out << p.name << "_" << p.species;
+		out << protein.name << "_" << protein.species;
 		for (auto& [i, c] : d->clustering.clusters) {
 			out << "\t";
 			if (m.count(i))
@@ -265,44 +266,43 @@ void Storage::exportAnnotations(const QString &filename)
 	}
 }
 
-QVector<unsigned> Storage::importMarkers(const QString &filename)
+void Storage::importMarkers(const QString &filename)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::ReadOnly)) {
 		freadError(filename);
-		return {};
+		return;
 	}
 
-	QVector<unsigned> ret;
 	QTextStream in(&f);
-	// TODO: it is not obvious here but this method is not called from writer thread!
-	auto d = data.peek();
 	while (!in.atEnd()) {
 		QString name;
 		in >> name;
 		try {
-			ret.append(d->find(name));
+			// TODO: slow to acquire read+write locks for each entry, however
+			// we don't want to lock for read first and then the write lock will
+			// not be effective (QReadWriteLock limitation)
+			auto id = data.proteins.peek()->find(name);
+			data.proteins.addMarker(id);
 		} catch (std::out_of_range&) {
 			qDebug() << "Ignored" << name << "(unknown)";
 		}
 	}
-	return ret;
 }
 
-void Storage::exportMarkers(const QString &filename, const QVector<unsigned> &indices)
+void Storage::exportMarkers(const QString &filename)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::WriteOnly))
 		return ioError(QString("Could not write file %1!").arg(filename));
 
+	auto p = data.proteins.peek();
 	QTextStream out(&f);
-	// TODO: it is not obvious here but this method is not called from writer thread!
-	auto d = data.peek();
-	for (auto i : indices) {
-		auto &p = d->proteins[i];
-		out << p.name;
-		if (!p.species.isEmpty())
-			out << "_" << p.species;
+	for (auto id : p->markers) {
+		auto protein = p->proteins[id];
+		out << protein.name;
+		if (!protein.species.isEmpty())
+			out << "_" << protein.species;
 		out << endl;
 	}
 }

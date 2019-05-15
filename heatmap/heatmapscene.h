@@ -7,6 +7,8 @@
 #include <QGraphicsScene>
 #include <QAbstractGraphicsShapeItem>
 
+#include <unordered_map>
+
 class HeatmapScene : public QGraphicsScene
 {
 	Q_OBJECT
@@ -69,7 +71,7 @@ public slots:
 
 	void updateColorset(QVector<QColor> colors);
 
-	void toggleMarker(unsigned sampleIndex, bool present);
+	void toggleMarker(ProteinId sampleIndex, bool present);
 	void togglePartitions(bool showPartitions);
 
 protected:
@@ -91,7 +93,7 @@ protected:
 	} layout;
 
 	std::vector<Profile*> profiles;
-	std::map<unsigned, Marker> markers;
+	std::unordered_map<ProteinId, Marker> markers;
 	bool showPartitions = true;
 	QVector<QColor> colorset;
 

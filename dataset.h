@@ -2,9 +2,11 @@
 #define DATASET_H
 
 #include "utils.h"
+#include "proteindb.h"
 #include "compute/features.h"
 #include "meanshift/fams.h"
 
+#include <QObject>
 #include <QString>
 #include <QMap>
 #include <QVector>
@@ -33,17 +35,6 @@ public:
 		CLUSTERING
 	};
 	Q_ENUM(OrderBy)
-
-	struct Protein {
-		// first part of protein name, used as identifier
-		QString name;
-		// last part of protein name
-		QString species;
-		// description, if any
-		QString description;
-		// random or user-set color
-		QColor color;
-	};
 
 	struct Cluster {
 		QString name;
@@ -91,21 +82,20 @@ public:
 	};
 
 	struct Public {
-		// helper for finding proteins, name may contain species, throws
-		unsigned find(const QString &name) const {
-			return protIndex.at(name.split('_').front());
-		}
 		bool hasScores() const { return !scores.empty(); }
+		const auto& lookup(View<ProteinDB::Public> &v, unsigned index) const {
+			return v->proteins[protIds[index]];
+		}
 
 		QStringList dimensions;
 
 		// meta information for this dataset
 		Configuration conf;
 
-		std::map<QString, unsigned> protIndex; // map indentifiers to index in vectors
-
-		// protein meta data (TODO: keep outside of dataset and have pointer in dataset?)
-		std::vector<Protein> proteins;
+		// from protein in vectors (1:1 index) to db index
+		std::vector<ProteinId> protIds;
+		// from protein db to index in vectors
+		std::unordered_map<ProteinId, unsigned> protIndex;
 
 		// original data
 		features::vec features;
@@ -130,7 +120,7 @@ public:
 
 	using View = ::View<Public>;
 
-	Dataset();
+	Dataset(ProteinDB &proteins);
 
 	static const std::map<Dataset::OrderBy, QString> availableOrders();
 
@@ -161,6 +151,9 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void calculatePartition(unsigned granularity);
 	void updateColorset(QVector<QColor> colors);
 	void changeOrder(OrderBy reference, bool synchronize);
+
+public:
+	ProteinDB &proteins; // TODO: make protected and let others get it elsewhere
 
 protected:
 	bool readSource(QTextStream in, const QString& name);
