@@ -18,7 +18,8 @@ Dataset::Dataset(ProteinDB &proteins)
       // start with an empty dataset and make it current
       datasets(1), d(&datasets.front())
 {
-
+	qRegisterMetaType<OrderBy>();
+	qRegisterMetaType<Configuration>();
 }
 
 void Dataset::select(unsigned index)
