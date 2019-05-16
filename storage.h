@@ -1,12 +1,11 @@
 #ifndef STORAGE_H
 #define STORAGE_H
 
-#include "dataset.h"
-
 #include <QObject>
 #include <memory>
 
 namespace qzip { class Zip; }
+class Dataset;
 
 class Storage : public QObject
 {

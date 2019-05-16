@@ -5,6 +5,8 @@
 #include <QChart>
 
 class ProfileWindow;
+class CentralHub;
+class ProteinDB;
 class Dataset;
 
 namespace QtCharts {
@@ -18,7 +20,7 @@ class ProfileChart : public QtCharts::QChart
 	Q_OBJECT
 
 public:
-	ProfileChart(Dataset &data);
+	ProfileChart(CentralHub &hub);
 	ProfileChart(ProfileChart *source);
 
 	unsigned numProfiles() { return content.size(); }
@@ -49,6 +51,9 @@ protected:
 
 	// axes
 	QtCharts::QAbstractAxis *ax, *ay;
+
+	// protein database
+	ProteinDB &proteins;
 
 	// data source
 	Dataset &data;

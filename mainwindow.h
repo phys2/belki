@@ -2,9 +2,6 @@
 #define MAINWINDOW_H
 
 #include "ui_mainwindow.h"
-#include "proteindb.h"
-#include "dataset.h"
-#include "storage.h"
 #include "fileio.h"
 
 #include <QMainWindow>
@@ -14,9 +11,9 @@
 #include <map>
 #include <unordered_map>
 
-class Chart; // TODO remove
-class QLabel;
+class CentralHub;
 class ProfileChart;
+class QLabel;
 class QStandardItem;
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -26,35 +23,10 @@ class MainWindow : public QMainWindow, private Ui::MainWindow
 	Q_OBJECT
 
 public:
-	explicit MainWindow(QWidget *parent = nullptr);
-	~MainWindow();
+	explicit MainWindow(CentralHub &hub);
 
 	const QString& getTitle() { return title; }
 	FileIO *getIo() { return io; }
-
-signals:
-	// to Dataset/Storage thread
-	void selectDataset(unsigned index);
-	void spawn(const Dataset::Configuration& config, QString initialDisplay = {});
-	void openDataset(const QString &filename);
-	void readAnnotations(const QString &name);
-	void readHierarchy(const QString &name);
-	void importDescriptions(const QString &filename);
-	void importAnnotations(const QString &filename);
-	void importHierarchy(const QString &filename);
-	void exportAnnotations(const QString &filename);
-	void clearClusters();
-	void calculatePartition(unsigned granularity);
-	void runFAMS();
-
-	// to views
-	void reset(bool haveData);
-	void repartition(bool withOrder);
-	void reorder();
-	void togglePartitions(bool show);
-
-	// other signals
-	void updateColorset(QVector<QColor> colors);
 
 public slots:
 	void showHelp();
@@ -78,10 +50,8 @@ protected:
 	void setFilename(QString name);
 	void setSelectedDataset(unsigned index);
 
-	ProteinDB proteins;
-	Dataset data;
-	Storage store;
-	QThread dataThread;
+	CentralHub &hub;
+
 	QString title;
 
 	QTreeWidget *datasetTree;

@@ -1,4 +1,5 @@
 #include "storage.h"
+#include "dataset.h"
 
 #include "storage/qzip.h"
 

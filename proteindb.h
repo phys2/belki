@@ -56,6 +56,7 @@ public:
 	bool removeMarker(ProteinId id);
 	void clearMarkers();
 
+public slots:
 	void updateColorset(const QVector<QColor>& colors);
 
 signals:

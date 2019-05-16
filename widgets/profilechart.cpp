@@ -1,5 +1,7 @@
 #include "profilechart.h"
 #include "profilewindow.h"
+#include "centralhub.h"
+#include "proteindb.h"
 #include "dataset.h"
 
 #include <QLineSeries>
@@ -12,8 +14,8 @@
 
 
 /* small, inset plot constructor */
-ProfileChart::ProfileChart(Dataset &data)
-    : data(data)
+ProfileChart::ProfileChart(CentralHub &hub)
+    : proteins(*hub.proteins), data(*hub.data)
 {
 	setMargins({0, 10, 0, 0});
 
@@ -29,7 +31,8 @@ ProfileChart::ProfileChart(Dataset &data)
 
 /* big, labelled plot constructor */
 ProfileChart::ProfileChart(ProfileChart *source)
-    : content(source->content), stats(source->stats), data(source->data)
+    : content(source->content), stats(source->stats),
+      proteins(source->proteins), data(source->data)
 {
 	auto ax = new QtCharts::QCategoryAxis;
 	this->ax = ax; // keep QCategoryAxis* in this method
@@ -94,7 +97,7 @@ void ProfileChart::finalize(bool fresh)
 	bool reduced = fresh && content.size() >= 25;
 	bool outer = (!fresh || reduced) && haveStats();
 
-	auto p = data.proteins.peek();
+	auto p = proteins.peek();
 
 	std::function<bool(const std::pair<unsigned,bool> &a, const std::pair<unsigned,bool> & b)>
 	byName = [&d,&p] (auto a, auto b) {

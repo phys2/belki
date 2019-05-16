@@ -1,3 +1,4 @@
+#include "centralhub.h"
 #include "mainwindow.h"
 
 #include <QChartView>
@@ -15,6 +16,8 @@ Q_IMPORT_PLUGIN(QSvgIconPlugin)
 
 int main(int argc, char *argv[])
 {
+	std::cout << "Running Belki " PROJECT_VERSION << std::endl;
+
 	// register additional types needed in queued connections
 	qRegisterMetaType<QVector<QColor>>();
 
@@ -30,14 +33,16 @@ int main(int argc, char *argv[])
 	if (QIcon::themeName().isEmpty())
 		QIcon::setThemeName("hicolor");
 
-	MainWindow window;
+	/* start the application */
+	CentralHub hub;
+	MainWindow window(hub);
 	window.show();
 
+	/* support some basic arguments */
 	if (argc >= 2) // pass initial filename as single argument
-		window.openDataset(argv[1]);
+		hub.openDataset(argv[1]);
 	if (argc >= 3)
-		window.importAnnotations(argv[2]);
+		hub.importAnnotations(argv[2]);
 
-	std::cout << "Running Belki " PROJECT_VERSION << std::endl;
 	return a.exec();
 }

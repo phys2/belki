@@ -1,6 +1,6 @@
 #include "spawndialog.h"
+#include "dataset.h"
 #include "distmat/distmatscene.h"
-#include "mainwindow.h" // to emit signal. could also chain it.
 #include "compute/features.h"
 
 #include <QPushButton>
@@ -58,7 +58,7 @@ SpawnDialog::SpawnDialog(Dataset &data, QWidget *parent) :
 
 void SpawnDialog::submit()
 {
-	Dataset::Configuration conf;
+	DatasetConfiguration conf;
 	conf.name = nameEdit->text();
 	if (conf.name.isEmpty())
 	    conf.name = nameEdit->placeholderText();

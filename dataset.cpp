@@ -19,7 +19,7 @@ Dataset::Dataset(ProteinDB &proteins)
       datasets(1), d(&datasets.front())
 {
 	qRegisterMetaType<OrderBy>();
-	qRegisterMetaType<Configuration>();
+	qRegisterMetaType<DatasetConfiguration>();
 }
 
 void Dataset::select(unsigned index)
@@ -44,7 +44,7 @@ void Dataset::select(unsigned index)
 	// TODO: synchronization of GUI order states and the order in the data
 }
 
-void Dataset::spawn(const Configuration& conf, QString initialDisplay)
+void Dataset::spawn(const DatasetConfiguration &conf, QString initialDisplay)
 {
 	const Public &source = datasets[conf.parent];
 	Public target;

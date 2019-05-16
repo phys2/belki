@@ -2,10 +2,11 @@
 #define SPAWNDIALOG_H
 
 #include "ui_spawndialog.h"
-#include "dataset.h"
 
 #include <memory>
 
+class Dataset;
+class DatasetConfiguration;
 class DistmatScene;
 class QPushButton;
 
@@ -17,7 +18,7 @@ public:
 	explicit SpawnDialog(Dataset &data, QWidget *parent = nullptr);
 
 signals:
-	void spawn(const Dataset::Configuration& config);
+	void spawn(const DatasetConfiguration& config);
 
 public slots:
 	void updateState();

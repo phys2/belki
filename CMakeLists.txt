@@ -53,6 +53,7 @@ target_sources(belki PRIVATE
 
 # main application
 target_sources(belki PRIVATE
+	centralhub.h centralhub.cpp
 	colormap.h colormap.cpp
 	dataset.h dataset.cpp
 	fileio.h fileio.cpp

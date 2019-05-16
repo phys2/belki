@@ -21,6 +21,16 @@
 #include <unordered_map>
 #include <memory>
 
+// a configuration that describes processing resulting in a dataset
+struct DatasetConfiguration {
+	QString name; // user-specified identifier
+
+	int parent = -1; // index of the dataset this one was spawned from
+	std::vector<unsigned> bands; // the feature bands that were kept
+	double scoreThresh = 0.; // score cutoff that was applied
+};
+Q_DECLARE_METATYPE(DatasetConfiguration)
+
 class Dataset : public QObject
 {
 	Q_OBJECT
@@ -72,15 +82,6 @@ public:
 		std::vector<unsigned> rankOf; // position of each protein in the order
 	};
 
-	// a configuration that describes processing resulting in a dataset
-	struct Configuration {
-		QString name; // user-specified identifier
-
-		int parent = -1; // index of the dataset this one was spawned from
-		std::vector<unsigned> bands; // the feature bands that were kept
-		double scoreThresh = 0.; // score cutoff that was applied
-	};
-
 	struct Public {
 		bool hasScores() const { return !scores.empty(); }
 		const auto& lookup(View<ProteinDB::Public> &v, unsigned index) const {
@@ -90,7 +91,7 @@ public:
 		QStringList dimensions;
 
 		// meta information for this dataset
-		Configuration conf;
+		DatasetConfiguration conf;
 
 		// from protein in vectors (1:1 index) to db index
 		std::vector<ProteinId> protIds;
@@ -143,7 +144,7 @@ signals: // IMPORTANT: when connecting to lambda, provide target object pointer 
 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
 	void select(unsigned index); // reset d*
-	void spawn(const Configuration& config, QString initialDisplay = {});
+	void spawn(const DatasetConfiguration& config, QString initialDisplay = {});
 	void computeDisplay(const QString &name);
 	void computeDisplays();
 	void clearClusters();
@@ -187,7 +188,5 @@ protected:
 
 	QVector<QColor> colorset = {Qt::black};
 };
-
-Q_DECLARE_METATYPE(Dataset::Configuration)
 
 #endif // DATASET_H
