@@ -49,4 +49,16 @@ double Range::scale() const
 	return 1./(max - min);
 }
 
+std::vector<QVector<QPointF>> pointify(const vec &source)
+{
+	std::vector<QVector<QPointF>> ret;
+	for (auto f : source) {
+		QVector<QPointF> points(f.size());
+		for (size_t i = 0; i < f.size(); ++i)
+			points[i] = {(qreal)i, f[i]};
+		ret.push_back(std::move(points));
+	}
+	return ret;
+}
+
 }

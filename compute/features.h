@@ -25,6 +25,8 @@ unsigned cutoff_effect(const vec& source, double threshold);
 // apply threshold on scores (_upper_ limit) by erasing corresp. features
 void apply_cutoff(vec& feats, const vec &scores, double threshold);
 
+std::vector<QVector<QPointF>> pointify(const vec &source);
+
 }
 
 #endif

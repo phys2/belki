@@ -85,7 +85,7 @@ void Dataset::spawn(ConstPtr srcholder, const DatasetConfiguration &conf)
 	}
 
 	b.featureRange = bIn->featureRange; // note: no adaptive handling yet
-	b.featurePoints = pointify(b.features);
+	b.featurePoints = features::pointify(b.features);
 
 	// also copy structure
 	s.l.lockForWrite();
@@ -366,7 +366,7 @@ bool Dataset::finalizeRead()
 		b.scoreRange = features::Range(b.scores);
 
 	/* pre-cache features as QPoints for plotting */
-	b.featurePoints = pointify(b.features);
+	b.featurePoints = features::pointify(b.features);
 
 	s.l.lockForWrite();
 	// unlock before further work, but after locking s; so readers will only see consistent state
@@ -839,18 +839,6 @@ void Dataset::orderProteins(OrderBy reference)
 		target.rankOf[index[i]] = i;
 
 	s.order = target;
-}
-
-std::vector<QVector<QPointF>> Dataset::pointify(const std::vector<std::vector<double> > &in)
-{
-	std::vector<QVector<QPointF>> ret;
-	for (auto f : in) {
-		QVector<QPointF> points(f.size());
-		for (size_t i = 0; i < f.size(); ++i)
-			points[i] = {(qreal)i, f[i]};
-		ret.push_back(std::move(points));
-	}
-	return ret;
 }
 
 QStringList Dataset::trimCrap(QStringList values)

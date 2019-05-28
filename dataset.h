@@ -181,7 +181,6 @@ protected:
 	void orderProteins(OrderBy reference);
 
 	static QStringList trimCrap(QStringList values);
-	static std::vector<QVector<QPointF>> pointify(const std::vector<std::vector<double>> &in);
 
 	Base b;
 	Representation r;
