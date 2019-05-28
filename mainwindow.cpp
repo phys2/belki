@@ -31,7 +31,8 @@ MainWindow::MainWindow(CentralHub &hub) :
 	auto renderSlot = [this] (auto r, auto d) { io->renderToFile(r, {title, d}); };
 
 	/* Views in tabs */
-	views = {dimredTab, scatterTab, heatmapTab, distmatTab, featweightsTab};
+	//views = {dimredTab, scatterTab, heatmapTab, distmatTab, featweightsTab};
+	views = {dimredTab, scatterTab};
 	for (auto v : views) {
 		// connect singnalling into view
 		connect(&hub, &CentralHub::newDataset, v, &Viewer::addDataset);
