@@ -4,8 +4,9 @@
 #include <QStringList>
 #include <QChart>
 
+#include <memory>
+
 class ProfileWindow;
-class CentralHub;
 class ProteinDB;
 class Dataset;
 
@@ -20,7 +21,7 @@ class ProfileChart : public QtCharts::QChart
 	Q_OBJECT
 
 public:
-	ProfileChart(CentralHub &hub);
+	ProfileChart(std::shared_ptr<Dataset const> data);
 	ProfileChart(ProfileChart *source);
 
 	unsigned numProfiles() { return content.size(); }
@@ -52,11 +53,8 @@ protected:
 	// axes
 	QtCharts::QAbstractAxis *ax, *ay;
 
-	// protein database
-	ProteinDB &proteins;
-
 	// data source
-	Dataset &data;
+	std::shared_ptr<Dataset const> data;
 };
 
 #endif // PROFILECHART_H

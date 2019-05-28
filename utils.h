@@ -30,9 +30,6 @@ protected:
 
 struct RWLockable {
 	mutable QReadWriteLock l{QReadWriteLock::RecursionMode::Recursive};
-
-	auto rlock() { return QReadLocker(&l); }
-	auto wlock() { return QWriteLocker(&l); }
 };
 
 template<typename T>
@@ -41,10 +38,15 @@ struct View {
 	View(const T &d) : View(d, d.l) {}
 	View(const View&) = delete;
 	View(View&& o) : data(o.data), l(o.l) {}
-	~View() { l.unlock(); }
-	const T& operator()() { return data; }
-	const T* operator->() { return &data; }
+	~View() { unlock(); }
+	const T& operator()() { ensureLocked(); return data; }
+	const T* operator->() { ensureLocked(); return &data; }
+	void ensureLocked() {
+		if (!locked) throw std::runtime_error("Data access without proper lock.");
+	}
+	void unlock() { if (locked) l.unlock(); locked = false; }
 protected:
+	bool locked = true;
 	const T &data;
 	QReadWriteLock &l;
 };

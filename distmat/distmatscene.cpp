@@ -67,11 +67,11 @@ void DistmatScene::setDirection(DistmatScene::Direction direction)
 
 	switch (direction) {
 	case Direction::PER_PROTEIN:
-		m.computeMatrix(data.peek()->features);
+		m.computeMatrix(data.peek<Dataset::Base>()->features);
 		reorder(); // calls setDisplay()
 		break;
 	case Direction::PER_DIMENSION:
-		auto d = data.peek();
+		auto d = data.peek<Dataset::Base>();
 		// re-arrange data to obtain per-dimension feature vectors
 		std::vector<std::vector<double>>
 		        features((size_t)d->dimensions.size(), std::vector<double>(d->features.size()));
@@ -80,6 +80,7 @@ void DistmatScene::setDirection(DistmatScene::Direction direction)
 				features[j][i] = d->features[i][j];
 			}
 		}
+		d.unlock();
 		m.computeMatrix(features);
 		m.computeImage([] (int y, int x) { return cv::Point(x, y); });
 		setDisplay();
@@ -100,7 +101,7 @@ void DistmatScene::reset(bool haveData)
 	}
 
 	// setup new dimension labels
-	auto dim = data.peek()->dimensions; // QStringList COW
+	auto dim = data.peek<Dataset::Base>()->dimensions; // QStringList COW
 	dimensionSelected.resize((size_t)dim.size(), true); // all dims selected by default
 	for (int i = 0; i < dim.size(); ++i)
 		dimensionLabels.try_emplace((size_t)i, this, (qreal)(i+0.5)/dim.size(), dim.at(i));
@@ -116,7 +117,7 @@ void DistmatScene::reorder()
 
 	if (matrices.count(Direction::PER_PROTEIN)) {
 		/* re-do display with current ordering */
-		auto d = data.peek();
+		auto d = data.peek<Dataset::Structure>();
 		matrices[Direction::PER_PROTEIN].computeImage([&d] (int y, int x) {
 			return cv::Point(d->order.index[x], d->order.index[y]);
 		});
@@ -136,7 +137,7 @@ void DistmatScene::reorder()
 
 void DistmatScene::recolor()
 {
-	auto d = data.peek();
+	auto d = data.peek<Dataset::Structure>();
 	auto &cl = d->clustering;
 	if (cl.empty()) {
 		// no clustering, disappear
@@ -205,7 +206,7 @@ void DistmatScene::toggleMarker(ProteinId id, bool present)
 {
 	if (present) {
 		try {
-			markers.try_emplace(id, this, data.peek()->protIndex.at(id), id);
+			markers.try_emplace(id, this, data.peek<Dataset::Base>()->protIndex.at(id), id);
 		} catch (...) {}
 	} else {
 		markers.erase(id);
@@ -238,7 +239,7 @@ void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 	cv::Point_<unsigned> idx = {(unsigned)pos.x(), (unsigned)pos.y()};
 	if (currentDirection == Direction::PER_PROTEIN) {
 		// need to back-translate
-		auto d = data.peek();
+		auto d = data.peek<Dataset::Structure>();
 		idx = {d->order.index[(size_t)pos.x()],
 		       d->order.index[(size_t)pos.y()]};
 	}
@@ -251,7 +252,6 @@ void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 		return;
 
 	/* emit cursor change */
-	auto d = data.peek();
 	emit cursorChanged({idx.x, idx.y});
 }
 
@@ -280,9 +280,9 @@ void DistmatScene::updateColorset(QVector<QColor> colors)
 
 qreal DistmatScene::computeCoord(unsigned sampleIndex)
 {
-	auto d = data.peek();
-	auto pos = d->order.rankOf[sampleIndex];
-	return (qreal)(pos + 0.5) / d->protIds.size();
+	auto s = data.peek<Dataset::Structure>();
+	auto pos = s->order.rankOf[sampleIndex];
+	return (qreal)(pos + 0.5) / data.peek<Dataset::Base>()->protIds.size();
 }
 
 DistmatScene::LegendItem::LegendItem(qreal coord) : coordinate(coord) {}
@@ -325,7 +325,7 @@ void DistmatScene::LegendItem::setup(DistmatScene *scene, QString title, QColor 
 DistmatScene::Marker::Marker(DistmatScene *scene, unsigned sampleIndex, ProteinId id)
     : LegendItem(scene->computeCoord(sampleIndex)), sampleIndex(sampleIndex)
 {
-	const auto protein = scene->data.proteins.peek()->proteins[id];
+	const auto protein = scene->data.peek<Dataset::Proteins>()->proteins[id];
 	setup(scene, protein.name, protein.color);
 	setVisible(scene->currentDirection == Direction::PER_PROTEIN);
 }

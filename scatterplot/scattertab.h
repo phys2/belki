@@ -9,13 +9,30 @@ class Chart;
 class ScatterTab : public Viewer, private Ui::ScatterTab
 {
 	Q_OBJECT
-
 public:
 	explicit ScatterTab(QWidget *parent = nullptr);
-	void init(Dataset *data) override;
+	~ScatterTab() override;
+
+	void selectDataset(unsigned id) override;
+	void addDataset(Dataset::Ptr data) override;
 
 protected:
-	Chart *scene; // owned by view
+	struct DataState {
+		unsigned dimension = 0;
+		bool hasScores;
+		Dataset::Ptr data;
+		std::unique_ptr<Chart> scene;
+	};
+
+	struct {
+		bool showPartitions;
+		QVector<QColor> colorset;
+	} guiState;
+
+	ContentMap<DataState> content;
+	Current<DataState> current;
+
+	bool updateEnabled();
 };
 
 #endif

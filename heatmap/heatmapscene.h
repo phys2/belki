@@ -16,7 +16,7 @@ public:
 
 	struct Profile : public QAbstractGraphicsShapeItem
 	{
-		Profile(unsigned index, Dataset::View &data);
+		Profile(unsigned index, View<Dataset::Base> &data);
 
 		QRectF boundingRect() const override;
 		void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;

@@ -1,58 +1,72 @@
 #ifndef CENTRALHUB_H
 #define CENTRALHUB_H
 
+#include "utils.h"
+#include "dataset.h" // for Dataset::OrderBy
+#include "proteindb.h"
+#include "storage.h"
+
 #include <QObject>
-#include <vector>
+#include <map>
 #include <memory>
 
 class ProteinDB;
 class Storage;
-class Dataset;
-class DatasetConfiguration;
 
 class CentralHub : public QObject
 {
 	Q_OBJECT
 public:
 	explicit CentralHub(QObject *parent = nullptr);
-	~CentralHub();
 
-signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
-	// to Dataset/Storage thread
-	void selectDataset(unsigned index);
-	void spawn(const DatasetConfiguration& config, QString initialDisplay = {});
-	void openDataset(const QString &filename);
-	void readAnnotations(const QString &name);
-	void readHierarchy(const QString &name);
-	void importDescriptions(const QString &filename);
-	void importAnnotations(const QString &filename);
-	void importHierarchy(const QString &filename);
-	void exportAnnotations(const QString &filename);
-	void clearClusters();
-	void calculatePartition(unsigned granularity);
-	void runFAMS();
+	using DataPtr = Dataset::Ptr;
+	using ConstDataPtr = Dataset::ConstPtr;
 
-	// to GUI
+	QVector<QColor> colorset();
+
+signals:
 	void ioError(const QString &message);
-	void reset(bool haveData);
-	void repartition(bool withOrder);
-	void reorder();
-	void togglePartitions(bool show);
-
-	// other signals
-	void updateColorset(QVector<QColor> colors);
+	void newDataset(DataPtr data);
 
 public slots:
+	void setCurrent(unsigned dataset = 0); // 0 for none
+	void spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay = {});
+	void importDataset(const QString &filename, bool scored);
+
+	void computeDisplay(const QString &method);
+	// todo readDisplay()
+
+	void clearClusters();
+	void importAnnotations(const QString &filename);
+	void readAnnotations(const QString &name);
+	void exportAnnotations(const QString &filename);
+	void importHierarchy(const QString &filename);
+	void readHierarchy(const QString &name);
+	void calculatePartition(unsigned granularity);
+	void runFAMS();
+	void changeOrder(Dataset::OrderBy reference, bool synchronize);
+
+	void importDescriptions(const QString &filename);
 
 public:
-	// note: not children of us as they may be moved to other threads
-	std::unique_ptr<ProteinDB> proteins;
-	std::unique_ptr<Dataset> data;
-	std::unique_ptr<Storage> store;
+	ProteinDB proteins;
+	Storage store; // TODO make protected
 
 protected:
 	void setupSignals();
-	void setupThreads();
+	void addDataset(DataPtr data);
+
+	DataPtr createDataset();
+
+	DataPtr current(); 	// caller has to check and lock!
+	void runOnCurrent(const std::function<void(DataPtr)> &work);
+
+	struct : public RWLockable {
+		std::map<unsigned, DataPtr> sets;
+		// we hand out ids starting from 1. So current = 0 means no dataset
+		unsigned current = 0;
+		unsigned nextId = 1;
+	} data;
 };
 
 #endif // CENTRALHUB_H

@@ -4,6 +4,7 @@
 
 #include <QMenu>
 #include <QToolButton>
+#include <QtConcurrent>
 
 DimredTab::DimredTab(QWidget *parent) :
     Viewer(parent)
@@ -28,7 +29,7 @@ DimredTab::DimredTab(QWidget *parent) :
 	// remove container we picked from
 	topBar->deleteLater();
 
-	/* connect toolbar actions (that don't depend on data/scene) */
+	/* connect toolbar actions */
 	connect(actionCycleForward, &QAction::triggered, [this] {
 		auto s = transformSelect;
 		s->setCurrentIndex((s->currentIndex() + 1) % s->count());
@@ -40,53 +41,85 @@ DimredTab::DimredTab(QWidget *parent) :
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, transformSelect->currentText());
 	});
+	connect(transformSelect, qOverload<const QString&>(&QComboBox::activated),
+	        [this] (auto name) {
+		selectDisplay(name);
+		guiState.preferredDisplay = name;
+	});
+
+	/* connect incoming signals */
+	connect(this, &Viewer::inUpdateColorset, [this] (auto colors) {
+		guiState.colorset = colors;
+		if (current)
+			current().scene->updateColorset(colors);
+	});
+	connect(this, &Viewer::inTogglePartitions, [this] (bool show) {
+		guiState.showPartitions = show;
+		if (current)
+			current().scene->togglePartitions(show);
+	});
+	connect(this, &Viewer::inToggleMarker, [this] (ProteinId id, bool present) {
+		// we do not keep track of markers for inactive scenes
+		if (current)
+			current().scene->toggleMarker(id, present);
+	});
+
+	updateEnabled();
 }
 
-void DimredTab::init(Dataset *data)
+DimredTab::~DimredTab()
 {
-	scene = new Chart(*data);
+	view->setChart(new QtCharts::QChart()); // release ownership
+}
+
+void DimredTab::selectDataset(unsigned id)
+{
+	if (current)
+		disconnect(current().data.get());
+
+	current = {id, &content[id]};
+	if (current) {
+		// pass guiState onto chart
+		auto scene = current().scene.get();
+		scene->updateColorset(guiState.colorset);
+		scene->togglePartitions(guiState.showPartitions);
+		// TODO: tell chart to update markers
+		view->setChart(scene);
+
+		/* hook into dataset updates */
+		connect(current().data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
+			if (!(touched & Dataset::Touch::DISPLAY))
+				return;
+			updateMenus();
+		});
+	}
+	updateMenus();
+	updateEnabled();
+}
+
+void DimredTab::addDataset(Dataset::Ptr data)
+{
+	auto id = data->id();
+	auto &state = content[id]; // emplace (note: ids are never recycled)
+	state.data = data;
+	state.scene = std::make_unique<Chart>(data);
+
+	auto scene = state.scene.get();
 	scene->setTitles("dim 1", "dim 2");
-	view->setChart(scene);
-
-	/* connect incoming/pass-through signals */
-	connect(this, &Viewer::inUpdateColorset, scene, &Chart::updateColorset);
-	connect(this, &Viewer::inReset, this, [this] (bool) {
-		// no displays
-		transformSelect->clear();
-		scene->clear();
-		setEnabled(false);
-
-		// note: as we are disabled the user has no chance to compute a display!
-		// luckily, PCA is always computed by default
-	});
-	connect(this, &Viewer::inRepartition, this, [this] {
-		scene->clearPartitions();
-		scene->updatePartitions();
-	});
-	// note: we ignore inReorder, as we don't use protein order
-	connect(this, &Viewer::inToggleMarker, scene, &Chart::toggleMarker);
-	connect(this, &Viewer::inTogglePartitions, scene, &Chart::togglePartitions);
 
 	/* connect outgoing signals */
 	connect(scene, &Chart::markerToggled, this, &Viewer::markerToggled);
 	connect(scene, &Chart::cursorChanged, this, &Viewer::cursorChanged);
+}
 
-	/* setup transform select in relationship with dataset */
-	connect(transformSelect, &QComboBox::currentTextChanged, [this, data] (auto name) {
-		auto d = data->peek();
-		if (name.isEmpty() || !d->display.count(name))
-			return;
-		scene->display(d->display.at(name));
-		setEnabled(true);
-	});
-	connect(this, &DimredTab::computeDisplay, data, &Dataset::computeDisplay);
-	connect(data, &Dataset::newDisplay, this, [this] (const QString &display) {
-		transformSelect->addItem(display);
-		// select new item
-		transformSelect->setCurrentText(display);
-		// remove from offered calculations
-		updateComputeMenu();
-	});
+void DimredTab::selectDisplay(const QString &name)
+{
+	if (!current || name.isEmpty() || current().displayName == name)
+		return;
+	auto d = current().data->peek<Dataset::Representation>();
+	current().scene->display(d->display.at(name));
+	current().displayName = name;
+	transformSelect->setCurrentText(name);
 }
 
 QString DimredTab::currentMethod() const
@@ -94,14 +127,59 @@ QString DimredTab::currentMethod() const
 	return transformSelect->currentText();
 }
 
-void DimredTab::updateComputeMenu() {
+void DimredTab::computeDisplay(const QString &method) {
+	if (!current)
+		return;
+	auto d = current().data;
+	QtConcurrent::run([d,method] { d->computeDisplay(method); });
+}
+
+void DimredTab::updateMenus() {
+	/* set transform select entries from available displays */
+	auto previous = transformSelect->currentText();
+	transformSelect->clear();
+	for (auto a : {actionCycleForward, actionCycleBackward})
+		a->setEnabled(false);
+
+	if (!current)
+		return;
+
+	auto d = current().data->peek<Dataset::Representation>();
+	for (auto &[name, _] : d->display)
+		transformSelect->addItem(name);
+
+	if (transformSelect->count() > 1) {
+		for (auto a : {actionCycleForward, actionCycleBackward})
+			a->setEnabled(true);
+	}
+
+	/* add all methods that are not here yet to compute offers */
 	auto methods = dimred::availableMethods();
 	auto menu = new QMenu(this->window());
 	for (const auto& m : methods) {
 		if (transformSelect->findText(m.id) >= 0)
 			continue;
 
-		menu->addAction(m.description, [this, m] { emit computeDisplay(m.name); });
+		menu->addAction(m.description, [this, m] { computeDisplay(m.name); });
 	}
 	actionComputeDisplay->setMenu(menu);
+
+	/* select a display */
+	if (!d->display.empty())
+		return; // nothing available
+
+	auto least = d->display.rbegin()->first;
+	for (auto &i : {guiState.preferredDisplay, previous, least}) {
+		if (d->display.count(i)) {
+			selectDisplay(i);
+			break;
+		}
+	}
+}
+
+void DimredTab::updateEnabled()
+{
+	bool on = current;
+	setEnabled(on);
+	view->setVisible(on);
 }

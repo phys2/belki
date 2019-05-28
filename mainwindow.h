@@ -3,6 +3,7 @@
 
 #include "ui_mainwindow.h"
 #include "fileio.h"
+#include "dataset.h"
 
 #include <QMainWindow>
 #include <QThread>
@@ -33,13 +34,18 @@ public slots:
 	void displayError(const QString &message);
 
 	void addProtein(ProteinId id);
+	void toggleMarker(ProteinId id, bool present);
 
-	void resetData();
-	void newData(unsigned index);
+	void newDataset(Dataset::Ptr data);
 	void updateCursorList(QVector<unsigned> samples, QString title);
 
+signals:
+	void datasetSelected(unsigned id);
+	void partitionsToggled(bool show);
+
 protected:
-	void clearData();
+	void setDataset(Dataset::Ptr data);
+	void updateState(Dataset::Touched affected);
 
 	void setupToolbar();
 	void setupSignals();
@@ -51,6 +57,7 @@ protected:
 	void setSelectedDataset(unsigned index);
 
 	CentralHub &hub;
+	Dataset::Ptr data;
 
 	QString title;
 
@@ -59,7 +66,7 @@ protected:
 	std::unordered_map<ProteinId, QStandardItem*> markerItems;
 
 	std::vector<Viewer*> views;
-	ProfileChart *cursorChart;
+	ProfileChart *cursorChart = nullptr;
 	FileIO *io;
 
 	struct {

@@ -28,7 +28,7 @@ void HeatmapScene::reset(bool haveData)
 		return;
 	}
 
-	auto d = data.peek();
+	auto d = data.peek<Dataset::Base>();
 
 	/* build up scene with new data */
 	profiles.resize(d->features.size());
@@ -88,7 +88,7 @@ void HeatmapScene::reorder()
 	if (!layout.rows) // view is not set-up yet
 		return;
 
-	auto d = data.peek();
+	auto d = data.peek<Dataset::Structure>();
 
 	for (unsigned i = 0; i < profiles.size(); ++i) {
 		auto p = profiles[d->order.index[i]];
@@ -111,7 +111,7 @@ void HeatmapScene::toggleMarker(ProteinId id, bool present)
 {
 	if (present) {
 		try {
-			auto index = data.peek()->protIndex.at(id);
+			auto index = data.peek<Dataset::Base>()->protIndex.at(id);
 			auto pos = profiles[index]->pos();
 			markers.try_emplace(id, this, index, pos);
 		} catch (...) {}
@@ -128,7 +128,7 @@ void HeatmapScene::togglePartitions(bool show)
 
 void HeatmapScene::recolor()
 {
-	auto d = data.peek();
+	auto d = data.peek<Dataset::Structure>();
 	if (!showPartitions || d->clustering.empty()) {
 		for (auto &p : profiles)
 			p->setBrush(Qt::transparent);
@@ -149,7 +149,7 @@ void HeatmapScene::recolor()
 	update();
 }
 
-HeatmapScene::Profile::Profile(unsigned index, Dataset::View &d)
+HeatmapScene::Profile::Profile(unsigned index, View<Dataset::Base> &d)
     : index(index)
 {
 	features = Colormap::prepare(cv::Mat(d->features[index]),
@@ -226,14 +226,14 @@ void HeatmapScene::Profile::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
 		setToolTip({});
 		return;
 	}
-	setToolTip(scene()->data.peek()->dimensions.at(index));
+	setToolTip(scene()->data.peek<Dataset::Base>()->dimensions.at(index));
 }
 
 HeatmapScene::Marker::Marker(HeatmapScene *scene, unsigned sampleIndex, const QPointF &pos)
     : sampleIndex(sampleIndex)
 {
-	auto p = scene->data.proteins.peek();
-	auto &meta = scene->data.peek()->lookup(p, sampleIndex);
+	auto p = scene->data.peek<Dataset::Proteins>();
+	auto &meta = scene->data.peek<Dataset::Base>()->lookup(p, sampleIndex);
 
 	QBrush fill(QColor{0, 0, 0, 127});
 	QPen outline(meta.color.dark(300));

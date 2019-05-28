@@ -13,6 +13,7 @@
 #include <set>
 
 using ProteinId = unsigned; // for semantic distinction
+class QTextStream;
 
 class ProteinDB : public QObject
 {
@@ -45,21 +46,24 @@ public:
 
 	using View = ::View<Public>;
 
-	ProteinDB();
+	explicit ProteinDB(QObject *parent = nullptr);
 
 	View peek() { return View(data); }
 
 	ProteinId add(const QString& fullname);
 	bool addDescription(const QString& name, const QString& desc);
+	bool readDescriptions(QTextStream &tsv);
 
 	bool addMarker(ProteinId id);
 	bool removeMarker(ProteinId id);
+	size_t importMarkers(const std::vector<QString> &names);
 	void clearMarkers();
 
 public slots:
 	void updateColorset(const QVector<QColor>& colors);
 
 signals:
+	void ioError(const QString &message);
 	void proteinAdded(ProteinId id);
 	void proteinChanged(ProteinId id);
 	void markerToggled(ProteinId id, bool present);

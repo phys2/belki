@@ -17,46 +17,32 @@
 #include <QTimer>
 
 #include <random>
+#include <iostream>
 
 constexpr auto hierarchyPostfix = " (Hierarchy)";
-const QVector<QColor> tableau20 = {
-    {31, 119, 180}, {174, 199, 232}, {255, 127, 14}, {255, 187, 120},
-    {44, 160, 44}, {152, 223, 138}, {214, 39, 40}, {255, 152, 150},
-    {148, 103, 189}, {197, 176, 213}, {140, 86, 75}, {196, 156, 148},
-    {227, 119, 194}, {247, 182, 210}, {127, 127, 127}, {199, 199, 199},
-    {188, 189, 34}, {219, 219, 141}, {23, 190, 207}, {158, 218, 229}};
 
 MainWindow::MainWindow(CentralHub &hub) :
     hub(hub),
-    cursorChart(new ProfileChart(hub)), // TODO: re-create whenever we have a (new) dataset!
     io(new FileIO(this))
 {
 	setupUi(this);
 	setupToolbar();
 
+	auto renderSlot = [this] (auto r, auto d) { io->renderToFile(r, {title, d}); };
+
 	/* Views in tabs */
 	views = {dimredTab, scatterTab, heatmapTab, distmatTab, featweightsTab};
 	for (auto v : views) {
-		v->init(hub.data.get());
 		// connect singnalling into view
-		connect(&hub, &CentralHub::updateColorset, v, &Viewer::inUpdateColorset);
-		connect(&hub, &CentralHub::reset, v, &Viewer::inReset);
-		connect(&hub, &CentralHub::repartition, v, &Viewer::inRepartition);
-		connect(&hub, &CentralHub::reorder, v, &Viewer::inReorder);
-		connect(&hub, &CentralHub::togglePartitions, v, &Viewer::inTogglePartitions);
-		// TODO: right place? also wrong interface (index/protid) right now!
-		connect(hub.proteins.get(), &ProteinDB::markerToggled, v, &Viewer::inToggleMarker);
+		connect(&hub, &CentralHub::newDataset, v, &Viewer::addDataset);
+		connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset);
+		connect(this, &MainWindow::partitionsToggled, v, &Viewer::inTogglePartitions);
+		connect(&hub.proteins, &ProteinDB::markerToggled, v, &Viewer::inToggleMarker);
 
 		// connect signalling out of view
-		connect(v, &Viewer::markerToggled, [this] (ProteinId id, bool present) {
-			// this will signal to ProteinDB
-			this->markerItems.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
-		});
+		connect(v, &Viewer::markerToggled, this, &MainWindow::toggleMarker);
 		connect(v, &Viewer::cursorChanged, this, &MainWindow::updateCursorList);
-		auto renderSlot = [this] (auto r, auto d) {
-			io->renderToFile(r, {title, d});
-		};
-		connect(v, &Viewer::orderRequested, hub.data.get(), &Dataset::changeOrder);
+		connect(v, &Viewer::orderRequested, &hub, &CentralHub::changeOrder);
 		connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
 		connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
 
@@ -66,10 +52,13 @@ MainWindow::MainWindow(CentralHub &hub) :
 				continue;
 			connect(v, &Viewer::orderRequested, v2, &Viewer::changeOrder);
 		}
+
+		// set initial state
+		emit v->inUpdateColorset(hub.colorset());
+		emit v->inTogglePartitions(actionShowPartition->isChecked());
 	}
 
 	/* cursor chart */
-	cursorPlot->setChart(cursorChart);
 	cursorPlot->setRenderHint(QPainter::Antialiasing);
 	// common background for plot and its container
 	auto p = cursorInlet->palette();
@@ -84,10 +73,8 @@ MainWindow::MainWindow(CentralHub &hub) :
 	setupSignals(); // after setupToolbar(), signal handlers rely on initialized actions
 	setupActions();
 
-	emit hub.updateColorset(tableau20);
-
 	// initialize widgets to be empty & most-restrictive
-	clearData();
+	updateState({});
 }
 
 void MainWindow::setupToolbar()
@@ -124,13 +111,13 @@ void MainWindow::setupSignals()
 	connect(io, &FileIO::ioError, this, &MainWindow::displayError);
 
 	/* notifications from Protein db */
-	connect(hub.proteins.get(), &ProteinDB::proteinAdded, this, &MainWindow::addProtein);
-	connect(hub.proteins.get(), &ProteinDB::markerToggled, this, [this] (auto id, bool present) {
+	connect(&hub.proteins, &ProteinDB::proteinAdded, this, &MainWindow::addProtein);
+	connect(&hub.proteins, &ProteinDB::markerToggled, this, [this] (auto id, bool present) {
 		this->markerItems.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 	});
 
 	/* notifications from data/storage thread */
-	connect(hub.store.get(), &Storage::newAnnotations, this, [this] (auto name, bool loaded) {
+	connect(&hub.store, &Storage::newAnnotations, this, [this] (auto name, bool loaded) {
 		if (loaded) { // already pre-selected, need to reflect that
 			QSignalBlocker _(partitionSelect);
 			partitionSelect->addItem(name);
@@ -139,7 +126,7 @@ void MainWindow::setupSignals()
 			partitionSelect->addItem(name);
 		}
 	});
-	connect(hub.store.get(), &Storage::newHierarchy, this, [this] (auto name, bool loaded) {
+	connect(&hub.store, &Storage::newHierarchy, this, [this] (auto name, bool loaded) {
 		auto n = name + hierarchyPostfix;
 		partitionSelect->addItem(n);
 		if (loaded) { // already pre-selected, need to reflect that
@@ -148,26 +135,11 @@ void MainWindow::setupSignals()
 		}
 	});
 
-	connect(hub.data.get(), &Dataset::selectedDataset, this, &MainWindow::resetData);
-	connect(hub.data.get(), &Dataset::newDataset, this, &MainWindow::newData);
-	connect(hub.data.get(), &Dataset::newClustering, this, [this] (bool withOrder) {
-		bool haveClustering = !(hub.data->peek()->clustering.empty());
-		actionShowPartition->setEnabled(haveClustering);
-		actionShowPartition->setChecked(haveClustering);
-		emit hub.repartition(withOrder); // todo: new wiring
-	});
-	connect(hub.data.get(), &Dataset::newHierarchy, this, [this] (bool withOrder) {
-		auto d = hub.data->peek();
-		auto reasonable = std::min(d->protIds.size(), d->hierarchy.size()) / 4;
-		granularitySlider->setMaximum(reasonable);
-		if (withOrder)
-			emit hub.reorder(); // todo: new wiring
-	});
-	connect(hub.data.get(), &Dataset::newOrder, &hub, &CentralHub::reorder);
+	connect(&hub, &CentralHub::newDataset, this, &MainWindow::newDataset);
 
 	/* selecting dataset */
 	connect(datasetSelect, qOverload<int>(&QComboBox::activated), [this] {
-		emit hub.selectDataset((unsigned)datasetSelect->currentData().toInt());
+		setDataset(datasetSelect->currentData().value<Dataset::Ptr>());
 	});
 
 	/* selecting/altering partition */
@@ -182,10 +154,11 @@ void MainWindow::setupSignals()
 
 			auto v = partitionSelect->currentData().value<int>();
 			if (v == 0) {
-				hub.data->cancelFAMS();
+				data->cancelFAMS(); // TODO
 				emit hub.clearClusters();
 			} else if (v == 1) {
-				hub.data->changeFAMS((unsigned)famsKSlider->value() * 0.01f);
+				// TODO
+				data->changeFAMS((unsigned)famsKSlider->value() * 0.01f);
 				emit hub.runFAMS();
 				toolbarActions.famsK->setVisible(true);
 				actionExportAnnotations->setEnabled(true);
@@ -193,8 +166,8 @@ void MainWindow::setupSignals()
 			return;
 		}
 
-		// not FAMS? cancel it in case it is running
-		hub.data->cancelFAMS();
+		// not FAMS? cancel it in case it is running TODO
+		data->cancelFAMS();
 
 		// regular items: identified by name
 		auto name = partitionSelect->currentText();
@@ -214,7 +187,7 @@ void MainWindow::setupSignals()
 	});
 	connect(granularitySlider, &QSlider::valueChanged, &hub, &CentralHub::calculatePartition);
 	connect(famsKSlider, &QSlider::valueChanged, [this] (int v) {
-		hub.data->changeFAMS(v * 0.01f); // reconfigure from outside (this thread)
+		data->changeFAMS(v * 0.01f); // reconfigure from outside (this thread) // TODO
 		emit hub.runFAMS(); // start calculation inside data thread
 	});
 }
@@ -238,15 +211,13 @@ void MainWindow::setupActions()
 		auto filename = io->chooseFile(FileIO::OpenDataset);
 		if (filename.isEmpty())
 			return;
-		// avoid queueing signals from widgets referencing old data
-		clearData();
-		emit hub.openDataset(filename);
+		hub.importDataset(filename, true); // TODO scored/unscored
 	});
 	connect(actionLoadDescriptions, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenDescriptions);
 		if (filename.isEmpty())
 			return;
-		emit hub.importDescriptions(filename);
+		hub.importDescriptions(filename);
 	});
 	connect(actionLoadAnnotations, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenClustering);
@@ -254,9 +225,9 @@ void MainWindow::setupActions()
 			return;
 		auto filetype = QFileInfo(filename).suffix();
 		if (filetype == "json")
-			emit hub.importHierarchy(filename);
+			hub.importHierarchy(filename);
 		else
-			emit hub.importAnnotations(filename);
+			hub.importAnnotations(filename);
 	});
 	connect(actionExportAnnotations, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::SaveAnnotations);
@@ -265,31 +236,34 @@ void MainWindow::setupActions()
 
 		emit hub.exportAnnotations(filename);
 	});
-	connect(actionShowPartition, &QAction::toggled, &hub, &CentralHub::togglePartitions);
-	connect(actionClearMarkers, &QAction::triggered, hub.proteins.get(), &ProteinDB::clearMarkers);
+	connect(actionShowPartition, &QAction::toggled, this, &MainWindow::partitionsToggled);
+	connect(actionClearMarkers, &QAction::triggered, &hub.proteins, &ProteinDB::clearMarkers);
 	connect(actionLoadMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenMarkers);
 		if (filename.isEmpty())
 			return;
-		hub.store->importMarkers(filename);
+		hub.store.importMarkers(filename);
 	});
 	connect(actionSaveMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::SaveMarkers);
 		if (filename.isEmpty())
 			return;
-		hub.store->exportMarkers(filename);
+		hub.store.exportMarkers(filename);
 	});
 
 	connect(actionSplice, &QAction::triggered, [this] {
-		auto s = new SpawnDialog(*hub.data, this);
+		if (!data)
+			return;
+		auto s = new SpawnDialog(data, this);
 		// spawn dialog deletes itself, should also kill connection+lambda, right?
-		connect(s, &SpawnDialog::spawn, [this] (const DatasetConfiguration& config) {
-			emit hub.spawn(config, dimredTab->currentMethod());
+		connect(s, &SpawnDialog::spawn, [this] (auto data, auto& config) {
+			emit hub.spawn(data, config, dimredTab->currentMethod());
 		});
 	});
 
 	connect(actionProfileView, &QAction::triggered, [this] {
-		new ProfileWindow(cursorChart, this);
+		if (cursorChart)
+			new ProfileWindow(cursorChart, this);
 	});
 }
 
@@ -305,14 +279,12 @@ void MainWindow::setupMarkerControls()
 	protSearch->setCompleter(cpl);
 	protList->setModel(cpl->completionModel());
 
-	connect(&hub, &CentralHub::reset, this, &MainWindow::resetMarkerControls);
-
 	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
 		auto id = ProteinId(i->data().toInt());
 		if (i->checkState() == Qt::Checked)
-			hub.proteins->addMarker(id);
+			hub.proteins.addMarker(id);
 		else
-			hub.proteins->removeMarker(id);
+			hub.proteins.removeMarker(id);
 	});
 
 	auto toggler = [m] (QModelIndex i) {
@@ -347,90 +319,129 @@ void MainWindow::setupMarkerControls()
 	});
 }
 
-void MainWindow::clearData()
+void MainWindow::updateState(Dataset::Touched affected)
 {
-	// TODO: if we do a hard reset we would have to do this…
-	/* does not work with the current call order in newData()
-	datasetTree->clear();
-	datasetItems.clear();
-	toolbarActions.datasets->setEnabled(false);
-	*/
-	setFilename({}); // TODO belongs to hard reset
-
-	/* reset partitions: none except inbuilt mean-shift */
-	partitionSelect->clear();
-	partitionSelect->addItem("None", {0});
-	partitionSelect->addItem("Adaptive Mean Shift", {1});
-
-	/* hide and disable widgets that need data or even more */
-	actionSplice->setEnabled(false);
-	toolbarActions.partitions->setEnabled(false);
-	actionShowPartition->setChecked(false);
-	actionShowPartition->setEnabled(false);
-	toolbarActions.granularity->setVisible(false);
-	toolbarActions.famsK->setVisible(false);
-	actionExportAnnotations->setEnabled(false);
-
-	/* reset views first (before our widgets emit signals) */
-	emit hub.reset(false);
-}
-
-void MainWindow::resetData()
-{
-	clearData();
-
-	/* reset views first (before our widgets emit signals) */
-	emit hub.reset(true);
+	resetMarkerControls();
 
 	/* set up cursor chart */
-	cursorChart->setCategories(hub.data->peek()->dimensions);
+	if (affected.testFlag(Dataset::Touch::BASE)) {
+		std::cerr << "foo" << std::endl;
+		if (data) {
+			delete cursorChart;
+			cursorChart = new ProfileChart(data);
+			cursorChart->setCategories(data->peek<Dataset::Base>()->dimensions);
+			cursorPlot->setChart(cursorChart);
+			cursorPlot->setVisible(true);
+		} else {
+			cursorPlot->setVisible(false);
+		}
+	} else {
+		std::cerr << "bar" << std::endl;
+	}
+
+	if (!data) {
+		/* hide and disable widgets that need data or even more */
+		actionSplice->setEnabled(false);
+		toolbarActions.partitions->setEnabled(false);
+		actionShowPartition->setChecked(false);
+		actionShowPartition->setEnabled(false);
+		toolbarActions.granularity->setVisible(false);
+		toolbarActions.famsK->setVisible(false);
+		actionExportAnnotations->setEnabled(false);
+		return;
+	}
 
 	/* re-enable actions that depend only on data */
 	actionSplice->setEnabled(true);
 	toolbarActions.partitions->setEnabled(true);
+
+	/* structure */
+	auto d = data->peek<Dataset::Base>();
+	auto s = data->peek<Dataset::Structure>();
+	if (affected & Dataset::Touch::CLUSTERS) {
+		bool haveClustering = !s->clustering.empty();
+		actionShowPartition->setEnabled(haveClustering);
+		actionShowPartition->setChecked(haveClustering);
+	}
+	if (affected & Dataset::Touch::HIERARCHY) {
+		if (!s->hierarchy.empty()) {
+			auto reasonable = std::min(d->protIds.size(), s->hierarchy.size()) / 4;
+			granularitySlider->setMaximum(reasonable);
+		}
+	}
+
+	/* reset partitions: none except inbuilt mean-shift */
+	// TODO we need to keep track what is available per-dataset in storage
+	partitionSelect->clear();
+	partitionSelect->addItem("None", {0});
+	partitionSelect->addItem("Adaptive Mean Shift", {1});
+
 }
 
-void MainWindow::newData(unsigned index)
+void MainWindow::newDataset(Dataset::Ptr dataset)
 {
-	auto d = hub.data->peek();
-
-	// TODO wronge place to do this in new storage concept
-	setFilename(hub.store->name());
-
 	/* add to datasets */
-	auto p = d->conf.parent;
-	auto parent = (p < 0 ?
-	                   datasetTree->invisibleRootItem() // top level
-	                 : datasetItems.at((size_t)p));
+	auto d = dataset->peek<Dataset::Base>();
+	auto id = d->conf.id;
+	auto pId = d->conf.parent;
+	auto parent = (pId ? datasetItems.at(pId)
+	                   : datasetTree->invisibleRootItem()); // top level
 	auto item = new QTreeWidgetItem(parent);
 	item->setExpanded(true);
 	item->setText(0, d->conf.name);
-	item->setData(0, Qt::UserRole, index);
-	datasetItems[index] = item;
+	item->setData(0, Qt::UserRole, QVariant::fromValue(dataset));
+	datasetItems[d->conf.id] = item;
 
-	/* make current selection (current dataset state!) and enable control */
-	setSelectedDataset(index);
+	d.unlock(); // avoid dragging lock through signal chain
+
+	/* auto select */
+	setSelectedDataset(id);
 	toolbarActions.datasets->setEnabled(true);
+}
 
-	/* re-init everything */
-	resetData();
+void MainWindow::setDataset(Dataset::Ptr selected)
+{
+	// disconnect from old data
+	if (data)
+		disconnect(data.get());
+
+	// swap
+	data = selected;
+	if (data)
+		// tell hub & views before our GUI might send more signals
+		emit datasetSelected(data ? data->id() : 0);
+
+	// update own GUI state once
+	updateState({ // _all_ flags
+	                Dataset::Touch::BASE, Dataset::Touch::DISPLAY,
+	                Dataset::Touch::HIERARCHY, Dataset::Touch::CLUSTERS,
+	                Dataset::Touch::ORDER
+	            });
+
+	// wire further updates
+	if (data)
+		connect(data.get(), &Dataset::update, this, &MainWindow::updateState);
+
+	// TODO wronge place to do this in new storage concept
+	setFilename(data ? hub.store.name() : "");
 }
 
 void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 {
 	/* clear plot */
-	cursorChart->setTitle(title);
-	cursorChart->clear();
-	if (samples.empty()) {
+	if (samples.empty() || !data) {
 		cursorList->clear();
 		cursorWidget->setDisabled(true);
 		actionProfileView->setDisabled(true);
 		return;
 	}
 
+	cursorChart->setTitle(title);
+	cursorChart->clear();
+
 	/* determine marker proteins contained in samples */
-	auto d = hub.data->peek();
-	auto p = hub.proteins->peek();
+	auto d = data->peek<Dataset::Base>();
+	auto p = data->peek<Dataset::Proteins>();
 	std::set<unsigned> markers;
 	for (auto i : qAsConst(samples)) {
 		if (p->markers.count(d->protIds[i]))
@@ -466,7 +477,9 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 	std::sort(samples.begin(), samples.end(), [&d,&p] (unsigned a, unsigned b) {
 		return d->lookup(p, a).name < d->lookup(p, b).name;
 	});
+
 	// compose list
+	auto s = data->peek<Dataset::Structure>();
 	QString content;
 	QString tpl("<b><a href='https://uniprot.org/uniprot/%1_%2'>%1</a></b> <small>%3 <i>%4</i></small><br>");
 	for (auto i : qAsConst(samples)) {
@@ -474,9 +487,9 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 		if (markers.count(i))
 			content.append("<small>★</small>");
 		auto &prot = d->lookup(p, i);
-		auto &m = d->clustering.memberships[i];
+		auto &m = s->clustering.memberships[i];
 		auto clusters = std::accumulate(m.begin(), m.end(), QStringList(),
-		    [&d] (QStringList a, unsigned b) { return a << d->clustering.clusters.at(b).name; });
+		    [&s] (QStringList a, unsigned b) { return a << s->clustering.clusters.at(b).name; });
 		content.append(tpl.arg(prot.name, prot.species, clusters.join(", "), prot.description));
 	}
 	cursorList->setText(text.arg(content));
@@ -488,9 +501,14 @@ void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 void MainWindow::resetMarkerControls()
 {
 	/* enable only proteins that are found in current dataset */
-	auto d = hub.data->peek();
-	for (auto& [id, item] : markerItems)
-		item->setEnabled(d->protIndex.count(id));
+	if (data) {
+		auto d = data->peek<Dataset::Base>();
+		for (auto& [id, item] : markerItems)
+			item->setEnabled(d->protIndex.count(id));
+	} else {
+		for (auto& [id, item] : markerItems)
+			item->setEnabled(false);
+	}
 }
 
 void MainWindow::ensureSortedMarkerItems()
@@ -549,7 +567,7 @@ void MainWindow::addProtein(ProteinId id)
 {
 	/* setup new item */
 	auto item = new QStandardItem;
-	item->setText(hub.proteins->peek()->proteins[id].name);
+	item->setText(hub.proteins.peek()->proteins[id].name);
 	item->setData(id);
 	item->setCheckable(true);
 	item->setCheckState(Qt::Unchecked);
@@ -564,4 +582,9 @@ void MainWindow::addProtein(ProteinId id)
 	/* ensure items are sorted in the end, but defer sorting */
 	markerWidget->setEnabled(false); // we are "dirty"
 	QTimer::singleShot(0, this, &MainWindow::ensureSortedMarkerItems);
+}
+
+void MainWindow::toggleMarker(ProteinId id, bool present)
+{
+	markerItems.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 }

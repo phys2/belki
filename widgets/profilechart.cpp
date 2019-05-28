@@ -14,8 +14,8 @@
 
 
 /* small, inset plot constructor */
-ProfileChart::ProfileChart(CentralHub &hub)
-    : proteins(*hub.proteins), data(*hub.data)
+ProfileChart::ProfileChart(Dataset::ConstPtr data)
+    : data(data)
 {
 	setMargins({0, 10, 0, 0});
 
@@ -32,7 +32,7 @@ ProfileChart::ProfileChart(CentralHub &hub)
 /* big, labelled plot constructor */
 ProfileChart::ProfileChart(ProfileChart *source)
     : content(source->content), stats(source->stats),
-      proteins(source->proteins), data(source->data)
+      data(source->data)
 {
 	auto ax = new QtCharts::QCategoryAxis;
 	this->ax = ax; // keep QCategoryAxis* in this method
@@ -90,14 +90,14 @@ void ProfileChart::addSample(unsigned index, bool marker)
 
 void ProfileChart::finalize(bool fresh)
 {
-	auto d = data.peek();
+	auto d = data->peek<Dataset::Base>();
 	if (fresh)
 		computeStats();
 
 	bool reduced = fresh && content.size() >= 25;
 	bool outer = (!fresh || reduced) && haveStats();
 
-	auto p = proteins.peek();
+	auto p = data->peek<Dataset::Proteins>();
 
 	std::function<bool(const std::pair<unsigned,bool> &a, const std::pair<unsigned,bool> & b)>
 	byName = [&d,&p] (auto a, auto b) {
@@ -220,7 +220,7 @@ void ProfileChart::computeStats()
 	if (content.size() < 2)
 		return;
 
-	auto d = data.peek();
+	auto d = data->peek<Dataset::Base>();
 	auto len = (size_t)d->dimensions.size();
 
 	for (auto v : {&stats.mean, &stats.stddev, &stats.min, &stats.max})
@@ -230,7 +230,7 @@ void ProfileChart::computeStats()
 	for (size_t i = 0; i < len; ++i) {
 		std::vector<double> f(content.size());
 		for (size_t j = 0; j < content.size(); ++j)
-			f[j] = d->features[(int)content[j].first][i];
+			f[j] = d->features[content[j].first][i];
 		cv::Scalar m, s;
 		cv::meanStdDev(f, m, s);
 		stats.mean[i] = m[0];

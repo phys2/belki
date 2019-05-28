@@ -7,18 +7,19 @@
 #include <QFileInfo>
 #include <QCryptographicHash> // for checksum
 #include <QTextStream>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
-#include <QtDebug>
 
 /* storage version, increase on breaking changes */
 // TODO: when we start doing new versions, ensure we update a file we open to new version (incl. version entry)
 constexpr int storage_version = 1;
 
-Storage::Storage(Dataset &data)
-    : data(data)
+Storage::Storage(ProteinDB &proteins, QObject *parent)
+    : QObject(parent),
+      proteins(proteins)
 {
-	connect(&data, &Dataset::newDisplay, this, &Storage::storeDisplay);
 }
 
 Storage::~Storage()
@@ -26,23 +27,30 @@ Storage::~Storage()
 	close(true);
 }
 
-void Storage::storeDisplay(const QString &name)
+QString Storage::name()
 {
-	if (!container)
-		return;
-
-	if (data.d->conf.parent < 0)
-		return; // TODO: temporary hack to avoid saving from sliced data
-
-	auto entryname = "input/" + sourcename + "/displays/" + name + ".tsv";
-	if (container->has_file(entryname))
-		return; // do not save redundant copies
-
-	auto tsv = data.writeDisplay(name);
-	container->write(entryname, tsv);
+	QReadLocker _(&d.l);
+	return d.sourcename;
 }
 
-void Storage::openDataset(const QString &filename)
+void Storage::storeDisplay(const Dataset& data, const QString &name)
+{
+	if (data.peek<Dataset::Base>()->conf.parent)
+		return; // TODO: temporary hack to avoid saving from sliced data
+
+	QWriteLocker _(&d.l);
+	if (!d.container)
+		return;
+
+	auto entryname = "input/" + d.sourcename + "/displays/" + name + ".tsv";
+	if (d.container->has_file(entryname))
+		return; // do not save redundant copies
+
+	auto tsv = data.exportDisplay(name);
+	d.container->write(entryname, tsv);
+}
+
+std::unique_ptr<QTextStream> Storage::openDataset(const QString &filename)
 {
 	close(true);
 
@@ -79,10 +87,11 @@ void Storage::openDataset(const QString &filename)
 		// displays – read at start
 		auto re = QRegularExpression(
 		              QString("^input/%1/displays/(?<name>.*)\\.tsv$")
-		              .arg(QRegularExpression::escape(sourcename)));
+		              .arg(QRegularExpression::escape(d.sourcename)));
 		auto de = contents.filter(re);
+		// TODO: emit newDisplay, let GUI decide whether to show it or not
 		for (auto &d : qAsConst(de))
-			data.readDisplay(re.match(d).captured("name"), container->read(d));
+			emit newDisplay(re.match(d).captured("name"));
 
 		// annotations
 		auto an = contents.filter(QRegularExpression("^annotations/.*\\.tsv$"));
@@ -97,50 +106,54 @@ void Storage::openDataset(const QString &filename)
 		// todo: read markerlists
 	};
 
+	QWriteLocker _(&d.l);
 	if (filetype == "zip") {
 		// check version
-		container = std::make_unique<qzip::Zip>();
+		d.container = std::make_unique<qzip::Zip>();
 		try {
-			container->load(filename);
+			d.container->load(filename);
 		} catch (std::runtime_error& e) {
 			close();
-			return ioError(QString("Could not open %1:<p>%2</p>").arg(filename, e.what()));
+			ioError(QString("Could not open %1:<p>%2</p>").arg(filename, e.what()));
+			return {};
 		}
-		auto contents = container->names();
+		auto contents = d.container->names();
 
 		// version check
 		if (!check_version(filename, contents)) {
 			close();
-			return;
+			return {};
 		}
 
 		// find source data
 		auto in = contents.filter(QRegularExpression("^input/.*\\.tsv$"));
 		if (in.empty()) {
 			close();
-			return ioError(QString("No source dataset found in %1!").arg(filename));
+			ioError(QString("No source dataset found in %1!").arg(filename));
+			return {};
 		}
-		sourcename = QFileInfo(in.constFirst()).completeBaseName();
-		// parse
-		auto success = data.readSource(QTextStream(container->read("input/" + sourcename + ".tsv")), sourcename);
-		if (!success) {
-			close();
-			return;
-		}
+		d.sourcename = QFileInfo(in.constFirst()).completeBaseName();
+		return std::make_unique<QTextStream>(d.container->read("input/" + d.sourcename + ".tsv"));
 
-		read_auxiliary(contents);
+		// TODO this emits lots of stuff (too early)
+		// better let them ask for it when data is read
+		// read_auxiliary(contents);
 	} else {
-		sourcename = fi.completeBaseName();
+		d.sourcename = fi.completeBaseName();
 		QFile f(filename);
-		if (!f.open(QIODevice::ReadOnly))
-			return freadError(filename);
+		if (!f.open(QIODevice::ReadOnly)) {
+			freadError(filename);
+			return {};
+		}
 		// we will read it multiple times
-		auto tsv = f.readAll();
+		// TODO see below auto tsv = f.readAll();
 
-		// parse
-		auto success = data.readSource(QTextStream(tsv), sourcename);
-		if (!success)
-			return;
+		// parse -- NOTE: do not return QFile based QTextStream! QFile is on stack
+		return std::make_unique<QTextStream>(f.readAll());
+
+		// TODO: need to rethink all this crap
+		// namely we want project files instead of shadow zips
+		/*
 		auto checksum = calc_checksum(tsv);
 
 		auto zipname = fi.path() + "/" + sourcename + ".zip";
@@ -153,13 +166,13 @@ void Storage::openDataset(const QString &filename)
 			// version check
 			if (!check_version(zipname, contents)) {
 				close();
-				return;
+				return {};
 			}
 
 			// compare checksums
 			if (!check_checksum(zipname, contents, sourcename, checksum)) {
 				close();
-				return;
+				return {};
 			}
 
 			read_auxiliary(contents);
@@ -170,22 +183,37 @@ void Storage::openDataset(const QString &filename)
 			container->write("input/" + sourcename + "/" + checksum + ".sha256", {});
 			container->write("input/" + sourcename + ".tsv", tsv);
 		}
+		*/
 	}
-
-	// compute some initial displays
-	data.computeDisplays();
 }
 
-void Storage::readAnnotations(const QString &name)
+std::unique_ptr<QTextStream> Storage::readAnnotations(const QString &name)
 {
-	auto content = container->read("annotations/" + name + ".tsv");
-	data.readAnnotations(content);
+	QReadLocker _(&d.l);
+	return std::make_unique<QTextStream>(d.container->read("annotations/" + name + ".tsv"));
 }
 
-void Storage::readHierarchy(const QString &name)
+std::unique_ptr<QJsonObject> Storage::readHierarchy(const QString &name)
 {
-	auto content = container->read("hierarchies/" + name + ".json");
-	data.readHierarchy(content);
+	d.l.lockForRead();
+	auto json = QJsonDocument::fromJson(d.container->read("hierarchies/" + name + ".json"));
+	d.l.unlock();
+	if (json.isNull() || !json.isObject()) {
+		// TODO: we could pass parsing errors with fromJson() third argument
+		emit ioError("The selected file does not contain valid JSON!");
+		return {};
+	}
+	return std::make_unique<QJsonObject>(json.object());
+}
+
+QByteArray Storage::readFile(const QString &filename)
+{
+	QFile f(filename);
+	if (!f.open(QIODevice::ReadOnly)) {
+		freadError(filename);
+		return {};
+	}
+	return f.readAll();
 }
 
 void Storage::importDescriptions(const QString &filename)
@@ -194,71 +222,55 @@ void Storage::importDescriptions(const QString &filename)
 	if (!f.open(QIODevice::ReadOnly))
 		return freadError(filename);
 
-	auto content = f.readAll();
-	bool success = data.readDescriptions(content);
+	auto content = QTextStream(&f);
+	bool success = proteins.readDescriptions(content);
 	if (!success)
 		return;
 
 	// TODO: actual import (storage in ZIP, and then ability to re-read)
 }
 
-void Storage::importAnnotations(const QString &filename)
+void Storage::importAnnotations(const QString &filename, const QByteArray &content)
 {
-	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly))
-		return freadError(filename);
-
-	/* note: we try parsing first before storing and notifying the world about it
-	 * this way we don't end up with corrupt files in our ZIP. */
-
-	auto content = f.readAll();
-	bool success = data.readAnnotations(content);
-	if (!success)
-		return;
-
 	QFileInfo fi(filename);
-	container->write("annotations/" + fi.completeBaseName() + ".tsv", content);
+	d.l.lockForWrite();
+	d.container->write("annotations/" + fi.completeBaseName() + ".tsv", content);
+	d.l.unlock();
 	emit newAnnotations(fi.completeBaseName(), true);
 }
 
-void Storage::importHierarchy(const QString &filename)
+void Storage::importHierarchy(const QString &filename, const QByteArray &content)
 {
-	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly))
-		return freadError(filename);
-
-	auto content = f.readAll();
-	bool success = data.readHierarchy(content);
-	if (!success)
-		return;
-
 	QFileInfo fi(filename);
-	container->write("hierarchies/" + fi.completeBaseName() + ".json", content);
+	d.l.lockForWrite();
+	d.container->write("hierarchies/" + fi.completeBaseName() + ".json", content);
+	d.l.unlock();
 	emit newHierarchy(fi.completeBaseName(), true);
 }
 
-void Storage::exportAnnotations(const QString &filename)
+void Storage::exportAnnotations(const QString &filename, Dataset::ConstPtr data)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::WriteOnly))
 		return ioError(QString("Could not write file %1!").arg(filename));
 
 	QTextStream out(&f);
-	auto d = data.peek(); // TODO: avoid acquiring read lock in writer thread!
-	auto p = data.proteins.peek();
+	auto b = data->peek<Dataset::Base>();
+	auto s = data->peek<Dataset::Structure>();
+	auto p = proteins.peek();
 
 	// write header
 	out << "Protein Name";
-	for (auto& [i, c] : d->clustering.clusters)
+	for (auto& [i, c] : s->clustering.clusters)
 		out << "\t" << c.name;
 	out << endl;
 
 	// write associations
-	for (unsigned i = 0; i < d->protIds.size(); ++i) {
-		auto &protein = p->proteins[d->protIds[i]];
-		auto &m = d->clustering.memberships[i];
+	for (unsigned i = 0; i < b->protIds.size(); ++i) {
+		auto &protein = p->proteins[b->protIds[i]];
+		auto &m = s->clustering.memberships[i];
 		out << protein.name << "_" << protein.species;
-		for (auto& [i, c] : d->clustering.clusters) {
+		for (auto& [i, c] : s->clustering.clusters) {
 			out << "\t";
 			if (m.count(i))
 				out << c.name;
@@ -276,19 +288,13 @@ void Storage::importMarkers(const QString &filename)
 	}
 
 	QTextStream in(&f);
+	std::vector<QString> names;
 	while (!in.atEnd()) {
 		QString name;
 		in >> name;
-		try {
-			// TODO: slow to acquire read+write locks for each entry, however
-			// we don't want to lock for read first and then the write lock will
-			// not be effective (QReadWriteLock limitation)
-			auto id = data.proteins.peek()->find(name);
-			data.proteins.addMarker(id);
-		} catch (std::out_of_range&) {
-			qDebug() << "Ignored" << name << "(unknown)";
-		}
+		names.push_back(name);
 	}
+	proteins.importMarkers(names);
 }
 
 void Storage::exportMarkers(const QString &filename)
@@ -297,7 +303,7 @@ void Storage::exportMarkers(const QString &filename)
 	if (!f.open(QIODevice::WriteOnly))
 		return ioError(QString("Could not write file %1!").arg(filename));
 
-	auto p = data.proteins.peek();
+	auto p = proteins.peek();
 	QTextStream out(&f);
 	for (auto id : p->markers) {
 		auto protein = p->proteins[id];
@@ -310,10 +316,11 @@ void Storage::exportMarkers(const QString &filename)
 
 void Storage::close(bool save)
 {
-	if (container && save)
-		container->save();
-
-	container.reset();
+	QWriteLocker _(&d.l);
+	// TODO disabled to cause no harm
+	//if (container && save)
+	//	container->save();
+	d.container.reset();
 }
 
 void Storage::freadError(const QString &filename)

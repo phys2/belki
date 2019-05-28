@@ -37,7 +37,7 @@ else()
 endif()
 
 ## Qt
-set(QT_MODULES Widgets Charts Svg)
+set(QT_MODULES Concurrent Widgets Charts Svg)
 if (STATIC_BUILD AND ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	# include plugins into static build on windows
 	# (we lack support for static on other platforms right now)

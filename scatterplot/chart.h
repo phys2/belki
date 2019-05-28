@@ -53,7 +53,7 @@ public:
 		void setup(Chart *chart);
 	};
 
-	Chart(Dataset &data);
+	Chart(Dataset::ConstPtr data);
 
 	void setTitles(const QString &x, const QString &y);
 	void clear();
@@ -88,7 +88,7 @@ protected:
 	void animate(int msec);
 
 	// data source
-	Dataset &data;
+	Dataset::ConstPtr data;
 
 	/* items in the scene */
 

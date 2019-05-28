@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 
 	/* support some basic arguments */
 	if (argc >= 2) // pass initial filename as single argument
-		hub.openDataset(argv[1]);
+		hub.importDataset(argv[1], true);
 	if (argc >= 3)
 		hub.importAnnotations(argv[2]);
 

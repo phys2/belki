@@ -16,7 +16,7 @@
 
 #include <QDebug>
 
-Chart::Chart(Dataset &data) :
+Chart::Chart(Dataset::ConstPtr data) :
     data(data),
     ax(new QtCharts::QValueAxis), ay(new QtCharts::QValueAxis),
     animReset(new QTimer(this))
@@ -106,7 +106,7 @@ void Chart::display(const QVector<QPointF> &coords)
 
 void Chart::updatePartitions()
 {
-	auto d = data.peek();
+	auto d = data->peek<Dataset::Structure>();
 	bool fresh = partitions.empty();
 
 	/* set up partition series */
@@ -210,18 +210,17 @@ void Chart::updateCursor(const QPointF &pos)
 	// determine all proteins that fall into the cursor
 	QVector<unsigned> list;
 	std::set<int> affectedPartitions;
-	{
-		auto d = data.peek();
-		auto pv = master->pointsVector();
-		for (int i = 0; i < pv.size(); ++i) {
-			auto diffVec = pv[i] - center;
-			if (QPointF::dotProduct(diffVec, diffVec) < range) {
-				list << (unsigned)i;
-				for (auto m : d->clustering.memberships[(unsigned)i])
-					affectedPartitions.insert((int)m);
-			}
+	auto d = data->peek<Dataset::Structure>();
+	auto pv = master->pointsVector();
+	for (int i = 0; i < pv.size(); ++i) {
+		auto diffVec = pv[i] - center;
+		if (QPointF::dotProduct(diffVec, diffVec) < range) {
+			list << (unsigned)i;
+			for (auto m : d->clustering.memberships[(unsigned)i])
+				affectedPartitions.insert((int)m);
 		}
-	} // peek() scope
+	}
+	d.unlock();
 
 	for (auto& [i, p] : partitions)
 		p->redecorate(false, affectedPartitions.count(i));
@@ -312,7 +311,7 @@ void Chart::toggleMarker(ProteinId id, bool present)
 {
 	if (present) {
 		try {
-			markers.try_emplace(id, data.peek()->protIndex.at(id), id, this);
+			markers.try_emplace(id, data->peek<Dataset::Base>()->protIndex.at(id), id, this);
 		} catch (...) {}
 	} else {
 		markers.erase(id);
@@ -393,7 +392,7 @@ Chart::Marker::Marker(unsigned sampleIndex, ProteinId id, Chart *chart)
       series(std::make_unique<QtCharts::QScatterSeries>())
 {
 	auto s = series.get();
-	auto label = chart->data.proteins.peek()->proteins[sampleId].name;
+	auto label = chart->data->peek<Dataset::Proteins>()->proteins[sampleId].name;
 	s->setName(label);
 
 	s->setPointLabelsFormat(label);
@@ -423,7 +422,7 @@ void Chart::Marker::setup(Chart *chart)
 	s->attachAxis(chart->ay);
 
 	s->setBorderColor(Qt::black);
-	s->setColor(chart->data.proteins.peek()->proteins[sampleId].color);
+	s->setColor(chart->data->peek<Dataset::Proteins>()->proteins[sampleId].color);
 	s->setMarkerShape(QtCharts::QScatterSeries::MarkerShapeRectangle);
 	s->setMarkerSize(chart->proteinStyle.size * 1.3333);
 	s->setPointLabelsVisible(true);

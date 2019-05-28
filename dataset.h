@@ -7,25 +7,26 @@
 #include "meanshift/fams.h"
 
 #include <QObject>
+#include <QFlags>
 #include <QString>
 #include <QMap>
 #include <QVector>
 #include <QList>
 #include <QPointF>
 #include <QColor>
-#include <QTextStream>
-#include <QByteArray>
 
 #include <set>
 #include <map>
 #include <unordered_map>
 #include <memory>
 
+class QTextStream;
+
 // a configuration that describes processing resulting in a dataset
 struct DatasetConfiguration {
 	QString name; // user-specified identifier
-
-	int parent = -1; // index of the dataset this one was spawned from
+	unsigned id; // index of dataset (temporary)
+	unsigned parent = 0; // index of dataset this one was spawned from (0 == none)
 	std::vector<unsigned> bands; // the feature bands that were kept
 	double scoreThresh = 0.; // score cutoff that was applied
 };
@@ -35,9 +36,51 @@ class Dataset : public QObject
 {
 	Q_OBJECT
 
-	friend class Storage; // NOTE: ensure that Storage object resides in same thread!
-
 public:
+	using Ptr = std::shared_ptr<Dataset>;
+	using ConstPtr = std::shared_ptr<Dataset const>;
+	using Proteins = ProteinDB::Public;
+
+	enum class Touch {
+		BASE,
+		DISPLAY,
+		HIERARCHY,
+		CLUSTERS,
+		ORDER
+	};
+	using Touched = QFlags<Touch>;
+
+	struct Base : RWLockable {
+		bool hasScores() const { return !scores.empty(); }
+		const auto& lookup(View<ProteinDB::Public> &v, unsigned index) const {
+			return v->proteins[protIds[index]];
+		}
+
+		QStringList dimensions;
+
+		// meta information for this dataset
+		DatasetConfiguration conf;
+
+		// from protein in vectors (1:1 index) to db index
+		std::vector<ProteinId> protIds;
+		// from protein db to index in vectors
+		std::unordered_map<ProteinId, unsigned> protIndex;
+
+		// original data
+		features::vec features;
+		features::Range featureRange;
+		// pre-cached set of points
+		std::vector<QVector<QPointF>> featurePoints;
+		// measurement scores
+		features::vec scores;
+		features::Range scoreRange;
+	};
+
+	struct Representation : public RWLockable {
+		// feature reduced point sets
+		std::map<QString, QVector<QPointF>> display;
+	};
+
 	enum class OrderBy {
 		FILE,
 		NAME,
@@ -82,34 +125,7 @@ public:
 		std::vector<unsigned> rankOf; // position of each protein in the order
 	};
 
-	struct Public {
-		bool hasScores() const { return !scores.empty(); }
-		const auto& lookup(View<ProteinDB::Public> &v, unsigned index) const {
-			return v->proteins[protIds[index]];
-		}
-
-		QStringList dimensions;
-
-		// meta information for this dataset
-		DatasetConfiguration conf;
-
-		// from protein in vectors (1:1 index) to db index
-		std::vector<ProteinId> protIds;
-		// from protein db to index in vectors
-		std::unordered_map<ProteinId, unsigned> protIndex;
-
-		// original data
-		features::vec features;
-		features::Range featureRange;
-		// pre-cached set of points
-		std::vector<QVector<QPointF>> featurePoints;
-		// measurement scores
-		features::vec scores;
-		features::Range scoreRange;
-
-		// feature reduced point sets
-		std::map<QString, QVector<QPointF>> display;
-
+	struct Structure : public RWLockable {
 		// clusters / hierarchy, if available
 		Clustering clustering;
 		std::vector<HrCluster> hierarchy;
@@ -119,50 +135,44 @@ public:
 		Order order;
 	};
 
-	using View = ::View<Public>;
-
-	Dataset(ProteinDB &proteins);
+	explicit Dataset(ProteinDB &proteins);
 
 	static const std::map<Dataset::OrderBy, QString> availableOrders();
 
-	View peek() { return View(*d, l); }
-	unsigned current() {  // TODO: temporary until we have a better interface!
-		return d - &datasets[0];
-	}
+	template<typename T>
+	View<T> peek() const; // see specializations in cpp
 
+	unsigned id() const;
+	void setId(unsigned id);
 	void changeFAMS(float k); // to be called from different thread
 	void cancelFAMS(); // can be called from different thread
 
-signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
-	void selectedDataset();
-	void newDataset(unsigned id);
-	void newDisplay(const QString &name);
-	void newClustering(bool withOrder = false);
-	void newHierarchy(bool withOrder = false);
-	void newOrder();
-	void ioError(const QString &message);
+	QByteArray exportDisplay(const QString &name) const;
 
-public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
-	void select(unsigned index); // reset d*
-	void spawn(const DatasetConfiguration& config, QString initialDisplay = {});
+	void spawn(ConstPtr source, const DatasetConfiguration& config);
+	bool readSource(QTextStream &in, const QString& name, bool scored);
+
 	void computeDisplay(const QString &name);
 	void computeDisplays();
+	bool readDisplay(const QString &name, QTextStream &tsv);
+
 	void clearClusters();
-	void computeFAMS();
+	bool readAnnotations(QTextStream &tsv);
+	bool readHierarchy(const QJsonObject &json);
 	void calculatePartition(unsigned granularity);
-	void updateColorset(QVector<QColor> colors);
+	void computeFAMS();
 	void changeOrder(OrderBy reference, bool synchronize);
 
-public:
-	ProteinDB &proteins; // TODO: make protected and let others get it elsewhere
+	void updateColorset(QVector<QColor> colors);
+
+signals:
+	void update(Touched);
+	void ioError(const QString &message);
 
 protected:
-	bool readSource(QTextStream in, const QString& name);
 	bool readScoredSource(QTextStream &in, const QString& name);
-	bool readDescriptions(const QByteArray &tsv);
-	bool readAnnotations(const QByteArray &tsv);
-	bool readHierarchy(const QByteArray &json);
-	void readDisplay(const QString &name, const QByteArray &tsv);
+	bool finalizeRead();
+	void swapClustering(Clustering &cl, bool genericNames, bool pruneCl, bool reorderProts);
 
 	void pruneClusters();
 	void computeClusterCentroids();
@@ -170,23 +180,24 @@ protected:
 	void colorClusters();
 	void orderProteins(OrderBy reference);
 
-	QByteArray writeDisplay(const QString &name);
 	static QStringList trimCrap(QStringList values);
 	static std::vector<QVector<QPointF>> pointify(const std::vector<std::vector<double>> &in);
 
-	// vector of loaded datasets
-	std::vector<Public> datasets;
-	// the currently used/exposed dataset in datasets
-	Public *d;
-	// lock that we use when accessing datasets
-	QReadWriteLock l{QReadWriteLock::RecursionMode::Recursive};
+	Base b;
+	Representation r;
+	Structure s;
 
-	struct {
+	struct { // TODO own small class in compute that does all meanshift stuff
 		std::unique_ptr<seg_meanshift::FAMS> fams;
 		float k = -1;
 	} meanshift;
 
 	QVector<QColor> colorset = {Qt::black};
+	ProteinDB &proteins;
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(Dataset::Touched)
+Q_DECLARE_METATYPE(Dataset::Ptr)
+Q_DECLARE_METATYPE(Dataset::ConstPtr)
 
 #endif // DATASET_H

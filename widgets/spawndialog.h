@@ -15,10 +15,10 @@ class SpawnDialog : public QDialog, private Ui::SpawnDialog
 	Q_OBJECT
 
 public:
-	explicit SpawnDialog(Dataset &data, QWidget *parent = nullptr);
+	explicit SpawnDialog(std::shared_ptr<Dataset const> data, QWidget *parent = nullptr);
 
 signals:
-	void spawn(const DatasetConfiguration& config);
+	void spawn(std::shared_ptr<Dataset const> source, const DatasetConfiguration& config);
 
 public slots:
 	void updateState();
@@ -37,7 +37,7 @@ protected:
 	QPushButton *okButton; // cached, owned by Ui::SpawnDialog
 
 	// data source
-	Dataset &data;
+	std::shared_ptr<Dataset const> data;
 };
 
 #endif // SPAWNDIALOG_H

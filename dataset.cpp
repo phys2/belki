@@ -2,60 +2,69 @@
 #include "compute/dimred.h"
 
 #include <QDataStream>
-#include <QJsonDocument>
+#include <QTextStream>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <QRegularExpression>
 #include <QCollator>
+#include <QRegularExpression>
 
 #include <tbb/parallel_for_each.h>
 #include <unordered_set>
 
-#include <QDebug>
+#include <iostream>
 
 Dataset::Dataset(ProteinDB &proteins)
-    : proteins(proteins),
-      // start with an empty dataset and make it current
-      datasets(1), d(&datasets.front())
+    : proteins(proteins)
 {
-	qRegisterMetaType<OrderBy>();
 	qRegisterMetaType<DatasetConfiguration>();
+	qRegisterMetaType<OrderBy>();
+	qRegisterMetaType<Ptr>("DataPtr");
+	qRegisterMetaType<ConstPtr>("ConstDataPtr");
 }
 
-void Dataset::select(unsigned index)
+const std::map<Dataset::OrderBy, QString> Dataset::availableOrders()
 {
-	// TODO: this whole method looks extremely suspicious
-
-	if (index == (d - &datasets[0]))
-		return;
-
-	QWriteLocker _(&l);
-	d = &datasets[index];
-
-	emit selectedDataset();
-
-	for (auto &[i, _] : d->display)
-		emit newDisplay(i);
-
-	if (!d->clustering.empty())
-		emit newClustering(false);
-	if (!d->hierarchy.empty())
-		emit newHierarchy(false);
-	// TODO: synchronization of GUI order states and the order in the data
+	return {
+		{OrderBy::FILE, "Position in File"},
+		{OrderBy::NAME, "Protein Name"},
+		{OrderBy::HIERARCHY, "Hierarchy"},
+		{OrderBy::CLUSTERING, "Cluster/Annotations"},
+	};
 }
 
-void Dataset::spawn(const DatasetConfiguration &conf, QString initialDisplay)
+template<>
+View<Dataset::Base> Dataset::peek() const { return View(b); }
+template<>
+View<Dataset::Representation> Dataset::peek() const { return View(r); }
+template<>
+View<Dataset::Structure> Dataset::peek() const { return View(s); }
+template<>
+View<Dataset::Proteins> Dataset::peek() const { return proteins.peek(); }
+
+unsigned Dataset::id() const
 {
-	const Public &source = datasets[conf.parent];
-	Public target;
-	target.conf = conf;
+	QReadLocker _b(&b.l);
+	return b.conf.id;
+}
+
+void Dataset::setId(unsigned id)
+{
+	QWriteLocker _b(&b.l);
+	b.conf.id = id;
+}
+
+void Dataset::spawn(ConstPtr srcholder, const DatasetConfiguration &conf)
+{
+	auto bIn = srcholder->peek<Base>();
+	b.l.lockForWrite();
+	b.conf = conf;
 
 	// only carry over dimensions we keep
 	for (auto i : conf.bands)
-		target.dimensions.append(source.dimensions.at((size_t)i));
+		b.dimensions.append(bIn->dimensions.at((size_t)i));
 
-	target.protIndex = source.protIndex;
-	target.protIds = source.protIds;
+	b.protIndex = bIn->protIndex;
+	b.protIds = bIn->protIds;
 
 	// only carry over features/scores we keep
 	auto fill_stripped = [&conf] (const auto &source, auto &target) {
@@ -66,82 +75,68 @@ void Dataset::spawn(const DatasetConfiguration &conf, QString initialDisplay)
 		});
 	};
 
-	fill_stripped(source.features, target.features);
-	if (source.hasScores()) {
-		fill_stripped(source.scores, target.scores);
-		target.scoreRange = features::Range(target.scores);
+	fill_stripped(bIn->features, b.features);
+	if (bIn->hasScores()) {
+		fill_stripped(bIn->scores, b.scores);
+		b.scoreRange = features::Range(b.scores);
 
 		if (conf.scoreThresh > 0.)
-			features::apply_cutoff(target.features, target.scores, conf.scoreThresh);
+			features::apply_cutoff(b.features, b.scores, conf.scoreThresh);
 	}
 
-	target.featureRange = source.featureRange; // note: no adaptive handling yet
-	target.featurePoints = pointify(target.features);
+	b.featureRange = bIn->featureRange; // note: no adaptive handling yet
+	b.featurePoints = pointify(b.features);
 
-	target.clustering = source.clustering;
-	target.hierarchy = source.hierarchy;
-	target.order = source.order;
+	// also copy structure
+	s.l.lockForWrite();
+	auto sIn = srcholder->peek<Structure>();
+	s.hierarchy = sIn->hierarchy;
+	s.clustering = sIn->clustering;
+	s.order = sIn->order;
+	s.l.unlock();
+	b.l.unlock(); // ensure consistency between b and s
 
-	{
-		QWriteLocker _(&l);
-		datasets.push_back(std::move(target));
-		d = &datasets.back();
-		emit newDataset(datasets.size() - 1);
-	}
-
-	/* also compute displays expected by the user */
-	// standard set
-	computeDisplays();
-
-	// current display
-	if (!initialDisplay.isEmpty() && !d->display.count(initialDisplay))
-		computeDisplay(initialDisplay);
+	emit update({Touch::BASE, Touch::HIERARCHY, Touch::CLUSTERS, Touch::ORDER});
 }
 
 void Dataset::computeDisplay(const QString& request)
 {
-	// empty data shouldn't happen but right now can when a file cannot be read completely,
-	// in the future this should result in IOError already earlier
-	if (d->features.empty())
-		return;
+	b.l.lockForRead();
+	auto result = dimred::compute(request, b.features);
+	b.l.unlock();
 
-	// note: no read lock as we are write thread
-	auto result = dimred::compute(request, d->features);
-
-	QWriteLocker _(&l);
+	r.l.lockForWrite();
 	for (auto name : result.keys()) {
-		d->display[name] = result[name]; // TODO move
-
+		r.display[name] = result[name]; // TODO move
 		// TODO: lookup in datasets[d->conf->parent].displays and perform rigid registration
-
-		emit newDisplay(name);
 	}
+	r.l.unlock();
+
+	emit update(Touch::DISPLAY);
 }
 
 void Dataset::computeDisplays()
 {
 	/* compute PCA displays as a fast starting point */
-	if (!d->display.count("PCA 12"))
+	r.l.lockForWrite(); // proactive write lock, avoid gap that may lead to double computation
+	if (!r.display.count("PCA 12"))
 		computeDisplay("PCA");
+	r.l.unlock();
 }
 
 void Dataset::clearClusters()
 {
-	QWriteLocker _(&l);
-	d->clustering = Clustering(d->protIds.size());
+	s.l.lockForWrite();
+	s.clustering = Clustering(peek<Base>()->protIds.size());
+	s.l.unlock();
 
-	emit newClustering();
+	emit update(Touch::CLUSTERS);
 }
 
 void Dataset::computeFAMS()
 {
-	// empty data shouldn't happen but right now can when a file cannot be read completely,
-	// in the future this should result in IOError already earlier
-	if (d->features.empty())
-		return;
-
+	// TODO: make fams its own class in compute. Guard meanshift instance as we will have several jobs now!
 	auto &fams = meanshift.fams;
-	qDebug() << "FAMS " << meanshift.k << " vs " << (fams ? fams->config.k : 0);
 	if (fams && (fams->config.k == meanshift.k || meanshift.k <= 0))
 		return; // already done
 
@@ -149,6 +144,8 @@ void Dataset::computeFAMS()
 	                                       .k=meanshift.k,
 	                                       .pruneMinN = 0, // we use pruneClusters() instead
 	                                   }));
+
+	auto d = peek<Base>();
 	fams->importPoints(d->features, true);
 	bool success = fams->prepareFAMS();
 	if (!success)
@@ -172,19 +169,7 @@ void Dataset::computeFAMS()
 		cl.clusters[m].size++;
 	}
 
-	QWriteLocker _(&l); // makes sense to keep the lock until everything is done
-	d->clustering = std::move(cl);
-
-	pruneClusters();
-	computeClusterCentroids();
-	orderClusters(true);
-	colorClusters();
-
-	bool reorder = d->order.synchronizing && d->order.reference == OrderBy::CLUSTERING;
-	if (reorder)
-		orderProteins(OrderBy::CLUSTERING);
-
-	emit newClustering(reorder);
+	swapClustering(cl, true, true, true);
 }
 
 void Dataset::changeFAMS(float k)
@@ -201,11 +186,10 @@ void Dataset::cancelFAMS()
 	changeFAMS(-1);
 }
 
-bool Dataset::readSource(QTextStream in, const QString &name)
+bool Dataset::readSource(QTextStream &in, const QString &name, bool scored)
 {
-	return readScoredSource(in, name); // TODO
-
-	cancelFAMS(); // abort unwanted calculation
+	if (scored)
+		return readScoredSource(in, name);
 
 	auto header = in.readLine().split("\t");
 	header.pop_front(); // first column
@@ -214,11 +198,13 @@ bool Dataset::readSource(QTextStream in, const QString &name)
 		return false;
 	}
 
-	Public target;
+	b.l.lockForWrite();
+	// TODO check if needed b.conf = {}; // explicitely initialize default values
+	b.conf.name = name; // TODO
 
-	/* fill it up */
-	target.dimensions = trimCrap(std::move(header));
-	auto len = target.dimensions.size();
+	/* fill in dimensions & features */
+	b.dimensions = trimCrap(header);
+	auto len = b.dimensions.size();
 	std::set<QString> seen; // names of read proteins
 	while (!in.atEnd()) {
 		auto line = in.readLine().split("\t");
@@ -253,53 +239,16 @@ bool Dataset::readSource(QTextStream in, const QString &name)
 		}
 
 		/* append */
-		target.protIndex[protid] = target.protIds.size();
-		target.protIds.push_back(protid);
-		target.features.push_back(std::move(coeffs));
-	}
-	// ensure clustering is properly initialized if accessed
-	target.clustering = Clustering(target.protIds.size());
-
-	//qDebug() << "read" << d.features.size() << "rows with" << len << "columns";
-	if (target.features.empty() || len == 0) {
-		emit ioError(QString("Could not read any valid data rows from file!"));
-		return false;
+		b.protIndex[protid] = b.protIds.size();
+		b.protIds.push_back(protid);
+		b.features.push_back(std::move(coeffs));
 	}
 
-	features::Range range(target.features);
-	/* normalize, if needed */
-	if (range.min < 0 || range.max > 1) { // simple heuristic to auto-normalize
-		emit ioError(QString("Values outside expected range (instead [%1, %2])."
-		                     "<br>Normalizing to [0, 1].").arg(range.min).arg(range.max));
-		// cut off negative values
-		range.min = 0.;
-		auto scale = 1. / (range.max - range.min);
-		for (auto &v : target.features) {
-			std::for_each(v.begin(), v.end(), [min=range.min, scale] (double &e) {
-				e = std::max(e - min, 0.) * scale;
-			});
-		}
-	}
-	target.featureRange = {0., 1.}; // TODO: we enforced normalization (make config.)
-
-	/* pre-cache features as QPoints for plotting */
-	target.featurePoints = pointify(target.features);
-
-	/* time to flip */ // TODO: create new entry in datasets instead
-	QWriteLocker _(&l);
-	*d = std::move(target);
-
-	/* calculate initial order */
-	orderProteins(d->order.reference);
-
-	emit newDataset(0); // TODO
-	return true;
+	return finalizeRead(); // unlocks b
 }
 
 bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 {
-	cancelFAMS(); // abort unwanted calculation
-
 	auto header = in.readLine().split("\t");
 	if (header.contains("") || header.removeDuplicates()) {
 		emit ioError("Malformed header: Duplicate or empty columns!");
@@ -317,10 +266,10 @@ bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 		return false;
 	}
 
-	Public target;
-	target.conf.name = name; // TODO
+	b.l.lockForWrite();
+	b.conf.name = name; // TODO
 
-	/* fill it up */
+	/* fill in dimensions, features, scores */
 	std::map<QString, unsigned> dimensions;
 	while (!in.atEnd()) {
 		auto line = in.readLine().split("\t");
@@ -337,14 +286,14 @@ bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 
 		/* determine protein index */
 		size_t row; // the protein id we are altering
-		auto index = target.protIndex.find(protid);
-		if (index == target.protIndex.end()) {
-			target.protIds.push_back(protid);
-			auto len = target.protIds.size();
-			target.features.resize(len, std::vector<double>(dimensions.size()));
-			target.scores.resize(len, std::vector<double>(dimensions.size()));
+		auto index = b.protIndex.find(protid);
+		if (index == b.protIndex.end()) {
+			b.protIds.push_back(protid);
+			auto len = b.protIds.size();
+			b.features.resize(len, std::vector<double>(dimensions.size()));
+			b.scores.resize(len, std::vector<double>(dimensions.size()));
 			row = len - 1;
-			target.protIndex[protid] = row;
+			b.protIndex[protid] = row;
 		} else {
 			row = index->second;
 		}
@@ -353,11 +302,11 @@ bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 		size_t col; // the dimension we are altering
 		auto dIndex = dimensions.find(line[nameCol]);
 		if (dIndex == dimensions.end()) {
-			target.dimensions.append(line[nameCol]);
-			auto len = (size_t)target.dimensions.size();
-			for (auto &i : target.features)
+			b.dimensions.append(line[nameCol]);
+			auto len = (size_t)b.dimensions.size();
+			for (auto &i : b.features)
 				i.resize(len);
-			for (auto &i : target.scores)
+			for (auto &i : b.scores)
 				i.resize(len);
 			col = len - 1;
 			dimensions[line[nameCol]] = col;
@@ -380,120 +329,122 @@ bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 		}
 
 		/* fill-in features and scores */
-		target.features[row][col] = feat;
-		target.scores[row][col] = std::max(score, 0.); // TODO temporary clipping
+		b.features[row][col] = feat;
+		b.scores[row][col] = std::max(score, 0.); // TODO temporary clipping
 	}
 
-	// ensure clustering is properly initialized if accessed
-	target.clustering = Clustering(target.protIds.size());
+	return finalizeRead(); // will unlock b for us
+}
 
-	if (target.features.empty() || target.dimensions.empty()) {
+bool Dataset::finalizeRead()
+{
+	/* Note: caller has locked b for us for writing */
+
+	if (b.features.empty() || b.dimensions.empty()) {
 		emit ioError(QString("Could not read any valid data rows from file!"));
+		b.l.unlock();
 		return false;
 	}
 
 	/* setup ranges */
-	features::Range range(target.features);
-	/* normalize, if needed */
+	features::Range range(b.features);
+	// normalize, if needed
 	if (range.min < 0 || range.max > 1) { // simple heuristic to auto-normalize
 		emit ioError(QString("Values outside expected range (instead [%1, %2])."
 		                     "<br>Normalizing to [0, 1].").arg(range.min).arg(range.max));
 		// cut off negative values
 		range.min = 0.;
 		auto scale = 1. / (range.max - range.min);
-		for (auto &v : target.features) {
+		for (auto &v : b.features) {
 			std::for_each(v.begin(), v.end(), [min=range.min, scale] (double &e) {
 				e = std::max(e - min, 0.) * scale;
 			});
 		}
 	}
-	target.featureRange = {0., 1.}; // TODO: we enforced normalization (make config.)
-	target.scoreRange = features::Range(target.scores);
+	b.featureRange = {0., 1.}; // TODO: we enforced normalization (make config.)
+	if (b.hasScores())
+		b.scoreRange = features::Range(b.scores);
 
 	/* pre-cache features as QPoints for plotting */
-	target.featurePoints = pointify(target.features);
+	b.featurePoints = pointify(b.features);
 
-	/* time to flip/add */
-	QWriteLocker _(&l);
-	if (d->dimensions.empty()) { // replace
-		*d = std::move(target);
-	} else { // append
-		datasets.push_back(std::move(target));
-		select(datasets.size() - 1);
-	}
+	s.l.lockForWrite();
+	// unlock before further work, but after locking s; so readers will only see consistent state
+	b.l.unlock();
+	// ensure clustering is properly initialized if accessed
+	s.clustering = Clustering(b.protIds.size());
+	// calculate initial order
+	orderProteins(s.order.reference);
+	s.l.unlock();
 
-	/* calculate initial order */
-	orderProteins(d->order.reference);
+	emit update({Touch::BASE, Touch::ORDER});
 
-	emit newDataset(current()); // TODO
 	return true;
 }
 
-void Dataset::readDisplay(const QString& name, const QByteArray &tsv)
+bool Dataset::readDisplay(const QString& name, QTextStream &in)
 {
-	QTextStream in(tsv);
 	QVector<QPointF> data;
 	while (!in.atEnd()) {
 		auto line = in.readLine().split("\t");
-		if (line.size() != 2)
-			return ioError(QString("Input malformed at line %2 in display %1").arg(name, data.size()+1));
+		if (line.size() != 2) {
+			ioError(QString("Input malformed at line %2 in display %1").arg(name, data.size()+1));
+			return false;
+		}
 
 		data.push_back({line[0].toDouble(), line[1].toDouble()});
 	}
 
-	QWriteLocker _(&l);
+	if (data.size() != (int)peek<Base>()->features.size()) {
+		ioError(QString("Display %1 length does not match source length!").arg(name));
+		return false;
+	}
 
-	if (data.size() != (int)d->features.size())
-		return ioError(QString("Display %1 length does not match source length!").arg(name));
+	r.l.lockForWrite();
+	r.display[name] = std::move(data);
+	r.l.unlock();
 
-	d->display[name] = std::move(data);
-	emit newDisplay(name);
+	emit update(Touch::DISPLAY);
+	return true;
 }
 
-QByteArray Dataset::writeDisplay(const QString &name)
+void Dataset::swapClustering(Dataset::Clustering &cl, bool genericNames, bool pruneCl, bool reorderProts)
 {
-	// note: no read lock as we are write thread
+	s.l.lockForWrite(); // guarding lock until finished (consistent state)
+
+	s.clustering = std::move(cl);
+	if (pruneCl)
+		pruneClusters();
+	computeClusterCentroids();
+	orderClusters(genericNames);
+	colorClusters();
+
+	Touched touched = Touch::CLUSTERS;
+	if (reorderProts && s.order.synchronizing && s.order.reference == OrderBy::CLUSTERING) {
+		orderProteins(OrderBy::CLUSTERING);
+		touched |= Touch::ORDER;
+	}
+
+	s.l.unlock();
+	emit update(touched);
+}
+
+QByteArray Dataset::exportDisplay(const QString &name) const
+{
 	QByteArray ret;
 	QTextStream out(&ret, QIODevice::WriteOnly);
-	auto &data = d->display.at(name);
+	auto in = peek<Representation>();
+	// TODO: check if display exists
+	auto &data = in->display.at(name);
 	for (auto it = data.constBegin(); it != data.constEnd(); ++it)
 		out << it->x() << "\t" << it->y() << endl;
 
 	return ret;
 }
 
-// TODO: move to storage, only deals with ProteinDB
-bool Dataset::readDescriptions(const QByteArray &tsv)
+bool Dataset::readAnnotations(QTextStream &in)
 {
-	QTextStream in(tsv);
-	auto header = in.readLine().split("\t");
-	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
-	if (header.size() != 2 || !header[0].contains(re)) {
-		emit ioError("Could not parse file!<p>The first column must contain protein names, second descriptions.</p>");
-		return false;
-	}
-
-	/* ensure we have data to annotate */
-	if (proteins.peek()->proteins.empty()) {
-		emit ioError("Please load proteins first!");
-		return false;
-	}
-
-	/* fill-in descriptions */
-	while (!in.atEnd()) {
-		auto line = in.readLine().split("\t");
-		if (line.size() < 2)
-			continue;
-
-		bool success = proteins.addDescription(line[0], line[1]);
-		if (!success)
-			qDebug() << "Ignored" << line[0] << "(unknown)";
-	}
-	return true;
-}
-
-bool Dataset::readAnnotations(const QByteArray &tsv)
-{
+	auto d = peek<Base>();
 	/* ensure we have data to annotate */
 	if (d->protIds.empty()) {
 		emit ioError("Please load protein profiles first!");
@@ -502,7 +453,6 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 
 	Clustering cl(d->protIds.size());
 
-	QTextStream in(tsv);
 	// we use SkipEmptyParts for chomping at the end, but dangerous…
 	auto header = in.readLine().split("\t", QString::SkipEmptyParts);
 	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
@@ -510,6 +460,7 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 		/* expect name + list of proteins per-cluster per-line */
 
 		/* build new clusters */
+		auto p = proteins.peek();
 		unsigned clusterIndex = 0;
 		while (!in.atEnd()) {
 			auto line = in.readLine().split("\t");
@@ -521,12 +472,10 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 
 			for (auto &name : qAsConst(line)) {
 				try {
-					auto p = d->protIndex.at(proteins.peek()->find(name));
-					cl.memberships[p].insert(clusterIndex);
+					auto prot = d->protIndex.at(p->find(name));
+					cl.memberships[prot].insert(clusterIndex);
 					cl.clusters[clusterIndex].size++;
-				} catch (std::out_of_range&) {
-					qDebug() << "Ignored" << name << "(unknown)";
-				}
+				} catch (std::out_of_range&) {}
 			}
 
 			clusterIndex++;
@@ -541,6 +490,7 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 			cl.clusters[(unsigned)i] = {header[i], {}, 0, {}};
 
 		/* associate to clusters */
+		auto p = proteins.peek();
 		while (!in.atEnd()) {
 			auto line = in.readLine().split("\t");
 			if (line.size() < 2)
@@ -549,46 +499,27 @@ bool Dataset::readAnnotations(const QByteArray &tsv)
 			auto name = line[0];
 			line.removeFirst();
 			try {
-				auto p = d->protIndex.at(proteins.peek()->find(name));
+				auto prot = d->protIndex.at(p->find(name));
 				for (auto i = 0; i < header.size(); ++i) { // run over header to only allow valid columns
 					if (line[i].isEmpty() || line[i].contains(QRegularExpression("^\\s*$")))
 						continue;
-					cl.memberships[p].insert((unsigned)i);
+					cl.memberships[prot].insert((unsigned)i);
 					cl.clusters[(unsigned)i].size++;
 				}
-			} catch (std::out_of_range&) {
-				qDebug() << "Ignored" << name << "(unknown)";
-			}
+			} catch (std::out_of_range&) {}
 		}
 	} else {
 		emit ioError("Could not parse file!<p>The first column must contain protein or group names.</p>");
 		return false;
 	}
 
-	QWriteLocker _(&l); // makes sense to keep the lock until everything is done
-	d->clustering = std::move(cl);
-
-	computeClusterCentroids();
-	orderClusters(false);
-	colorClusters();
-
-	bool reorder = d->order.synchronizing && d->order.reference == OrderBy::CLUSTERING;
-	if (reorder)
-		orderProteins(OrderBy::CLUSTERING);
-
-	emit newClustering(reorder);
+	swapClustering(cl, false, false, true);
 	return true;
 }
 
-bool Dataset::readHierarchy(const QByteArray &json)
+bool Dataset::readHierarchy(const QJsonObject &root)
 {
-	auto root = QJsonDocument::fromJson(json).object();
-	if (root.isEmpty()) {
-		emit ioError("The selected file does not contain valid JSON!");
-		return false;
-	}
-
-	QWriteLocker _(&l);
+	auto d = peek<Base>();
 
 	/* ensure we have data to annotate */
 	if (d->protIds.empty()) {
@@ -597,8 +528,8 @@ bool Dataset::readHierarchy(const QByteArray &json)
 	}
 
 	auto nodes = root["data"].toObject()["nodes"].toObject();
-	auto &container = d->hierarchy;
 
+	std::vector<HrCluster> container;
 	// some preparation. we can expect at least as much clusters:
 	container.reserve(2 * d->protIds.size()); // binary tree
 	container.resize(d->protIds.size()); // cluster-per-protein
@@ -619,7 +550,6 @@ bool Dataset::readHierarchy(const QByteArray &json)
 			try {
 				c.protein = (int)d->protIndex.at(proteins.peek()->find(name));
 			} catch (std::out_of_range&) {
-				qDebug() << "Ignored" << name << "(unknown)";
 				c.protein = -1;
 			}
 		} else {
@@ -637,21 +567,29 @@ bool Dataset::readHierarchy(const QByteArray &json)
 			c.parent = (unsigned)node["parent"].toInt();
 	}
 
+	s.l.lockForWrite(); // guarding lock until finished (consistent state)
+
+	s.hierarchy = std::move(container);
+
+	Touched touched = Touch::HIERARCHY;
 	/* re-order for both hierarchy or clustering being chosen as reference.
 	 * we will not re-order in calculatePartition() */
-	bool reorder = d->order.synchronizing;
-	reorder = reorder && (d->order.reference == OrderBy::HIERARCHY ||
-	                      d->order.reference == OrderBy::CLUSTERING);
-	if (reorder)
+	if ((s.order.synchronizing) && (s.order.reference == OrderBy::HIERARCHY ||
+	                                s.order.reference == OrderBy::CLUSTERING)) {
 		orderProteins(OrderBy::HIERARCHY);
+		touched |= Touch::ORDER;
+	}
 
-	emit newHierarchy(reorder);
+	s.l.unlock();
+
+	emit update(touched);
 	return true;
 }
 
 void Dataset::calculatePartition(unsigned granularity)
 {
-	auto &hrclusters = d->hierarchy;
+	s.l.lockForRead(); // don't use RAI as we will switch to W-lock later
+	auto &hrclusters = s.hierarchy;
 
 	granularity = std::min(granularity, (unsigned)hrclusters.size());
 	unsigned lowBound = hrclusters.size() - granularity - 1;
@@ -677,7 +615,7 @@ void Dataset::calculatePartition(unsigned granularity)
 	}
 
 	/* set up clustering based on candidates */
-	Clustering cl(d->protIds.size());
+	Clustering cl(peek<Base>()->protIds.size());
 
 	// helper to recursively assign all proteins to clusters
 	std::function<void(unsigned, unsigned)> flood;
@@ -698,18 +636,10 @@ void Dataset::calculatePartition(unsigned granularity)
 		cl.clusters[i] = {name, {}, 0, {}};
 		flood(i, i);
 	}
+	s.l.unlock();
 
-	QWriteLocker _(&l); // makes sense to keep the lock until everything is done
-	d->clustering = std::move(cl);
-
-	pruneClusters();
-
-	computeClusterCentroids();
-	orderClusters(true);
-	colorClusters();
-
-	// note: we do not re-order proteins as the hierarchy maintains precedence
-	emit newClustering();
+	// do not reorder clusters when based on hierarchy
+	swapClustering(cl, true, true, false);
 }
 
 void Dataset::updateColorset(QVector<QColor> colors)
@@ -720,29 +650,30 @@ void Dataset::updateColorset(QVector<QColor> colors)
 
 void Dataset::changeOrder(OrderBy reference, bool synchronize)
 {
-	QWriteLocker _(&l);
-	d->order.synchronizing = synchronize;
-	if (d->order.reference == reference)
+	QWriteLocker _s(&s.l);
+	s.order.synchronizing = synchronize;
+	if (s.order.reference == reference)
 		return; // nothing to do
 
-	d->order.reference = reference; // save preference for future changes
+	s.order.reference = reference; // save preference for future changes
 	orderProteins(reference);
 
-	emit newOrder();
+	_s.unlock();
+	emit update(Touch::ORDER);
 }
 
 void Dataset::pruneClusters()
 {
-	QWriteLocker _(&l);
+	QWriteLocker _s(&s.l);
 
 	/* defragment clusters (un-assign and remove small clusters) */
 	// TODO: make configurable; instead keep X biggest clusters?
-	auto minSize = unsigned(0.005f * (float)d->protIds.size());
-	auto &c = d->clustering.clusters;
+	auto minSize = unsigned(0.005f * (float)peek<Base>()->protIds.size());
+	auto &c = s.clustering.clusters;
 	auto it = c.begin();
 	while (it != c.end()) {
 		if (it->second.size < minSize) {
-			for (auto &m : d->clustering.memberships)
+			for (auto &m : s.clustering.memberships)
 				m.erase(it->first);
 			it = c.erase(it);
 		} else {
@@ -753,9 +684,10 @@ void Dataset::pruneClusters()
 
 void Dataset::computeClusterCentroids()
 {
-	QWriteLocker __(&l);
+	auto d = peek<Base>();
+	QWriteLocker _s(&s.l);
 
-	auto &cl = d->clustering;
+	auto &cl = s.clustering;
 	for (auto& [_, c]: cl.clusters)
 		c.mode = std::vector<double>((size_t)d->dimensions.size(), 0.);
 
@@ -773,7 +705,8 @@ void Dataset::computeClusterCentroids()
 
 void Dataset::orderClusters(bool genericNames)
 {
-	auto &cl = d->clustering.clusters;
+	auto in = peek<Structure>();
+	auto &cl = in->clustering.clusters;
 	std::vector<unsigned> target;
 	for (auto & [i, _] : cl)
 		target.push_back(i);
@@ -781,31 +714,33 @@ void Dataset::orderClusters(bool genericNames)
 	QCollator col;
 	col.setNumericMode(true);
 	if (col("a", "a")) {
-		qDebug() << "Falling back to non-numeric sorting.";
+		std::cerr << "Falling back to non-numeric sorting." << std::endl;
 		col.setNumericMode(false);
 	}
 
 	col.setCaseSensitivity(Qt::CaseInsensitive);
 	std::function<bool(unsigned,unsigned)> byName = [&] (auto a, auto b) {
-		return col(cl[a].name, cl[b].name);
+		return col(cl.at(a).name, cl.at(b).name);
 	};
 	auto bySizeName = [&] (auto a, auto b) {
-		if (cl[a].size == cl[b].size)
+		if (cl.at(a).size == cl.at(b).size)
 			return byName(a, b);
-		return cl[a].size > cl[b].size;
+		return cl.at(a).size > cl.at(b).size;
 	};
 
 	std::sort(target.begin(), target.end(), genericNames ? bySizeName : byName);
 
-	QWriteLocker _(&l);
-	d->clustering.order = std::move(target);
+	in.unlock();
+	s.l.lockForWrite();
+	s.clustering.order = std::move(target);
+	s.l.unlock();
 }
 
 void Dataset::colorClusters()
 {
-	QWriteLocker _(&l);
+	QWriteLocker _s(&s.l);
 
-	auto &cl = d->clustering;
+	auto &cl = s.clustering;
 	for (unsigned i = 0; i < cl.clusters.size(); ++i) {
 		cl.clusters[cl.order[i]].color = colorset[(int)i % colorset.size()];
 	}
@@ -813,24 +748,27 @@ void Dataset::colorClusters()
 
 void Dataset::orderProteins(OrderBy reference)
 {
+	// Note: this function be called with write lock on s applied!
+
 	/* initialize replacement with current configuration */
 	// note that our argument 'reference' might _not_ be the configured one
-	Order target{d->order.reference, d->order.synchronizing, false, {}, {}};
+	Order target{s.order.reference, s.order.synchronizing, false, {}, {}};
 
 	/* use reasonable fallbacks */
-	if (reference == OrderBy::CLUSTERING && d->clustering.empty()) {
+	if (reference == OrderBy::CLUSTERING && s.clustering.empty()) {
 		reference = OrderBy::HIERARCHY;
 		target.fallback = true;
 	}
-	if (reference == OrderBy::HIERARCHY && d->hierarchy.empty()) {
+	if (reference == OrderBy::HIERARCHY && s.hierarchy.empty()) {
 		reference = OrderBy::NAME;
 		target.fallback = true;
 	}
 
-	auto p = proteins.peek();
+	auto d = peek<Base>();
+	auto p = peek<Proteins>();
 	auto &index = target.index;
 
-	auto byName = [this,&p] (auto a, auto b) {
+	auto byName = [&] (auto a, auto b) {
 		return d->lookup(p, a).name < d->lookup(p, b).name;
 	};
 
@@ -839,29 +777,29 @@ void Dataset::orderProteins(OrderBy reference)
 	case OrderBy::HIERARCHY: {
 		std::function<void(unsigned)> collect;
 		collect = [&] (unsigned hIndex) {
-			auto &current = d->hierarchy[hIndex];
+			auto &current = s.hierarchy[hIndex];
 			if (current.protein >= 0)
 				index.push_back((unsigned)current.protein);
 			for (auto c : current.children)
 				collect(c);
 		};
-		collect(d->hierarchy.size()-1);
+		collect(s.hierarchy.size()-1);
 		break;
 	}
 	/* order based on ordered clusters */
 	case OrderBy::CLUSTERING: {
-
+		auto &cl = s.clustering;
 		// ensure that each protein appears only once
 		std::unordered_set<unsigned> seen;
-		for (auto ci : d->clustering.order) {
+		for (auto ci : cl.order) {
 			// assemble all affected proteins, and their spread from cluster core
 			std::vector<std::pair<unsigned, double>> members;
 			for (unsigned i = 0; i < d->protIds.size(); ++i) {
 				if (seen.count(i))
 					continue; // protein was part of bigger cluster
-				if (d->clustering.memberships[i].count(ci)) {
+				if (cl.memberships[i].count(ci)) {
 					double dist = cv::norm(d->features[i],
-					        d->clustering.clusters[ci].mode, cv::NORM_L2SQR);
+					                       cl.clusters[ci].mode, cv::NORM_L2SQR);
 					members.push_back({i, dist});
 					seen.insert(i);
 				}
@@ -900,8 +838,7 @@ void Dataset::orderProteins(OrderBy reference)
 	for (size_t i = 0; i < index.size(); ++i)
 		target.rankOf[index[i]] = i;
 
-	QWriteLocker _(&l);
-	d->order = target;
+	s.order = target;
 }
 
 std::vector<QVector<QPointF>> Dataset::pointify(const std::vector<std::vector<double> > &in)
@@ -948,14 +885,4 @@ QStringList Dataset::trimCrap(QStringList values)
 	values.replaceInStrings(QRegularExpression(match), "\\1");
 
 	return values;
-}
-
-const std::map<Dataset::OrderBy, QString> Dataset::availableOrders()
-{
-	return {
-		{OrderBy::FILE, "Position in File"},
-		{OrderBy::NAME, "Protein Name"},
-		{OrderBy::HIERARCHY, "Hierarchy"},
-		{OrderBy::CLUSTERING, "Cluster/Annotations"},
-	};
 }

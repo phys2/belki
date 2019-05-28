@@ -6,12 +6,12 @@
 #include <QPushButton>
 #include <QFontMetrics>
 
-SpawnDialog::SpawnDialog(Dataset &data, QWidget *parent) :
+SpawnDialog::SpawnDialog(Dataset::ConstPtr data, QWidget *parent) :
     QDialog(parent), data(data)
 {
-	auto d = data.peek();
-	source_id = data.current();
-	unsigned dim = d->dimensions.size();
+	auto d = data->peek<Dataset::Base>();
+	source_id = d->conf.id;
+	auto dim = (unsigned)d->dimensions.size();
 
 	// select all by default (mirroring scene state)
 	selected.resize(dim, true);
@@ -32,13 +32,13 @@ SpawnDialog::SpawnDialog(Dataset &data, QWidget *parent) :
 	view->setBackgroundBrush(palette().window());
 
 	// setup scene
-	scene = std::make_unique<DistmatScene>(data, true);
+	// TODO just uncomment scene = std::make_unique<DistmatScene>(data, true);
 	scene->setDirection(DistmatScene::Direction::PER_DIMENSION);
 	scene->reset(true);
 	view->setScene(scene.get());
 
 	// get enough space
-	int heightEstimate = QFontMetrics(scene->font()).lineSpacing() * dim;
+	int heightEstimate = QFontMetrics(scene->font()).lineSpacing() * (int)dim;
 	auto aspect = scene->sceneRect().width() / scene->sceneRect().height();
 	view->setMinimumSize({int(heightEstimate * aspect), heightEstimate});
 
@@ -69,7 +69,7 @@ void SpawnDialog::submit()
 			conf.bands.push_back(i);
 	conf.scoreThresh = scoreSpinBox->value();
 
-	emit spawn(conf);
+	emit spawn(data, conf);
 	deleteLater();
 }
 
@@ -105,7 +105,7 @@ void SpawnDialog::updateValidity()
 
 void SpawnDialog::updateScoreEffect()
 {
-	auto d = data.peek();
+	auto d = data->peek<Dataset::Base>();
 	scoreEffect = features::cutoff_effect(d->scores, scoreSpinBox->value());
 
 	QString format{"<small>%1 / %2 proteins affected</small>"};

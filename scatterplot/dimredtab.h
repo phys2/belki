@@ -4,6 +4,12 @@
 #include "ui_dimredtab.h"
 #include "viewer.h"
 
+#include <QString>
+#include <QVector>
+#include <QColor>
+#include <memory>
+
+class Dataset;
 class Chart;
 
 class DimredTab : public Viewer, private Ui::DimredTab
@@ -12,17 +18,33 @@ class DimredTab : public Viewer, private Ui::DimredTab
 
 public:
 	explicit DimredTab(QWidget *parent = nullptr);
-	void init(Dataset *data) override;
+	~DimredTab() override;
+
+	void selectDataset(unsigned id) override;
+	void addDataset(Dataset::Ptr data) override;
 
 	QString currentMethod() const;
 
-signals:
-	void computeDisplay(const QString &name); // to data&storage thread
-
 protected:
-	void updateComputeMenu();
+	struct DataState {
+		QString displayName;
+		Dataset::Ptr data;
+		std::unique_ptr<Chart> scene;
+	};
 
-	Chart *scene; // owned by view
+	struct {
+		bool showPartitions;
+		QString preferredDisplay;
+		QVector<QColor> colorset;
+	} guiState;
+
+	void selectDisplay(const QString& name);
+	void computeDisplay(const QString &method);
+	void updateMenus();
+	void updateEnabled();
+
+	ContentMap<DataState> content;
+	Current<DataState> current;
 };
 
 #endif

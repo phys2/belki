@@ -56,7 +56,7 @@ void FeatweightsScene::setDisplay()
 
 void FeatweightsScene::computeWeights()
 {
-	auto d = data.peek();
+	auto d = data.peek<Dataset::Base>();
 	auto len = (unsigned)d->dimensions.size();
 	if (!len)
 		return;
@@ -142,7 +142,7 @@ void FeatweightsScene::computeImage()
 	matrix = cv::Mat1f(bins, 0);
 	cv::Mat1f relmatrix(bins, 0);
 
-	auto d = data.peek();
+	auto d = data.peek<Dataset::Base>();
 	// use original data if no score threshold was applied
 	auto &feat = (clippedFeatures.empty() ? d->features : clippedFeatures);
 	contours = std::vector<std::vector<unsigned>>(feat.size(),
@@ -207,7 +207,7 @@ void FeatweightsScene::computeMarkerContour()
 
 void FeatweightsScene::applyScoreThreshold(double threshold)
 {
-	auto d = data.peek();
+	auto d = data.peek<Dataset::Base>();
 	clippedFeatures = d->features;
 	features::apply_cutoff(clippedFeatures, d->scores, threshold);
 
@@ -371,7 +371,7 @@ void FeatweightsScene::WeightBar::hoverMoveEvent(QGraphicsSceneHoverEvent *event
 	}
 
 	// set tooltip to reflect hovered component
-	this->setToolTip(scene()->data.peek()->dimensions.at(index));
+	this->setToolTip(scene()->data.peek<Dataset::Base>()->dimensions.at(index));
 
 	// highlight the hovered component
 	highlight = index;
