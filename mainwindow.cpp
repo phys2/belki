@@ -142,6 +142,7 @@ void MainWindow::setupSignals()
 	connect(datasetSelect, qOverload<int>(&QComboBox::activated), [this] {
 		setDataset(datasetSelect->currentData().value<Dataset::Ptr>());
 	});
+	connect(this, &MainWindow::datasetSelected, this, &MainWindow::setSelectedDataset);
 
 	/* selecting/altering partition */
 	connect(partitionSelect, qOverload<int>(&QComboBox::activated), [this] {
@@ -393,7 +394,7 @@ void MainWindow::newDataset(Dataset::Ptr dataset)
 	d.unlock(); // avoid dragging lock through signal chain
 
 	/* auto select */
-	setSelectedDataset(id);
+	setDataset(dataset);
 	toolbarActions.datasets->setEnabled(true);
 }
 
