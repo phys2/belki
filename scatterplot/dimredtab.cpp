@@ -32,11 +32,11 @@ DimredTab::DimredTab(QWidget *parent) :
 	/* connect toolbar actions */
 	connect(actionCycleForward, &QAction::triggered, [this] {
 		auto s = transformSelect;
-		s->setCurrentIndex((s->currentIndex() + 1) % s->count());
+		selectDisplay(s->itemText((s->currentIndex() + 1) % s->count()));
 	});
 	connect(actionCycleBackward, &QAction::triggered, [this] {
 		auto s = transformSelect;
-		s->setCurrentIndex((s->count() + s->currentIndex() - 1) % s->count());
+		selectDisplay(s->itemText((s->count() + s->currentIndex() - 1) % s->count()));
 	});
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, transformSelect->currentText());
@@ -78,12 +78,16 @@ void DimredTab::selectDataset(unsigned id)
 		disconnect(current().data.get());
 
 	current = {id, &content[id]};
+
+	updateMenus();
+	updateEnabled();
+
 	if (current) {
 		// pass guiState onto chart
 		auto scene = current().scene.get();
 		scene->updateColorset(guiState.colorset);
 		scene->togglePartitions(guiState.showPartitions);
-		// TODO: tell chart to update markers
+		scene->updateMarkers();
 		view->setChart(scene);
 
 		/* hook into dataset updates */
@@ -93,8 +97,6 @@ void DimredTab::selectDataset(unsigned id)
 			updateMenus();
 		});
 	}
-	updateMenus();
-	updateEnabled();
 }
 
 void DimredTab::addDataset(Dataset::Ptr data)
@@ -114,12 +116,16 @@ void DimredTab::addDataset(Dataset::Ptr data)
 
 void DimredTab::selectDisplay(const QString &name)
 {
-	if (!current || name.isEmpty() || current().displayName == name)
+	if (!current || name.isEmpty())
 		return;
+	transformSelect->setCurrentText(name);
+
+	if (current().displayName == name)
+		return;
+
 	auto d = current().data->peek<Dataset::Representation>();
 	current().scene->display(d->display.at(name));
 	current().displayName = name;
-	transformSelect->setCurrentText(name);
 }
 
 QString DimredTab::currentMethod() const
@@ -127,16 +133,16 @@ QString DimredTab::currentMethod() const
 	return transformSelect->currentText();
 }
 
-void DimredTab::computeDisplay(const QString &method) {
+void DimredTab::computeDisplay(const QString &name, const QString &id) {
 	if (!current)
 		return;
+	guiState.preferredDisplay = id;
 	auto d = current().data;
-	QtConcurrent::run([d,method] { d->computeDisplay(method); });
+	QtConcurrent::run([d,name] { d->computeDisplay(name); });
 }
 
 void DimredTab::updateMenus() {
 	/* set transform select entries from available displays */
-	auto previous = transformSelect->currentText();
 	transformSelect->clear();
 	for (auto a : {actionCycleForward, actionCycleBackward})
 		a->setEnabled(false);
@@ -160,14 +166,15 @@ void DimredTab::updateMenus() {
 		if (transformSelect->findText(m.id) >= 0)
 			continue;
 
-		menu->addAction(m.description, [this, m] { computeDisplay(m.name); });
+		menu->addAction(m.description, [this, m] { computeDisplay(m.name, m.id); });
 	}
 	actionComputeDisplay->setMenu(menu);
 
 	/* select a display */
-	if (!d->display.empty())
+	if (d->display.empty())
 		return; // nothing available
 
+	auto previous = current().displayName;
 	auto least = d->display.rbegin()->first;
 	for (auto &i : {guiState.preferredDisplay, previous, least}) {
 		if (d->display.count(i)) {

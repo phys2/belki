@@ -26,27 +26,17 @@ ScatterTab::ScatterTab(QWidget *parent) :
 	/* connect toolbar actions */
 	connect(actionCycleForward, &QAction::triggered, [this] {
 		auto s = dimensionSelect;
-		s->setCurrentIndex((s->currentIndex() + 1) % s->count());
+		selectDimension((s->currentIndex() + 1) % s->count());
 	});
 	connect(actionCycleBackward, &QAction::triggered, [this] {
 		auto s = dimensionSelect;
-		s->setCurrentIndex((s->count() + s->currentIndex() - 1) % s->count());
+		selectDimension((s->count() + s->currentIndex() - 1) % s->count());
 	});
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, dimensionSelect->currentText());
 	});
-	connect(dimensionSelect, QOverload<int>::of(&QComboBox::currentIndexChanged),
-	        [this] (int index) {
-		if (index < 0 || !current)
-			return;
-		current().dimension = index;
-		auto d = current().data->peek<Dataset::Base>();
-		QVector<QPointF> points(d->features.size());
-		for (size_t i = 0; i < d->features.size(); ++i)
-			points[i] = {d->features[i][(size_t)index], d->scores[i][(size_t)index]};
-		d.unlock();
-		current().scene->display(points);
-	});
+	connect(dimensionSelect, qOverload<int>(&QComboBox::activated),
+	        this, &ScatterTab::selectDimension);
 
 	/* connect incoming signals */
 	connect(this, &Viewer::inUpdateColorset, [this] (auto colors) {
@@ -81,18 +71,21 @@ void ScatterTab::selectDataset(unsigned id)
 	if (!enabled)
 		return;
 
+	// refill dimensionSelect
+	dimensionSelect->addItems(current().data->peek<Dataset::Base>()->dimensions);
+	for (auto a : {actionCycleForward, actionCycleBackward})
+		a->setEnabled(dimensionSelect->count() > 1);
+	if (current().dimension < 0) // scene is still empty
+		selectDimension(0);
+	else
+		dimensionSelect->setCurrentIndex(current().dimension);
+
 	// pass guiState onto chart
 	auto scene = current().scene.get();
 	scene->updateColorset(guiState.colorset);
 	scene->togglePartitions(guiState.showPartitions);
-	// TODO: tell chart to update markers
+	scene->updateMarkers();
 	view->setChart(scene);
-
-	// fill up dimensionSelect
-	dimensionSelect->addItems(current().data->peek<Dataset::Base>()->dimensions);
-	for (auto a : {actionCycleForward, actionCycleBackward})
-		a->setEnabled(dimensionSelect->count() > 1);
-	dimensionSelect->setCurrentIndex((int)current().dimension); // triggers
 }
 
 void ScatterTab::addDataset(Dataset::Ptr data)
@@ -109,6 +102,18 @@ void ScatterTab::addDataset(Dataset::Ptr data)
 	/* connect outgoing signals */
 	connect(scene, &Chart::markerToggled, this, &Viewer::markerToggled);
 	connect(scene, &Chart::cursorChanged, this, &Viewer::cursorChanged);
+}
+
+void ScatterTab::selectDimension(int index)
+{
+	current().dimension = index;
+	dimensionSelect->setCurrentIndex(index);
+	auto d = current().data->peek<Dataset::Base>();
+	QVector<QPointF> points(d->features.size());
+	for (size_t i = 0; i < d->features.size(); ++i)
+		points[i] = {d->features[i][(size_t)index], d->scores[i][(size_t)index]};
+	d.unlock();
+	current().scene->display(points);
 }
 
 bool ScatterTab::updateEnabled()

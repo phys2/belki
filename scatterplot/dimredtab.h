@@ -32,16 +32,16 @@ protected:
 		std::unique_ptr<Chart> scene;
 	};
 
+	void selectDisplay(const QString& name);
+	void computeDisplay(const QString &name, const QString &id);
+	void updateMenus();
+	void updateEnabled();
+
 	struct {
 		bool showPartitions;
 		QString preferredDisplay;
 		QVector<QColor> colorset;
 	} guiState;
-
-	void selectDisplay(const QString& name);
-	void computeDisplay(const QString &method);
-	void updateMenus();
-	void updateEnabled();
 
 	ContentMap<DataState> content;
 	Current<DataState> current;

@@ -18,11 +18,14 @@ public:
 
 protected:
 	struct DataState {
-		unsigned dimension = 0;
+		int dimension = -1;
 		bool hasScores;
 		Dataset::Ptr data;
 		std::unique_ptr<Chart> scene;
 	};
+
+	void selectDimension(int index);
+	bool updateEnabled();
 
 	struct {
 		bool showPartitions;
@@ -31,8 +34,6 @@ protected:
 
 	ContentMap<DataState> content;
 	Current<DataState> current;
-
-	bool updateEnabled();
 };
 
 #endif
