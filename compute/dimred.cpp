@@ -16,13 +16,13 @@ namespace dimred {
 const std::vector<dimred::Method> availableMethods()
 {
 	return {
-		{"PCA", "PCA 12", "Principal Component Analysis"},
-		{"kPCA EMD", "kPCA EMD 12", "Kernel-PCA, EMD"},
-		{"kPCA L1", "kPCA L1 12", "Kernel-PCA, Manhattan"},
-		{"kPCA L2", "kPCA L2 12", "Kernel-PCA, Euclidean"},
-		{"MDS L1", "MDS L1 12", "Multi-dimensional Scaling, Manhattan"},
-		{"MDS NL2", "MDS NL2 12", "Multi-dimensional Scaling, Normalized L2"},
-		{"MDS EMD", "MDS EMD 12", "Multi-dimensional Scaling, EMD"},
+		{"PCA", "PCA/12", "Principal Component Analysis"},
+		{"kPCA EMD", "kPCA EMD/12", "Kernel-PCA, EMD"},
+		{"kPCA L1", "kPCA L1/12", "Kernel-PCA, Manhattan"},
+		{"kPCA L2", "kPCA L2/12", "Kernel-PCA, Euclidean"},
+		{"MDS L1", "MDS L1/12", "Multi-dimensional Scaling, Manhattan"},
+		{"MDS NL2", "MDS NL2/12", "Multi-dimensional Scaling, Normalized L2"},
+		{"MDS EMD", "MDS EMD/12", "Multi-dimensional Scaling, EMD"},
 		{"Diff L1", "Diff L1", "Diffusion Map, Manhattan"},
 		{"Diff", "Diff", "Diffusion Map, Euclidean"},
 		{"Diff EMD", "Diff EMD", "Diffusion Map, EMD"},
