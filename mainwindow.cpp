@@ -328,10 +328,12 @@ void MainWindow::updateState(Dataset::Touched affected)
 	/* set up cursor chart */
 	if (affected & Dataset::Touch::BASE) {
 		if (data) {
-			delete cursorChart;
+			// TODO: rework the ownership/lifetime stuff (or wait for our own chartview class)
+			auto old = cursorChart;
 			cursorChart = new ProfileChart(data);
 			cursorChart->setCategories(data->peek<Dataset::Base>()->dimensions);
 			cursorPlot->setChart(cursorChart);
+			delete old;
 			cursorPlot->setVisible(true);
 		} else {
 			cursorPlot->setVisible(false);
