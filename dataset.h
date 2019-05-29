@@ -197,6 +197,7 @@ protected:
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(Dataset::Touched)
+Q_DECLARE_METATYPE(Dataset::Touched)
 Q_DECLARE_METATYPE(Dataset::Ptr)
 Q_DECLARE_METATYPE(Dataset::ConstPtr)
 

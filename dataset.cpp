@@ -17,6 +17,7 @@ Dataset::Dataset(ProteinDB &proteins)
     : proteins(proteins)
 {
 	qRegisterMetaType<DatasetConfiguration>();
+	qRegisterMetaType<Touched>("Touched");
 	qRegisterMetaType<OrderBy>();
 	qRegisterMetaType<Ptr>("DataPtr");
 	qRegisterMetaType<ConstPtr>("ConstDataPtr");
