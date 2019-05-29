@@ -17,9 +17,9 @@
 #include <QDebug>
 
 Chart::Chart(Dataset::ConstPtr data) :
-    data(data),
     ax(new QtCharts::QValueAxis), ay(new QtCharts::QValueAxis),
-    animReset(new QTimer(this))
+    animReset(new QTimer(this)),
+    data(data)
 {
 	/* set up general appearance */
 	// disable grid animations as a lot of distracting stuff happens there
@@ -59,24 +59,18 @@ Chart::Chart(Dataset::ConstPtr data) :
 		setAnimationDuration(1000);
 		setAnimationOptions(SeriesAnimations);
 	});
+
+	/* setup updates from dataset */
+	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
+		if (touched & Dataset::Touch::CLUSTERS)
+			updatePartitions();
+	});
 }
 
 void Chart::setTitles(const QString &x, const QString &y)
 {
 	ax->setTitleText(x);
 	ay->setTitleText(y);
-}
-
-void Chart::clear()
-{
-	master->clear();
-	markers.clear();
-	clearPartitions();
-}
-
-void Chart::clearPartitions()
-{
-	partitions.clear();
 }
 
 void Chart::display(const QVector<QPointF> &coords)
@@ -99,13 +93,15 @@ void Chart::display(const QVector<QPointF> &coords)
 
 	/* update other sets */
 	updatePartitions();
-	for (auto &[_, m] : markers) {
-		m.series->replace(0, master->pointsVector()[(int)m.sampleIndex]);
-	}
+	updateMarkers(true);
 }
 
 void Chart::updatePartitions()
 {
+	auto source = master->pointsVector();
+	if (source.empty())
+		return; // we're not displaying anything
+
 	auto d = data->peek<Dataset::Structure>();
 	bool fresh = partitions.empty();
 
@@ -143,10 +139,6 @@ void Chart::updatePartitions()
 	/* populate with proteins */
 	if (d->clustering.empty())
 		return; // no clusters means nothing more to do!
-
-	auto source = master->pointsVector();
-	if (source.empty())
-		return; // shouldn't happen, but when it does, better not crash
 
 	for (unsigned i = 0; i < d->clustering.memberships.size(); ++i) {
 		auto &m = d->clustering.memberships[i];
@@ -307,9 +299,31 @@ void Chart::resetCursor()
 	updateCursor();
 }
 
+void Chart::updateMarkers(bool newDisplay)
+{
+	auto p = data->peek<Dataset::Proteins>();
+
+	// remove outdated
+	for (auto &[id,_] : markers)
+		if (!p->markers.count(id))
+			toggleMarker(id, false);
+
+	// update existing
+	if (newDisplay) {
+		for (auto &[_, m] : markers)
+			m.series->replace(0, master->pointsVector()[(int)m.sampleIndex]);
+	}
+
+	// insert missing
+	for (auto id : p->markers)
+		toggleMarker(id, true);
+}
+
 void Chart::toggleMarker(ProteinId id, bool present)
 {
 	if (present) {
+		if (master->pointsVector().empty()) // we are not ready yet
+			return;
 		try {
 			markers.try_emplace(id, data->peek<Dataset::Base>()->protIndex.at(id), id, this);
 		} catch (...) {}

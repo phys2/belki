@@ -47,6 +47,7 @@ public:
 		ProteinId sampleId;
 
 		// items are added to the scene, so we make them non-copyable
+		// although scene also owns them, we delete first and they de-register
 		std::unique_ptr<QtCharts::QScatterSeries> series;
 
 	protected:
@@ -55,11 +56,16 @@ public:
 
 	Chart(Dataset::ConstPtr data);
 
+	bool cursorLocked = false;
+
+public slots:
 	void setTitles(const QString &x, const QString &y);
-	void clear();
-	void clearPartitions();
 	void display(const QVector<QPointF> &coords);
 	void updatePartitions();
+	void togglePartitions(bool showPartitions);
+	void updateColorset(QVector<QColor> colors);
+	void updateMarkers(bool newDisplay = false);
+	void toggleMarker(ProteinId id, bool present);
 
 	void zoomAt(const QPointF &pos, qreal factor);
 	void undoZoom(bool full = false);
@@ -69,38 +75,19 @@ public:
 	void switchProteinBorders();
 	void adjustProteinAlpha(qreal adjustment);
 
-	bool cursorLocked = false;
-
-public slots:
 	void resetCursor();
 	void updateCursor(const QPointF &pos = {});
-	void togglePartitions(bool showPartitions);
-	void updateColorset(QVector<QColor> colors);
-	void toggleMarker(ProteinId id, bool present);
 
 signals:
-	void areaChanged();
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
 	void markerToggled(ProteinId id, bool present);
+	void areaChanged();
 	void proteinStyleUpdated();
 
 protected:
 	void animate(int msec);
 
-	// data source
-	Dataset::ConstPtr data;
-
-	/* items in the scene */
-
-	Proteins *master; // owned by chart
-	std::unordered_map<int, std::unique_ptr<Proteins>> partitions;
-	std::map<ProteinId, Marker> markers;
-
-	QGraphicsEllipseItem *tracker;
-	QtCharts::QValueAxis *ax, *ay;
-
 	/* state variables */
-
 	struct {
 		QRectF current;
 		QStack<QRectF> history;
@@ -117,10 +104,20 @@ protected:
 		Qt::PenStyle border = Qt::PenStyle::DotLine;
 	} proteinStyle;
 
-	QVector<QColor> colorset;
+	/* items in the scene */
+	Proteins *master; // owned by chart
+	// note partitions are also owned by chart, but we delete first and they de-register
+	std::unordered_map<int, std::unique_ptr<Proteins>> partitions;
+	std::map<ProteinId, Marker> markers;
 
+	QGraphicsEllipseItem *tracker;
+	QtCharts::QValueAxis *ax, *ay;
 	// deferred animation reset
 	QTimer *animReset;
+
+	QVector<QColor> colorset;
+	// data source
+	Dataset::ConstPtr data;
 };
 
 #endif /* CHART_H */
