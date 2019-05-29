@@ -325,8 +325,7 @@ void MainWindow::updateState(Dataset::Touched affected)
 	resetMarkerControls();
 
 	/* set up cursor chart */
-	if (affected.testFlag(Dataset::Touch::BASE)) {
-		std::cerr << "foo" << std::endl;
+	if (affected & Dataset::Touch::BASE) {
 		if (data) {
 			delete cursorChart;
 			cursorChart = new ProfileChart(data);
@@ -336,8 +335,6 @@ void MainWindow::updateState(Dataset::Touched affected)
 		} else {
 			cursorPlot->setVisible(false);
 		}
-	} else {
-		std::cerr << "bar" << std::endl;
 	}
 
 	if (!data) {
@@ -413,11 +410,7 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 		emit datasetSelected(data ? data->id() : 0);
 
 	// update own GUI state once
-	updateState({ // _all_ flags
-	                Dataset::Touch::BASE, Dataset::Touch::DISPLAY,
-	                Dataset::Touch::HIERARCHY, Dataset::Touch::CLUSTERS,
-	                Dataset::Touch::ORDER
-	            });
+	updateState(Dataset::Touch::ALL);
 
 	// wire further updates
 	if (data)

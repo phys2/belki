@@ -42,11 +42,12 @@ public:
 	using Proteins = ProteinDB::Public;
 
 	enum class Touch {
-		BASE,
-		DISPLAY,
-		HIERARCHY,
-		CLUSTERS,
-		ORDER
+		BASE = 0x1,
+		DISPLAY = 0x2,
+		HIERARCHY = 0x4,
+		CLUSTERS = 0x8,
+		ORDER = 0x10,
+		ALL = 0xFF
 	};
 	using Touched = QFlags<Touch>;
 
