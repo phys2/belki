@@ -402,6 +402,9 @@ void MainWindow::newDataset(Dataset::Ptr dataset)
 
 void MainWindow::setDataset(Dataset::Ptr selected)
 {
+	if (data == selected)
+		return;
+
 	// disconnect from old data
 	if (data)
 		disconnect(data.get());
