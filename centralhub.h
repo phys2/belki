@@ -58,7 +58,7 @@ protected:
 
 	DataPtr createDataset();
 
-	DataPtr current(); 	// caller has to check and lock!
+	DataPtr current();
 	void runOnCurrent(const std::function<void(DataPtr)> &work);
 
 	struct : public RWLockable {

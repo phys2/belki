@@ -33,21 +33,6 @@ QVector<QColor> CentralHub::colorset()
 
 void CentralHub::setupSignals()
 {
-	//auto data = this->data
-
-	/* signals to workers */
-	/*connect(this, &CentralHub::openDataset, store, &Storage::openDataset);
-	connect(this, &CentralHub::readAnnotations, store, &Storage::readAnnotations);
-	connect(this, &CentralHub::readHierarchy, store, &Storage::readHierarchy);
-	connect(this, &CentralHub::importDescriptions, store, &Storage::importDescriptions);
-	connect(this, &CentralHub::importAnnotations, store, &Storage::importAnnotations);
-	connect(this, &CentralHub::importHierarchy, store, &Storage::importHierarchy);
-	connect(this, &CentralHub::exportAnnotations, store, &Storage::exportAnnotations);
-	connect(this, &CentralHub::spawn, data, &Dataset::spawn);
-	connect(this, &CentralHub::clearClusters, data, &Dataset::clearClusters);
-	connect(this, &CentralHub::calculatePartition, data, &Dataset::calculatePartition);
-	connect(this, &CentralHub::runFAMS, data, &Dataset::computeFAMS);*/
-
 	/* signal multiplexing */
 	for (auto o : std::vector<QObject*>{&proteins, &store})
 		connect(o, SIGNAL(ioError(const QString&)), this, SIGNAL(ioError(const QString&)));
