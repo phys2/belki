@@ -667,7 +667,7 @@ void Dataset::changeOrder(OrderBy reference, bool synchronize)
 
 void Dataset::pruneClusters()
 {
-	QWriteLocker _s(&s.l);
+	/* Note: caller has locked s for us for writing */
 
 	/* defragment clusters (un-assign and remove small clusters) */
 	// TODO: make configurable; instead keep X biggest clusters?
@@ -687,6 +687,8 @@ void Dataset::pruneClusters()
 
 void Dataset::computeClusterCentroids()
 {
+	/* Note: caller has locked s for us for writing */
+
 	auto d = peek<Base>();
 	QWriteLocker _s(&s.l);
 
@@ -708,8 +710,9 @@ void Dataset::computeClusterCentroids()
 
 void Dataset::orderClusters(bool genericNames)
 {
-	auto in = peek<Structure>();
-	auto &cl = in->clustering.clusters;
+	/* Note: caller has locked s for us for writing */
+
+	auto &cl = s.clustering.clusters;
 	std::vector<unsigned> target;
 	for (auto & [i, _] : cl)
 		target.push_back(i);
@@ -733,15 +736,12 @@ void Dataset::orderClusters(bool genericNames)
 
 	std::sort(target.begin(), target.end(), genericNames ? bySizeName : byName);
 
-	in.unlock();
-	s.l.lockForWrite();
 	s.clustering.order = std::move(target);
-	s.l.unlock();
 }
 
 void Dataset::colorClusters()
 {
-	QWriteLocker _s(&s.l);
+	/* Note: caller has locked s for us for writing */
 
 	auto &cl = s.clustering;
 	for (unsigned i = 0; i < cl.clusters.size(); ++i) {
@@ -751,7 +751,7 @@ void Dataset::colorClusters()
 
 void Dataset::orderProteins(OrderBy reference)
 {
-	// Note: this function be called with write lock on s applied!
+	/* Note: caller has locked s for us for writing */
 
 	/* initialize replacement with current configuration */
 	// note that our argument 'reference' might _not_ be the configured one
