@@ -61,7 +61,7 @@ public:
 public slots:
 	void setTitles(const QString &x, const QString &y);
 	void display(const QVector<QPointF> &coords);
-	void updatePartitions();
+	void updatePartitions(bool fresh);
 	void togglePartitions(bool showPartitions);
 	void updateColorset(QVector<QColor> colors);
 	void updateMarkers(bool newDisplay = false);

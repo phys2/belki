@@ -63,7 +63,7 @@ Chart::Chart(Dataset::ConstPtr data) :
 	/* setup updates from dataset */
 	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
 		if (touched & Dataset::Touch::CLUSTERS)
-			updatePartitions();
+			updatePartitions(true);
 	});
 }
 
@@ -92,21 +92,21 @@ void Chart::display(const QVector<QPointF> &coords)
 	ay->setRange(bbox.top(), bbox.bottom());
 
 	/* update other sets */
-	updatePartitions();
+	updatePartitions(false);
 	updateMarkers(true);
 }
 
-void Chart::updatePartitions()
+void Chart::updatePartitions(bool fresh)
 {
 	auto source = master->pointsVector();
 	if (source.empty())
 		return; // we're not displaying anything
 
 	auto d = data->peek<Dataset::Structure>();
-	bool fresh = partitions.empty();
 
 	/* set up partition series */
 	if (fresh) {
+		partitions.clear();
 		if (d->clustering.empty())
 			return; // no clusters means nothing more to do!
 
@@ -147,7 +147,7 @@ void Chart::updatePartitions()
 			target++; // second series, mixed
 		if (m.size() == 1)
 			target = (int)*m.begin();
-		partitions[target]->add(i, source[(int)i]);
+		partitions.at(target)->add(i, source[(int)i]);
 	}
 	// the partitions use deffered addition, which we need to trigger
 	for (auto &[_, p] : partitions)
