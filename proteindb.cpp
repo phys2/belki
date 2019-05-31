@@ -138,7 +138,7 @@ void ProteinDB::updateColorset(const QVector<QColor> &colors)
 
 QColor ProteinDB::colorFor(const Protein &subject)
 {
-	return colorset[(int)qHash(subject.name) % colorset.size()];
+	return colorset[(int)(qHash(subject.name) % (unsigned)colorset.size())];
 }
 
 ProteinId ProteinDB::Public::find(const QString &name) const {
