@@ -136,7 +136,7 @@ void Dataset::clearClusters()
 
 void Dataset::computeFAMS()
 {
-	// TODO: make fams its own class in compute. Guard meanshift instance as we will have several jobs now!
+	QWriteLocker _m(&meanshift.l);
 	auto &fams = meanshift.fams;
 	if (fams && (fams->config.k == meanshift.k || meanshift.k <= 0))
 		return; // already done
@@ -169,12 +169,14 @@ void Dataset::computeFAMS()
 		cl.memberships[i] = {m};
 		cl.clusters[m].size++;
 	}
+	_m.unlock();
 
 	swapClustering(cl, true, true, true);
 }
 
 void Dataset::changeFAMS(float k)
 {
+	// no lock, we _want_ to interfere
 	meanshift.k = k;
 	if (meanshift.fams) {
 		meanshift.fams->cancel();

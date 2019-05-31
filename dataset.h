@@ -187,7 +187,7 @@ protected:
 	Representation r;
 	Structure s;
 
-	struct { // TODO own small class in compute that does all meanshift stuff
+	struct : public RWLockable { // TODO own small class in compute that does all meanshift stuff
 		std::unique_ptr<seg_meanshift::FAMS> fams;
 		float k = -1;
 	} meanshift;
