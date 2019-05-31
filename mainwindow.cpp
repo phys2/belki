@@ -436,15 +436,17 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
 {
 	/* clear plot */
+	if (cursorChart) {
+		cursorChart->setTitle(title);
+		cursorChart->clear();
+	}
+
 	if (samples.empty() || !data) {
 		cursorList->clear();
 		cursorWidget->setDisabled(true);
 		actionProfileView->setDisabled(true);
 		return;
 	}
-
-	cursorChart->setTitle(title);
-	cursorChart->clear();
 
 	/* determine marker proteins contained in samples */
 	auto d = data->peek<Dataset::Base>();
