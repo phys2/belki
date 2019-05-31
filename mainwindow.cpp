@@ -142,6 +142,7 @@ void MainWindow::setupSignals()
 	connect(datasetSelect, qOverload<int>(&QComboBox::activated), [this] {
 		setDataset(datasetSelect->currentData().value<Dataset::Ptr>());
 	});
+	connect(this, &MainWindow::datasetSelected, &hub, &CentralHub::setCurrent);
 	connect(this, &MainWindow::datasetSelected, this, &MainWindow::setSelectedDataset);
 
 	/* selecting/altering partition */
