@@ -151,7 +151,7 @@ public:
 	QByteArray exportDisplay(const QString &name) const;
 
 	void spawn(ConstPtr source, const DatasetConfiguration& config);
-	bool readSource(QTextStream &in, const QString& name, bool scored);
+	bool readSource(QTextStream &in, const QString& name);
 
 	void computeDisplay(const QString &name);
 	void computeDisplays();
@@ -171,7 +171,7 @@ signals:
 	void ioError(const QString &message);
 
 protected:
-	bool readScoredSource(QTextStream &in, const QString& name);
+	bool readSimpleSource(QTextStream &in, const QString& name);
 	bool finalizeRead();
 	void swapClustering(Clustering &cl, bool genericNames, bool pruneCl, bool reorderProts);
 

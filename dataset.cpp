@@ -189,70 +189,16 @@ void Dataset::cancelFAMS()
 	changeFAMS(-1);
 }
 
-bool Dataset::readSource(QTextStream &in, const QString &name, bool scored)
-{
-	if (scored)
-		return readScoredSource(in, name);
-
-	auto header = in.readLine().split("\t");
-	header.pop_front(); // first column
-	if (header.contains("") || header.removeDuplicates()) {
-		emit ioError("Malformed header: Duplicate or empty columns!");
-		return false;
-	}
-
-	b.l.lockForWrite();
-	// TODO check if needed b.conf = {}; // explicitely initialize default values
-	b.conf.name = name; // TODO
-
-	/* fill in dimensions & features */
-	b.dimensions = trimCrap(header);
-	auto len = b.dimensions.size();
-	std::set<QString> seen; // names of read proteins
-	while (!in.atEnd()) {
-		auto line = in.readLine().split("\t");
-		if (line.empty() || line[0].isEmpty())
-			break; // early EOF
-
-		if (line.size() < len + 1) {
-			emit ioError(QString("Stopped at '%1', incomplete row!").arg(line[0]));
-			break; // avoid message flood
-		}
-
-		/* setup metadata */
-		auto protid = proteins.add(line[0]);
-		auto name = proteins.peek()->proteins[protid].name;
-
-		/* check duplicates */
-		if (seen.count(name))
-			emit ioError(QString("Multiples of protein '%1' found in the dataset!").arg(name));
-		seen.insert(name);
-
-		/* read coefficients */
-		bool success = true;
-		std::vector<double> coeffs((size_t)len);
-		for (int i = 0; i < len; ++i) {
-			bool ok;
-			coeffs[(size_t)i] = line[i+1].toDouble(&ok);
-			success = success && ok;
-		}
-		if (!success) {
-			emit ioError(QString("Stopped at protein '%1', malformed row!").arg(name));
-			break; // avoid message flood
-		}
-
-		/* append */
-		b.protIndex[protid] = b.protIds.size();
-		b.protIds.push_back(protid);
-		b.features.push_back(std::move(coeffs));
-	}
-
-	return finalizeRead(); // unlocks b
-}
-
-bool Dataset::readScoredSource(QTextStream &in, const QString &name)
+bool Dataset::readSource(QTextStream &in, const QString &name)
 {
 	auto header = in.readLine().split("\t");
+
+	/* simple source files have first header field blank (first column is still proteins) */
+	if (!header.empty() && header.first().isEmpty()) {
+		in.seek(0);
+		return readSimpleSource(in, name);
+	}
+
 	if (header.contains("") || header.removeDuplicates()) {
 		emit ioError("Malformed header: Duplicate or empty columns!");
 		return false;
@@ -337,6 +283,63 @@ bool Dataset::readScoredSource(QTextStream &in, const QString &name)
 	}
 
 	return finalizeRead(); // will unlock b for us
+}
+
+bool Dataset::readSimpleSource(QTextStream &in, const QString &name)
+{
+	auto header = in.readLine().split("\t");
+	header.pop_front(); // first column (also expected to be empty)
+	if (header.contains("") || header.removeDuplicates()) {
+		emit ioError("Malformed header: Duplicate or empty columns!");
+		return false;
+	}
+
+	b.l.lockForWrite();
+	b.conf.name = name; // TODO
+
+	/* fill in dimensions & features */
+	b.dimensions = trimCrap(header);
+	auto len = b.dimensions.size();
+	std::set<QString> seen; // names of read proteins
+	while (!in.atEnd()) {
+		auto line = in.readLine().split("\t");
+		if (line.empty() || line[0].isEmpty())
+			break; // early EOF
+
+		if (line.size() < len + 1) {
+			emit ioError(QString("Stopped at '%1', incomplete row!").arg(line[0]));
+			break; // avoid message flood
+		}
+
+		/* setup metadata */
+		auto protid = proteins.add(line[0]);
+		auto name = proteins.peek()->proteins[protid].name;
+
+		/* check duplicates */
+		if (seen.count(name))
+			emit ioError(QString("Multiples of protein '%1' found in the dataset!").arg(name));
+		seen.insert(name);
+
+		/* read coefficients */
+		bool success = true;
+		std::vector<double> coeffs((size_t)len);
+		for (int i = 0; i < len; ++i) {
+			bool ok;
+			coeffs[(size_t)i] = line[i+1].toDouble(&ok);
+			success = success && ok;
+		}
+		if (!success) {
+			emit ioError(QString("Stopped at protein '%1', malformed row!").arg(name));
+			break; // avoid message flood
+		}
+
+		/* append */
+		b.protIndex[protid] = b.protIds.size();
+		b.protIds.push_back(protid);
+		b.features.push_back(std::move(coeffs));
+	}
+
+	return finalizeRead(); // unlocks b
 }
 
 bool Dataset::finalizeRead()

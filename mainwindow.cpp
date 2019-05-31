@@ -214,7 +214,7 @@ void MainWindow::setupActions()
 		auto filename = io->chooseFile(FileIO::OpenDataset);
 		if (filename.isEmpty())
 			return;
-		hub.importDataset(filename, true); // TODO scored/unscored
+		hub.importDataset(filename);
 	});
 	connect(actionLoadDescriptions, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenDescriptions);
