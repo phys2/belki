@@ -112,7 +112,7 @@ void CentralHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, 
 	});
 }
 
-void CentralHub::importDataset(const QString &filename)
+void CentralHub::importDataset(const QString &filename, const QString featureCol)
 {
 	QtConcurrent::run([=] {
 		auto stream = store.openDataset(filename);
@@ -120,7 +120,7 @@ void CentralHub::importDataset(const QString &filename)
 			return;
 
 		auto target = createDataset();
-		bool success = target->readSource(*stream, filename);
+		bool success = target->readSource(*stream, filename, featureCol);
 		if (!success)
 			return;
 		addDataset(target);

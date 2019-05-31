@@ -151,7 +151,7 @@ public:
 	QByteArray exportDisplay(const QString &name) const;
 
 	void spawn(ConstPtr source, const DatasetConfiguration& config);
-	bool readSource(QTextStream &in, const QString& name);
+	bool readSource(QTextStream &in, const QString& name, const QString &featureCol);
 
 	void computeDisplay(const QString &name);
 	void computeDisplays();

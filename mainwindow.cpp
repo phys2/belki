@@ -210,12 +210,18 @@ void MainWindow::setupActions()
 
 	connect(actionQuit, &QAction::triggered, [] { QApplication::exit(); });
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
-	connect(actionLoadDataset, &QAction::triggered, [this] {
+
+	// TODO a little hack to allow loading of abundance values, we would need
+	// a proper fancy loading dialog in the future…
+	auto loader = [this] (const QString& featureCol) {
 		auto filename = io->chooseFile(FileIO::OpenDataset);
 		if (filename.isEmpty())
 			return;
-		hub.importDataset(filename);
-	});
+		hub.importDataset(filename, featureCol);
+	};
+	connect(actionLoadDataset, &QAction::triggered, [l=loader] { l("Dist"); });
+	connect(actionLoadDatasetAbundance, &QAction::triggered, [l=loader] { l("AbundanceLeft"); });
+
 	connect(actionLoadDescriptions, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenDescriptions);
 		if (filename.isEmpty())

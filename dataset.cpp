@@ -189,8 +189,10 @@ void Dataset::cancelFAMS()
 	changeFAMS(-1);
 }
 
-bool Dataset::readSource(QTextStream &in, const QString &name)
+bool Dataset::readSource(QTextStream &in, const QString &name, const QString &featureColName)
 {
+	// the featureColName argument is a hack. We probably want some "Config" struct instead
+
 	auto header = in.readLine().split("\t");
 
 	/* simple source files have first header field blank (first column is still proteins) */
@@ -208,7 +210,7 @@ bool Dataset::readSource(QTextStream &in, const QString &name)
 		return false;
 	}
 	int nameCol = header.indexOf("Pair");
-	int featureCol = header.indexOf("Dist");
+	int featureCol = header.indexOf(featureColName.isEmpty() ? "Dist" : featureColName);
 	int scoreCol = header.indexOf("Score");
 	if (nameCol == -1 || featureCol == -1 || scoreCol == -1) {
 		emit ioError("Could not parse file!<p>Not all necessary columns found.</p>");

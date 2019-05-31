@@ -31,7 +31,7 @@ signals:
 public slots:
 	void setCurrent(unsigned dataset = 0); // 0 for none
 	void spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay = {});
-	void importDataset(const QString &filename);
+	void importDataset(const QString &filename, const QString featureCol = {});
 
 	void computeDisplay(const QString &method);
 	// todo readDisplay()

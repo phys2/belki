@@ -452,6 +452,7 @@
      <string>&amp;File</string>
     </property>
     <addaction name="actionLoadDataset"/>
+    <addaction name="actionLoadDatasetAbundance"/>
     <addaction name="actionLoadDescriptions"/>
     <addaction name="separator"/>
     <addaction name="actionLoadAnnotations"/>
@@ -494,7 +495,7 @@
     <string>&amp;Load Dataset</string>
    </property>
    <property name="toolTip">
-    <string>Load a .tsv peak volumnes file</string>
+    <string>Load a .tsv file with profiles or scored pairs</string>
    </property>
   </action>
   <action name="actionHelp">
@@ -636,6 +637,18 @@
    </property>
    <property name="toolTip">
     <string>Create a new dataset from the features of the current dataset</string>
+   </property>
+  </action>
+  <action name="actionLoadDatasetAbundance">
+   <property name="icon">
+    <iconset theme="document-open">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>Load &amp;Abundance Values</string>
+   </property>
+   <property name="toolTip">
+    <string>Load a .tsv file and read abundance values</string>
    </property>
   </action>
  </widget>
