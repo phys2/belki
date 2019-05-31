@@ -20,6 +20,9 @@ Storage::Storage(ProteinDB &proteins, QObject *parent)
     : QObject(parent),
       proteins(proteins)
 {
+	/* hack: we will move to a project model, where the container is always
+	 * present */
+	d.container = std::make_unique<qzip::Zip>();
 }
 
 Storage::~Storage()
@@ -158,7 +161,6 @@ std::unique_ptr<QTextStream> Storage::openDataset(const QString &filename)
 
 		auto zipname = fi.path() + "/" + sourcename + ".zip";
 
-		container = std::make_unique<qzip::Zip>();
 		if (QFileInfo(zipname).exists()) {
 			container->load(zipname);
 			auto contents = container->names();
@@ -316,11 +318,11 @@ void Storage::exportMarkers(const QString &filename)
 
 void Storage::close(bool save)
 {
-	QWriteLocker _(&d.l);
 	// TODO disabled to cause no harm
+	//QWriteLocker _(&d.l);
 	//if (container && save)
 	//	container->save();
-	d.container.reset();
+	//d.container.reset();
 }
 
 void Storage::freadError(const QString &filename)
