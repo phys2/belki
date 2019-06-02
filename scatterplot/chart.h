@@ -39,7 +39,7 @@ public:
 
 	struct Marker
 	{
-		Marker(unsigned sampleIndex, ProteinId id, Chart* chart);
+		Marker(Chart* chart, unsigned sampleIndex, ProteinId id);
 		// remove+add graphicitems (used for z-ordering of chart elements)
 		void reAdd();
 
@@ -108,7 +108,7 @@ protected:
 	Proteins *master; // owned by chart
 	// note partitions are also owned by chart, but we delete first and they de-register
 	std::unordered_map<int, std::unique_ptr<Proteins>> partitions;
-	std::map<ProteinId, Marker> markers;
+	std::unordered_map<ProteinId, Marker> markers;
 
 	QGraphicsEllipseItem *tracker;
 	QtCharts::QValueAxis *ax, *ay;

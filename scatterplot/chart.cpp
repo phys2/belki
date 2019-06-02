@@ -325,7 +325,7 @@ void Chart::toggleMarker(ProteinId id, bool present)
 		if (master->pointsVector().empty()) // we are not ready yet
 			return;
 		try {
-			markers.try_emplace(id, data->peek<Dataset::Base>()->protIndex.at(id), id, this);
+			markers.try_emplace(id, this, data->peek<Dataset::Base>()->protIndex.at(id), id);
 		} catch (...) {}
 	} else {
 		markers.erase(id);
@@ -401,7 +401,7 @@ void Chart::Proteins::redecorate(bool full, bool hl)
 	setColor(fillColor);
 }
 
-Chart::Marker::Marker(unsigned sampleIndex, ProteinId id, Chart *chart)
+Chart::Marker::Marker(Chart *chart, unsigned sampleIndex, ProteinId id)
     : sampleIndex(sampleIndex), sampleId(id),
       series(std::make_unique<QtCharts::QScatterSeries>())
 {
