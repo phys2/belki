@@ -390,7 +390,6 @@ void MainWindow::newDataset(Dataset::Ptr dataset)
 {
 	/* add to datasets */
 	auto d = dataset->peek<Dataset::Base>();
-	auto id = d->conf.id;
 	auto pId = d->conf.parent;
 	auto parent = (pId ? datasetItems.at(pId)
 	                   : datasetTree->invisibleRootItem()); // top level
