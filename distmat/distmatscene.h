@@ -58,7 +58,7 @@ public:
 		std::map<Qt::Edge, QGraphicsPixmapItem*> items;
 	};
 
-	DistmatScene(Dataset &data, bool dialogMode = false);
+	DistmatScene(Dataset::Ptr data, bool dialogMode = false);
 
 	void setViewport(const QRectF &rect, qreal scale) override;
 
@@ -67,13 +67,13 @@ signals:
 	void selectionChanged(const std::vector<bool> dimensionSelected);
 
 public slots:
-	void reset(bool haveData = false);
 	void setDirection(Direction direction);
 	void reorder();
 	void recolor();
 
 	void updateColorset(QVector<QColor> colors);
 
+	void updateMarkers();
 	void toggleMarker(ProteinId id, bool present);
 	void togglePartitions(bool showPartitions);
 
@@ -87,10 +87,10 @@ protected:
 	void updateRenderQuality();
 	qreal computeCoord(unsigned sampleIndex);
 
-	Direction currentDirection = Direction::PER_PROTEIN;
+	Direction currentDirection = Direction::PER_DIMENSION;
 	std::map<Direction, Distmat> matrices;
 
-	Dataset &data;
+	Dataset::Ptr data;
 	QVector<QColor> colorset;
 
 	QGraphicsPixmapItem *display;

@@ -34,7 +34,8 @@ signals:
 	void exportRequested(QGraphicsView *source, QString description);
 	void exportRequested(QGraphicsScene *source, QString description);
 
-	// gui synchronization between views TODO: read from dataset directly?
+	// gui synchronization between views
+	// TODO: read from dataset directly on update()
 	void changeOrder(Dataset::OrderBy order, bool synchronize);
 
 protected:

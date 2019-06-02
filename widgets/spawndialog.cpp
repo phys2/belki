@@ -6,7 +6,7 @@
 #include <QPushButton>
 #include <QFontMetrics>
 
-SpawnDialog::SpawnDialog(Dataset::ConstPtr data, QWidget *parent) :
+SpawnDialog::SpawnDialog(Dataset::Ptr data, QWidget *parent) :
     QDialog(parent), data(data)
 {
 	auto d = data->peek<Dataset::Base>();
@@ -32,9 +32,8 @@ SpawnDialog::SpawnDialog(Dataset::ConstPtr data, QWidget *parent) :
 	view->setBackgroundBrush(palette().window());
 
 	// setup scene
-	// TODO just uncomment scene = std::make_unique<DistmatScene>(data, true);
-	scene->setDirection(DistmatScene::Direction::PER_DIMENSION);
-	scene->reset(true);
+	scene = std::make_unique<DistmatScene>(data, true);
+	scene->setDirection(Dataset::Direction::PER_DIMENSION);
 	view->setScene(scene.get());
 
 	// get enough space

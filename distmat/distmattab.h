@@ -21,11 +21,15 @@ public:
 protected:
 	struct DataState : public Viewer::DataState {
 		std::unique_ptr<DistmatScene> scene;
+		GraphicsView::Viewport lastView;
 	};
 
 	void setupOrderUI();
+	void updateEnabled();
 
 	struct {
+		bool showPartitions;
+		QVector<QColor> colorset;
 		Dataset::Direction direction = Dataset::Direction::PER_DIMENSION;
 	} guiState;
 
