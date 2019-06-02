@@ -31,8 +31,9 @@ void GraphicsView::resizeEvent(QResizeEvent *event)
 void GraphicsView::paintEvent(QPaintEvent *event)
 {
 	auto vp = std::make_pair(viewportTransform(), viewport()->size());
-	if (vp != lastViewport) {
-		lastViewport = vp;
+	auto lastVp = lastViewport.find(scene());
+	if (lastVp == lastViewport.end() || vp != lastVp->second) {
+		lastViewport[scene()] = vp;
 		auto rect = mapToScene({{0, 0}, viewport()->size()}).boundingRect();
 		auto scale = mapToScene(QPoint{1, 1}).x() - rect.left();
 		scene()->setViewport(rect, scale);

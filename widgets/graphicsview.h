@@ -2,6 +2,7 @@
 #define DISTMATVIEW_H
 
 #include <QGraphicsView>
+#include <memory>
 
 class GraphicsScene;
 
@@ -24,7 +25,8 @@ protected:
 
 	bool scrollingEnabled = true;
 
-	std::pair<QTransform, QSize> lastViewport;
+	// per-scene state
+	std::map<GraphicsScene*, std::pair<QTransform, QSize>> lastViewport;
 };
 
 #endif // DISTMATVIEW_H
