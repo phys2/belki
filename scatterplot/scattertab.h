@@ -17,10 +17,9 @@ public:
 	void addDataset(Dataset::Ptr data) override;
 
 protected:
-	struct DataState {
+	struct DataState : public Viewer::DataState {
 		int dimension = -1;
 		bool hasScores;
-		Dataset::Ptr data;
 		std::unique_ptr<Chart> scene;
 	};
 

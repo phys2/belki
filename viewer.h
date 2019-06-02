@@ -38,6 +38,10 @@ signals:
 	void changeOrder(Dataset::OrderBy order, bool synchronize);
 
 protected:
+	struct DataState {
+		Dataset::Ptr data;
+	};
+
 	template<typename State>
 	using ContentMap = std::map<unsigned, State>;
 	template<typename State>

@@ -26,9 +26,8 @@ public:
 	QString currentMethod() const;
 
 protected:
-	struct DataState {
+	struct DataState : public Viewer::DataState {
 		QString displayName;
-		Dataset::Ptr data;
 		std::unique_ptr<Chart> scene;
 	};
 
