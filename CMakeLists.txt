@@ -69,8 +69,7 @@ add_subdirectory(compute)
 add_subdirectory(widgets)
 add_subdirectory(scatterplot)
 #add_subdirectory(heatmap)
-#add_subdirectory(distmat)
-target_sources(belki PRIVATE distmat/distmatscene.cpp distmat/distmat.cpp)
+add_subdirectory(distmat)
 #add_subdirectory(featweights)
 
 ## link to modules

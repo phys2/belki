@@ -32,7 +32,7 @@ MainWindow::MainWindow(CentralHub &hub) :
 
 	/* Views in tabs */
 	//views = {dimredTab, scatterTab, heatmapTab, distmatTab, featweightsTab};
-	views = {dimredTab, scatterTab};
+	views = {dimredTab, scatterTab, distmatTab};
 	for (auto v : views) {
 		// connect singnalling into view
 		connect(&hub, &CentralHub::newDataset, v, &Viewer::addDataset);

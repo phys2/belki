@@ -77,9 +77,16 @@ public:
 		features::Range scoreRange;
 	};
 
+	enum class Direction {
+		PER_PROTEIN,
+		PER_DIMENSION,
+	};
+	Q_ENUM(Direction)
+
 	struct Representation : public RWLockable {
 		// feature reduced point sets
 		std::map<QString, QVector<QPointF>> display;
+		// TODO: put distmats here
 	};
 
 	enum class OrderBy {

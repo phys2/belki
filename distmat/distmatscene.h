@@ -17,11 +17,7 @@ class DistmatScene : public GraphicsScene
 {
 	Q_OBJECT
 public:
-	enum class Direction {
-		PER_PROTEIN,
-		PER_DIMENSION,
-	};
-	Q_ENUM(Direction)
+	using Direction = Dataset::Direction;
 
 	struct LegendItem
 	{
@@ -72,7 +68,7 @@ signals:
 
 public slots:
 	void reset(bool haveData = false);
-	void setDirection(DistmatScene::Direction direction);
+	void setDirection(Direction direction);
 	void reorder();
 	void recolor();
 
