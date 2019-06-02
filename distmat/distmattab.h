@@ -21,7 +21,6 @@ public:
 protected:
 	struct DataState : public Viewer::DataState {
 		std::unique_ptr<DistmatScene> scene;
-		GraphicsView::Viewport lastView;
 	};
 
 	void setupOrderUI();
