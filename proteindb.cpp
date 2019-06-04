@@ -113,7 +113,7 @@ size_t ProteinDB::importMarkers(const std::vector<QString> &names)
 	data.l.unlock();
 
 	for (auto id : affected)
-		emit markerToggled(id, true);
+		emit markerToggled(id, true); // TODO: causes lots of calc. in featw.
 	return affected.size();
 }
 
@@ -124,7 +124,7 @@ void ProteinDB::clearMarkers()
 	data.markers.swap(markers);
 	data.l.unlock();
 	for (auto &id : markers)
-		emit markerToggled(id, false);
+		emit markerToggled(id, false); // TODO: causes lots of calc. in featw.
 }
 
 void ProteinDB::updateColorset(const QVector<QColor> &colors)
