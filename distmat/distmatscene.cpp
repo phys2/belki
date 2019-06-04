@@ -201,9 +201,7 @@ void DistmatScene::updateMarkers()
 	auto p = data->peek<Dataset::Proteins>();
 
 	// remove outdated
-	for (auto &[id,_] : markers)
-		if (!p->markers.count(id))
-			toggleMarker(id, false);
+	erase_if(markers, [&p] (auto id) { return !p->markers.count(id); });
 
 	// insert missing
 	for (auto id : p->markers)

@@ -4,6 +4,7 @@
 #include <QReadWriteLock>
 #include <QString>
 #include <QHash>
+#include <unordered_map>
 #include <functional>
 
 class NonCopyable
@@ -52,11 +53,23 @@ protected:
 };
 
 namespace std {
-  template<> struct hash<QString> {
-    std::size_t operator()(const QString& s) const {
-      return qHash(s);
+template<> struct hash<QString> {
+	std::size_t operator()(const QString& s) const {
+		return qHash(s);
     }
-  };
+};
+}
+// std::experimental::erase_if, but predicate takes key instead of pair
+template<class Key, class T, class Compare, class Alloc, class Pred>
+void erase_if(std::unordered_map<Key,T,Compare,Alloc>& c, Pred pred)
+{
+	for (auto it = c.begin(), last = c.end(); it != last;) {
+		if (pred(it->first)) {
+			it = c.erase(it);
+		} else {
+			++it;
+		}
+	}
 }
 
 #endif
