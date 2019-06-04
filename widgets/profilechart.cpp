@@ -21,7 +21,8 @@ ProfileChart::ProfileChart(Dataset::ConstPtr data)
 
 	ax = new QtCharts::QBarCategoryAxis;
 	ay = new QtCharts::QValueAxis;
-	ay->setRange(0, 1);
+	auto range = data->peek<Dataset::Base>()->featureRange;
+	ay->setRange(range.min, range.max);
 	addAxis(ax, Qt::AlignBottom);
 	addAxis(ay, Qt::AlignLeft);
 	for (auto a : {ax, ay})

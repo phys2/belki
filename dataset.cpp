@@ -147,7 +147,7 @@ void Dataset::computeFAMS()
 	                                   }));
 
 	auto d = peek<Base>();
-	fams->importPoints(d->features, true);
+	fams->importPoints(d->features, true); // scales vectors
 	bool success = fams->prepareFAMS();
 	if (!success)
 		return;
@@ -287,7 +287,9 @@ bool Dataset::readSource(QTextStream &in, const QString &name, const QString &fe
 		b.scores[row][col] = std::max(score, 0.); // TODO temporary clipping
 	}
 
-	return finalizeRead(); // will unlock b for us
+	// TODO: hack to not normalize abundance values
+	bool normalize = featureColName.isEmpty() || featureColName == "Dist";
+	return finalizeRead(normalize); // will unlock b for us
 }
 
 bool Dataset::readSimpleSource(QTextStream &in, const QString &name)
@@ -344,10 +346,10 @@ bool Dataset::readSimpleSource(QTextStream &in, const QString &name)
 		b.features.push_back(std::move(coeffs));
 	}
 
-	return finalizeRead(); // unlocks b
+	return finalizeRead(true); // unlocks b
 }
 
-bool Dataset::finalizeRead()
+bool Dataset::finalizeRead(bool normalize)
 {
 	/* Note: caller has locked b for us for writing */
 
@@ -361,18 +363,22 @@ bool Dataset::finalizeRead()
 	features::Range range(b.features);
 	// normalize, if needed
 	if (range.min < 0 || range.max > 1) { // simple heuristic to auto-normalize
-		emit ioError(QString("Values outside expected range (instead [%1, %2])."
-		                     "<br>Normalizing to [0, 1].").arg(range.min).arg(range.max));
 		// cut off negative values
 		range.min = 0.;
-		auto scale = 1. / (range.max - range.min);
+		double scale = 1.;
+		if (normalize) {
+			scale = 1. / (range.max - range.min);
+			emit ioError(QString("Values outside expected range (instead [%1, %2])."
+			                     "<br>Normalizing to [0, 1].").arg(range.min).arg(range.max));
+		}
+
 		for (auto &v : b.features) {
 			std::for_each(v.begin(), v.end(), [min=range.min, scale] (double &e) {
 				e = std::max(e - min, 0.) * scale;
 			});
 		}
 	}
-	b.featureRange = {0., 1.}; // TODO: we enforced normalization (make config.)
+	b.featureRange = {0., (normalize ? 1. : range.max)};
 	if (b.hasScores())
 		b.scoreRange = features::Range(b.scores);
 

@@ -179,7 +179,7 @@ signals:
 
 protected:
 	bool readSimpleSource(QTextStream &in, const QString& name);
-	bool finalizeRead();
+	bool finalizeRead(bool normalize);
 	void swapClustering(Clustering &cl, bool genericNames, bool pruneCl, bool reorderProts);
 
 	void pruneClusters();
