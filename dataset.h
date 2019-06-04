@@ -203,6 +203,12 @@ protected:
 	ProteinDB &proteins;
 };
 
+// forward declarations, see cpp file
+template<> View<Dataset::Base> Dataset::peek() const;
+template<> View<Dataset::Representation> Dataset::peek() const;
+template<> View<Dataset::Structure> Dataset::peek() const;
+template<> View<Dataset::Proteins> Dataset::peek() const;
+
 Q_DECLARE_OPERATORS_FOR_FLAGS(Dataset::Touched)
 Q_DECLARE_METATYPE(Dataset::Touched)
 Q_DECLARE_METATYPE(Dataset::Ptr)
