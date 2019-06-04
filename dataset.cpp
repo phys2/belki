@@ -678,8 +678,7 @@ void Dataset::pruneClusters()
 	// TODO: make configurable; instead keep X biggest clusters?
 	auto minSize = unsigned(0.005f * (float)peek<Base>()->protIds.size());
 	auto &c = s.clustering.clusters;
-	auto it = c.begin();
-	while (it != c.end()) {
+	for (auto it = c.begin(); it != c.end();) {
 		if (it->second.size < minSize) {
 			for (auto &m : s.clustering.memberships)
 				m.erase(it->first);
