@@ -55,7 +55,7 @@ public:
 		std::unique_ptr<QGraphicsRectItem> backdrop;
 	};
 
-	HeatmapScene(Dataset &data);
+	HeatmapScene(Dataset::Ptr data);
 
 	void setScale(qreal scale);
 
@@ -63,7 +63,6 @@ signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
 
 public slots:
-	void reset(bool haveData = false);
 	void rearrange(QSize viewport);
 	void rearrange(unsigned columns);
 	void recolor();
@@ -71,11 +70,12 @@ public slots:
 
 	void updateColorset(QVector<QColor> colors);
 
-	void toggleMarker(ProteinId sampleIndex, bool present);
+	void updateMarkers();
+	void toggleMarker(ProteinId id, bool present);
 	void togglePartitions(bool showPartitions);
 
 protected:
-	Dataset &data;
+	Dataset::Ptr data;
 
 	struct {
 		QColor bg = Qt::white, fg = Qt::black;

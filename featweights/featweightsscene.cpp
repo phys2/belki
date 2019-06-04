@@ -12,7 +12,7 @@
 
 #include <QDebug>
 
-FeatweightsScene::FeatweightsScene(Dataset &data)
+FeatweightsScene::FeatweightsScene(Dataset::Ptr data)
     : data(data)
 {
 	qRegisterMetaType<FeatweightsScene::Weighting>();
@@ -37,6 +37,8 @@ FeatweightsScene::FeatweightsScene(Dataset &data)
 	markerContour->setPen(pen);
 
 	weightBar->setTransform(QTransform::fromTranslate(0, 1.05).scale(1., 0.05));
+
+	computeWeights();
 }
 
 void FeatweightsScene::setDisplay()
@@ -48,30 +50,28 @@ void FeatweightsScene::setDisplay()
 	auto scaleX = 1./br.width(), scaleY = 1./br.height();
 	auto transform = QTransform::fromTranslate(0, 1).scale(scaleX, -scaleY);
 
-	for (auto &i : std::vector<QGraphicsItem*>{display, markerContour}) {
+	for (auto &i : std::vector<QGraphicsItem*>{display, markerContour})
 		i->setTransform(transform);
-		i->setVisible(true);
-	}
 }
 
 void FeatweightsScene::computeWeights()
 {
-	auto d = data.peek<Dataset::Base>();
+	auto d = data->peek<Dataset::Base>();
 	auto len = (unsigned)d->dimensions.size();
-	if (!len)
-		return;
+	// use original data if no score threshold was applied
+	bool haveClipped = !clippedFeatures.empty();
+	const auto &feat = (haveClipped ? clippedFeatures : d->features);
+	if (haveClipped)
+		d.unlock(); // early unlock, feat does not point into dataset
 
 	weights.clear();
 
 	/* calculate weights if appr. method selected and markers available */
 	if (weighting != Weighting::UNWEIGHTED && !markers.empty()) {
-		// use original data if no score threshold was applied
-		auto &feat = (clippedFeatures.empty() ? d->features : clippedFeatures);
-
 		/* compose set of voters by all marker proteins found in current dataset */
 		std::vector<const std::vector<double>*> voters;
 		for (auto& m : markers) {
-			try { voters.push_back(&feat[d->protIndex.at(m)]); } catch (...) {}
+			try { voters.push_back(&feat[m]); } catch (...) {}
 		}
 
 		/* setup weighters */
@@ -126,12 +126,14 @@ void FeatweightsScene::computeWeights()
 	if (weights.empty())
 		weights.assign(len, 1./(double)len);
 
-	computeImage();
+	computeImage(feat);
+
+	d.unlock();
 	computeMarkerContour();
 	setDisplay();
 }
 
-void FeatweightsScene::computeImage()
+void FeatweightsScene::computeImage(const features::vec& feat)
 {
 	cv::Size bins = {400, 400}; // TODO: adapt to screen
 	cv::Size2d stepSize = {1./(bins.width), 1./(bins.height)};
@@ -142,9 +144,6 @@ void FeatweightsScene::computeImage()
 	matrix = cv::Mat1f(bins, 0);
 	cv::Mat1f relmatrix(bins, 0);
 
-	auto d = data.peek<Dataset::Base>();
-	// use original data if no score threshold was applied
-	auto &feat = (clippedFeatures.empty() ? d->features : clippedFeatures);
 	contours = std::vector<std::vector<unsigned>>(feat.size(),
 	                                              std::vector<unsigned>((unsigned)bins.width));
 
@@ -207,49 +206,55 @@ void FeatweightsScene::computeMarkerContour()
 
 void FeatweightsScene::applyScoreThreshold(double threshold)
 {
-	auto d = data.peek<Dataset::Base>();
-	clippedFeatures = d->features;
-	features::apply_cutoff(clippedFeatures, d->scores, threshold);
+	if (std::isnan(threshold)) {
+		clippedFeatures.clear();
+	} else {
+		auto d = data->peek<Dataset::Base>();
+		clippedFeatures = d->features;
+		features::apply_cutoff(clippedFeatures, d->scores, threshold);
+		d.unlock();
+	}
 
 	computeWeights();
 }
 
-void FeatweightsScene::reset(bool haveData)
+void FeatweightsScene::updateMarkers()
 {
-	for (auto &i : std::vector<QGraphicsItem*>{display, markerContour, weightBar})
-		i->setVisible(false);
-	markers.clear();
-	clippedFeatures.clear();
-	//dimensionLabels.clear();
-
-	if (!haveData) {
-		return;
+	auto d = data->peek<Dataset::Base>();
+	auto p = data->peek<Dataset::Proteins>();
+	std::set<unsigned> newMarkers;
+	for (auto &m : p->markers) {
+		try {
+			newMarkers.insert(d->protIndex.at(m));
+		} catch (std::out_of_range&) {}
 	}
+	p.unlock();
+	d.unlock();
 
-	// setup new dimension labels
-	//auto dim = data.peek()->dimensions; // QStringList COW
-	//for (int i = 0; i < dim.size(); ++i)
-	    //dimensionLabels.emplace_back(this, (qreal)(i+0.5)/dim.size(), dim[i]);
+	if (newMarkers == markers)
+		return;
 
-	computeWeights(); // will call computeImage(), setDisplay()
-	weightBar->setVisible(true);
+	markers = std::move(newMarkers);
+	computeWeights();
 }
 
 void FeatweightsScene::toggleMarker(ProteinId id, bool present)
 {
-	if (present)
-		markers.insert(id);
-	else
-		markers.erase(id);
+	try {
+		auto index = data->peek<Dataset::Base>()->protIndex.at(id);
+		if (present)
+			markers.insert(index);
+		else
+			markers.erase(index);
 
-	computeWeights();
+		computeWeights();
+	} catch (std::out_of_range&) {}
 }
 
 void FeatweightsScene::toggleImage(bool useAlternate)
 {
 	imageIndex = (useAlternate ? 1 : 0);
-	if (display->isVisible())
-		setDisplay(); // refresh
+	setDisplay(); // refresh
 }
 
 void FeatweightsScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
@@ -303,8 +308,11 @@ void FeatweightsScene::updateColorset(QVector<QColor> colors)
 	colorset = colors;
 }
 
-void FeatweightsScene::changeWeighting(Weighting w)
+void FeatweightsScene::setWeighting(Weighting w)
 {
+	if (weighting == w)
+		return;
+
 	weighting = w;
 	computeWeights();
 }
@@ -371,7 +379,7 @@ void FeatweightsScene::WeightBar::hoverMoveEvent(QGraphicsSceneHoverEvent *event
 	}
 
 	// set tooltip to reflect hovered component
-	this->setToolTip(scene()->data.peek<Dataset::Base>()->dimensions.at(index));
+	this->setToolTip(scene()->data->peek<Dataset::Base>()->dimensions.at(index));
 
 	// highlight the hovered component
 	highlight = index;

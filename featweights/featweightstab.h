@@ -3,11 +3,12 @@
 
 #include "ui_featweightstab.h"
 #include "viewer.h"
+#include "featweightsscene.h"
 
 #include <vector>
 #include <memory>
+#include <cmath>
 
-class FeatweightsScene;
 class QAction;
 
 class FeatweightsTab : public Viewer, private Ui::FeatweightsTab
@@ -16,14 +17,29 @@ class FeatweightsTab : public Viewer, private Ui::FeatweightsTab
 
 public:
 	explicit FeatweightsTab(QWidget *parent = nullptr);
-	void init(Dataset *data) override;
+
+	void selectDataset(unsigned id) override;
+	void addDataset(Dataset::Ptr data) override;
 
 protected:
-	std::vector<QAction*> scoreActions;
+	struct DataState : public Viewer::DataState {
+		double scoreThreshold;
+		std::unique_ptr<FeatweightsScene> scene;
+	};
 
 	void setupWeightingUI();
+	void updateScoreSlider();
+	void updateEnabled();
 
-	std::unique_ptr<FeatweightsScene> scene;
+	struct {
+		bool useAlternate = false;
+		FeatweightsScene::Weighting weighting = FeatweightsScene::Weighting::OFFSET;
+		QVector<QColor> colorset; // initialized by MainWindow
+	} guiState;
+
+	std::vector<QAction*> scoreActions;
+	ContentMap<DataState> content;
+	Current<DataState> current;
 };
 
 #endif

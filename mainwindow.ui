@@ -142,12 +142,25 @@
         <string>Scatter Plot</string>
        </attribute>
       </widget>
+      <widget class="HeatmapTab" name="heatmapTab">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <attribute name="title">
+        <string>Heatmap</string>
+       </attribute>
+      </widget>
       <widget class="DistmatTab" name="distmatTab">
        <property name="enabled">
         <bool>false</bool>
        </property>
        <attribute name="title">
         <string>Distance Map</string>
+       </attribute>
+      </widget>
+      <widget class="FeatweightsTab" name="featweightsTab">
+       <attribute name="title">
+        <string>Feature Weighting</string>
        </attribute>
       </widget>
      </widget>
@@ -667,9 +680,21 @@
    <header location="global">QChartView</header>
   </customwidget>
   <customwidget>
+   <class>HeatmapTab</class>
+   <extends>QWidget</extends>
+   <header>heatmap/heatmaptab.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
    <class>DistmatTab</class>
    <extends>QWidget</extends>
    <header>distmat/distmattab.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FeatweightsTab</class>
+   <extends>QWidget</extends>
+   <header>featweights/featweightstab.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

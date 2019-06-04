@@ -13,12 +13,6 @@ FeatweightsTab::FeatweightsTab(QWidget *parent) :
 	toolBar->insertSeparator(anchor);
 	scoreActions.push_back(toolBar->insertWidget(anchor, scoreLabel));
 	scoreActions.push_back(toolBar->insertWidget(anchor, scoreSlider));
-	connect(scoreSlider, &QSlider::valueChanged, [this] (int v) {
-		// note: ensure fixed text width to avoid the slider jumping around
-		auto text = QString("Score thresh.: <b>%1</b> ")
-		        .arg(QString::number(v * 0.01, 'f', 2));
-		scoreLabel->setText(text);
-	});
 
 	// right-align screenshot button
 	auto* spacer = new QWidget();
@@ -26,51 +20,87 @@ FeatweightsTab::FeatweightsTab(QWidget *parent) :
 	toolBar->insertWidget(actionSavePlot, spacer);
 
 	stockpile->deleteLater();
-}
 
-void FeatweightsTab::init(Dataset *data)
-{
-	scene = std::make_unique<FeatweightsScene>(*data);
+	/* connect toolbar actions */
+	connect(scoreSlider, &QSlider::valueChanged, [this] (int v) {
+		auto toDouble = [] (auto value) { return value * 0.01; };
+		// note: ensure fixed text width to avoid the slider jumping around
+		auto text = QString("Score thresh.: <b>%1</b> ")
+		        .arg(QString::number(toDouble(v), 'f', 2));
+		scoreLabel->setText(text);
+		if (!current)
+			return;
 
-	connect(this, &Viewer::inToggleMarker, scene.get(), &FeatweightsScene::toggleMarker);
-	connect(this, &Viewer::inUpdateColorset, scene.get(), &FeatweightsScene::updateColorset);
-	connect(this, &Viewer::inReset, scene.get(), &FeatweightsScene::reset);
-
-	connect(scene.get(), &FeatweightsScene::cursorChanged, this, &Viewer::cursorChanged);
-
-	connect(this, &Viewer::inReset, [this, data] (bool haveData) {
-		// we are good to go on reset(true), but not on reset(false)
-		setEnabled(haveData);
-
-		// adapt score state
-		auto d = data->peek();
-		for (auto i : scoreActions)
-			i->setVisible(haveData && d->hasScores());
-		if (d->hasScores()) {
-			scoreSlider->setMinimum((int)(d->scoreRange.min * 100));
-			scoreSlider->setMaximum((int)(d->scoreRange.max * 100));
-			scoreSlider->setTickInterval(scoreSlider->maximum() / 10); // TODO round numbers
-			scoreSlider->setValue(scoreSlider->maximum());
-		}
+		current().scoreThreshold = v;
+		bool isMaximum = v == scoreSlider->maximum(); // if so, disable cutoff
+		current().scene->applyScoreThreshold(toDouble(isMaximum ? std::nan("") : v));
 	});
-
+	connect(actionToggleChart, &QAction::toggled, [this] (bool useAlternate) {
+		guiState.useAlternate = useAlternate;
+		if (current)
+			current().scene->toggleImage(useAlternate);
+	});
+	connect(weightingSelect, QOverload<int>::of(&QComboBox::activated), [this] () {
+		guiState.weighting = weightingSelect->currentData().value<FeatweightsScene::Weighting>();
+		if (current)
+			current().scene->setWeighting(guiState.weighting);
+	});
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, "Distance Matrix");
 	});
 
-	connect(actionToggleChart, &QAction::toggled, scene.get(), &FeatweightsScene::toggleImage);
-
-	auto syncWeighting = [this] {
-		scene->changeWeighting(weightingSelect->currentData().value<FeatweightsScene::Weighting>());
-	};
-	connect(weightingSelect, QOverload<int>::of(&QComboBox::activated), syncWeighting);
-	syncWeighting();
-
-	connect(scoreSlider, &QSlider::valueChanged, [this] (int v) {
-		scene->applyScoreThreshold(v * 0.01);
+	/* connect incoming signals */
+	connect(this, &Viewer::inUpdateColorset, [this] (auto colors) {
+		guiState.colorset = colors;
+		if (current)
+			current().scene->updateColorset(colors);
+	});
+	connect(this, &Viewer::inToggleMarker, [this] (ProteinId id, bool present) {
+		// we do not keep track of markers for inactive scenes
+		if (current)
+			current().scene->toggleMarker(id, present);
 	});
 
-	view->setScene(scene.get());
+	/* propagate initial state */
+	actionToggleChart->setChecked(guiState.useAlternate);
+	weightingSelect->setCurrentIndex(weightingSelect->findData(
+	                                     QVariant::fromValue(FeatweightsScene::Weighting::OFFSET)));
+
+	updateEnabled();
+}
+
+void FeatweightsTab::selectDataset(unsigned id)
+{
+	current = {id, &content[id]};
+	updateEnabled();
+
+	if (!current)
+		return;
+
+	updateScoreSlider();
+
+	// pass guiState onto scene
+	auto scene = current().scene.get();
+	scene->updateColorset(guiState.colorset);
+	scene->setWeighting(weightingSelect->currentData().value<FeatweightsScene::Weighting>());
+	scene->toggleImage(guiState.useAlternate);
+	scene->updateMarkers();
+	view->setScene(scene);
+}
+
+void FeatweightsTab::addDataset(Dataset::Ptr data)
+{
+	auto id = data->id();
+	auto &state = content[id]; // emplace (note: ids are never recycled)
+	state.data = data;
+	state.scoreThreshold = (data->peek<Dataset::Base>()->hasScores() ?
+	                            data->peek<Dataset::Base>()->scoreRange.max : 0);
+	state.scene = std::make_unique<FeatweightsScene>(data);
+
+	auto scene = state.scene.get();
+
+	/* connect outgoing signals */
+	connect(scene, &FeatweightsScene::cursorChanged, this, &Viewer::cursorChanged);
 }
 
 void FeatweightsTab::setupWeightingUI()
@@ -88,5 +118,27 @@ void FeatweightsTab::setupWeightingUI()
     }) {
 		weightingSelect->addItem(n, QVariant::fromValue(v));
 	}
-	weightingSelect->setCurrentIndex(1);
+}
+
+void FeatweightsTab::updateScoreSlider()
+{
+	auto d = current().data->peek<Dataset::Base>();
+
+	for (auto i : scoreActions)
+		i->setVisible(d->hasScores());
+	if (!d->hasScores())
+		return;
+
+	auto toInt = [] (auto value) { return (int)(value * 100); };
+	scoreSlider->setMinimum(toInt(d->scoreRange.min));
+	scoreSlider->setMaximum(toInt(d->scoreRange.max));
+	scoreSlider->setTickInterval(scoreSlider->maximum() / 10); // TODO round numbers
+	scoreSlider->setValue(toInt(current().scoreThreshold));
+}
+
+void FeatweightsTab::updateEnabled()
+{
+	bool on = current;
+	setEnabled(on);
+	view->setVisible(on);
 }

@@ -30,7 +30,7 @@ public:
 
 	class WeightBar : public QGraphicsItem {
 	public:
-		WeightBar(QGraphicsItem *parent = nullptr);
+		explicit WeightBar(QGraphicsItem *parent = nullptr);
 
 		QRectF boundingRect() const override { return {0, 0, 1, 1}; }
 		void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
@@ -45,17 +45,17 @@ public:
 		int highlight = -1;
 	};
 
-	FeatweightsScene(Dataset &data);
+	explicit FeatweightsScene(Dataset::Ptr data);
 
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
 
 public slots:
-	void reset(bool haveData = false);
+	void updateMarkers();
 	void toggleMarker(ProteinId id, bool present);
 	void toggleImage(bool useAlternate);
 	void updateColorset(QVector<QColor> colors);
-	void changeWeighting(Weighting weighting);
+	void setWeighting(Weighting weighting);
 	void applyScoreThreshold(double threshold);
 
 protected:
@@ -64,14 +64,10 @@ protected:
 
 	void setDisplay();
 	void computeWeights();
-	void computeImage();
+	void computeImage(const features::vec& features);
 	void computeMarkerContour();
 
-	Dataset &data;
-	std::vector<std::vector<double>> clippedFeatures; // score threshold applied
-	QVector<QColor> colorset;
-
-	std::unordered_set<ProteinId> markers;
+	std::set<unsigned> markers; // markers in dataset index (not protein id!)
 
 	std::vector<std::vector<unsigned>> contours;
 	std::vector<double> weights;
@@ -84,6 +80,10 @@ protected:
 	QGraphicsPixmapItem *display;
 	QGraphicsPathItem *markerContour;
 	WeightBar *weightBar;
+
+	Dataset::Ptr data;
+	features::vec clippedFeatures; // score threshold applied
+	QVector<QColor> colorset;
 };
 
 #endif

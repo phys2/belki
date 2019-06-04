@@ -14,12 +14,26 @@ class HeatmapTab : public Viewer, private Ui::HeatmapTab
 
 public:
 	explicit HeatmapTab(QWidget *parent = nullptr);
-	void init(Dataset *data) override;
+
+	void selectDataset(unsigned id) override;
+	void addDataset(Dataset::Ptr data) override;
 
 protected:
-	void setupOrderUI();
+	struct DataState : public Viewer::DataState {
+		std::unique_ptr<HeatmapScene> scene;
+	};
 
-	std::unique_ptr<HeatmapScene> scene;
+	void setupOrderUI();
+	void updateEnabled();
+
+	struct {
+		bool singleColumn = false;
+		bool showPartitions; // initialized by MainWindow
+		QVector<QColor> colorset; // initialized by MainWindow
+	} guiState;
+
+	ContentMap<DataState> content;
+	Current<DataState> current;
 };
 
 #endif // HEATMAPTAB_H

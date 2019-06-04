@@ -12,10 +12,10 @@ HeatmapScene *HeatmapView::scene() const
 
 void HeatmapView::setColumnMode(bool single)
 {
-	if (single == singleColumn)
+	if (single == currentState().singleColumn)
 		return;
 
-	singleColumn = single;
+	state[scene()].singleColumn = single;
 	arrangeScene();
 }
 
@@ -28,7 +28,7 @@ void HeatmapView::enterEvent(QEvent *)
 
 void HeatmapView::wheelEvent(QWheelEvent *event)
 {
-	if (singleColumn && !(event->modifiers() & Qt::ControlModifier)) {
+	if (currentState().singleColumn && !(event->modifiers() & Qt::ControlModifier)) {
 		QGraphicsView::wheelEvent(event);
 		return;
 	}
@@ -51,17 +51,23 @@ void HeatmapView::resizeEvent(QResizeEvent *event)
 
 void HeatmapView::paintEvent(QPaintEvent *event)
 {
+	auto s = currentState();
 	auto scale = mapToScene(QRect(0, 0, 1, 1)).boundingRect().width();
-	if (scale != currentScale) {
-		currentScale = scale;
-		if (currentScale > outerScale && !singleColumn) {
+	if (scale != s.currentScale) {
+		s.currentScale = scale;
+		if (s.currentScale > s.outerScale && !s.singleColumn) {
 			arrangeScene();
-			currentScale = outerScale;
+			s.currentScale = s.outerScale;
 		}
-		scene()->setScale(currentScale);
+		scene()->setScale(s.currentScale);
 	}
 
 	QGraphicsView::paintEvent(event);
+}
+
+HeatmapView::State& HeatmapView::currentState()
+{
+	return state[scene()]; // emplaces a default-constructed state
 }
 
 void HeatmapView::arrangeScene()
@@ -69,7 +75,7 @@ void HeatmapView::arrangeScene()
 	if (!scene())
 		return;
 
-	if (singleColumn) {
+	if (currentState().singleColumn) {
 		scene()->rearrange(1);
 		setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
 		resetTransform();
@@ -79,5 +85,5 @@ void HeatmapView::arrangeScene()
 		setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 		fitInView(scene()->sceneRect(), Qt::AspectRatioMode::KeepAspectRatio);
 	}
-	outerScale = mapToScene(QRect(0, 0, 1, 1)).boundingRect().width();
+	currentState().outerScale = mapToScene(QRect(0, 0, 1, 1)).boundingRect().width();
 }

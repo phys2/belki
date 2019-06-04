@@ -5,32 +5,11 @@
 #include <QGraphicsItem>
 #include <QGraphicsSceneHoverEvent>
 
-HeatmapScene::HeatmapScene(Dataset &data) : data(data)
+HeatmapScene::HeatmapScene(Dataset::Ptr data) : data(data)
 {
-}
+	auto d = data->peek<Dataset::Base>();
 
-void HeatmapScene::setScale(qreal scale)
-{
-	pixelScale = scale;
-	// markers use pixelScale
-	for (auto& [_, m] : markers)
-		m.rearrange(profiles[m.sampleIndex]->pos());
-}
-
-void HeatmapScene::reset(bool haveData)
-{
-	layout = {};
-	profiles.clear();
-	markers.clear();
-	clear(); // removes & deletes all items (ie. profiles, markers)
-
-	if (!haveData) {
-		return;
-	}
-
-	auto d = data.peek<Dataset::Base>();
-
-	/* build up scene with new data */
+	/* build up scene with data */
 	profiles.resize(d->features.size());
 	for (unsigned i = 0; i < profiles.size(); ++i) {
 		// setup profile graphics item
@@ -41,25 +20,32 @@ void HeatmapScene::reset(bool haveData)
 		addItem(h);
 		profiles[i] = h;
 	}
-
-	// empty data shouldn't happen but right now can when a file cannot be read completely,
-	// in the future this should result in IOError already earlier
-	if (profiles.empty())
-		return;
+	// note: order will be done in first rearrange() (when view is available)
+	// note: colors will be done in first recolor() by updateColorset()
 
 	// save for later
 	layout.columnWidth = profiles[0]->boundingRect().width();
 
-	// arrange screen in case we already got a view up
-	if (viewport.isValid())
-		rearrange(viewport);
+	/* setup updates from dataset */
+	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
+		if (touched & Dataset::Touch::ORDER)
+			reorder();
+		if (touched & Dataset::Touch::CLUSTERS)
+			recolor();
+	});
+}
+
+void HeatmapScene::setScale(qreal scale)
+{
+	pixelScale = scale;
+	// markers use pixelScale
+	for (auto& [_, m] : markers)
+		m.rearrange(profiles[m.sampleIndex]->pos());
 }
 
 void HeatmapScene::rearrange(QSize newViewport)
 {
 	viewport = newViewport; // keep information in case we have to stop here
-	if (profiles.empty())
-		return;
 
 	auto aspect = (viewport.width() / layout.columnWidth) / viewport.height();
 	layout.columns = (unsigned)std::floor(std::sqrt(profiles.size() * aspect));
@@ -69,7 +55,7 @@ void HeatmapScene::rearrange(QSize newViewport)
 
 void HeatmapScene::rearrange(unsigned columns)
 {
-	if (!columns || profiles.empty())
+	if (!columns)
 		return;
 
 	layout.rows = (unsigned)std::ceil(profiles.size() / (float)columns);
@@ -88,7 +74,7 @@ void HeatmapScene::reorder()
 	if (!layout.rows) // view is not set-up yet
 		return;
 
-	auto d = data.peek<Dataset::Structure>();
+	auto d = data->peek<Dataset::Structure>();
 
 	for (unsigned i = 0; i < profiles.size(); ++i) {
 		auto p = profiles[d->order.index[i]];
@@ -107,11 +93,23 @@ void HeatmapScene::updateColorset(QVector<QColor> colors)
 	// TODO: re-initialize markers
 }
 
+void HeatmapScene::updateMarkers()
+{
+	auto p = data->peek<Dataset::Proteins>();
+
+	// remove outdated
+	erase_if(markers, [&p] (auto id) { return !p->markers.count(id); });
+
+	// insert missing
+	for (auto id : p->markers)
+		toggleMarker(id, true);
+}
+
 void HeatmapScene::toggleMarker(ProteinId id, bool present)
 {
 	if (present) {
 		try {
-			auto index = data.peek<Dataset::Base>()->protIndex.at(id);
+			auto index = data->peek<Dataset::Base>()->protIndex.at(id);
 			auto pos = profiles[index]->pos();
 			markers.try_emplace(id, this, index, pos);
 		} catch (...) {}
@@ -128,7 +126,7 @@ void HeatmapScene::togglePartitions(bool show)
 
 void HeatmapScene::recolor()
 {
-	auto d = data.peek<Dataset::Structure>();
+	auto d = data->peek<Dataset::Structure>();
 	if (!showPartitions || d->clustering.empty()) {
 		for (auto &p : profiles)
 			p->setBrush(Qt::transparent);
@@ -226,14 +224,14 @@ void HeatmapScene::Profile::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
 		setToolTip({});
 		return;
 	}
-	setToolTip(scene()->data.peek<Dataset::Base>()->dimensions.at(index));
+	setToolTip(scene()->data->peek<Dataset::Base>()->dimensions.at(index));
 }
 
 HeatmapScene::Marker::Marker(HeatmapScene *scene, unsigned sampleIndex, const QPointF &pos)
     : sampleIndex(sampleIndex)
 {
-	auto p = scene->data.peek<Dataset::Proteins>();
-	auto &meta = scene->data.peek<Dataset::Base>()->lookup(p, sampleIndex);
+	auto p = scene->data->peek<Dataset::Proteins>();
+	auto &meta = scene->data->peek<Dataset::Base>()->lookup(p, sampleIndex);
 
 	QBrush fill(QColor{0, 0, 0, 127});
 	QPen outline(meta.color.dark(300));
