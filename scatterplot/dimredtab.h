@@ -34,7 +34,7 @@ protected:
 	void selectDisplay(const QString& name);
 	void computeDisplay(const QString &name, const QString &id);
 	void updateMenus();
-	void updateEnabled();
+	bool updateEnabled();
 
 	struct {
 		bool showPartitions;

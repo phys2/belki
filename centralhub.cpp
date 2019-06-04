@@ -85,7 +85,10 @@ void CentralHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, 
 		target->spawn(source, config);
 		addDataset(target);
 
-		/* also compute displays expected by the user – TODO initiate in dimredtab? */
+		/* also compute displays expected by the user – TODO initiate in dimredtab */
+		if (target->peek<Dataset::Base>()->dimensions.size() < 3)
+			return;
+
 		target->computeDisplays(); // standard set
 
 		// current display
@@ -110,7 +113,9 @@ void CentralHub::importDataset(const QString &filename, const QString featureCol
 			return;
 		addDataset(target);
 
-		/* compute intial set of displays – TODO initiate in dimredtab? */
+		/* compute intial set of displays – TODO initiate in dimredtab */
+		if (target->peek<Dataset::Base>()->dimensions.size() < 3)
+			return;
 		target->computeDisplays();
 	});
 }

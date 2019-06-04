@@ -80,9 +80,9 @@ void DimredTab::selectDataset(unsigned id)
 	current = {id, &content[id]};
 
 	updateMenus();
-	updateEnabled();
+	bool enabled = updateEnabled();
 
-	if (current) {
+	if (enabled) {
 		// pass guiState onto chart
 		auto scene = current().scene.get();
 		scene->updateColorset(guiState.colorset);
@@ -184,9 +184,12 @@ void DimredTab::updateMenus() {
 	}
 }
 
-void DimredTab::updateEnabled()
+bool DimredTab::updateEnabled()
 {
 	bool on = current;
+	on = on && current().data->peek<Dataset::Base>()->dimensions.count() > 2;
+
 	setEnabled(on);
 	view->setVisible(on);
+	return on;
 }
