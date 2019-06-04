@@ -35,6 +35,7 @@ MainWindow::MainWindow(CentralHub &hub) :
 	for (auto v : views) {
 		// connect singnalling into view
 		connect(&hub, &CentralHub::newDataset, v, &Viewer::addDataset);
+		// see below; disable when it works
 		connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset);
 		connect(this, &MainWindow::partitionsToggled, v, &Viewer::inTogglePartitions);
 		connect(&hub.proteins, &ProteinDB::markerToggled, v, &Viewer::inToggleMarker);
@@ -57,6 +58,23 @@ MainWindow::MainWindow(CentralHub &hub) :
 		emit v->inUpdateColorset(hub.colorset());
 		emit v->inTogglePartitions(actionShowPartition->isChecked());
 	}
+
+	/* experimental: put to sleep when not visible
+	connect(tabWidget, &QTabWidget::currentChanged, [this] () {
+		auto current = qobject_cast<Viewer*>(tabWidget->currentWidget());
+		for (auto v : views) {
+			if (v == current)
+				v->selectDataset(data ? data->id() : 0);
+			else
+				v->selectDataset(0);
+		}
+	});
+	connect(this, &MainWindow::datasetSelected, [this] (unsigned id) {
+		auto current = qobject_cast<Viewer*>(tabWidget->currentWidget());
+		if (current)
+			current->selectDataset(id);
+	});
+	/// does not work right now with heatmap, distmap, feattab. why? */
 
 	/* cursor chart */
 	cursorPlot->setRenderHint(QPainter::Antialiasing);
