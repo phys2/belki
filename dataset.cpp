@@ -219,6 +219,9 @@ bool Dataset::readSource(QTextStream &in, const QString &name, const QString &fe
 
 	b.l.lockForWrite();
 	b.conf.name = name; // TODO
+	// hack
+	if (!featureColName.isEmpty() && featureColName != "Dist")
+		b.conf.name += " " + featureColName;
 
 	/* fill in dimensions, features, scores */
 	std::map<QString, unsigned> dimensions;

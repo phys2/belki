@@ -108,7 +108,15 @@ void CentralHub::importDataset(const QString &filename, const QString featureCol
 			return;
 
 		auto target = createDataset();
-		bool success = target->readSource(*stream, filename, featureCol);
+		QFileInfo f(filename);
+		auto path = f.canonicalPath().split(QDir::separator());
+		QString name;
+		if (path.size() > 1)
+			name.append(*(++path.rbegin()) + "/");
+		if (path.size() > 0)
+			name.append(path.back() + "/");
+		name.append(f.baseName()); // hack
+		bool success = target->readSource(*stream, name, featureCol);
 		if (!success)
 			return;
 		addDataset(target);
