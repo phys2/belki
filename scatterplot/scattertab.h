@@ -27,8 +27,8 @@ protected:
 	bool updateEnabled();
 
 	struct {
-		bool showPartitions;
-		QVector<QColor> colorset;
+		bool showPartitions; // initialized by MainWindow
+		QVector<QColor> colorset; // initialized by MainWindow
 	} guiState;
 
 	ContentMap<DataState> content;

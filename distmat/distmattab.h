@@ -27,9 +27,9 @@ protected:
 	void updateEnabled();
 
 	struct {
-		bool showPartitions;
-		QVector<QColor> colorset;
 		Dataset::Direction direction = Dataset::Direction::PER_DIMENSION;
+		bool showPartitions; // initialized by MainWindow
+		QVector<QColor> colorset; // initialized by MainWindow
 	} guiState;
 
 	ContentMap<DataState> content;

@@ -40,6 +40,9 @@ DistmatTab::DistmatTab(QWidget *parent) :
 			current().scene->toggleMarker(id, present);
 	});
 
+	/* propagate initial state */
+	actionToggleDistdir->setChecked(guiState.direction == Dataset::Direction::PER_DIMENSION);
+
 	updateEnabled();
 }
 
