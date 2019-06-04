@@ -47,9 +47,9 @@ protected:
 	using ContentMap = std::map<unsigned, State>;
 	template<typename State>
 	struct Current {
-		operator bool() const { return p; }
+		operator bool() const { return id; }
 		State& operator()() const { return *p; }
-		unsigned id;
+		unsigned id = 0;
 		State *p = nullptr;
 	};
 };
