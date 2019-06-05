@@ -60,6 +60,9 @@ void DistmatTab::selectDataset(unsigned id)
 	scene->setDirection(guiState.direction);
 	scene->togglePartitions(guiState.showPartitions);
 	scene->updateMarkers();
+	// todo hack
+	emit orderRequested(orderSelect->currentData().value<Dataset::OrderBy>(),
+	                 !actionLockOrder->isChecked());
 	view->setScene(scene);
 }
 
