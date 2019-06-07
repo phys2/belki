@@ -26,6 +26,9 @@ struct Colormap {
 	// Magma color map
 	static Colormap magma;
 
+	// Viridis color map
+	static Colormap viridis;
+
 	// Red to green color map (for score displays, red == bad, green == good)
 	static Colormap stoplight, stoplight_mild;
 };
