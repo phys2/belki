@@ -101,6 +101,10 @@ protected:
 			qreal hi = .9;
 			qreal lo = .1;
 		} alpha;
+		struct {
+			QColor unlabeled = Qt::gray;
+			QColor mixed = Qt::darkGray;
+		} color;
 		Qt::PenStyle border = Qt::PenStyle::DotLine;
 	} proteinStyle;
 

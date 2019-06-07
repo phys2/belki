@@ -113,8 +113,8 @@ void Chart::updatePartitions(bool fresh)
 		animate(0);
 
 		// series needed for soft clustering
-		partitions[-2] = std::make_unique<Proteins>("Unlabeled", Qt::gray, this);
-		partitions[-1] = std::make_unique<Proteins>("Mixed", Qt::darkGray, this);
+		partitions[-2] = std::make_unique<Proteins>("Unlabeled", proteinStyle.color.unlabeled, this);
+		partitions[-1] = std::make_unique<Proteins>("Mixed", proteinStyle.color.mixed, this);
 
 		// go through clusters in their designated order
 		for (auto i : d->clustering.order) {
