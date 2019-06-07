@@ -23,6 +23,10 @@ SpawnDialog::SpawnDialog(Dataset::Ptr data, QWidget *parent) :
 	setSizeGripEnabled(true);
 	if (d->hasScores()) {
 		scoreSpinBox->setMaximum(d->scoreRange.max);
+		connect(scoreSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged), [this] {
+			updateScoreEffect();
+			updateState();
+		});
 	} else {
 		formLayout->removeRow(scoreLabel);
 	}
@@ -45,10 +49,6 @@ SpawnDialog::SpawnDialog(Dataset::Ptr data, QWidget *parent) :
 		selected = s;
 		updateState();
 	});
-	connect(scoreSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged), [this] {
-		updateScoreEffect();
-		updateState();
-	});
 	connect(this, &QDialog::accepted, this, &SpawnDialog::submit);
 	connect(this, &QDialog::rejected, [this] { deleteLater(); });
 
@@ -66,7 +66,9 @@ void SpawnDialog::submit()
 	for (unsigned i = 0; i < selected.size(); ++i)
 		if (selected[i])
 			conf.bands.push_back(i);
-	conf.scoreThresh = scoreSpinBox->value();
+
+	if (scoreEffect) // otherwise, scoreSpinBox might be bust!
+		conf.scoreThresh = scoreSpinBox->value();
 
 	emit spawn(data, conf);
 	deleteLater();
@@ -105,6 +107,9 @@ void SpawnDialog::updateValidity()
 void SpawnDialog::updateScoreEffect()
 {
 	auto d = data->peek<Dataset::Base>();
+	if (!d->hasScores())
+		return; // our GUI elements were busted!
+
 	scoreEffect = features::cutoff_effect(d->scores, scoreSpinBox->value());
 
 	QString format{"<small>%1 / %2 proteins affected</small>"};
