@@ -273,12 +273,6 @@ void Chart::togglePartitions(bool showPartitions)
 		p->setVisible(showPartitions);
 }
 
-void Chart::updateColorset(QVector<QColor> colors)
-{
-	colorset = colors;
-	// TODO: re-initialize [partitions+]markers
-}
-
 void Chart::zoomAt(const QPointF &pos, qreal factor)
 {
 	animate(0);

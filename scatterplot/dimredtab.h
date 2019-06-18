@@ -39,7 +39,6 @@ protected:
 	struct {
 		QString preferredDisplay; // init to none
 		bool showPartitions; // initialized by MainWindow
-		QVector<QColor> colorset; // initialized by MainWindow
 	} guiState;
 
 	ContentMap<DataState> content;

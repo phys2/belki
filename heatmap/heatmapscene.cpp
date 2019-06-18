@@ -93,13 +93,6 @@ void HeatmapScene::reorder()
 	setItemIndexMethod(indexer);
 }
 
-void HeatmapScene::updateColorset(QVector<QColor> colors)
-{
-	colorset = colors;
-	recolor();
-	// TODO: re-initialize markers
-}
-
 void HeatmapScene::updateMarkers()
 {
 	auto p = data->peek<Dataset::Proteins>();

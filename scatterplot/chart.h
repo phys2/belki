@@ -63,7 +63,6 @@ public slots:
 	void display(const QVector<QPointF> &coords);
 	void updatePartitions(bool fresh);
 	void togglePartitions(bool showPartitions);
-	void updateColorset(QVector<QColor> colors);
 	void updateMarkers(bool newDisplay = false);
 	void toggleMarkers(const std::vector<ProteinId> &ids, bool present);
 
@@ -119,7 +118,6 @@ protected:
 	// deferred animation reset
 	QTimer *animReset;
 
-	QVector<QColor> colorset;
 	// data source
 	Dataset::ConstPtr data;
 };

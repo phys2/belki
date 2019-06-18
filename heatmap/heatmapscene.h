@@ -68,8 +68,6 @@ public slots:
 	void recolor();
 	void reorder();
 
-	void updateColorset(QVector<QColor> colors);
-
 	void updateMarkers();
 	void toggleMarkers(const std::vector<ProteinId> &ids, bool present);
 	void togglePartitions(bool showPartitions);
@@ -95,7 +93,6 @@ protected:
 	std::vector<Profile*> profiles;
 	std::unordered_map<ProteinId, Marker> markers;
 	bool showPartitions = true;
-	QVector<QColor> colorset;
 
 	QSize viewport; // size of the viewport in _screen_ coordinates
 	qreal pixelScale; // size of a pixel in scene coordinates

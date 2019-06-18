@@ -39,11 +39,6 @@ ScatterTab::ScatterTab(QWidget *parent) :
 	        this, &ScatterTab::selectDimension);
 
 	/* connect incoming signals */
-	connect(this, &Viewer::inUpdateColorset, [this] (auto colors) {
-		guiState.colorset = colors;
-		if (current)
-			current().scene->updateColorset(colors);
-	});
 	connect(this, &Viewer::inTogglePartitions, [this] (bool show) {
 		guiState.showPartitions = show;
 		if (current)
@@ -82,7 +77,6 @@ void ScatterTab::selectDataset(unsigned id)
 
 	// pass guiState onto chart
 	auto scene = current().scene.get();
-	scene->updateColorset(guiState.colorset);
 	scene->togglePartitions(guiState.showPartitions);
 	scene->updateMarkers();
 	view->setChart(scene);

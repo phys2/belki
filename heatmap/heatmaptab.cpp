@@ -24,11 +24,6 @@ HeatmapTab::HeatmapTab(QWidget *parent) :
 	});
 
 	/* connect incoming signals */
-	connect(this, &Viewer::inUpdateColorset, [this] (auto colors) {
-		guiState.colorset = colors;
-		if (current)
-			current().scene->updateColorset(colors);
-	});
 	connect(this, &Viewer::inTogglePartitions, [this] (bool show) {
 		guiState.showPartitions = show;
 		if (current)
@@ -56,7 +51,6 @@ void HeatmapTab::selectDataset(unsigned id)
 
 	// pass guiState onto scene
 	auto scene = current().scene.get();
-	scene->updateColorset(guiState.colorset);
 	scene->togglePartitions(guiState.showPartitions);
 	scene->updateMarkers();
 	view->setScene(scene);
