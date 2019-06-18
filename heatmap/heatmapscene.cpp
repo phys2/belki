@@ -76,6 +76,10 @@ void HeatmapScene::reorder()
 
 	auto d = data->peek<Dataset::Structure>();
 
+	/* optimization: disable slow stuff as we move everything around */
+	auto indexer = itemIndexMethod();
+	setItemIndexMethod(QGraphicsScene::ItemIndexMethod::NoIndex);
+
 	for (unsigned i = 0; i < profiles.size(); ++i) {
 		auto p = profiles[d->order.index[i]];
 		p->setPos((i / layout.rows) * layout.columnWidth, i % layout.rows);
@@ -84,6 +88,9 @@ void HeatmapScene::reorder()
 	// sync marker positions
 	for (auto& [_, m] : markers)
 		m.rearrange(profiles[m.sampleIndex]->pos());
+
+	/* optimization: restore index (used for hover events) */
+	setItemIndexMethod(indexer);
 }
 
 void HeatmapScene::updateColorset(QVector<QColor> colors)
