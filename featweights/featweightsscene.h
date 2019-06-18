@@ -52,7 +52,7 @@ signals:
 
 public slots:
 	void updateMarkers();
-	void toggleMarker(ProteinId id, bool present);
+	void toggleMarkers(const std::vector<ProteinId> &id, bool present);
 	void toggleImage(bool useAlternate);
 	void updateColorset(QVector<QColor> colors);
 	void setWeighting(Weighting weighting);

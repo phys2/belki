@@ -34,10 +34,10 @@ HeatmapTab::HeatmapTab(QWidget *parent) :
 		if (current)
 			current().scene->togglePartitions(show);
 	});
-	connect(this, &Viewer::inToggleMarker, [this] (ProteinId id, bool present) {
+	connect(this, &Viewer::inToggleMarkers, [this] (auto ids, bool present) {
 		// we do not keep track of markers for inactive scenes
 		if (current)
-			current().scene->toggleMarker(id, present);
+			current().scene->toggleMarkers(ids, present);
 	});
 
 	/* propagate initial state */

@@ -108,20 +108,21 @@ void HeatmapScene::updateMarkers()
 	erase_if(markers, [&p] (auto id) { return !p->markers.count(id); });
 
 	// insert missing
-	for (auto id : p->markers)
-		toggleMarker(id, true);
+	toggleMarkers({p->markers.begin(), p->markers.end()}, true);
 }
 
-void HeatmapScene::toggleMarker(ProteinId id, bool present)
+void HeatmapScene::toggleMarkers(const std::vector<ProteinId> &ids, bool present)
 {
-	if (present) {
-		try {
-			auto index = data->peek<Dataset::Base>()->protIndex.at(id);
-			auto pos = profiles[index]->pos();
-			markers.try_emplace(id, this, index, pos);
-		} catch (...) {}
-	} else {
-		markers.erase(id);
+	for (auto id : ids) {
+		if (present) {
+			try {
+				auto index = data->peek<Dataset::Base>()->protIndex.at(id);
+				auto pos = profiles[index]->pos();
+				markers.try_emplace(id, this, index, pos);
+			} catch (...) {}
+		} else {
+			markers.erase(id);
+		}
 	}
 }
 

@@ -238,17 +238,19 @@ void FeatweightsScene::updateMarkers()
 	computeWeights();
 }
 
-void FeatweightsScene::toggleMarker(ProteinId id, bool present)
+void FeatweightsScene::toggleMarkers(const std::vector<ProteinId> &ids, bool present)
 {
-	try {
-		auto index = data->peek<Dataset::Base>()->protIndex.at(id);
-		if (present)
-			markers.insert(index);
-		else
-			markers.erase(index);
+	for (auto id : ids) {
+		try {
+			auto index = data->peek<Dataset::Base>()->protIndex.at(id);
+			if (present)
+				markers.insert(index);
+			else
+				markers.erase(index);
+		} catch (std::out_of_range&) {}
+	}
 
-		computeWeights();
-	} catch (std::out_of_range&) {}
+	computeWeights();
 }
 
 void FeatweightsScene::toggleImage(bool useAlternate)

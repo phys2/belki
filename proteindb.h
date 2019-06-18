@@ -66,7 +66,7 @@ signals:
 	void ioError(const QString &message);
 	void proteinAdded(ProteinId id);
 	void proteinChanged(ProteinId id);
-	void markerToggled(ProteinId id, bool present);
+	void markersToggled(const std::vector<ProteinId> &id, bool present);
 
 protected:
 	bool valid(ProteinId id);

@@ -84,7 +84,7 @@ bool ProteinDB::addMarker(ProteinId id)
 	auto [at, isnew] = data.markers.insert(id);
 	data.l.unlock();
 	if (isnew)
-		emit markerToggled(id, true);
+		emit markersToggled({id}, true);
 	return isnew;
 }
 
@@ -94,7 +94,7 @@ bool ProteinDB::removeMarker(ProteinId id)
 	bool affected = data.markers.erase(id);
 	data.l.unlock();
 	if (affected)
-		emit markerToggled(id, false);
+		emit markersToggled({id}, false);
 	return affected;
 }
 
@@ -112,19 +112,17 @@ size_t ProteinDB::importMarkers(const std::vector<QString> &names)
 	}
 	data.l.unlock();
 
-	for (auto id : affected)
-		emit markerToggled(id, true); // TODO: causes lots of calc. in featw.
+	emit markersToggled(affected, true);
 	return affected.size();
 }
 
 void ProteinDB::clearMarkers()
 {
 	data.l.lockForWrite();
-	std::set<ProteinId> markers;
-	data.markers.swap(markers);
+	std::vector<ProteinId> affected(data.markers.begin(), data.markers.end());
+	data.markers.clear();
 	data.l.unlock();
-	for (auto &id : markers)
-		emit markerToggled(id, false); // TODO: causes lots of calc. in featw.
+	emit markersToggled(affected, false);
 }
 
 void ProteinDB::updateColorset(const QVector<QColor> &colors)

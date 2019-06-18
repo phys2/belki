@@ -74,7 +74,7 @@ public slots:
 	void updateColorset(QVector<QColor> colors);
 
 	void updateMarkers();
-	void toggleMarker(ProteinId id, bool present);
+	void toggleMarkers(const std::vector<ProteinId> &ids, bool present);
 	void togglePartitions(bool showPartitions);
 
 protected:

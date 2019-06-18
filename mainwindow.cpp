@@ -38,7 +38,7 @@ MainWindow::MainWindow(CentralHub &hub) :
 		// see below; disable when it works
 		connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset);
 		connect(this, &MainWindow::partitionsToggled, v, &Viewer::inTogglePartitions);
-		connect(&hub.proteins, &ProteinDB::markerToggled, v, &Viewer::inToggleMarker);
+		connect(&hub.proteins, &ProteinDB::markersToggled, v, &Viewer::inToggleMarkers);
 
 		// connect signalling out of view
 		connect(v, &Viewer::markerToggled, this, &MainWindow::toggleMarker);
@@ -130,8 +130,10 @@ void MainWindow::setupSignals()
 
 	/* notifications from Protein db */
 	connect(&hub.proteins, &ProteinDB::proteinAdded, this, &MainWindow::addProtein);
-	connect(&hub.proteins, &ProteinDB::markerToggled, this, [this] (auto id, bool present) {
-		this->markerItems.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
+	connect(&hub.proteins, &ProteinDB::markersToggled, this, [this] (auto ids, bool present) {
+		auto state = present ? Qt::Checked : Qt::Unchecked;
+		for (auto id : ids)
+			this->markerItems.at(id)->setCheckState(state);
 	});
 
 	/* notifications from data/storage thread */

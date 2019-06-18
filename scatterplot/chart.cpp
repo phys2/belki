@@ -313,20 +313,22 @@ void Chart::updateMarkers(bool newDisplay)
 	}
 
 	// insert missing
-	for (auto id : p->markers)
-		toggleMarker(id, true);
+	toggleMarkers({p->markers.begin(), p->markers.end()}, true);
 }
 
-void Chart::toggleMarker(ProteinId id, bool present)
+void Chart::toggleMarkers(const std::vector<ProteinId> &ids, bool present)
 {
-	if (present) {
-		if (master->pointsVector().empty()) // we are not ready yet
-			return;
-		try {
-			markers.try_emplace(id, this, data->peek<Dataset::Base>()->protIndex.at(id), id);
-		} catch (...) {}
-	} else {
-		markers.erase(id);
+	if (present && master->pointsVector().empty()) // we are not ready yet
+		return;
+
+	for (auto id : ids) {
+		if (present) {
+			try {
+				markers.try_emplace(id, this, data->peek<Dataset::Base>()->protIndex.at(id), id);
+			} catch (...) {}
+		} else {
+			markers.erase(id);
+		}
 	}
 }
 

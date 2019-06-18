@@ -204,18 +204,19 @@ void DistmatScene::updateMarkers()
 	erase_if(markers, [&p] (auto id) { return !p->markers.count(id); });
 
 	// insert missing
-	for (auto id : p->markers)
-		toggleMarker(id, true);
+	toggleMarkers({p->markers.begin(), p->markers.end()}, true);
 }
 
-void DistmatScene::toggleMarker(ProteinId id, bool present)
+void DistmatScene::toggleMarkers(const std::vector<ProteinId> &ids, bool present)
 {
-	if (present) {
-		try {
-			markers.try_emplace(id, this, data->peek<Dataset::Base>()->protIndex.at(id), id);
-		} catch (...) {}
-	} else {
-		markers.erase(id);
+	for (auto id : ids) {
+		if (present) {
+			try {
+				markers.try_emplace(id, this, data->peek<Dataset::Base>()->protIndex.at(id), id);
+			} catch (...) {}
+		} else {
+			markers.erase(id);
+		}
 	}
 }
 

@@ -65,7 +65,7 @@ public slots:
 	void togglePartitions(bool showPartitions);
 	void updateColorset(QVector<QColor> colors);
 	void updateMarkers(bool newDisplay = false);
-	void toggleMarker(ProteinId id, bool present);
+	void toggleMarkers(const std::vector<ProteinId> &ids, bool present);
 
 	void zoomAt(const QPointF &pos, qreal factor);
 	void undoZoom(bool full = false);

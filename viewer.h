@@ -25,7 +25,7 @@ signals:
 	// signals from outside that we might react to
 	void inUpdateColorset(QVector<QColor> colors);
 	void inTogglePartitions(bool show);
-	void inToggleMarker(ProteinId id, bool present);
+	void inToggleMarkers(const std::vector<ProteinId> ids, bool present);
 
 	// signals emitted by us
 	void markerToggled(ProteinId id, bool present);
