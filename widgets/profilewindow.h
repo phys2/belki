@@ -5,22 +5,20 @@
 
 #include "ui_profilewindow.h"
 
-class MainWindow;
 class ProfileChart;
+class MainWindow;
 
 class ProfileWindow : public QMainWindow, private Ui::ProfileWindow
 {
 	Q_OBJECT
 
-	// hack override to cast to right type.
-	// Note: only works with object refence (e.g. internally) because non-virtual
-	MainWindow *parentWidget();
-
 public:
-	explicit ProfileWindow(ProfileChart *source, MainWindow *parent = nullptr);
+	// note: we only accept MainWindows as parent
+	explicit ProfileWindow(ProfileChart *source, QWidget *parent);
 
 protected:
 	ProfileChart *chart;
+	MainWindow *mainWindow;
 };
 
 #endif // PROFILEWINDOW_H

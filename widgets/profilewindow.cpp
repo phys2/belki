@@ -2,9 +2,13 @@
 #include "profilechart.h"
 #include "mainwindow.h"
 
-ProfileWindow::ProfileWindow(ProfileChart *source, MainWindow *parent) :
-    QMainWindow(parent), chart(new ProfileChart(source))
+ProfileWindow::ProfileWindow(ProfileChart *source, QWidget *parent) :
+    QMainWindow(parent), chart(new ProfileChart(source)),
+    mainWindow(qobject_cast<MainWindow*>(parent))
 {
+	if (!mainWindow)
+		throw std::runtime_error("Parent of ProfileWindow is not a MainWindow!");
+
 	setupUi(this);
 
 	/* toolbar */
@@ -19,12 +23,11 @@ ProfileWindow::ProfileWindow(ProfileChart *source, MainWindow *parent) :
 
 	/* actions */
 	connect(actionSavePlot, &QAction::triggered, [this] {
-		auto parent = parentWidget();
-		auto title = parent->getTitle();
+		auto title = mainWindow->getTitle();
 		auto desc = chart->title();
 		if (desc.isEmpty())
 			desc = "Selected Profiles";
-		parent->getIo()->renderToFile(chartView, {title, desc});
+		mainWindow->getIo()->renderToFile(chartView, {title, desc});
 	});
 	connect(actionShowLabels, &QAction::toggled, chart, &ProfileChart::toggleLabels);
 	connect(actionShowIndividual, &QAction::toggled, chart, &ProfileChart::toggleIndividual);
@@ -40,9 +43,4 @@ ProfileWindow::ProfileWindow(ProfileChart *source, MainWindow *parent) :
 	//setAttribute(Qt::WA_DeleteOnClose); CAUSES CRASH IN QT :-/ FIXME Who's gonna delete?
 	//setAttribute(Qt::WA_ShowWithoutActivating); opens window in background (hidden)
 	show();
-}
-
-MainWindow *ProfileWindow::parentWidget()
-{
-	return qobject_cast<MainWindow*>(QMainWindow::parentWidget());
 }

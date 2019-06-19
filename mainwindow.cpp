@@ -16,7 +16,6 @@
 #include <QMessageBox>
 #include <QTimer>
 
-#include <random>
 #include <iostream>
 
 constexpr auto hierarchyPostfix = " (Hierarchy)";
@@ -42,7 +41,7 @@ MainWindow::MainWindow(CentralHub &hub) :
 
 		// connect signalling out of view
 		connect(v, &Viewer::markerToggled, this, &MainWindow::toggleMarker);
-		connect(v, &Viewer::cursorChanged, this, &MainWindow::updateCursorList);
+		connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateProteins);
 		connect(v, &Viewer::orderRequested, &hub, &CentralHub::changeOrder);
 		connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
 		connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
@@ -75,17 +74,6 @@ MainWindow::MainWindow(CentralHub &hub) :
 			current->selectDataset(id);
 	});
 	/// does not work right now with heatmap, distmap, feattab. why? */
-
-	/* cursor chart */
-	cursorPlot->setRenderHint(QPainter::Antialiasing);
-	// common background for plot and its container
-	auto p = cursorInlet->palette();
-	p.setColor(QPalette::Window, p.color(QPalette::Base));
-	cursorInlet->setPalette(p);
-	// move button into chart (evil :D)
-	profileViewButton->setParent(cursorPlot);
-	profileViewButton->move(4, 4);
-	cursorTopBar->deleteLater();
 
 	setupMarkerControls();
 	setupSignals(); // after setupToolbar(), signal handlers rely on initialized actions
@@ -162,6 +150,7 @@ void MainWindow::setupSignals()
 		setDataset(datasetSelect->currentData().value<Dataset::Ptr>());
 	});
 	connect(this, &MainWindow::datasetSelected, &hub, &CentralHub::setCurrent);
+	connect(this, &MainWindow::datasetSelected, [this] { profiles->setData(data); });
 	connect(this, &MainWindow::datasetSelected, this, &MainWindow::setSelectedDataset);
 
 	/* selecting/altering partition */
@@ -225,7 +214,6 @@ void MainWindow::setupActions()
 	loadMarkersButton->setDefaultAction(actionLoadMarkers);
 	saveMarkersButton->setDefaultAction(actionSaveMarkers);
 	clearMarkersButton->setDefaultAction(actionClearMarkers);
-	profileViewButton->setDefaultAction(actionProfileView);
 
 	connect(actionQuit, &QAction::triggered, [] { QApplication::exit(); });
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
@@ -288,11 +276,6 @@ void MainWindow::setupActions()
 			emit hub.spawn(data, config, dimredTab->currentMethod());
 		});
 	});
-
-	connect(actionProfileView, &QAction::triggered, [this] {
-		if (cursorChart)
-			new ProfileWindow(cursorChart, this);
-	});
 }
 
 void MainWindow::setupMarkerControls()
@@ -350,21 +333,6 @@ void MainWindow::setupMarkerControls()
 void MainWindow::updateState(Dataset::Touched affected)
 {
 	resetMarkerControls();
-
-	/* set up cursor chart */
-	if (affected & Dataset::Touch::BASE) {
-		if (data) {
-			// TODO: rework the ownership/lifetime stuff (or wait for our own chartview class)
-			auto old = cursorChart;
-			cursorChart = new ProfileChart(data);
-			cursorChart->setCategories(data->peek<Dataset::Base>()->dimensions);
-			cursorPlot->setChart(cursorChart);
-			delete old;
-			cursorPlot->setVisible(true);
-		} else {
-			cursorPlot->setVisible(false);
-		}
-	}
 
 	if (!data) {
 		/* hide and disable widgets that need data or even more */
@@ -449,80 +417,6 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 
 	// TODO wronge place to do this in new storage concept
 	setFilename(data ? hub.store.name() : "");
-}
-
-void MainWindow::updateCursorList(QVector<unsigned> samples, QString title)
-{
-	/* clear plot */
-	if (cursorChart) {
-		cursorChart->setTitle(title);
-		cursorChart->clear();
-	}
-
-	if (samples.empty() || !data) {
-		cursorList->clear();
-		cursorWidget->setDisabled(true);
-		actionProfileView->setDisabled(true);
-		return;
-	}
-
-	/* determine marker proteins contained in samples */
-	auto d = data->peek<Dataset::Base>();
-	auto p = data->peek<Dataset::Proteins>();
-	std::set<unsigned> markers;
-	for (auto i : qAsConst(samples)) {
-		if (p->markers.count(d->protIds[i]))
-			markers.insert(i);
-	}
-
-	/* set up plot */
-	for (auto i : qAsConst(samples))
-		cursorChart->addSample(i, markers.count(i));
-	cursorChart->finalize();
-
-	/* set up list */
-
-	// determine how many lines we can fit
-	auto total = samples.size();
-	auto testFont = cursorList->currentFont(); // replicate link font
-	testFont.setBold(true);
-	testFont.setUnderline(true);
-	auto showMax = cursorList->contentsRect().height() /
-	        QFontMetrics(testFont).lineSpacing() - 1;
-
-	// create format string and reduce set
-	auto text = QString("%1");
-	if (total > showMax) {
-		text.append("… ");
-		// shuffle before cutting off
-		std::shuffle(samples.begin(), samples.end(), std::mt19937(0));
-		samples.resize(showMax);
-	}
-	text.append(QString("(%1 total)").arg(total));
-
-	// sort by name -- _after_ set reduction to get a broad representation
-	std::sort(samples.begin(), samples.end(), [&d,&p] (unsigned a, unsigned b) {
-		return d->lookup(p, a).name < d->lookup(p, b).name;
-	});
-
-	// compose list
-	auto s = data->peek<Dataset::Structure>();
-	QString content;
-	QString tpl("<b><a href='https://uniprot.org/uniprot/%1_%2'>%1</a></b> <small>%3 <i>%4</i></small><br>");
-	for (auto i : qAsConst(samples)) {
-		 // highlight marker proteins
-		if (markers.count(i))
-			content.append("<small>★</small>");
-		auto &prot = d->lookup(p, i);
-		auto &m = s->clustering.memberships[i];
-		auto clusters = std::accumulate(m.begin(), m.end(), QStringList(),
-		    [&s] (QStringList a, unsigned b) { return a << s->clustering.clusters.at(b).name; });
-		content.append(tpl.arg(prot.name, prot.species, clusters.join(", "), prot.description));
-	}
-	cursorList->setText(text.arg(content));
-
-	cursorWidget->setEnabled(true);
-	actionProfileView->setEnabled(true);
 }
 
 void MainWindow::resetMarkerControls()

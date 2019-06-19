@@ -13,7 +13,6 @@
 #include <unordered_map>
 
 class CentralHub;
-class ProfileChart;
 class QLabel;
 class QStandardItem;
 class QTreeWidget;
@@ -26,7 +25,7 @@ class MainWindow : public QMainWindow, private Ui::MainWindow
 public:
 	explicit MainWindow(CentralHub &hub);
 
-	const QString& getTitle() { return title; }
+	const QString& getTitle() const { return title; }
 	FileIO *getIo() { return io; }
 
 public slots:
@@ -37,7 +36,6 @@ public slots:
 	void toggleMarker(ProteinId id, bool present);
 
 	void newDataset(Dataset::Ptr data);
-	void updateCursorList(QVector<unsigned> samples, QString title);
 
 signals:
 	void datasetSelected(unsigned id);
@@ -66,7 +64,6 @@ protected:
 	std::unordered_map<ProteinId, QStandardItem*> markerItems;
 
 	std::vector<Viewer*> views;
-	ProfileChart *cursorChart = nullptr;
 	FileIO *io;
 
 	struct {
