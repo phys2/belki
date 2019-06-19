@@ -18,12 +18,15 @@ public:
 
 protected:
 	struct DataState : public Viewer::DataState {
-		int dimension = -1;
+		int dimension = -1; // -1 means none
+		int secondaryDimension = -1; // -1 means scores
 		bool hasScores;
 		std::unique_ptr<Chart> scene;
 	};
 
+	void refillDimensionSelects(bool onlySecondary = false);
 	void selectDimension(int index);
+	void selectSecondaryDimension(int index);
 	bool updateEnabled();
 
 	struct {

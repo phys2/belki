@@ -26,6 +26,7 @@ unsigned cutoff_effect(const vec& source, double threshold);
 void apply_cutoff(vec& feats, const vec &scores, double threshold);
 
 std::vector<QVector<QPointF>> pointify(const vec &source);
+QVector<QPointF> scatter(const vec &x, size_t xi, const vec &y, size_t yi);
 
 }
 

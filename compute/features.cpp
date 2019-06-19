@@ -61,4 +61,12 @@ std::vector<QVector<QPointF>> pointify(const vec &source)
 	return ret;
 }
 
+QVector<QPointF> scatter(const vec &x, size_t xi, const vec &y, size_t yi)
+{
+	QVector<QPointF> ret(x.size());
+	for (size_t i = 0; i < x.size(); ++i)
+		ret[i] = {x[i][xi], y[i][yi]};
+	return ret;
+}
+
 }

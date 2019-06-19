@@ -29,7 +29,7 @@
     </property>
     <item>
      <widget class="QWidget" name="topBar" native="true">
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <layout class="QHBoxLayout" name="horizontalLayout">
        <property name="leftMargin">
         <number>0</number>
        </property>
@@ -45,12 +45,42 @@
        <item>
         <widget class="QLabel" name="dimensionLabel">
          <property name="text">
-          <string>Dimension:</string>
+          <string>Plot on X:</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="dimensionSelect">
+        <widget class="QComboBox" name="dimXSelect">
+         <property name="sizeAdjustPolicy">
+          <enum>QComboBox::AdjustToContents</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Preferred</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>1</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="dimensionLabel_2">
+         <property name="text">
+          <string>Plot on Y:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="dimYSelect">
          <property name="sizeAdjustPolicy">
           <enum>QComboBox::AdjustToContents</enum>
          </property>
