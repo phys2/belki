@@ -29,6 +29,11 @@ Chart::Chart(Dataset::ConstPtr data) :
 
 	addAxis(ax, Qt::AlignBottom);
 	addAxis(ay, Qt::AlignLeft);
+	for (auto axis : {ax, ay}) {
+		axis->setTickType(QtCharts::QValueAxis::TickType::TicksDynamic);
+		axis->setTickAnchor(0.);
+		connect(axis, &QtCharts::QValueAxis::rangeChanged, [=] { updateTicks(axis); });
+	}
 
 	/* set up master series */
 	master = new Proteins("All proteins", Qt::gray, this);
@@ -86,10 +91,13 @@ void Chart::display(const QVector<QPointF> &coords)
 
 	/* update ranges cheap & dirty */
 	auto bbox = QPolygonF(master->pointsVector()).boundingRect();
+	// TODO: maintain w/h ratio of 1
 	auto offset = bbox.width() * 0.05; // give some breathing space
 	bbox.adjust(-offset, -offset, offset, offset);
 	ax->setRange(bbox.left(), bbox.right());
 	ay->setRange(bbox.top(), bbox.bottom());
+	for (auto axis : {ax, ay})
+		updateTicks(axis);
 
 	/* update other sets */
 	updatePartitions(false);
@@ -331,6 +339,13 @@ void Chart::animate(int msec) {
 	if (msec == 0)
 		setAnimationOptions(NoAnimation); // yes, this avoids slowdown…
 	animReset->start(msec + 1000);
+}
+
+void Chart::updateTicks(QtCharts::QValueAxis *axis)
+{
+	auto cleanNumber = QString::number(axis->max() - axis->min(), 'g', 1).toDouble();
+	auto interval = cleanNumber * 0.25;
+	axis->setTickInterval(interval);
 }
 
 Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)

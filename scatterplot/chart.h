@@ -85,6 +85,7 @@ signals:
 
 protected:
 	void animate(int msec);
+	static void updateTicks(QtCharts::QValueAxis *axis);
 
 	/* state variables */
 	struct {
