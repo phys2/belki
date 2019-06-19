@@ -346,7 +346,7 @@ bool Dataset::readSimpleSource(QTextStream &in, const QString &name)
 		b.features.push_back(std::move(coeffs));
 	}
 
-	return finalizeRead(false); // unlocks b // TODO: should pass 'true'
+	return finalizeRead(true); // unlocks b
 }
 
 bool Dataset::finalizeRead(bool normalize)
