@@ -54,9 +54,8 @@ public:
 
 protected:
 	void setupSignals();
-	void addDataset(DataPtr data);
 
-	DataPtr createDataset();
+	DataPtr createDataset(DatasetConfiguration config);
 
 	DataPtr current();
 	void runOnCurrent(const std::function<void(DataPtr)> &work);

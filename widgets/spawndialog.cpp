@@ -9,8 +9,8 @@
 SpawnDialog::SpawnDialog(Dataset::Ptr data, QWidget *parent) :
     QDialog(parent), data(data)
 {
+	source_id = data->config().id;
 	auto d = data->peek<Dataset::Base>();
-	source_id = d->conf.id;
 	auto dim = (unsigned)d->dimensions.size();
 
 	// select all by default (mirroring scene state)

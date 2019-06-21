@@ -20,7 +20,7 @@ class QTextStream;
 // a configuration that describes processing resulting in a dataset
 struct DatasetConfiguration {
 	QString name; // user-specified identifier
-	unsigned id; // index of dataset (temporary)
+	unsigned id; // index of dataset
 	unsigned parent = 0; // index of dataset this one was spawned from (0 == none)
 	std::vector<unsigned> bands; // the feature bands that were kept
 	double scoreThresh = 0.; // score cutoff that was applied
@@ -91,8 +91,6 @@ public:
 		const auto& lookup(View<ProteinDB::Public> &v, unsigned index) const {
 			return v->proteins[protIds[index]];
 		}
-		// meta information for this dataset
-		DatasetConfiguration conf;
 		// pre-cached set of points
 		std::vector<QVector<QPointF>> featurePoints;
 	};
@@ -123,22 +121,22 @@ public:
 	};
 	using Touched = QFlags<Touch>;
 
-	explicit Dataset(ProteinDB &proteins);
+	explicit Dataset(ProteinDB &proteins, DatasetConfiguration conf);
+	const DatasetConfiguration& config() const { return conf; }
+	unsigned id() const { return conf.id; }
 
 	static const std::map<OrderBy, QString> availableOrders();
 
 	template<typename T>
 	View<T> peek() const; // see specializations in cpp
 
-	unsigned id() const;
-	void setId(unsigned id);
 	void changeFAMS(float k); // to be called from different thread
 	void cancelFAMS(); // can be called from different thread
 
 	QByteArray exportDisplay(const QString &name) const;
 
-	void spawn(ConstPtr source, const DatasetConfiguration& config);
-	bool readSource(QTextStream &in, const QString& name, const QString &featureCol);
+	void spawn(Features data);
+	void spawn(ConstPtr source);
 
 	void computeDisplay(const QString &name);
 	void computeDisplays();
@@ -158,8 +156,6 @@ signals:
 	void ioError(const QString &message);
 
 protected:
-	bool readSimpleSource(QTextStream &in, const QString& name);
-	bool finalizeRead(bool normalize);
 	void swapClustering(Clustering &cl, bool genericNames, bool pruneCl, bool reorderProts);
 
 	void pruneClusters();
@@ -168,8 +164,10 @@ protected:
 	void colorClusters();
 	void orderProteins(OrderBy reference);
 
-	static QStringList trimCrap(QStringList values);
+	// meta information for this dataset
+	DatasetConfiguration conf;
 
+	// our current state
 	Base b;
 	Representation r;
 	Structure s;

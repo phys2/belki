@@ -376,17 +376,14 @@ void MainWindow::updateState(Dataset::Touched affected)
 void MainWindow::newDataset(Dataset::Ptr dataset)
 {
 	/* add to datasets */
-	auto d = dataset->peek<Dataset::Base>();
-	auto pId = d->conf.parent;
-	auto parent = (pId ? datasetItems.at(pId)
-	                   : datasetTree->invisibleRootItem()); // top level
+	auto conf = dataset->config();
+	auto parent = (conf.parent ? datasetItems.at(conf.parent)
+	                           : datasetTree->invisibleRootItem()); // top level
 	auto item = new QTreeWidgetItem(parent);
 	item->setExpanded(true);
-	item->setText(0, d->conf.name);
+	item->setText(0, conf.name);
 	item->setData(0, Qt::UserRole, QVariant::fromValue(dataset));
-	datasetItems[d->conf.id] = item;
-
-	d.unlock(); // avoid dragging lock through signal chain
+	datasetItems[conf.id] = item;
 
 	/* auto select */
 	setDataset(dataset);

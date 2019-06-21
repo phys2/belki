@@ -2,6 +2,7 @@
 #define STORAGE_H
 
 #include "utils.h"
+#include "model.h"
 
 #include <QObject>
 #include <memory>
@@ -21,9 +22,11 @@ public:
 
 	QString name();
 
-	std::unique_ptr<QTextStream> openDataset(const QString &filename);
+	Features openDataset(const QString &filename, const QString &featureColName = "Dist");
 	std::unique_ptr<QTextStream> readAnnotations(const QString &name);
 	std::unique_ptr<QJsonObject> readHierarchy(const QString &name);
+
+	Features readSource(QTextStream &in, const QString &featureColName);
 
 	QByteArray readFile(const QString &filename);
 
@@ -43,10 +46,14 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void exportAnnotations(const QString &filename, std::shared_ptr<Dataset const> data);
 
 protected:
+	Features readSimpleSource(QTextStream &in);
+	Features finalizeRead(Features ret, bool normalize);
+
 	void storeDisplay(const Dataset &data, const QString& name);
-	void freadError(const QString &filename);
 
 	void close(bool save = false);
+	void freadError(const QString &filename);
+	static QStringList trimCrap(QStringList values);
 
 	struct : public RWLockable {
 		QString sourcename; // a file can have several source data in general, we only support/select one right now

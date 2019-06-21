@@ -14,8 +14,8 @@
 
 #include <iostream>
 
-Dataset::Dataset(ProteinDB &proteins)
-    : proteins(proteins)
+Dataset::Dataset(ProteinDB &proteins, DatasetConfiguration conf)
+    : proteins(proteins), conf(conf)
 {
 	qRegisterMetaType<DatasetConfiguration>();
 	qRegisterMetaType<Touched>("Touched");
@@ -43,23 +43,21 @@ View<Dataset::Structure> Dataset::peek() const { return View(s); }
 template<>
 View<Dataset::Proteins> Dataset::peek() const { return proteins.peek(); }
 
-unsigned Dataset::id() const
+void Dataset::spawn(Features data)
 {
-	QReadLocker _b(&b.l);
-	return b.conf.id;
+	b = data;
+
+	// ensure clustering is properly initialized if accessed
+	s.clustering = Clustering(b.protIds.size());
+
+	// calculate initial order
+	orderProteins(s.order.reference);
 }
 
-void Dataset::setId(unsigned id)
-{
-	QWriteLocker _b(&b.l);
-	b.conf.id = id;
-}
-
-void Dataset::spawn(ConstPtr srcholder, const DatasetConfiguration &conf)
+void Dataset::spawn(ConstPtr srcholder)
 {
 	auto bIn = srcholder->peek<Base>();
 	b.l.lockForWrite();
-	b.conf = conf;
 
 	// only carry over dimensions we keep
 	for (auto i : conf.bands)
@@ -69,7 +67,7 @@ void Dataset::spawn(ConstPtr srcholder, const DatasetConfiguration &conf)
 	b.protIds = bIn->protIds;
 
 	// only carry over features/scores we keep
-	auto fill_stripped = [&conf] (const auto &source, auto &target) {
+	auto fill_stripped = [this] (const auto &source, auto &target) {
 		target.resize(source.size(), std::vector<double>(conf.bands.size()));
 		tbb::parallel_for(size_t(0), target.size(), [&] (size_t i) {
 			for (size_t x = 0; x < conf.bands.size(); ++x)
@@ -188,216 +186,6 @@ void Dataset::changeFAMS(float k)
 void Dataset::cancelFAMS()
 {
 	changeFAMS(-1);
-}
-
-bool Dataset::readSource(QTextStream &in, const QString &name, const QString &featureColName)
-{
-	// the featureColName argument is a hack. We probably want some "Config" struct instead
-
-	auto header = in.readLine().split("\t");
-
-	/* simple source files have first header field blank (first column is still proteins) */
-	if (!header.empty() && header.first().isEmpty()) {
-		in.seek(0);
-		return readSimpleSource(in, name);
-	}
-
-	if (header.contains("") || header.removeDuplicates()) {
-		emit ioError("Malformed header: Duplicate or empty columns!");
-		return false;
-	}
-	if (header.size() == 0 || header.first() != "Protein") {
-		emit ioError("Could not parse file!<p>The first column must contain protein names.</p>");
-		return false;
-	}
-	int nameCol = header.indexOf("Pair");
-	int featureCol = header.indexOf(featureColName.isEmpty() ? "Dist" : featureColName);
-	int scoreCol = header.indexOf("Score");
-	if (nameCol == -1 || featureCol == -1 || scoreCol == -1) {
-		emit ioError("Could not parse file!<p>Not all necessary columns found.</p>");
-		return false;
-	}
-
-	b.l.lockForWrite();
-	b.conf.name = name; // TODO
-	// hack
-	if (!featureColName.isEmpty() && featureColName != "Dist")
-		b.conf.name += " " + featureColName;
-
-	/* fill in dimensions, features, scores */
-	std::map<QString, unsigned> dimensions;
-	while (!in.atEnd()) {
-		auto line = in.readLine().split("\t");
-		if (line.empty() || line[0].isEmpty())
-			break; // early EOF
-
-		if (line.size() < header.size()) {
-			emit ioError(QString("Stopped at '%1', incomplete row!").arg(line[0]));
-			break; // avoid message flood
-		}
-
-		/* setup metadata */
-		auto protid = proteins.add(line[0]);
-
-		/* determine protein index */
-		size_t row; // the protein id we are altering
-		auto index = b.protIndex.find(protid);
-		if (index == b.protIndex.end()) {
-			b.protIds.push_back(protid);
-			auto len = b.protIds.size();
-			b.features.resize(len, std::vector<double>(dimensions.size()));
-			b.scores.resize(len, std::vector<double>(dimensions.size()));
-			row = len - 1;
-			b.protIndex[protid] = row;
-		} else {
-			row = index->second;
-		}
-
-		/* determine dimension index */
-		size_t col; // the dimension we are altering
-		auto dIndex = dimensions.find(line[nameCol]);
-		if (dIndex == dimensions.end()) {
-			b.dimensions.append(line[nameCol]);
-			auto len = (size_t)b.dimensions.size();
-			for (auto &i : b.features)
-				i.resize(len);
-			for (auto &i : b.scores)
-				i.resize(len);
-			col = len - 1;
-			dimensions[line[nameCol]] = col;
-		} else {
-			col = dIndex->second;
-		}
-
-		/* read coefficients */
-		bool success = true;
-		bool ok;
-		double feat, score;
-		feat = line[featureCol].toDouble(&ok);
-		success = success && ok;
-		score = line[scoreCol].toDouble(&ok);
-		if (!success) {
-			auto name = proteins.peek()->proteins[protid].name;
-			auto err = QString("Stopped at protein '%1', malformed row!").arg(name);
-			emit ioError(err);
-			break; // avoid message flood
-		}
-
-		/* fill-in features and scores */
-		b.features[row][col] = feat;
-		b.scores[row][col] = std::max(score, 0.); // TODO temporary clipping
-	}
-
-	// TODO: hack to not normalize abundance values
-	bool normalize = featureColName.isEmpty() || featureColName == "Dist";
-	return finalizeRead(normalize); // will unlock b for us
-}
-
-bool Dataset::readSimpleSource(QTextStream &in, const QString &name)
-{
-	auto header = in.readLine().split("\t");
-	header.pop_front(); // first column (also expected to be empty)
-	if (header.contains("") || header.removeDuplicates()) {
-		emit ioError("Malformed header: Duplicate or empty columns!");
-		return false;
-	}
-
-	b.l.lockForWrite();
-	b.conf.name = name; // TODO
-
-	/* fill in dimensions & features */
-	b.dimensions = trimCrap(header);
-	auto len = b.dimensions.size();
-	std::set<QString> seen; // names of read proteins
-	while (!in.atEnd()) {
-		auto line = in.readLine().split("\t");
-		if (line.empty() || line[0].isEmpty())
-			break; // early EOF
-
-		if (line.size() < len + 1) {
-			emit ioError(QString("Stopped at '%1', incomplete row!").arg(line[0]));
-			break; // avoid message flood
-		}
-
-		/* setup metadata */
-		auto protid = proteins.add(line[0]);
-		auto name = proteins.peek()->proteins[protid].name;
-
-		/* check duplicates */
-		if (seen.count(name))
-			emit ioError(QString("Multiples of protein '%1' found in the dataset!").arg(name));
-		seen.insert(name);
-
-		/* read coefficients */
-		bool success = true;
-		std::vector<double> coeffs((size_t)len);
-		for (int i = 0; i < len; ++i) {
-			bool ok;
-			coeffs[(size_t)i] = line[i+1].toDouble(&ok);
-			success = success && ok;
-		}
-		if (!success) {
-			emit ioError(QString("Stopped at protein '%1', malformed row!").arg(name));
-			break; // avoid message flood
-		}
-
-		/* append */
-		b.protIndex[protid] = b.protIds.size();
-		b.protIds.push_back(protid);
-		b.features.push_back(std::move(coeffs));
-	}
-
-	return finalizeRead(true); // unlocks b
-}
-
-bool Dataset::finalizeRead(bool normalize)
-{
-	/* Note: caller has locked b for us for writing */
-
-	if (b.features.empty() || b.dimensions.empty()) {
-		emit ioError(QString("Could not read any valid data rows from file!"));
-		b.l.unlock();
-		return false;
-	}
-
-	/* setup ranges */
-	features::Range range(b.features);
-	// normalize, if needed
-	if (range.min < 0 || range.max > 1) { // simple heuristic to auto-normalize
-		// cut off negative values
-		range.min = 0.;
-		double scale = 1.;
-		if (normalize) {
-			scale = 1. / (range.max - range.min);
-			emit ioError(QString("Values outside expected range (instead [%1, %2])."
-			                     "<br>Normalizing to [0, 1].").arg(range.min).arg(range.max));
-		}
-
-		for (auto &v : b.features) {
-			std::for_each(v.begin(), v.end(), [min=range.min, scale] (double &e) {
-				e = std::max(e - min, 0.) * scale;
-			});
-		}
-	}
-	b.featureRange = {0., (normalize ? 1. : range.max)};
-	if (b.hasScores())
-		b.scoreRange = features::Range(b.scores);
-
-	/* pre-cache features as QPoints for plotting */
-	b.featurePoints = features::pointify(b.features);
-
-	s.l.lockForWrite();
-	// unlock before further work, but after locking s; so readers will only see consistent state
-	b.l.unlock();
-	// ensure clustering is properly initialized if accessed
-	s.clustering = Clustering(b.protIds.size());
-	// calculate initial order
-	orderProteins(s.order.reference);
-	s.l.unlock();
-
-	emit update({Touch::BASE, Touch::ORDER});
-
-	return true;
 }
 
 bool Dataset::readDisplay(const QString& name, QTextStream &in)
@@ -858,36 +646,18 @@ void Dataset::orderProteins(OrderBy reference)
 	s.order = target;
 }
 
-QStringList Dataset::trimCrap(QStringList values)
+Dataset::Base &Dataset::Base::operator=(Features in)
 {
-	if (values.empty())
-		return values;
+	dimensions = std::move(in.dimensions);
+	protIds = std::move(in.protIds);
+	protIndex = std::move(in.protIndex);
+	features = std::move(in.features);
+	featureRange = std::move(in.featureRange);
+	scores = std::move(in.scores);
+	scoreRange = std::move(in.scoreRange);
 
-	/* remove custom shit in our data */
-	QString match("[A-Z]{2}20\\d{6}.*?\\([A-Z]{2}(?:-[A-Z]{2})?\\)_(.*?)_\\(?(?:band|o|u)(?:\\+(?:band|o|u))+\\)?_.*?$");
-	values.replaceInStrings(QRegularExpression(match), "\\1");
+	/* pre-cache features as QPoints for plotting */
+	featurePoints = features::pointify(features);
 
-	/* remove common prefix & suffix */
-	QString reference = values.front();
-	int front = reference.size(), back = reference.size();
-	for (auto it = ++values.cbegin(); it != values.cend(); ++it) {
-		front = std::min(front, it->size());
-		back = std::min(back, it->size());
-		for (int i = 0; i < front; ++i) {
-			if (it->at(i) != reference[i]) {
-				front = i;
-				break;
-			}
-		}
-		for (int i = 0; i < back; ++i) {
-			if (it->at(it->size()-1 - i) != reference[reference.size()-1 - i]) {
-				back = i;
-				break;
-			}
-		}
-	}
-	match = QString("^.{%1}(.*?).{%2}$").arg(front).arg(back);
-	values.replaceInStrings(QRegularExpression(match), "\\1");
-
-	return values;
+	return *this;
 }

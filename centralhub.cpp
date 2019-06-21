@@ -44,23 +44,17 @@ void CentralHub::setCurrent(unsigned dataset)
 	data.current = dataset;
 }
 
-void CentralHub::addDataset(DataPtr dataset)
+CentralHub::DataPtr CentralHub::createDataset(DatasetConfiguration config)
 {
 	data.l.lockForWrite();
-	unsigned id = data.nextId++;
-	data.sets[id] = dataset;
-	dataset->setId(id);
+	config.id = data.nextId++; // inject id into config
+	auto dataset = std::make_shared<Dataset>(proteins, config);
+	data.sets[config.id] = dataset;
 	data.l.unlock();
 
-	emit newDataset(dataset);
-}
-
-CentralHub::DataPtr CentralHub::createDataset()
-{
-	auto ret = std::make_shared<Dataset>(proteins);
-	ret->updateColorset(tableau20);
-	connect(ret.get(), &Dataset::ioError, this, &CentralHub::ioError);
-	return ret;
+	dataset->updateColorset(tableau20);
+	connect(dataset.get(), &Dataset::ioError, this, &CentralHub::ioError);
+	return dataset;
 }
 
 CentralHub::DataPtr CentralHub::current()
@@ -81,9 +75,10 @@ void CentralHub::runOnCurrent(const std::function<void(DataPtr)> &work)
 void CentralHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay)
 {
 	QtConcurrent::run([=] {
-		auto target = createDataset();
-		target->spawn(source, config);
-		addDataset(target);
+		auto target = createDataset(config);
+		target->spawn(source);
+
+		emit newDataset(target);
 
 		/* also compute displays expected by the user – TODO initiate in dimredtab */
 		if (target->peek<Dataset::Base>()->dimensions.size() < 3)
@@ -103,11 +98,11 @@ void CentralHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, 
 void CentralHub::importDataset(const QString &filename, const QString featureCol)
 {
 	QtConcurrent::run([=] {
-		auto stream = store.openDataset(filename);
-		if (!stream)
+		auto data = store.openDataset(filename, featureCol);
+		if (data.empty())
 			return;
 
-		auto target = createDataset();
+		/* setup a nice name */
 		QFileInfo f(filename);
 		auto path = f.canonicalPath().split(QDir::separator());
 		QString name;
@@ -116,10 +111,15 @@ void CentralHub::importDataset(const QString &filename, const QString featureCol
 		if (path.size() > 0)
 			name.append(path.back() + "/");
 		name.append(f.baseName()); // hack
-		bool success = target->readSource(*stream, name, featureCol);
-		if (!success)
-			return;
-		addDataset(target);
+		if (!featureCol.isEmpty() && featureCol != "Dist")
+			name += " " + featureCol;
+		DatasetConfiguration config;
+		config.name = name;
+
+		auto target = createDataset(config);
+		target->spawn(data);
+
+		emit newDataset(target);
 
 		/* compute intial set of displays – TODO initiate in dimredtab */
 		if (target->peek<Dataset::Base>()->dimensions.size() < 3)
