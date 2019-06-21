@@ -41,53 +41,11 @@ public:
 	using ConstPtr = std::shared_ptr<Dataset const>;
 	using Proteins = ProteinDB::Public;
 
-	enum class Touch {
-		BASE = 0x1,
-		DISPLAY = 0x2,
-		HIERARCHY = 0x4,
-		CLUSTERS = 0x8,
-		ORDER = 0x10,
-		ALL = 0xFF
-	};
-	using Touched = QFlags<Touch>;
-
-	struct Base : RWLockable {
-		bool hasScores() const { return !scores.empty(); }
-		const auto& lookup(View<ProteinDB::Public> &v, unsigned index) const {
-			return v->proteins[protIds[index]];
-		}
-
-		QStringList dimensions;
-
-		// meta information for this dataset
-		DatasetConfiguration conf;
-
-		// from protein in vectors (1:1 index) to db index
-		std::vector<ProteinId> protIds;
-		// from protein db to index in vectors
-		std::unordered_map<ProteinId, unsigned> protIndex;
-
-		// original data
-		features::vec features;
-		features::Range featureRange;
-		// pre-cached set of points
-		std::vector<QVector<QPointF>> featurePoints;
-		// measurement scores
-		features::vec scores;
-		features::Range scoreRange;
-	};
-
 	enum class Direction {
 		PER_PROTEIN,
 		PER_DIMENSION,
 	};
 	Q_ENUM(Direction)
-
-	struct Representation : public RWLockable {
-		// feature reduced point sets
-		std::map<QString, QVector<QPointF>> display;
-		// TODO: put distmats here
-	};
 
 	enum class OrderBy {
 		FILE,
@@ -133,6 +91,38 @@ public:
 		std::vector<unsigned> rankOf; // position of each protein in the order
 	};
 
+	struct Base : RWLockable {
+		bool hasScores() const { return !scores.empty(); }
+		const auto& lookup(View<ProteinDB::Public> &v, unsigned index) const {
+			return v->proteins[protIds[index]];
+		}
+
+		QStringList dimensions;
+
+		// meta information for this dataset
+		DatasetConfiguration conf;
+
+		// from protein in vectors (1:1 index) to db index
+		std::vector<ProteinId> protIds;
+		// from protein db to index in vectors
+		std::unordered_map<ProteinId, unsigned> protIndex;
+
+		// original data
+		features::vec features;
+		features::Range featureRange;
+		// pre-cached set of points
+		std::vector<QVector<QPointF>> featurePoints;
+		// measurement scores
+		features::vec scores;
+		features::Range scoreRange;
+	};
+
+	struct Representation : public RWLockable {
+		// feature reduced point sets
+		std::map<QString, QVector<QPointF>> display;
+		// TODO: put distmats here
+	};
+
 	struct Structure : public RWLockable {
 		// clusters / hierarchy, if available
 		Clustering clustering;
@@ -142,6 +132,16 @@ public:
 		// determined by hierarchy or clusters (if available), pos. in file, or name
 		Order order;
 	};
+
+	enum class Touch {
+		BASE = 0x1,
+		DISPLAY = 0x2,
+		HIERARCHY = 0x4,
+		CLUSTERS = 0x8,
+		ORDER = 0x10,
+		ALL = 0xFF
+	};
+	using Touched = QFlags<Touch>;
 
 	explicit Dataset(ProteinDB &proteins);
 
