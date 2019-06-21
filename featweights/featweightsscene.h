@@ -64,7 +64,7 @@ protected:
 
 	void setDisplay();
 	void computeWeights();
-	void computeImage(const features::vec& features);
+	void computeImage(const Features::Vec &features);
 	void computeMarkerContour();
 
 	std::set<unsigned> markers; // markers in dataset index (not protein id!)
@@ -82,7 +82,7 @@ protected:
 	WeightBar *weightBar;
 
 	Dataset::Ptr data;
-	features::vec clippedFeatures; // score threshold applied
+	Features::Vec clippedFeatures; // score threshold applied
 	QVector<QColor> colorset;
 };
 

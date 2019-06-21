@@ -1,4 +1,5 @@
 #include "dataset.h"
+#include "compute/features.h"
 #include "compute/dimred.h"
 
 #include <QDataStream>
@@ -79,7 +80,7 @@ void Dataset::spawn(ConstPtr srcholder, const DatasetConfiguration &conf)
 	fill_stripped(bIn->features, b.features);
 	if (bIn->hasScores()) {
 		fill_stripped(bIn->scores, b.scores);
-		b.scoreRange = features::Range(b.scores);
+		b.scoreRange = features::range_of(b.scores);
 
 		if (conf.scoreThresh > 0.)
 			features::apply_cutoff(b.features, b.scores, conf.scoreThresh);

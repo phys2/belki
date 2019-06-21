@@ -1,8 +1,6 @@
 #include "scattertab.h"
 #include "chart.h"
-
-#include <QMenu>
-#include <QDebug>
+#include "compute/features.h"
 
 ScatterTab::ScatterTab(QWidget *parent) :
     Viewer(parent)

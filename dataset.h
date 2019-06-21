@@ -2,22 +2,17 @@
 #define DATASET_H
 
 #include "utils.h"
+#include "model.h"
 #include "proteindb.h"
-#include "compute/features.h"
 #include "meanshift/fams.h"
 
 #include <QObject>
 #include <QFlags>
-#include <QString>
 #include <QMap>
-#include <QVector>
 #include <QList>
-#include <QPointF>
-#include <QColor>
 
 #include <set>
 #include <map>
-#include <unordered_map>
 #include <memory>
 
 class QTextStream;
@@ -91,39 +86,24 @@ public:
 		std::vector<unsigned> rankOf; // position of each protein in the order
 	};
 
-	struct Base : RWLockable {
-		bool hasScores() const { return !scores.empty(); }
+	struct Base : Features, RWLockable {
+		Base &operator=(Features in); // destructive non-copy assignment
 		const auto& lookup(View<ProteinDB::Public> &v, unsigned index) const {
 			return v->proteins[protIds[index]];
 		}
-
-		QStringList dimensions;
-
 		// meta information for this dataset
 		DatasetConfiguration conf;
-
-		// from protein in vectors (1:1 index) to db index
-		std::vector<ProteinId> protIds;
-		// from protein db to index in vectors
-		std::unordered_map<ProteinId, unsigned> protIndex;
-
-		// original data
-		features::vec features;
-		features::Range featureRange;
 		// pre-cached set of points
 		std::vector<QVector<QPointF>> featurePoints;
-		// measurement scores
-		features::vec scores;
-		features::Range scoreRange;
 	};
 
-	struct Representation : public RWLockable {
+	struct Representation : RWLockable {
 		// feature reduced point sets
 		std::map<QString, QVector<QPointF>> display;
 		// TODO: put distmats here
 	};
 
-	struct Structure : public RWLockable {
+	struct Structure : RWLockable {
 		// clusters / hierarchy, if available
 		Clustering clustering;
 		std::vector<HrCluster> hierarchy;
@@ -145,7 +125,7 @@ public:
 
 	explicit Dataset(ProteinDB &proteins);
 
-	static const std::map<Dataset::OrderBy, QString> availableOrders();
+	static const std::map<OrderBy, QString> availableOrders();
 
 	template<typename T>
 	View<T> peek() const; // see specializations in cpp

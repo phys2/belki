@@ -2,9 +2,22 @@
 #include <opencv2/core.hpp>
 #include <tbb/tbb.h>
 
-#include <map>
-
 namespace features {
+
+Features::Range range_of(const vec &source)
+{
+	if (source.empty())
+		return {};
+
+	Features::Range ret{source[0][0], source[0][0]};
+	for (auto in : source) {
+		double mi, ma;
+		cv::minMaxLoc(in, &mi, &ma);
+		ret.min = std::min(ret.min, mi);
+		ret.max = std::max(ret.max, ma);
+	}
+	return ret;
+}
 
 unsigned cutoff_effect(const vec &source, double threshold)
 {
@@ -31,22 +44,6 @@ void apply_cutoff(vec &feats, const vec &scores, double threshold)
 		for (size_t i = 0; i < feat.size(); ++i)
 			feat[i] = (score[i] <= threshold ? feat[i] : 0.);
 	});
-}
-
-Range::Range(const std::vector<std::vector<double> > &source)
-    : min(source.empty() ? 0. : source[0][0]), max(source.empty() ? 0. : source[0][0])
-{
-	for (auto in : source) {
-		double mi, ma;
-		cv::minMaxLoc(in, &mi, &ma);
-		min = std::min(min, mi);
-		max = std::max(max, ma);
-	}
-}
-
-double Range::scale() const
-{
-	return 1./(max - min);
 }
 
 std::vector<QVector<QPointF>> pointify(const vec &source)

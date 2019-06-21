@@ -133,7 +133,7 @@ void FeatweightsScene::computeWeights()
 	setDisplay();
 }
 
-void FeatweightsScene::computeImage(const features::vec& feat)
+void FeatweightsScene::computeImage(const Features::Vec &feat)
 {
 	cv::Size bins = {400, 400}; // TODO: adapt to screen
 	cv::Size2d stepSize = {1./(bins.width), 1./(bins.height)};

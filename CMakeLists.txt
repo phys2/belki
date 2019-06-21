@@ -58,6 +58,7 @@ target_sources(belki PRIVATE
 	dataset.h dataset.cpp
 	fileio.h fileio.cpp
 	mainwindow.h mainwindow.cpp mainwindow.ui
+	model.h
 	proteindb.h proteindb.cpp
 	storage.h storage.cpp
 	utils.h

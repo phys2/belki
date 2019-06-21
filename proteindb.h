@@ -2,17 +2,15 @@
 #define PROTEINDB_H
 
 #include "utils.h"
+#include "model.h"
 
 #include <QObject>
-#include <QString>
-#include <QColor>
 #include <QVector>
 
 #include <vector>
 #include <unordered_map>
 #include <set>
 
-using ProteinId = unsigned; // for semantic distinction
 class QTextStream;
 
 class ProteinDB : public QObject
@@ -20,25 +18,12 @@ class ProteinDB : public QObject
 	Q_OBJECT
 
 public:
-	struct Protein {
-		// first part of protein name, used as identifier
-		QString name;
-		// last part of protein name
-		QString species;
-		// description, if any
-		QString description;
-		// random or user-set color
-		QColor color;
-	};
-
-	using ProteinIndex = std::unordered_map<QString, ProteinId>;
-
 	struct Public : RWLockable {
 		// helper for finding proteins, name may contain species, throws
 		ProteinId find(const QString &name) const;
 
 		std::vector<Protein> proteins;
-		ProteinIndex index;
+		std::unordered_map<QString, ProteinId> index;
 
 		// TODO: sort set by prot. name
 		std::set<ProteinId> markers;
