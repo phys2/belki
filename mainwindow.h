@@ -50,7 +50,7 @@ protected:
 	void setupActions();
 	void setupMarkerControls();
 	void resetMarkerControls();
-	void ensureSortedMarkerItems();
+	void finalizeMarkerItems();
 	void setFilename(QString name);
 	void setSelectedDataset(unsigned index);
 

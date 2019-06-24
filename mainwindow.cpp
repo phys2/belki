@@ -429,7 +429,7 @@ void MainWindow::resetMarkerControls()
 	}
 }
 
-void MainWindow::ensureSortedMarkerItems()
+void MainWindow::finalizeMarkerItems()
 {
 	if (markerWidget->isEnabled()) // already in good state
 		return;
@@ -499,7 +499,7 @@ void MainWindow::addProtein(ProteinId id)
 
 	/* ensure items are sorted in the end, but defer sorting */
 	markerWidget->setEnabled(false); // we are "dirty"
-	QTimer::singleShot(0, this, &MainWindow::ensureSortedMarkerItems);
+	QTimer::singleShot(0, this, &MainWindow::finalizeMarkerItems);
 }
 
 void MainWindow::toggleMarker(ProteinId id, bool present)
