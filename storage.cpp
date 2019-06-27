@@ -54,7 +54,7 @@ void Storage::storeDisplay(const Dataset& data, const QString &name)
 	d.container->write(entryname, tsv);
 }
 
-Features Storage::openDataset(const QString &filename, const QString &featureColName)
+Features::Ptr Storage::openDataset(const QString &filename, const QString &featureColName)
 {
 	close(true);
 
@@ -210,7 +210,7 @@ std::unique_ptr<QJsonObject> Storage::readHierarchy(const QString &name)
 	return std::make_unique<QJsonObject>(json.object());
 }
 
-Features Storage::readSource(QTextStream &in, const QString &featureColName)
+Features::Ptr Storage::readSource(QTextStream &in, const QString &featureColName)
 {
 	// the featureColName argument is a hack. We probably want some "Config" struct instead
 
@@ -239,7 +239,7 @@ Features Storage::readSource(QTextStream &in, const QString &featureColName)
 	}
 
 	/* read file into Features object */
-	Features ret;
+	auto ret = std::make_unique<Features>();
 	std::map<QString, unsigned> dimensions;
 	while (!in.atEnd()) {
 		auto line = in.readLine().split("\t");
@@ -256,14 +256,14 @@ Features Storage::readSource(QTextStream &in, const QString &featureColName)
 
 		/* determine protein index */
 		size_t row; // the protein id we are altering
-		auto index = ret.protIndex.find(protid);
-		if (index == ret.protIndex.end()) {
-			ret.protIds.push_back(protid);
-			auto len = ret.protIds.size();
-			ret.features.resize(len, std::vector<double>(dimensions.size()));
-			ret.scores.resize(len, std::vector<double>(dimensions.size()));
+		auto index = ret->protIndex.find(protid);
+		if (index == ret->protIndex.end()) {
+			ret->protIds.push_back(protid);
+			auto len = ret->protIds.size();
+			ret->features.resize(len, std::vector<double>(dimensions.size()));
+			ret->scores.resize(len, std::vector<double>(dimensions.size()));
 			row = len - 1;
-			ret.protIndex[protid] = row;
+			ret->protIndex[protid] = row;
 		} else {
 			row = index->second;
 		}
@@ -272,11 +272,11 @@ Features Storage::readSource(QTextStream &in, const QString &featureColName)
 		size_t col; // the dimension we are altering
 		auto dIndex = dimensions.find(line[nameCol]);
 		if (dIndex == dimensions.end()) {
-			ret.dimensions.append(line[nameCol]);
-			auto len = (size_t)ret.dimensions.size();
-			for (auto &i : ret.features)
+			ret->dimensions.append(line[nameCol]);
+			auto len = (size_t)ret->dimensions.size();
+			for (auto &i : ret->features)
 				i.resize(len);
-			for (auto &i : ret.scores)
+			for (auto &i : ret->scores)
 				i.resize(len);
 			col = len - 1;
 			dimensions[line[nameCol]] = col;
@@ -299,28 +299,34 @@ Features Storage::readSource(QTextStream &in, const QString &featureColName)
 		}
 
 		/* fill-in features and scores */
-		ret.features[row][col] = feat;
-		ret.scores[row][col] = std::max(score, 0.); // TODO temporary clipping
+		ret->features[row][col] = feat;
+		ret->scores[row][col] = std::max(score, 0.); // TODO temporary clipping
+	}
+
+	if (ret->features.empty() || ret->dimensions.empty()) {
+		emit ioError(QString("Could not read any valid data rows from file!"));
+		return {};
 	}
 
 	// TODO: hack to not normalize abundance values
 	bool normalize = featureColName.isEmpty() || featureColName == "Dist";
-	return finalizeRead(ret, normalize);
+	finalizeRead(*ret, normalize);
+	return ret;
 }
 
-Features Storage::readSimpleSource(QTextStream &in)
+Features::Ptr Storage::readSimpleSource(QTextStream &in)
 {
 	auto header = in.readLine().split("\t");
 	header.pop_front(); // first column (also expected to be empty)
-	if (header.contains("") || header.removeDuplicates()) {
+	if (header.empty() || header.contains("") || header.removeDuplicates()) {
 		emit ioError("Malformed header: Duplicate or empty columns!");
 		return {};
 	}
 
 	/* read file into Features object */
-	Features ret;
-	ret.dimensions = trimCrap(header);
-	auto len = ret.dimensions.size();
+	auto ret = std::make_unique<Features>();
+	ret->dimensions = trimCrap(header);
+	auto len = ret->dimensions.size();
 	std::set<QString> seen; // names of read proteins
 	while (!in.atEnd()) {
 		auto line = in.readLine().split("\t");
@@ -355,23 +361,24 @@ Features Storage::readSimpleSource(QTextStream &in)
 		}
 
 		/* append */
-		ret.protIndex[protid] = ret.protIds.size();
-		ret.protIds.push_back(protid);
-		ret.features.push_back(std::move(coeffs));
+		ret->protIndex[protid] = ret->protIds.size();
+		ret->protIds.push_back(protid);
+		ret->features.push_back(std::move(coeffs));
 	}
 
-	return finalizeRead(ret, true);
-}
-
-Features Storage::finalizeRead(Features ret, bool normalize)
-{
-	if (ret.empty()) {
+	if (ret->features.empty()) {
 		emit ioError(QString("Could not read any valid data rows from file!"));
 		return {};
 	}
 
+	finalizeRead(*ret, true);
+	return ret;
+}
+
+void Storage::finalizeRead(Features &data, bool normalize)
+{
 	/* setup ranges */
-	auto range = features::range_of(ret.features);
+	auto range = features::range_of(data.features);
 	// normalize, if needed
 	if (range.min < 0 || range.max > 1) { // simple heuristic to auto-normalize
 		// cut off negative values
@@ -383,17 +390,17 @@ Features Storage::finalizeRead(Features ret, bool normalize)
 			                     "<br>Normalizing to [0, 1].").arg(range.min).arg(range.max));
 		}
 
-		for (auto &v : ret.features) {
+		for (auto &v : data.features) {
 			std::for_each(v.begin(), v.end(), [min=range.min, scale] (double &e) {
 				e = std::max(e - min, 0.) * scale;
 			});
 		}
 	}
-	ret.featureRange = {0., (normalize ? 1. : range.max)};
-	if (ret.hasScores())
-		ret.scoreRange = features::range_of(ret.scores);
+	data.featureRange = {0., (normalize ? 1. : range.max)};
+	if (data.hasScores())
+		data.scoreRange = features::range_of(data.scores);
+}
 
-	return ret;
 }
 
 QByteArray Storage::readFile(const QString &filename)

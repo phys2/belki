@@ -22,11 +22,11 @@ public:
 
 	QString name();
 
-	Features openDataset(const QString &filename, const QString &featureColName = "Dist");
+	Features::Ptr openDataset(const QString &filename, const QString &featureColName = "Dist");
 	std::unique_ptr<QTextStream> readAnnotations(const QString &name);
 	std::unique_ptr<QJsonObject> readHierarchy(const QString &name);
 
-	Features readSource(QTextStream &in, const QString &featureColName);
+	Features::Ptr readSource(QTextStream &in, const QString &featureColName);
 
 	QByteArray readFile(const QString &filename);
 
@@ -46,8 +46,8 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void exportAnnotations(const QString &filename, std::shared_ptr<Dataset const> data);
 
 protected:
-	Features readSimpleSource(QTextStream &in);
-	Features finalizeRead(Features ret, bool normalize);
+	Features::Ptr readSimpleSource(QTextStream &in);
+	void finalizeRead(Features &data, bool normalize);
 
 	void storeDisplay(const Dataset &data, const QString& name);
 

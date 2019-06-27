@@ -20,7 +20,7 @@ class QTextStream;
 // a configuration that describes processing resulting in a dataset
 struct DatasetConfiguration {
 	QString name; // user-specified identifier
-	unsigned id; // index of dataset
+	unsigned id = 0; // index of dataset (given by hub, starts from 1)
 	unsigned parent = 0; // index of dataset this one was spawned from (0 == none)
 	std::vector<unsigned> bands; // the feature bands that were kept
 	double scoreThresh = 0.; // score cutoff that was applied
@@ -87,7 +87,6 @@ public:
 	};
 
 	struct Base : Features, RWLockable {
-		Base &operator=(Features in); // destructive non-copy assignment
 		const auto& lookup(View<ProteinDB::Public> &v, unsigned index) const {
 			return v->proteins[protIds[index]];
 		}
@@ -135,7 +134,7 @@ public:
 
 	QByteArray exportDisplay(const QString &name) const;
 
-	void spawn(Features data);
+	void spawn(Features::Ptr data);
 	void spawn(ConstPtr source);
 
 	void computeDisplay(const QString &name);

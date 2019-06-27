@@ -8,6 +8,7 @@
 #include <QPointF>
 #include <vector>
 #include <unordered_map>
+#include <memory>
 
 using ProteinId = unsigned; // for semantic distinction
 struct Protein {
@@ -22,6 +23,7 @@ struct Protein {
 };
 
 struct Features {
+	using Ptr = std::unique_ptr<Features>;
 	using Vec = std::vector<std::vector<double>>;
 	struct Range {
 		double scale() const { return 1./(max - min); }
@@ -30,7 +32,6 @@ struct Features {
 		double max = 1.;
 	};
 
-	bool empty() const { return features.empty() || dimensions.empty(); }
 	bool hasScores() const { return !scores.empty(); }
 	QStringList dimensions;
 

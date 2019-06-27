@@ -43,9 +43,18 @@ View<Dataset::Structure> Dataset::peek() const { return View(s); }
 template<>
 View<Dataset::Proteins> Dataset::peek() const { return proteins.peek(); }
 
-void Dataset::spawn(Features data)
+void Dataset::spawn(Features::Ptr in)
 {
-	b = data;
+	b.dimensions = std::move(in->dimensions);
+	b.protIds = std::move(in->protIds);
+	b.protIndex = std::move(in->protIndex);
+	b.features = std::move(in->features);
+	b.featureRange = std::move(in->featureRange);
+	b.scores = std::move(in->scores);
+	b.scoreRange = std::move(in->scoreRange);
+
+	/* pre-cache features as QPoints for plotting */
+	b.featurePoints = features::pointify(b.features);
 
 	// ensure clustering is properly initialized if accessed
 	s.clustering = Clustering(b.protIds.size());
@@ -57,7 +66,6 @@ void Dataset::spawn(Features data)
 void Dataset::spawn(ConstPtr srcholder)
 {
 	auto bIn = srcholder->peek<Base>();
-	b.l.lockForWrite();
 
 	// only carry over dimensions we keep
 	for (auto i : conf.bands)
@@ -88,15 +96,10 @@ void Dataset::spawn(ConstPtr srcholder)
 	b.featurePoints = features::pointify(b.features);
 
 	// also copy structure
-	s.l.lockForWrite();
 	auto sIn = srcholder->peek<Structure>();
 	s.hierarchy = sIn->hierarchy;
 	s.clustering = sIn->clustering;
 	s.order = sIn->order;
-	s.l.unlock();
-	b.l.unlock(); // ensure consistency between b and s
-
-	emit update({Touch::BASE, Touch::HIERARCHY, Touch::CLUSTERS, Touch::ORDER});
 }
 
 void Dataset::computeDisplay(const QString& request)
@@ -644,20 +647,4 @@ void Dataset::orderProteins(OrderBy reference)
 		target.rankOf[index[i]] = i;
 
 	s.order = target;
-}
-
-Dataset::Base &Dataset::Base::operator=(Features in)
-{
-	dimensions = std::move(in.dimensions);
-	protIds = std::move(in.protIds);
-	protIndex = std::move(in.protIndex);
-	features = std::move(in.features);
-	featureRange = std::move(in.featureRange);
-	scores = std::move(in.scores);
-	scoreRange = std::move(in.scoreRange);
-
-	/* pre-cache features as QPoints for plotting */
-	featurePoints = features::pointify(features);
-
-	return *this;
 }

@@ -99,7 +99,7 @@ void CentralHub::importDataset(const QString &filename, const QString featureCol
 {
 	QtConcurrent::run([=] {
 		auto data = store.openDataset(filename, featureCol);
-		if (data.empty())
+		if (!data)
 			return;
 
 		/* setup a nice name */
@@ -117,7 +117,7 @@ void CentralHub::importDataset(const QString &filename, const QString featureCol
 		config.name = name;
 
 		auto target = createDataset(config);
-		target->spawn(data);
+		target->spawn(std::move(data));
 
 		emit newDataset(target);
 
