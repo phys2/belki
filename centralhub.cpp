@@ -40,8 +40,9 @@ void CentralHub::setupSignals()
 
 void CentralHub::setCurrent(unsigned dataset)
 {
-	QWriteLocker (&data.l);
+	data.l.lockForWrite();
 	data.current = dataset;
+	data.l.unlock();
 }
 
 CentralHub::DataPtr CentralHub::createDataset(DatasetConfiguration config)
@@ -57,18 +58,20 @@ CentralHub::DataPtr CentralHub::createDataset(DatasetConfiguration config)
 	return dataset;
 }
 
-CentralHub::DataPtr CentralHub::current()
-{
-	QReadLocker _(&data.l);
-	return (data.current ? data.sets.at(data.current) : DataPtr{});
-}
-
 void CentralHub::runOnCurrent(const std::function<void(DataPtr)> &work)
 {
 	QtConcurrent::run([=] {
-		auto d = current();
-		if (d)
-			work(d);
+		QReadLocker _(&data.l); // RAII
+		if (!data.current)
+			return;
+		auto target = data.sets.at(data.current);
+
+		/* Target is a shared_ptr and can be used without the container lock.
+		 * Dataset does its own locking. It is important to unlock early here,
+		 * so that long computations do not affect the ability to switch current
+		 * dataset. */
+		_.unlock();
+		work(target);
 	});
 }
 
@@ -98,8 +101,8 @@ void CentralHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, 
 void CentralHub::importDataset(const QString &filename, const QString featureCol)
 {
 	QtConcurrent::run([=] {
-		auto data = store.openDataset(filename, featureCol);
-		if (!data)
+		auto dataset = store.openDataset(filename, featureCol);
+		if (!dataset)
 			return;
 
 		/* setup a nice name */
@@ -117,7 +120,7 @@ void CentralHub::importDataset(const QString &filename, const QString featureCol
 		config.name = name;
 
 		auto target = createDataset(config);
-		target->spawn(std::move(data));
+		target->spawn(std::move(dataset));
 
 		emit newDataset(target);
 

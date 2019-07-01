@@ -57,7 +57,6 @@ protected:
 
 	DataPtr createDataset(DatasetConfiguration config);
 
-	DataPtr current();
 	void runOnCurrent(const std::function<void(DataPtr)> &work);
 
 	struct : public RWLockable {
