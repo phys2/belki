@@ -59,12 +59,12 @@ template<> struct hash<QString> {
     }
 };
 }
-// std::experimental::erase_if, but predicate takes key instead of pair
+// std::experimental::erase_if
 template<class Key, class T, class Compare, class Alloc, class Pred>
 void erase_if(std::unordered_map<Key,T,Compare,Alloc>& c, Pred pred)
 {
 	for (auto it = c.begin(), last = c.end(); it != last;) {
-		if (pred(it->first)) {
+		if (pred(it)) {
 			it = c.erase(it);
 		} else {
 			++it;
