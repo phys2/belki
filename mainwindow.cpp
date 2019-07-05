@@ -80,7 +80,7 @@ MainWindow::MainWindow(CentralHub &hub) :
 	setupActions();
 
 	// initialize widgets to be empty & most-restrictive
-	updateState({});
+	updateState(Dataset::Touch::BASE);
 }
 
 void MainWindow::setupToolbar()
@@ -332,7 +332,8 @@ void MainWindow::setupMarkerControls()
 
 void MainWindow::updateState(Dataset::Touched affected)
 {
-	resetMarkerControls();
+	if (affected & Dataset::Touch::BASE)
+		resetMarkerControls();
 
 	if (!data) {
 		/* hide and disable widgets that need data or even more */
