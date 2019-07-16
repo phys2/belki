@@ -40,7 +40,7 @@ struct View {
 	View(const View&) = delete;
 	View(View&& o) : data(o.data), l(o.l) {}
 	~View() { unlock(); }
-	const T& operator()() { ensureLocked(); return data; }
+	const T& operator*() { ensureLocked(); return data; }
 	const T* operator->() { ensureLocked(); return &data; }
 	void ensureLocked() {
 		if (!locked) throw std::runtime_error("Data access without proper lock.");

@@ -36,14 +36,13 @@ public slots:
 	void computeDisplay(const QString &method);
 	// todo readDisplay()
 
-	void clearClusters();
+	void applyAnnotations(unsigned id);
+	void applyHierarchy(unsigned id, unsigned granularity);
+	void calculatePartition(unsigned granularity);
 	void importAnnotations(const QString &filename);
-	void readAnnotations(const QString &name);
 	void exportAnnotations(const QString &filename);
 	void importHierarchy(const QString &filename);
-	void readHierarchy(const QString &name);
-	void calculatePartition(unsigned granularity);
-	void runFAMS();
+	void runFAMS(float k);
 	void changeOrder(Dataset::OrderBy reference, bool synchronize);
 
 	void importDescriptions(const QString &filename);
@@ -65,6 +64,16 @@ protected:
 		unsigned current = 0;
 		unsigned nextId = 1;
 	} data;
+
+	// configuration to apply when switching datasets
+	struct {
+		struct {
+			// last-selected structure (annotations/hierarchy) id (used when dataset changes)
+			unsigned annotationsId = 0; // 0 means none
+			unsigned hierarchyId = 0; // 0 means none
+			unsigned granularity = 0; // hierarchy parameter
+		} structure;
+	} guiState;
 };
 
 #endif // CENTRALHUB_H

@@ -18,8 +18,6 @@
 
 #include <iostream>
 
-constexpr auto hierarchyPostfix = " (Hierarchy)";
-
 MainWindow::MainWindow(CentralHub &hub) :
     hub(hub),
     io(new FileIO(this))
@@ -101,6 +99,8 @@ void MainWindow::setupToolbar()
 	toolBar->insertSeparator(anchor);
 
 	// fill-up partition area
+	partitionSelect->addItem("None", 0);
+	partitionSelect->addItem("Adaptive Mean Shift", -1);
 	toolBar->insertWidget(anchor, partitionLabel);
 	toolbarActions.partitions = toolBar->insertWidget(anchor, partitionSelect);
 	toolbarActions.granularity = toolBar->addWidget(granularitySlider);
@@ -123,23 +123,15 @@ void MainWindow::setupSignals()
 		for (auto id : ids)
 			this->markerItems.at(id)->setCheckState(state);
 	});
-
-	/* notifications from data/storage thread */
-	connect(&hub.store, &Storage::newAnnotations, this, [this] (auto name, bool loaded) {
-		if (loaded) { // already pre-selected, need to reflect that
-			QSignalBlocker _(partitionSelect);
-			partitionSelect->addItem(name);
-			partitionSelect->setCurrentText(name);
-		} else {
-			partitionSelect->addItem(name);
-		}
-	});
-	connect(&hub.store, &Storage::newHierarchy, this, [this] (auto name, bool loaded) {
-		auto n = name + hierarchyPostfix;
-		partitionSelect->addItem(n);
-		if (loaded) { // already pre-selected, need to reflect that
-			QSignalBlocker _(partitionSelect);
-			partitionSelect->setCurrentText(n);
+	connect(&hub.proteins, &ProteinDB::structureAvailable, this,
+	        [this] (unsigned id, QString name, bool select) {
+		// TODO: three different icons (annot, hier, meanshift)
+		partitionSelect->addItem(QIcon::fromTheme("view-group"), name, id);
+		if (select) { // the user expects to see it
+			// TODO: this does _not_ set whole state (enabled stuff)! write member method
+			// that does it and is called by activated signal
+			// see also updateState() and partitionselect. looks like thats the stuff to do
+			// partitionSelect->setCurrentIndex(partitionSelect->findData(id));
 		}
 	});
 
@@ -160,46 +152,34 @@ void MainWindow::setupSignals()
 		toolbarActions.famsK->setVisible(false);
 		actionExportAnnotations->setEnabled(false);
 
-		// special items (TODO: better use an enum here, maybe include hierarchies)
-		if (partitionSelect->currentData().isValid()) {
-
-			auto v = partitionSelect->currentData().value<int>();
-			if (v == 0) {
-				data->cancelFAMS(); // TODO
-				emit hub.clearClusters();
-			} else if (v == 1) {
-				// TODO
-				data->changeFAMS((unsigned)famsKSlider->value() * 0.01f);
-				emit hub.runFAMS();
-				toolbarActions.famsK->setVisible(true);
-				actionExportAnnotations->setEnabled(true);
-			}
+		auto id = partitionSelect->currentData().value<int>();
+		if (id == 0) { // "None"
+			hub.applyAnnotations(0);
+			return;
+		} else if (id == -1) { // Mean shift
+			hub.runFAMS(famsKSlider->value() * 0.01f);
+			toolbarActions.famsK->setVisible(true);
+			actionExportAnnotations->setEnabled(true);
 			return;
 		}
 
-		// not FAMS? cancel it in case it is running TODO
-		data->cancelFAMS();
+		/* regular items */
 
-		// regular items: identified by name
-		auto name = partitionSelect->currentText();
-		if (name.isEmpty())
-			return;
+		// check between hierarchy and annotations
+		bool isHierarchy = std::holds_alternative<HrClustering>
+		        (this->hub.proteins.peek()->structures.at((unsigned)id));
 
-		bool isHierarchy = name.endsWith(hierarchyPostfix);
 		if (isHierarchy) {
-			auto n = name.chopped(strlen(hierarchyPostfix));
-			emit hub.readHierarchy(n);
-			emit hub.calculatePartition((unsigned)granularitySlider->value());
+			hub.applyHierarchy((unsigned)id, (unsigned)granularitySlider->value());
 			toolbarActions.granularity->setVisible(true);
 			actionExportAnnotations->setEnabled(true);
 		} else {
-			emit hub.readAnnotations(name);
+			hub.applyAnnotations((unsigned)id);
 		}
 	});
 	connect(granularitySlider, &QSlider::valueChanged, &hub, &CentralHub::calculatePartition);
 	connect(famsKSlider, &QSlider::valueChanged, [this] (int v) {
-		data->changeFAMS(v * 0.01f); // reconfigure from outside (this thread) // TODO
-		emit hub.runFAMS(); // start calculation inside data thread
+		hub.runFAMS(v * 0.01f);
 	});
 }
 
@@ -338,7 +318,6 @@ void MainWindow::updateState(Dataset::Touched affected)
 	if (!data) {
 		/* hide and disable widgets that need data or even more */
 		actionSplice->setEnabled(false);
-		toolbarActions.partitions->setEnabled(false);
 		actionShowPartition->setChecked(false);
 		actionShowPartition->setEnabled(false);
 		toolbarActions.granularity->setVisible(false);
@@ -349,7 +328,6 @@ void MainWindow::updateState(Dataset::Touched affected)
 
 	/* re-enable actions that depend only on data */
 	actionSplice->setEnabled(true);
-	toolbarActions.partitions->setEnabled(true);
 
 	/* structure */
 	auto d = data->peek<Dataset::Base>();
@@ -360,18 +338,11 @@ void MainWindow::updateState(Dataset::Touched affected)
 		actionShowPartition->setChecked(haveClustering);
 	}
 	if (affected & Dataset::Touch::HIERARCHY) {
-		if (!s->hierarchy.empty()) {
-			auto reasonable = std::min(d->protIds.size(), s->hierarchy.size()) / 4;
+		if (!s->hierarchy.clusters.empty()) {
+			auto reasonable = std::min(d->protIds.size(), s->hierarchy.clusters.size()) / 4;
 			granularitySlider->setMaximum(reasonable);
 		}
 	}
-
-	/* reset partitions: none except inbuilt mean-shift */
-	// TODO we need to keep track what is available per-dataset in storage
-	partitionSelect->clear();
-	partitionSelect->addItem("None", {0});
-	partitionSelect->addItem("Adaptive Mean Shift", {1});
-
 }
 
 void MainWindow::newDataset(Dataset::Ptr dataset)

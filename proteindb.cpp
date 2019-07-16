@@ -1,4 +1,5 @@
 #include "proteindb.h"
+#include "compute/annotations.h"
 
 #include <QTextStream>
 #include <QRegularExpression>
@@ -123,6 +124,33 @@ void ProteinDB::clearMarkers()
 	data.markers.clear();
 	data.l.unlock();
 	emit markersToggled(affected, false);
+}
+
+void ProteinDB::addAnnotations(std::unique_ptr<Annotations> a, bool select)
+{
+	annotations::order(*a, false);
+	annotations::color(*a, colorset);
+
+	auto name = a->name;
+
+	data.l.lockForWrite();
+	auto id = data.nextStructureId++; // pick an id that was not in use before
+	data.structures[id] = std::move(*a);
+	data.l.unlock();
+
+	emit structureAvailable(id, name, select);
+}
+
+void ProteinDB::addHierarchy(std::unique_ptr<HrClustering> h, bool select)
+{
+	auto name = h->name;
+
+	data.l.lockForWrite();
+	auto id = data.nextStructureId++; // pick an id that was not in use before
+	data.structures[id] = std::move(*h);
+	data.l.unlock();
+
+	emit structureAvailable(id, name, select);
 }
 
 void ProteinDB::updateColorset(const QVector<QColor> &colors)

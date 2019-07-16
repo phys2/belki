@@ -22,6 +22,7 @@ CentralHub::CentralHub(QObject *parent)
       store(proteins)
 {
 	proteins.updateColorset(tableau20);
+	store.updateColorset(tableau20);
 
 	setupSignals();
 }
@@ -43,6 +44,11 @@ void CentralHub::setCurrent(unsigned dataset)
 	data.l.lockForWrite();
 	data.current = dataset;
 	data.l.unlock();
+
+	if (guiState.structure.hierarchyId)
+		applyHierarchy(guiState.structure.hierarchyId, guiState.structure.granularity);
+	else
+		applyAnnotations(guiState.structure.annotationsId);
 }
 
 CentralHub::DataPtr CentralHub::createDataset(DatasetConfiguration config)
@@ -54,7 +60,6 @@ CentralHub::DataPtr CentralHub::createDataset(DatasetConfiguration config)
 	data.sets[config.id] = dataset;
 	data.l.unlock();
 
-	dataset->updateColorset(tableau20);
 	connect(dataset.get(), &Dataset::ioError, this, &CentralHub::ioError);
 	return dataset;
 }
@@ -137,39 +142,11 @@ void CentralHub::computeDisplay(const QString &method)
 	runOnCurrent([=] (DataPtr d) { d->computeDisplay(method); });
 }
 
-void CentralHub::clearClusters()
+void CentralHub::applyAnnotations(unsigned id)
 {
-	runOnCurrent([=] (DataPtr d) { d->clearClusters(); });
-}
-
-void CentralHub::importAnnotations(const QString &filename)
-{
+	guiState.structure.annotationsId = id;
 	runOnCurrent([=] (DataPtr d) {
-		/* TODO: this is a mess. better read into intermediate representation
-		 * first in store, then hand over to dataset.
-		 * But we will keep this until project-concept store rework. */
-
-		auto content = store.readFile(filename);
-		if (content.isNull())
-			return;
-
-		QTextStream stream(content);
-		bool success = d->readAnnotations(stream);
-		if (!success)
-			return;
-
-		store.importAnnotations(filename, content);
-	});
-}
-
-void CentralHub::readAnnotations(const QString &name)
-{
-	runOnCurrent([=] (DataPtr d) {
-		auto stream = store.readAnnotations(name);
-		if (!stream)
-			return;
-
-		d->readAnnotations(*stream);
+		d->applyAnnotations(id);
 	});
 }
 
@@ -178,50 +155,39 @@ void CentralHub::exportAnnotations(const QString &filename)
 	runOnCurrent([=] (DataPtr d) { store.exportAnnotations(filename, d); });
 }
 
-void CentralHub::importHierarchy(const QString &filename)
+void CentralHub::applyHierarchy(unsigned id, unsigned granularity)
 {
+	guiState.structure.hierarchyId = id;
+	guiState.structure.annotationsId = 0;
 	runOnCurrent([=] (DataPtr d) {
-		/* TODO: this is a mess. better read into intermediate representation
-		 * first in store, then hand over to dataset.
-		 * But we will keep this until project-concept store rework. */
-
-		auto content = store.readFile(filename);
-		if (content.isNull())
-			return;
-
-		auto json = QJsonDocument::fromJson(content);
-		bool success = d->readHierarchy(json.object());
-		if (!success)
-			return;
-
-		store.importHierarchy(filename, content);
-	});
-}
-
-void CentralHub::readHierarchy(const QString &name)
-{
-	runOnCurrent([=] (DataPtr d) {
-		auto json = store.readHierarchy(name);
-		if (!json)
-			return;
-
-		d->readHierarchy(*json);
+		d->applyHierarchy(id, granularity);
 	});
 }
 
 void CentralHub::calculatePartition(unsigned granularity)
 {
+	guiState.structure.granularity = granularity;
 	runOnCurrent([=] (DataPtr d) { d->calculatePartition(granularity); });
 }
 
-void CentralHub::runFAMS()
+void CentralHub::runFAMS(float k)
 {
-	runOnCurrent([=] (DataPtr d) { d->computeFAMS(); });
+	runOnCurrent([=] (DataPtr d) { d->computeFAMS(k); });
 }
 
 void CentralHub::changeOrder(Dataset::OrderBy reference, bool synchronize)
 {
 	runOnCurrent([=] (DataPtr d) { d->changeOrder(reference, synchronize); });
+}
+
+void CentralHub::importAnnotations(const QString &filename)
+{
+	QtConcurrent::run([=] { store.importAnnotations(filename); });
+}
+
+void CentralHub::importHierarchy(const QString &filename)
+{
+	QtConcurrent::run([=] { store.importHierarchy(filename); });
 }
 
 void CentralHub::importDescriptions(const QString &filename)

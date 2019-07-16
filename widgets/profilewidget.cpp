@@ -115,7 +115,7 @@ void ProfileWidget::updateProteins(QVector<unsigned> samples, QString title)
 		auto &prot = d->lookup(p, i);
 		auto &m = s->clustering.memberships[i];
 		auto clusters = std::accumulate(m.begin(), m.end(), QStringList(),
-		    [&s] (QStringList a, unsigned b) { return a << s->clustering.clusters.at(b).name; });
+		    [&s] (QStringList a, unsigned b) { return a << s->clustering.groups.at(b).name; });
 		content.append(tpl.arg(prot.name, prot.species, clusters.join(", "), prot.description));
 	}
 	proteinList->setText(text.arg(content));

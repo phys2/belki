@@ -7,6 +7,7 @@
 #include <QGraphicsScene>
 #include <QAbstractGraphicsShapeItem>
 
+#include <opencv2/core.hpp>
 #include <unordered_map>
 
 class HeatmapScene : public QGraphicsScene

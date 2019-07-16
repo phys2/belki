@@ -4,7 +4,7 @@
 #include "utils.h"
 #include "model.h"
 #include "proteindb.h"
-#include "meanshift/fams.h"
+#include "compute/annotations.h"
 
 #include <QObject>
 #include <QFlags>
@@ -50,31 +50,13 @@ public:
 	};
 	Q_ENUM(OrderBy)
 
-	struct Cluster {
-		QString name;
-		QColor color;
-		unsigned size = 0;
-		// mode of the cluster, if not available, centroid
-		std::vector<double> mode;
-	};
+	struct Annotations : ::Annotations {
+		explicit Annotations(size_t numProteins = 0) : memberships(numProteins) {}
+		Annotations(const ::Annotations &source, const Features &data);
+		bool empty() const { return groups.empty(); }
 
-	struct Clustering {
-		explicit Clustering(size_t numProteins = 0) : memberships(numProteins) {}
-		bool empty() const { return clusters.empty(); }
-
-		// cluster definitions
-		std::unordered_map<unsigned, Cluster> clusters;
-		// order of clusters (based on size/name/etc)
-		std::vector<unsigned> order;
-		// cluster memberships of each protein
+		// memberships of each protein from dataset perspective
 		std::vector<std::set<unsigned>> memberships;
-	};
-
-	struct HrCluster {
-		double distance;
-		int protein;
-		unsigned parent;
-		std::vector<unsigned> children;
 	};
 
 	struct Order {
@@ -102,8 +84,10 @@ public:
 
 	struct Structure : RWLockable {
 		// clusters / hierarchy, if available
-		Clustering clustering;
-		std::vector<HrCluster> hierarchy;
+		Annotations clustering;
+		HrClustering hierarchy;
+
+		unsigned clusteringId = 0; // state info to avoid recomputation (0 = none/special)
 
 		// order of proteins
 		// determined by hierarchy or clusters (if available), pos. in file, or name
@@ -129,9 +113,6 @@ public:
 	template<typename T>
 	View<T> peek() const; // see specializations in cpp
 
-	void changeFAMS(float k); // to be called from different thread
-	void cancelFAMS(); // can be called from different thread
-
 	QByteArray exportDisplay(const QString &name) const;
 
 	void spawn(Features::Ptr data);
@@ -140,28 +121,26 @@ public:
 	void computeDisplay(const QString &name);
 	void computeDisplays();
 	bool readDisplay(const QString &name, QTextStream &tsv);
+	void computeFAMS(float k);
 
-	void clearClusters();
-	bool readAnnotations(QTextStream &tsv);
-	bool readHierarchy(const QJsonObject &json);
+	void applyClustering(const Features::Vec &modes, const std::vector<int>& index);
+	void applyAnnotations(unsigned id);
+	void applyHierarchy(unsigned id, unsigned granularity = 0);
 	void calculatePartition(unsigned granularity);
-	void computeFAMS();
+	void cancelFAMS();
 	void changeOrder(OrderBy reference, bool synchronize);
-
-	void updateColorset(QVector<QColor> colors);
 
 signals:
 	void update(Touched);
 	void ioError(const QString &message);
 
 protected:
-	void swapClustering(Clustering &cl, bool genericNames, bool pruneCl, bool reorderProts);
-
-	void pruneClusters();
-	void computeClusterCentroids();
-	void orderClusters(bool genericNames);
-	void colorClusters();
+	/* note: our protected helpers typically assume write locks in place and
+	 * do not emit updates. */
+	Touched applyAnnotations(const ::Annotations &source, unsigned id = 0, bool reorderProts = true);
 	void orderProteins(OrderBy reference);
+
+	void computeCentroids(Annotations &target);
 
 	// meta information for this dataset
 	DatasetConfiguration conf;
@@ -171,12 +150,9 @@ protected:
 	Representation r;
 	Structure s;
 
-	struct : public RWLockable { // TODO own small class in compute that does all meanshift stuff
-		std::unique_ptr<seg_meanshift::FAMS> fams;
-		float k = -1;
-	} meanshift;
+	// our meanshift worker. if set, holds a copy of features
+	std::unique_ptr<annotations::Meanshift> meanshift;
 
-	QVector<QColor> colorset = {Qt::black};
 	ProteinDB &proteins;
 };
 

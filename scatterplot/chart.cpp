@@ -126,8 +126,8 @@ void Chart::updatePartitions(bool fresh)
 
 		// go through clusters in their designated order
 		for (auto i : d->clustering.order) {
-			auto &c = d->clustering.clusters.at(i);
-			auto s = new Proteins(c.name, c.color, this);
+			auto &g = d->clustering.groups.at(i);
+			auto s = new Proteins(g.name, g.color, this);
 			partitions.try_emplace((int)i, s);
 			/* enable profile view updates on legend label hover */
 			auto lm = legend()->markers(s)[0];

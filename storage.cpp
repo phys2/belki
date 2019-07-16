@@ -10,6 +10,7 @@
 #include <QTextStream>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
 
@@ -99,13 +100,13 @@ Features::Ptr Storage::openDataset(const QString &filename, const QString &featu
 
 		// annotations
 		auto an = contents.filter(QRegularExpression("^annotations/.*\\.tsv$"));
-		for (auto &a : qAsConst(an))
-			emit newAnnotations(QFileInfo(a).completeBaseName());
+		//for (auto &a : qAsConst(an))
+		//	emit newAnnotations(QFileInfo(a).completeBaseName());
 
 		// hierarchies (clustering)
 		auto hi = contents.filter(QRegularExpression("^hierarchies/.*\\.json$"));
-		for (auto &h : qAsConst(hi))
-			emit newHierarchy(QFileInfo(h).completeBaseName());
+		//for (auto &h : qAsConst(hi))
+		//	emit newHierarchy(QFileInfo(h).completeBaseName());
 
 		// todo: read markerlists
 	};
@@ -189,25 +190,6 @@ Features::Ptr Storage::openDataset(const QString &filename, const QString &featu
 		}
 		*/
 	}
-}
-
-std::unique_ptr<QTextStream> Storage::readAnnotations(const QString &name)
-{
-	QReadLocker _(&d.l);
-	return std::make_unique<QTextStream>(d.container->read("annotations/" + name + ".tsv"));
-}
-
-std::unique_ptr<QJsonObject> Storage::readHierarchy(const QString &name)
-{
-	d.l.lockForRead();
-	auto json = QJsonDocument::fromJson(d.container->read("hierarchies/" + name + ".json"));
-	d.l.unlock();
-	if (json.isNull() || !json.isObject()) {
-		// TODO: we could pass parsing errors with fromJson() third argument
-		emit ioError("The selected file does not contain valid JSON!");
-		return {};
-	}
-	return std::make_unique<QJsonObject>(json.object());
 }
 
 Features::Ptr Storage::readSource(QTextStream &in, const QString &featureColName)
@@ -401,8 +383,6 @@ void Storage::finalizeRead(Features &data, bool normalize)
 		data.scoreRange = features::range_of(data.scores);
 }
 
-}
-
 QByteArray Storage::readFile(const QString &filename)
 {
 	QFile f(filename);
@@ -420,6 +400,7 @@ void Storage::importDescriptions(const QString &filename)
 		return freadError(filename);
 
 	auto content = QTextStream(&f);
+	// TODO: implement the reading here
 	bool success = proteins.readDescriptions(content);
 	if (!success)
 		return;
@@ -427,26 +408,127 @@ void Storage::importDescriptions(const QString &filename)
 	// TODO: actual import (storage in ZIP, and then ability to re-read)
 }
 
-void Storage::importAnnotations(const QString &filename, const QByteArray &content)
+void Storage::importAnnotations(const QString &filename)
 {
-	QFileInfo fi(filename);
-	d.l.lockForWrite();
-	d.container->write("annotations/" + fi.completeBaseName() + ".tsv", content);
-	d.l.unlock();
-	emit newAnnotations(fi.completeBaseName(), true);
+	QFile f(filename);
+	if (!f.open(QIODevice::ReadOnly)) {
+		freadError(filename);
+		return;
+	}
+
+	QTextStream in(&f);
+	auto target = std::make_unique<Annotations>();
+	target->name = QFileInfo(filename).completeBaseName();
+
+	// we use SkipEmptyParts for chomping at the end, but dangerous…
+	auto header = in.readLine().split("\t", QString::SkipEmptyParts);
+	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
+	if (header.size() == 2 && header[1].contains("Members")) {
+		/* expect name + list of proteins per-cluster per-line */
+
+		/* build new clusters */
+		unsigned groupIndex = 0;
+		while (!in.atEnd()) {
+			auto line = in.readLine().split("\t");
+			if (line.size() < 2)
+				continue;
+
+			auto &group = target->groups[groupIndex]; // emplace
+			group.name = line[0];
+			line.removeFirst();
+
+			for (auto &name : qAsConst(line)) {
+				auto prot = proteins.add(name);
+				target->groups[groupIndex].members.push_back(prot);
+			}
+
+			groupIndex++;
+		}
+	} else if (header.size() > 1 && header[0].contains(re)) {
+		/* expect matrix layout, first column protein names */
+		header.removeFirst();
+
+		/* setup clusters */
+		target->groups.reserve((unsigned)header.size());
+		for (auto i = 0; i < header.size(); ++i)
+			target->groups[(unsigned)i] = {header[i]};
+
+		/* associate to clusters */
+		while (!in.atEnd()) {
+			auto line = in.readLine().split("\t");
+			if (line.size() < 2)
+				continue;
+
+			auto name = line[0];
+			line.removeFirst();
+			auto prot = proteins.add(name);
+			for (auto i = 0; i < header.size(); ++i) { // run over header to only allow valid columns
+				if (line[i].isEmpty() || line[i].contains(QRegularExpression("^\\s*$")))
+					continue;
+				target->groups[(unsigned)i].members.push_back(prot);
+			}
+		}
+	} else {
+		emit ioError("Could not parse file!<p>The first column must contain protein or group names.</p>");
+		return;
+	}
+
+	proteins.addAnnotations(std::move(target), true);
 }
 
-void Storage::importHierarchy(const QString &filename, const QByteArray &content)
+void Storage::importHierarchy(const QString &filename)
 {
-	QFileInfo fi(filename);
-	d.l.lockForWrite();
-	d.container->write("hierarchies/" + fi.completeBaseName() + ".json", content);
-	d.l.unlock();
-	emit newHierarchy(fi.completeBaseName(), true);
+	QFile f(filename);
+	if (!f.open(QIODevice::ReadOnly)) {
+		freadError(filename);
+		return;
+	}
+
+	auto json = QJsonDocument::fromJson(f.readAll());
+	if (json.isNull() || !json.isObject()) {
+		// TODO: we could pass parsing errors with fromJson() third argument
+		emit ioError(QString("File %1 does not contain valid JSON!").arg(filename));
+		return;
+	}
+
+	QTextStream in(&f);
+	auto target = std::make_unique<HrClustering>();
+	target->name = QFileInfo(filename).completeBaseName();
+
+	auto nodes = json.object()["data"].toObject()["nodes"].toObject();
+	for (auto it = nodes.constBegin(); it != nodes.constEnd(); ++it) {
+		unsigned id = it.key().toUInt();
+		auto node = it.value().toObject();
+		if (id + 1 > target->clusters.size())
+			target->clusters.resize(id + 1);
+
+		auto &c = target->clusters[id];
+		c.distance = node["distance"].toDouble();
+
+		/* leaf: associate proteins */
+		auto content = node["objects"].toArray();
+		if (content.size() == 1) {
+			auto name = content[0].toString();
+			c.protein = proteins.add(name);
+		}
+
+		/* non-leaf: associate children */
+		if (node.contains("left_child")) {
+			c.children = {(unsigned)node["left_child"].toInt(),
+			              (unsigned)node["right_child"].toInt()};
+		}
+
+		/* back-association */
+		if (node.contains("parent"))
+			c.parent = (unsigned)node["parent"].toInt();
+	}
+
+	proteins.addHierarchy(std::move(target), true);
 }
 
 void Storage::exportAnnotations(const QString &filename, Dataset::ConstPtr data)
 {
+	// TODO: export through ProteinDB!!!! NOT Dataset!!
 	QFile f(filename);
 	if (!f.open(QIODevice::WriteOnly))
 		return ioError(QString("Could not write file %1!").arg(filename));
@@ -458,8 +540,8 @@ void Storage::exportAnnotations(const QString &filename, Dataset::ConstPtr data)
 
 	// write header
 	out << "Protein Name";
-	for (auto& [i, c] : s->clustering.clusters)
-		out << "\t" << c.name;
+	for (auto& [i, g] : s->clustering.groups)
+		out << "\t" << g.name;
 	out << endl;
 
 	// write associations
@@ -467,10 +549,10 @@ void Storage::exportAnnotations(const QString &filename, Dataset::ConstPtr data)
 		auto &protein = p->proteins[b->protIds[i]];
 		auto &m = s->clustering.memberships[i];
 		out << protein.name << "_" << protein.species;
-		for (auto& [i, c] : s->clustering.clusters) {
+		for (auto& [i, g] : s->clustering.groups) {
 			out << "\t";
 			if (m.count(i))
-				out << c.name;
+				out << g.name;
 		}
 		out << endl;
 	}
@@ -557,4 +639,8 @@ QStringList Storage::trimCrap(QStringList values)
 	values.replaceInStrings(QRegularExpression(match), "\\1");
 
 	return values;
+}
+
+void Storage::updateColorset(QVector<QColor> colors) {
+	colorset = colors;
 }

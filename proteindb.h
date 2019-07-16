@@ -10,6 +10,7 @@
 #include <vector>
 #include <unordered_map>
 #include <set>
+#include <memory>
 
 class QTextStream;
 
@@ -27,12 +28,16 @@ public:
 
 		// TODO: sort set by prot. name
 		std::set<ProteinId> markers;
+
+		std::unordered_map<unsigned, Structure> structures;
+		unsigned nextStructureId = 1;
 	};
 
 	using View = ::View<Public>;
 
 	explicit ProteinDB(QObject *parent = nullptr);
 
+	const QVector<QColor>& groupColors() { return colorset; }
 	View peek() { return View(data); }
 
 	ProteinId add(const QString& fullname);
@@ -44,6 +49,9 @@ public:
 	size_t importMarkers(const std::vector<QString> &names);
 	void clearMarkers();
 
+	void addAnnotations(std::unique_ptr<Annotations> data, bool select);
+	void addHierarchy(std::unique_ptr<HrClustering> data, bool select);
+
 public slots:
 	void updateColorset(const QVector<QColor>& colors);
 
@@ -52,6 +60,7 @@ signals:
 	void proteinAdded(ProteinId id);
 	void proteinChanged(ProteinId id);
 	void markersToggled(const std::vector<ProteinId> &id, bool present);
+	void structureAvailable(unsigned id, QString name, bool select);
 
 protected:
 	bool valid(ProteinId id);

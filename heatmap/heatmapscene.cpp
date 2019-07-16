@@ -139,7 +139,7 @@ void HeatmapScene::recolor()
 		const auto &assoc = d->clustering.memberships[i];
 		switch (assoc.size()) {
 		case 1:
-			profiles[i]->setBrush(d->clustering.clusters.at(*assoc.begin()).color);
+			profiles[i]->setBrush(d->clustering.groups.at(*assoc.begin()).color);
 			break;
 		default: // TODO: maybe set to White on multiple memberships
 			profiles[i]->setBrush(Qt::transparent);

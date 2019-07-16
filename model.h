@@ -9,6 +9,7 @@
 #include <vector>
 #include <unordered_map>
 #include <memory>
+#include <variant>
 
 using ProteinId = unsigned; // for semantic distinction
 struct Protein {
@@ -48,5 +49,40 @@ struct Features {
 	Vec scores;
 	Range scoreRange;
 };
+
+struct Annotations {
+	struct Group {
+		QString name;
+		QColor color = {};
+		// note: groups are non-exclusive
+		std::vector<ProteinId> members = {};
+		// mode/centroid of the cluster, if available, in the source's feature space
+		std::vector<double> mode = {};
+	};
+
+	QString name;
+	// source dataset
+	unsigned source = 0; // 0 means none
+
+	// group definitions
+	std::unordered_map<unsigned, Group> groups;
+	// order of clusters (based on size/name/etc)
+	std::vector<unsigned> order;
+};
+
+struct HrClustering {
+	struct Cluster {
+		double distance;
+		std::optional<ProteinId> protein;
+		unsigned parent;
+		std::vector<unsigned> children;
+	};
+
+	QString name;
+
+	std::vector<Cluster> clusters;
+};
+
+using Structure = std::variant<Annotations, HrClustering>;
 
 #endif // MODEL_H

@@ -149,7 +149,7 @@ void DistmatScene::recolor()
 			clusterbar.setPixelColor(i, 0, Qt::transparent);
 			break;
 		case 1:
-			clusterbar.setPixelColor(i, 0, cl.clusters.at(*assoc.begin()).color);
+			clusterbar.setPixelColor(i, 0, cl.groups.at(*assoc.begin()).color);
 			break;
 		default:
 			clusterbar.setPixelColor(i, 0, Qt::white);

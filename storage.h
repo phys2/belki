@@ -5,6 +5,8 @@
 #include "model.h"
 
 #include <QObject>
+#include <QVector>
+#include <QColor>
 #include <memory>
 
 namespace qzip { class Zip; }
@@ -23,11 +25,8 @@ public:
 	QString name();
 
 	Features::Ptr openDataset(const QString &filename, const QString &featureColName = "Dist");
-	std::unique_ptr<QTextStream> readAnnotations(const QString &name);
-	std::unique_ptr<QJsonObject> readHierarchy(const QString &name);
 
 	Features::Ptr readSource(QTextStream &in, const QString &featureColName);
-
 	QByteArray readFile(const QString &filename);
 
 	void importMarkers(const QString &filename);
@@ -36,13 +35,12 @@ public:
 signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
 	void ioError(const QString &message);
 	void newDisplay(const QString &name, bool loaded=false);
-	void newAnnotations(const QString &name, bool loaded=false);
-	void newHierarchy(const QString &name, bool loaded=false);
 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
+	void updateColorset(QVector<QColor> colors);
 	void importDescriptions(const QString &filename);
-	void importAnnotations(const QString &filename, const QByteArray &content);
-	void importHierarchy(const QString &filename, const QByteArray &content);
+	void importAnnotations(const QString &filename);
+	void importHierarchy(const QString &filename);
 	void exportAnnotations(const QString &filename, std::shared_ptr<Dataset const> data);
 
 protected:
@@ -61,6 +59,7 @@ protected:
 	} d;
 
 	ProteinDB &proteins;
+	QVector<QColor> colorset;
 };
 
 #endif // STORAGE_H
