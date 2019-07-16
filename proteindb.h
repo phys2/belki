@@ -22,6 +22,8 @@ public:
 	struct Public : RWLockable {
 		// helper for finding proteins, name may contain species, throws
 		ProteinId find(const QString &name) const;
+		// helper for annotations type
+		bool isHierarchy(unsigned id) const;
 
 		std::vector<Protein> proteins;
 		std::unordered_map<QString, ProteinId> index;

@@ -167,6 +167,12 @@ QColor ProteinDB::colorFor(const Protein &subject)
 	return colorset.at((int)(qHash(subject.name) % (unsigned)colorset.size()));
 }
 
-ProteinId ProteinDB::Public::find(const QString &name) const {
+ProteinId ProteinDB::Public::find(const QString &name) const
+{
 	return index.at(name.split('_').front());
+}
+
+bool ProteinDB::Public::isHierarchy(unsigned id) const
+{
+	return std::holds_alternative<HrClustering>(structures.at((unsigned)id));
 }

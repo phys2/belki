@@ -4,5 +4,8 @@
 		<file>show-average.svg</file>
 		<file>show-individual.svg</file>
 		<file>show-labels.svg</file>
-    </qresource>
+		<file>type-annotations.svg</file>
+		<file>type-hierarchy.svg</file>
+		<file>type-meanshift.svg</file>
+	</qresource>
 </RCC>

@@ -100,7 +100,7 @@ void MainWindow::setupToolbar()
 
 	// fill-up partition area
 	partitionSelect->addItem("None", 0);
-	partitionSelect->addItem("Adaptive Mean Shift", -1);
+	partitionSelect->addItem(QIcon(":/icons/type-meanshift.svg"), "Adaptive Mean Shift", -1);
 	toolBar->insertWidget(anchor, partitionLabel);
 	toolbarActions.partitions = toolBar->insertWidget(anchor, partitionSelect);
 	toolbarActions.granularity = toolBar->addWidget(granularitySlider);
@@ -125,8 +125,8 @@ void MainWindow::setupSignals()
 	});
 	connect(&hub.proteins, &ProteinDB::structureAvailable, this,
 	        [this] (unsigned id, QString name, bool select) {
-		// TODO: three different icons (annot, hier, meanshift)
-		partitionSelect->addItem(QIcon::fromTheme("view-group"), name, id);
+		auto icon = (hub.proteins.peek()->isHierarchy(id) ? "hierarchy" : "annotations");
+		partitionSelect->addItem(QIcon(QString(":/icons/type-%1.svg").arg(icon)), name, id);
 		if (select)
 			selectAnnotations((int)id);
 	});
@@ -426,10 +426,7 @@ void MainWindow::selectAnnotations(int id)
 	/* regular items */
 
 	// check between hierarchy and annotations
-	bool isHierarchy = std::holds_alternative<HrClustering>
-	        (this->hub.proteins.peek()->structures.at((unsigned)id));
-
-	if (isHierarchy) {
+	if (this->hub.proteins.peek()->isHierarchy((unsigned)id)) {
 		hub.applyHierarchy((unsigned)id, (unsigned)granularitySlider->value());
 		toolbarActions.granularity->setVisible(true);
 		actionExportAnnotations->setEnabled(true);
