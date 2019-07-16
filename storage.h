@@ -44,7 +44,7 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void exportAnnotations(const QString &filename, std::shared_ptr<Dataset const> data);
 
 protected:
-	Features::Ptr readSimpleSource(QTextStream &in);
+	Features::Ptr readSimpleSource(QTextStream &in, bool normalize);
 	void finalizeRead(Features &data, bool normalize);
 
 	void storeDisplay(const Dataset &data, const QString& name);

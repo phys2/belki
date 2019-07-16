@@ -194,14 +194,15 @@ Features::Ptr Storage::openDataset(const QString &filename, const QString &featu
 
 Features::Ptr Storage::readSource(QTextStream &in, const QString &featureColName)
 {
-	// the featureColName argument is a hack. We probably want some "Config" struct instead
+	// TODO: the featureColName argument is a hack. We probably want some "Config" struct instead
+	bool normalize = featureColName.isEmpty() || featureColName == "Dist";
 
 	auto header = in.readLine().split("\t");
 
 	/* simple source files have first header field blank (first column is still proteins) */
 	if (!header.empty() && header.first().isEmpty()) {
 		in.seek(0);
-		return readSimpleSource(in);
+		return readSimpleSource(in, normalize);
 	}
 
 	if (header.contains("") || header.removeDuplicates()) {
@@ -290,13 +291,11 @@ Features::Ptr Storage::readSource(QTextStream &in, const QString &featureColName
 		return {};
 	}
 
-	// TODO: hack to not normalize abundance values
-	bool normalize = featureColName.isEmpty() || featureColName == "Dist";
 	finalizeRead(*ret, normalize);
 	return ret;
 }
 
-Features::Ptr Storage::readSimpleSource(QTextStream &in)
+Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 {
 	auto header = in.readLine().split("\t");
 	header.pop_front(); // first column (also expected to be empty)
@@ -353,7 +352,7 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in)
 		return {};
 	}
 
-	finalizeRead(*ret, true);
+	finalizeRead(*ret, normalize);
 	return ret;
 }
 
