@@ -286,9 +286,9 @@ public:
 	mutable std::vector<int> spsizes;
 	// alg params
 	Config config;
+	bool cancelled = false;
 
 protected:
-	bool cancelled = false;
 	float progress = 0.f, progress_old = 0.f;
 	tbb::mutex progressMutex;
 };
