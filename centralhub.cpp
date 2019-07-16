@@ -50,6 +50,7 @@ CentralHub::DataPtr CentralHub::createDataset(DatasetConfiguration config)
 	data.l.lockForWrite();
 	config.id = data.nextId++; // inject id into config
 	auto dataset = std::make_shared<Dataset>(proteins, config);
+	dataset->moveToThread(thread()); // ensure the object does not live in threadpool!
 	data.sets[config.id] = dataset;
 	data.l.unlock();
 
