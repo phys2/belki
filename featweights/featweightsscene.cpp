@@ -340,7 +340,7 @@ void FeatweightsScene::WeightBar::paint(QPainter *painter, const QStyleOptionGra
 	/* first fill components */
 	auto colors = scene()->colorset;
 	loop([&] (auto index, auto rect) {
-		auto color = colors[index % colors.size()];
+		auto color = colors.at(index % colors.size());
 		painter->fillRect(rect, color);
 	});
 	/* second draw highlight rect */

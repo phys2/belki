@@ -313,7 +313,7 @@ void DistmatScene::LegendItem::setup(DistmatScene *scene, QString title, QColor 
 	line->setPen(pen);
 
 	QBrush fill(bgColor);
-	QPen outline(color.dark(300));
+	QPen outline(color.darker(300));
 	outline.setCosmetic(true);
 	backdrop.reset(scene->addRect({}));
 	backdrop->setBrush(fill);

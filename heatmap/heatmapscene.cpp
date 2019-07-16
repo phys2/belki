@@ -235,7 +235,7 @@ HeatmapScene::Marker::Marker(HeatmapScene *scene, unsigned sampleIndex, const QP
 	auto &meta = scene->data->peek<Dataset::Base>()->lookup(p, sampleIndex);
 
 	QBrush fill(QColor{0, 0, 0, 127});
-	QPen outline(meta.color.dark(300));
+	QPen outline(meta.color.darker(300));
 	outline.setCosmetic(true);
 	backdrop.reset(scene->addRect({}));
 	backdrop->setBrush(fill);
