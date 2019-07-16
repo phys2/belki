@@ -54,6 +54,8 @@ protected:
 	void setFilename(QString name);
 	void setSelectedDataset(unsigned index);
 
+	void selectAnnotations(int id);
+
 	CentralHub &hub;
 	Dataset::Ptr data;
 

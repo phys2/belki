@@ -127,12 +127,8 @@ void MainWindow::setupSignals()
 	        [this] (unsigned id, QString name, bool select) {
 		// TODO: three different icons (annot, hier, meanshift)
 		partitionSelect->addItem(QIcon::fromTheme("view-group"), name, id);
-		if (select) { // the user expects to see it
-			// TODO: this does _not_ set whole state (enabled stuff)! write member method
-			// that does it and is called by activated signal
-			// see also updateState() and partitionselect. looks like thats the stuff to do
-			// partitionSelect->setCurrentIndex(partitionSelect->findData(id));
-		}
+		if (select)
+			selectAnnotations((int)id);
 	});
 
 	connect(&hub, &CentralHub::newDataset, this, &MainWindow::newDataset);
@@ -147,35 +143,7 @@ void MainWindow::setupSignals()
 
 	/* selecting/altering partition */
 	connect(partitionSelect, qOverload<int>(&QComboBox::activated), [this] {
-		// clear partition-type dependant state
-		toolbarActions.granularity->setVisible(false);
-		toolbarActions.famsK->setVisible(false);
-		actionExportAnnotations->setEnabled(false);
-
-		auto id = partitionSelect->currentData().value<int>();
-		if (id == 0) { // "None"
-			hub.applyAnnotations(0);
-			return;
-		} else if (id == -1) { // Mean shift
-			hub.runFAMS(famsKSlider->value() * 0.01f);
-			toolbarActions.famsK->setVisible(true);
-			actionExportAnnotations->setEnabled(true);
-			return;
-		}
-
-		/* regular items */
-
-		// check between hierarchy and annotations
-		bool isHierarchy = std::holds_alternative<HrClustering>
-		        (this->hub.proteins.peek()->structures.at((unsigned)id));
-
-		if (isHierarchy) {
-			hub.applyHierarchy((unsigned)id, (unsigned)granularitySlider->value());
-			toolbarActions.granularity->setVisible(true);
-			actionExportAnnotations->setEnabled(true);
-		} else {
-			hub.applyAnnotations((unsigned)id);
-		}
+		selectAnnotations(partitionSelect->currentData().value<int>());
 	});
 	connect(granularitySlider, &QSlider::valueChanged, &hub, &CentralHub::calculatePartition);
 	connect(famsKSlider, &QSlider::valueChanged, [this] (int v) {
@@ -434,6 +402,40 @@ void MainWindow::setSelectedDataset(unsigned index)
 	// reset combobox to display full tree again
 	datasetTree->setCurrentItem(datasetTree->invisibleRootItem());
 	datasetSelect->setRootModelIndex(datasetTree->currentIndex());
+}
+
+void MainWindow::selectAnnotations(int id)
+{
+	partitionSelect->setCurrentIndex(partitionSelect->findData(id));
+
+	// clear type-dependant state
+	toolbarActions.granularity->setVisible(false);
+	toolbarActions.famsK->setVisible(false);
+	actionExportAnnotations->setEnabled(false);
+
+	if (id == 0) { // "None"
+		hub.applyAnnotations(0);
+		return;
+	} else if (id == -1) { // Mean shift
+		hub.runFAMS(famsKSlider->value() * 0.01f);
+		toolbarActions.famsK->setVisible(true);
+		actionExportAnnotations->setEnabled(true);
+		return;
+	}
+
+	/* regular items */
+
+	// check between hierarchy and annotations
+	bool isHierarchy = std::holds_alternative<HrClustering>
+	        (this->hub.proteins.peek()->structures.at((unsigned)id));
+
+	if (isHierarchy) {
+		hub.applyHierarchy((unsigned)id, (unsigned)granularitySlider->value());
+		toolbarActions.granularity->setVisible(true);
+		actionExportAnnotations->setEnabled(true);
+	} else {
+		hub.applyAnnotations((unsigned)id);
+	}
 }
 
 void MainWindow::showHelp()
