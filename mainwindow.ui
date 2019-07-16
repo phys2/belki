@@ -40,14 +40,14 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="partitionLabel">
+        <widget class="QLabel" name="structureLabel">
          <property name="text">
-          <string>Partition:</string>
+          <string>Structure:</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="partitionSelect">
+        <widget class="QComboBox" name="structureSelect">
          <property name="sizeAdjustPolicy">
           <enum>QComboBox::AdjustToContents</enum>
          </property>
@@ -190,7 +190,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionLoadDataset"/>
-   <addaction name="actionShowPartition"/>
+   <addaction name="actionShowStructure"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget">
    <property name="features">
@@ -330,7 +330,7 @@
     <addaction name="actionLoadDatasetAbundance"/>
     <addaction name="actionLoadDescriptions"/>
     <addaction name="separator"/>
-    <addaction name="actionLoadAnnotations"/>
+    <addaction name="actionLoadStructure"/>
     <addaction name="actionExportAnnotations"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
@@ -418,7 +418,7 @@
     <string>Remove all current markers</string>
    </property>
   </action>
-  <action name="actionShowPartition">
+  <action name="actionShowStructure">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -430,22 +430,22 @@
      <normaloff>:/icons/show-partition.svg</normaloff>:/icons/show-partition.svg</iconset>
    </property>
    <property name="text">
-    <string>Show Partition</string>
+    <string>Show Structure</string>
    </property>
    <property name="toolTip">
-    <string>Color samples by their partition/cluster</string>
+    <string>Color samples by their annotations/cluster</string>
    </property>
   </action>
-  <action name="actionLoadAnnotations">
+  <action name="actionLoadStructure">
    <property name="icon">
     <iconset theme="document-open">
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string>Load &amp;Annotations</string>
+    <string>Load &amp;Structure</string>
    </property>
    <property name="toolTip">
-    <string>Load a .tsv annotition file</string>
+    <string>Load a .tsv annotition or .json clustering file</string>
    </property>
   </action>
   <action name="actionProfileView">

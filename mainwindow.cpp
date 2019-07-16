@@ -53,7 +53,7 @@ MainWindow::MainWindow(CentralHub &hub) :
 
 		// set initial state
 		emit v->inUpdateColorset(hub.colorset());
-		emit v->inTogglePartitions(actionShowPartition->isChecked());
+		emit v->inTogglePartitions(actionShowStructure->isChecked());
 	}
 
 	/* experimental: put to sleep when not visible
@@ -93,16 +93,16 @@ void MainWindow::setupToolbar()
 	datasetSelect->setView(datasetTree);
 
 	// put datasets and some space before partition area
-	auto anchor = actionShowPartition;
+	auto anchor = actionShowStructure;
 	toolBar->insertWidget(anchor, datasetLabel);
 	toolbarActions.datasets = toolBar->insertWidget(anchor, datasetSelect);
 	toolBar->insertSeparator(anchor);
 
 	// fill-up partition area
-	partitionSelect->addItem("None", 0);
-	partitionSelect->addItem(QIcon(":/icons/type-meanshift.svg"), "Adaptive Mean Shift", -1);
-	toolBar->insertWidget(anchor, partitionLabel);
-	toolbarActions.partitions = toolBar->insertWidget(anchor, partitionSelect);
+	structureSelect->addItem("None", 0);
+	structureSelect->addItem(QIcon(":/icons/type-meanshift.svg"), "Adaptive Mean Shift", -1);
+	toolBar->insertWidget(anchor, structureLabel);
+	toolbarActions.structure = toolBar->insertWidget(anchor, structureSelect);
 	toolbarActions.granularity = toolBar->addWidget(granularitySlider);
 	toolbarActions.famsK = toolBar->addWidget(famsKSlider);
 
@@ -126,9 +126,9 @@ void MainWindow::setupSignals()
 	connect(&hub.proteins, &ProteinDB::structureAvailable, this,
 	        [this] (unsigned id, QString name, bool select) {
 		auto icon = (hub.proteins.peek()->isHierarchy(id) ? "hierarchy" : "annotations");
-		partitionSelect->addItem(QIcon(QString(":/icons/type-%1.svg").arg(icon)), name, id);
+		structureSelect->addItem(QIcon(QString(":/icons/type-%1.svg").arg(icon)), name, id);
 		if (select)
-			selectAnnotations((int)id);
+			selectStructure((int)id);
 	});
 
 	connect(&hub, &CentralHub::newDataset, this, &MainWindow::newDataset);
@@ -142,8 +142,8 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::datasetSelected, this, &MainWindow::setSelectedDataset);
 
 	/* selecting/altering partition */
-	connect(partitionSelect, qOverload<int>(&QComboBox::activated), [this] {
-		selectAnnotations(partitionSelect->currentData().value<int>());
+	connect(structureSelect, qOverload<int>(&QComboBox::activated), [this] {
+		selectStructure(structureSelect->currentData().value<int>());
 	});
 	connect(granularitySlider, &QSlider::valueChanged, &hub, &CentralHub::calculatePartition);
 	connect(famsKSlider, &QSlider::valueChanged, [this] (int v) {
@@ -183,8 +183,8 @@ void MainWindow::setupActions()
 			return;
 		hub.importDescriptions(filename);
 	});
-	connect(actionLoadAnnotations, &QAction::triggered, [this] {
-		auto filename = io->chooseFile(FileIO::OpenClustering);
+	connect(actionLoadStructure, &QAction::triggered, [this] {
+		auto filename = io->chooseFile(FileIO::OpenStructure);
 		if (filename.isEmpty())
 			return;
 		auto filetype = QFileInfo(filename).suffix();
@@ -200,7 +200,7 @@ void MainWindow::setupActions()
 
 		emit hub.exportAnnotations(filename);
 	});
-	connect(actionShowPartition, &QAction::toggled, this, &MainWindow::partitionsToggled);
+	connect(actionShowStructure, &QAction::toggled, this, &MainWindow::partitionsToggled);
 	connect(actionClearMarkers, &QAction::triggered, &hub.proteins, &ProteinDB::clearMarkers);
 	connect(actionLoadMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenMarkers);
@@ -286,8 +286,8 @@ void MainWindow::updateState(Dataset::Touched affected)
 	if (!data) {
 		/* hide and disable widgets that need data or even more */
 		actionSplice->setEnabled(false);
-		actionShowPartition->setChecked(false);
-		actionShowPartition->setEnabled(false);
+		actionShowStructure->setChecked(false);
+		actionShowStructure->setEnabled(false);
 		toolbarActions.granularity->setVisible(false);
 		toolbarActions.famsK->setVisible(false);
 		actionExportAnnotations->setEnabled(false);
@@ -302,8 +302,8 @@ void MainWindow::updateState(Dataset::Touched affected)
 	auto s = data->peek<Dataset::Structure>();
 	if (affected & Dataset::Touch::CLUSTERS) {
 		bool haveClustering = !s->clustering.empty();
-		actionShowPartition->setEnabled(haveClustering);
-		actionShowPartition->setChecked(haveClustering);
+		actionShowStructure->setEnabled(haveClustering);
+		actionShowStructure->setChecked(haveClustering);
 	}
 	if (affected & Dataset::Touch::HIERARCHY) {
 		if (!s->hierarchy.clusters.empty()) {
@@ -404,9 +404,9 @@ void MainWindow::setSelectedDataset(unsigned index)
 	datasetSelect->setRootModelIndex(datasetTree->currentIndex());
 }
 
-void MainWindow::selectAnnotations(int id)
+void MainWindow::selectStructure(int id)
 {
-	partitionSelect->setCurrentIndex(partitionSelect->findData(id));
+	structureSelect->setCurrentIndex(structureSelect->findData(id));
 
 	// clear type-dependant state
 	toolbarActions.granularity->setVisible(false);

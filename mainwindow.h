@@ -54,7 +54,7 @@ protected:
 	void setFilename(QString name);
 	void setSelectedDataset(unsigned index);
 
-	void selectAnnotations(int id);
+	void selectStructure(int id);
 
 	CentralHub &hub;
 	Dataset::Ptr data;
@@ -70,7 +70,7 @@ protected:
 
 	struct {
 		QAction *datasets;
-		QAction *partitions;
+		QAction *structure;
 		QAction *granularity;
 		QAction *famsK;
 	} toolbarActions;

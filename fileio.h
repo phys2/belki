@@ -18,7 +18,7 @@ public:
 	enum Role {
 		OpenDataset,
 		OpenDescriptions,
-		OpenClustering,
+		OpenStructure,
 		OpenMarkers,
 		SaveMarkers,
 		SaveAnnotations,
