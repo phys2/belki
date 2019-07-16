@@ -102,7 +102,7 @@ protected:
 			qreal lo = .1;
 		} alpha;
 		struct {
-			QColor unlabeled = Qt::gray;
+			QColor unlabeled = Qt::white;
 			QColor mixed = Qt::darkGray;
 		} color;
 		Qt::PenStyle border = Qt::PenStyle::DotLine;
