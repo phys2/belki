@@ -151,11 +151,12 @@ bool Dataset::readDisplay(const QString& name, QTextStream &in)
 
 void Dataset::computeFAMS(float k)
 {
-	b.l.lockForWrite(); // we guard meanshift initialization with base lock (hack)
 	if (!meanshift) {
-		meanshift = std::make_unique<annotations::Meanshift>(b.features);
+		b.l.lockForWrite(); // we guard meanshift init with write on base lock (hack)
+		if (!meanshift)
+			meanshift = std::make_unique<annotations::Meanshift>(b.features);
+		b.l.unlock();
 	}
-	b.l.unlock();
 
 	auto result = meanshift->applyK(k);
 	if (result) {
