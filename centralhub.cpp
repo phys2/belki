@@ -119,7 +119,7 @@ void CentralHub::importDataset(const QString &filename, const QString featureCol
 			name.append(*(++path.rbegin()) + "/");
 		if (path.size() > 0)
 			name.append(path.back() + "/");
-		name.append(f.baseName()); // hack
+		name.append(f.completeBaseName()); // hack
 		if (!featureCol.isEmpty() && featureCol != "Dist")
 			name += " " + featureCol;
 		DatasetConfiguration config;
