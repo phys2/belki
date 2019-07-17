@@ -38,7 +38,7 @@ public slots:
 
 	void applyAnnotations(unsigned id);
 	void applyHierarchy(unsigned id, unsigned granularity);
-	void calculatePartition(unsigned granularity);
+	void createPartition(unsigned granularity);
 	void importAnnotations(const QString &filename);
 	void exportAnnotations(const QString &filename);
 	void importHierarchy(const QString &filename);

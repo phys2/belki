@@ -51,7 +51,7 @@ public:
 	size_t importMarkers(const std::vector<QString> &names);
 	void clearMarkers();
 
-	void addAnnotations(std::unique_ptr<Annotations> data, bool select);
+	void addAnnotations(std::unique_ptr<Annotations> data, bool select, bool pristine = false);
 	void addHierarchy(std::unique_ptr<HrClustering> data, bool select);
 
 public slots:

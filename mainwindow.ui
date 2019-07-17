@@ -192,7 +192,7 @@
    <addaction name="actionLoadDataset"/>
    <addaction name="actionSplice"/>
    <addaction name="actionShowStructure"/>
-   <addaction name="actionKeepAnnotations"/>
+   <addaction name="actionPersistAnnotations"/>
   </widget>
   <widget class="QDockWidget" name="dockWidget">
    <property name="features">
@@ -360,7 +360,7 @@
     <addaction name="separator"/>
     <addaction name="actionShowStructure"/>
     <addaction name="separator"/>
-    <addaction name="actionKeepAnnotations"/>
+    <addaction name="actionPersistAnnotations"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuStructure"/>
@@ -532,7 +532,7 @@
     <string>Load a .tsv file and read abundance values</string>
    </property>
   </action>
-  <action name="actionKeepAnnotations">
+  <action name="actionPersistAnnotations">
    <property name="icon">
     <iconset theme="document-new-from-template">
      <normaloff>.</normaloff>.</iconset>

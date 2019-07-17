@@ -123,10 +123,10 @@ public:
 	bool readDisplay(const QString &name, QTextStream &tsv);
 	void computeFAMS(float k);
 
-	void applyClustering(const Features::Vec &modes, const std::vector<int>& index);
+	void applyClustering(const QString &name, const Features::Vec &modes, const std::vector<int>& index);
 	void applyAnnotations(unsigned id);
 	void applyHierarchy(unsigned id, unsigned granularity = 0);
-	void calculatePartition(unsigned granularity);
+	void createPartition(unsigned granularity);
 	void cancelFAMS();
 	void changeOrder(OrderBy reference, bool synchronize);
 
@@ -137,6 +137,7 @@ signals:
 protected:
 	/* note: our protected helpers typically assume write locks in place and
 	 * do not emit updates. */
+	Touched calculatePartition(unsigned granularity);
 	Touched applyAnnotations(const ::Annotations &source, unsigned id = 0, bool reorderProts = true);
 	void orderProteins(OrderBy reference);
 

@@ -14,9 +14,8 @@
 #include <QAbstractProxyModel>
 #include <QLabel>
 #include <QMessageBox>
+#include <QInputDialog>
 #include <QTimer>
-
-#include <iostream>
 
 MainWindow::MainWindow(CentralHub &hub) :
     hub(hub),
@@ -145,7 +144,7 @@ void MainWindow::setupSignals()
 	connect(structureSelect, qOverload<int>(&QComboBox::activated), [this] {
 		selectStructure(structureSelect->currentData().value<int>());
 	});
-	connect(granularitySlider, &QSlider::valueChanged, &hub, &CentralHub::calculatePartition);
+	connect(granularitySlider, &QSlider::valueChanged, &hub, &CentralHub::createPartition);
 	connect(famsKSlider, &QSlider::valueChanged, [this] (int v) {
 		hub.runFAMS(v * 0.01f);
 	});
@@ -198,7 +197,24 @@ void MainWindow::setupActions()
 		if (filename.isEmpty())
 			return;
 
-		emit hub.exportAnnotations(filename);
+		hub.exportAnnotations(filename);
+	});
+	connect(actionPersistAnnotations, &QAction::triggered, [this] {
+		if (!data)
+			return;
+
+		/* we do it straight away, we keep our own copy while letting the user
+		   edit the name, so nothing can happen to it in the meantime */
+		auto clustering = std::make_unique<Annotations>
+		        (data->peek<Dataset::Structure>()->clustering);
+	    auto name = QInputDialog::getText(this, "Keep snapshot of current clustering",
+		                                  "Please provide a name:", QLineEdit::Normal,
+		                                  clustering->name);
+	    if (name.isEmpty())
+			return; // user cancelled
+
+		clustering->name = name;
+		hub.proteins.addAnnotations(std::move(clustering), false, true);
 	});
 	connect(actionShowStructure, &QAction::toggled, this, &MainWindow::partitionsToggled);
 	connect(actionClearMarkers, &QAction::triggered, &hub.proteins, &ProteinDB::clearMarkers);
@@ -291,7 +307,7 @@ void MainWindow::updateState(Dataset::Touched affected)
 		toolbarActions.granularity->setVisible(false);
 		toolbarActions.famsK->setVisible(false);
 		actionExportAnnotations->setEnabled(false);
-		actionKeepAnnotations->setEnabled(false);
+		actionPersistAnnotations->setEnabled(false);
 		return;
 	}
 
@@ -305,6 +321,9 @@ void MainWindow::updateState(Dataset::Touched affected)
 		bool haveClustering = !s->clustering.empty();
 		actionShowStructure->setEnabled(haveClustering);
 		actionShowStructure->setChecked(haveClustering);
+		bool computedClustering = haveClustering && structureSelect->currentData() < 1;
+		actionExportAnnotations->setEnabled(computedClustering);
+		actionPersistAnnotations->setEnabled(computedClustering);
 	}
 	if (affected & Dataset::Touch::HIERARCHY) {
 		if (!s->hierarchy.clusters.empty()) {
@@ -412,8 +431,6 @@ void MainWindow::selectStructure(int id)
 	// clear type-dependant state
 	toolbarActions.granularity->setVisible(false);
 	toolbarActions.famsK->setVisible(false);
-	actionExportAnnotations->setEnabled(false);
-	actionKeepAnnotations->setEnabled(false);
 
 	if (id == 0) { // "None"
 		hub.applyAnnotations(0);
@@ -421,8 +438,6 @@ void MainWindow::selectStructure(int id)
 	} else if (id == -1) { // Mean shift
 		hub.runFAMS(famsKSlider->value() * 0.01f);
 		toolbarActions.famsK->setVisible(true);
-		actionExportAnnotations->setEnabled(true);
-		actionKeepAnnotations->setEnabled(true);
 		return;
 	}
 
@@ -432,8 +447,6 @@ void MainWindow::selectStructure(int id)
 	if (this->hub.proteins.peek()->isHierarchy((unsigned)id)) {
 		hub.applyHierarchy((unsigned)id, (unsigned)granularitySlider->value());
 		toolbarActions.granularity->setVisible(true);
-		actionExportAnnotations->setEnabled(true);
-		actionKeepAnnotations->setEnabled(true);
 	} else {
 		hub.applyAnnotations((unsigned)id);
 	}

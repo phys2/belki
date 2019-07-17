@@ -164,10 +164,10 @@ void CentralHub::applyHierarchy(unsigned id, unsigned granularity)
 	});
 }
 
-void CentralHub::calculatePartition(unsigned granularity)
+void CentralHub::createPartition(unsigned granularity)
 {
 	guiState.structure.granularity = granularity;
-	runOnCurrent([=] (DataPtr d) { d->calculatePartition(granularity); });
+	runOnCurrent([=] (DataPtr d) { d->createPartition(granularity); });
 }
 
 void CentralHub::runFAMS(float k)

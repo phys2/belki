@@ -126,10 +126,12 @@ void ProteinDB::clearMarkers()
 	emit markersToggled(affected, false);
 }
 
-void ProteinDB::addAnnotations(std::unique_ptr<Annotations> a, bool select)
+void ProteinDB::addAnnotations(std::unique_ptr<Annotations> a, bool select, bool pristine)
 {
-	annotations::order(*a, false);
-	annotations::color(*a, colorset);
+	if (!pristine) {
+		annotations::order(*a, false);
+		annotations::color(*a, colorset);
+	}
 
 	auto name = a->name;
 

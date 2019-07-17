@@ -158,16 +158,19 @@ void Dataset::computeFAMS(float k)
 	b.l.unlock();
 
 	auto result = meanshift->applyK(k);
-	if (result)
-		applyClustering(result->modes, result->associations);
+	if (result) {
+		auto name = QString("Mean Shift, k=%1").arg((double)k, 0, 'f', 2);
+		applyClustering(name, result->modes, result->associations);
+	}
 }
 
-void Dataset::applyClustering(const Features::Vec &modes, const std::vector<int>& index) {
+void Dataset::applyClustering(const QString& name, const Features::Vec &modes, const std::vector<int>& index) {
 	auto d = peek<Base>();
 
 	/* Note: we do not work with our descendant of Annotations and set memberships
 	 * directly, as they would need to be yet again updated after pruning. */
 	::Annotations target;
+	target.name = name;
 	target.source = conf.id;
 
 	for (unsigned i = 0; i < modes.size(); ++i)
@@ -231,32 +234,37 @@ void Dataset::applyHierarchy(unsigned id, unsigned granularity)
 	}
 
 	if (granularity != 0) {
-		auto target = annotations::partition(s.hierarchy, granularity);
-		annotations::prune(target);
-		annotations::order(target, true);
-		annotations::color(target, proteins.groupColors());
-		touched |= applyAnnotations(target, 0, false);
+		touched |= calculatePartition(granularity);
 	}
 	s.l.unlock();
 
 	emit update(touched);
 }
 
-void Dataset::calculatePartition(unsigned granularity)
+void Dataset::createPartition(unsigned granularity)
 {
 	// just in case it's running
 	if (meanshift)
 		meanshift->cancel();
 
 	s.l.lockForWrite();
-	auto target = annotations::partition(s.hierarchy, granularity);
-	annotations::prune(target);
-	annotations::order(target, true);
-	annotations::color(target, proteins.groupColors());
-	auto touched = applyAnnotations(target, 0, false);
+	auto touched = calculatePartition(granularity);
 	s.l.unlock();
 
 	emit update(touched);
+}
+
+Dataset::Touched Dataset::calculatePartition(unsigned granularity)
+{
+	auto target = annotations::partition(s.hierarchy, granularity);
+	target.name = QString("%2 at granularity %1").arg(granularity).arg(s.hierarchy.name);
+	target.source = conf.id;
+
+	annotations::prune(target);
+	annotations::order(target, true);
+	annotations::color(target, proteins.groupColors());
+
+	return applyAnnotations(target, 0, false);
 }
 
 Dataset::Touched Dataset::applyAnnotations(const ::Annotations &source, unsigned id, bool reorderProts)
