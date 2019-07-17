@@ -115,6 +115,7 @@ Meanshift::Meanshift(const Features::Vec &input)
 {
 	std::scoped_lock _(l);
 	fams->importPoints(input, true); // scales vectors
+	fams->selectStartPoints(0., 1); // perform for all features
 }
 
 Meanshift::~Meanshift()
@@ -141,14 +142,15 @@ void Meanshift::cancel()
 
 std::optional<Meanshift::Result> Meanshift::compute()
 {
-	std::scoped_lock _(l);
+	std::scoped_lock _(l); // wait for any other threads to finish
+
 	/* We compress several redundant requests for computation by always computing
 	 * on the latest setting for k and by not repeating computation if same k was
 	 * used in the previous run. */
 	if (fams->config.k == k || k == 0)
 		return {};
 
-	fams->cancelled = false;
+	fams->resetState();
 	fams->config.k = k;
 
 	bool success = fams->prepareFAMS();
@@ -156,7 +158,6 @@ std::optional<Meanshift::Result> Meanshift::compute()
 		return {};
 	}
 
-	fams->selectStartPoints(0., 1);
 	success = fams->finishFAMS();
 	if (!success) {	// cancelled
 		return {};

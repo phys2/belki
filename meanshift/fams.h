@@ -152,6 +152,8 @@ public:
 	// returns a vector of pruned modes (sorted by size)
 	std::vector<std::vector<double>> exportModes() const;
 
+	void resetState();
+
 	/** optional argument bandwidths provides pre-calculated
 	 *  per-point bandwidth
 	 */
@@ -286,9 +288,9 @@ public:
 	mutable std::vector<int> spsizes;
 	// alg params
 	Config config;
-	bool cancelled = false;
 
 protected:
+	bool cancelled = false;
 	float progress = 0.f, progress_old = 0.f;
 	tbb::mutex progressMutex;
 };
