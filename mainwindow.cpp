@@ -183,7 +183,7 @@ void MainWindow::setupActions()
 			return;
 		hub.importDescriptions(filename);
 	});
-	connect(actionLoadStructure, &QAction::triggered, [this] {
+	connect(actionImportStructure, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::OpenStructure);
 		if (filename.isEmpty())
 			return;
@@ -291,6 +291,7 @@ void MainWindow::updateState(Dataset::Touched affected)
 		toolbarActions.granularity->setVisible(false);
 		toolbarActions.famsK->setVisible(false);
 		actionExportAnnotations->setEnabled(false);
+		actionKeepAnnotations->setEnabled(false);
 		return;
 	}
 
@@ -412,6 +413,7 @@ void MainWindow::selectStructure(int id)
 	toolbarActions.granularity->setVisible(false);
 	toolbarActions.famsK->setVisible(false);
 	actionExportAnnotations->setEnabled(false);
+	actionKeepAnnotations->setEnabled(false);
 
 	if (id == 0) { // "None"
 		hub.applyAnnotations(0);
@@ -420,6 +422,7 @@ void MainWindow::selectStructure(int id)
 		hub.runFAMS(famsKSlider->value() * 0.01f);
 		toolbarActions.famsK->setVisible(true);
 		actionExportAnnotations->setEnabled(true);
+		actionKeepAnnotations->setEnabled(true);
 		return;
 	}
 
@@ -430,6 +433,7 @@ void MainWindow::selectStructure(int id)
 		hub.applyHierarchy((unsigned)id, (unsigned)granularitySlider->value());
 		toolbarActions.granularity->setVisible(true);
 		actionExportAnnotations->setEnabled(true);
+		actionKeepAnnotations->setEnabled(true);
 	} else {
 		hub.applyAnnotations((unsigned)id);
 	}
