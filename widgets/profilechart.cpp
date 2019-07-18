@@ -48,7 +48,8 @@ ProfileChart::ProfileChart(ProfileChart *source)
 	ax->setLabelsPosition(QtCharts::QCategoryAxis::AxisLabelsPositionOnValue);
 	auto labels = qobject_cast<QtCharts::QBarCategoryAxis*>(source->ax)->categories();
 	ax->setRange(0, labels.size() - 1);
-	ay->setRange(0, 1);
+	auto range = data->peek<Dataset::Base>()->featureRange;
+	ay->setRange(range.min, range.max);
 
 	auto toggleLabels = [ax, labels] (bool on) {
 		/* QCategoryAxis does not adapt geometry when simply hiding labels. And
