@@ -359,7 +359,7 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 void Storage::finalizeRead(Features &data, bool normalize)
 {
 	/* setup ranges */
-	auto range = features::range_of(data.features);
+	auto range = features::range_of(data.features, 0.99f);
 	// normalize, if needed
 	if (range.min < 0 || range.max > 1) { // simple heuristic to auto-normalize
 		// cut off negative values

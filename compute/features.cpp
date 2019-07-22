@@ -1,10 +1,11 @@
 #include "features.h"
 #include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp> // for calchist
 #include <tbb/tbb.h>
 
 namespace features {
 
-Features::Range range_of(const vec &source)
+Features::Range range_of(const vec &source, float fraction)
 {
 	if (source.empty())
 		return {};
@@ -16,6 +17,51 @@ Features::Range range_of(const vec &source)
 		ret.min = std::min(ret.min, mi);
 		ret.max = std::max(ret.max, ma);
 	}
+
+	if (fraction == 0.f || fraction == 1.0f)
+		return ret;
+
+	/* we build a histogram to find "good" data range */
+	cv::Mat1f hist; // calcHist always returns 32F
+	int bins = 100;
+	auto range = { (float)ret.min, (float)(1.0001*ret.max)};
+
+	/* while calcHist() expects InputArrayOfArrays, it does not do what we want
+	   when given several arrays at once. So we need a loop w/ accumulate flag */
+	for (auto &s : source) {
+		/* OpenCV does not support computing histograms on double. Doh! */
+		std::vector<cv::Mat> temp(1);
+		cv::Mat1d(s).convertTo(temp.front(), cv::DataType<float>::type);
+
+		cv::calcHist(temp, {0}, cv::Mat(), hist, {bins}, range, true); // acc.
+	}
+
+	/* we defensively choose bin borders as new range approx. */
+	double binsize = (ret.max - ret.min)/(double)bins;
+	unsigned needed = (unsigned)std::ceil(
+	            (float)(source.size()*source[0].size())*(1.f - fraction));
+
+	auto findFractionBin = [&] (bool reverse = false) {
+		// start from first (or last) bin
+		auto index = (reverse ? hist.rows - 1 : 0);
+		unsigned found = 0;
+		index = 0;
+		while (found < needed) {
+			found += (unsigned)hist[index][0];
+			index += (reverse ? -1 : 1); // move on to next bin
+		}
+		if (reverse) {
+			// upper boundary of last outlier bin
+			return hist.rows - index - 2;
+		} else {
+			// lower boundary of last outlier bin
+			return index - 1;
+		}
+	};
+
+	ret.min = ret.min + (binsize * findFractionBin());
+	ret.max = ret.max - (binsize * findFractionBin(true));
+
 	return ret;
 }
 

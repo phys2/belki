@@ -7,7 +7,8 @@ namespace features {
 
 using vec = Features::Vec;
 
-Features::Range range_of(const vec &source);
+// compute range that includes at least <fraction> of the observed values
+Features::Range range_of(const vec &source, float fraction = 1.f);
 unsigned cutoff_effect(const vec& source, double threshold);
 // apply threshold on scores (_upper_ limit) by erasing corresp. features
 void apply_cutoff(vec& feats, const vec &scores, double threshold);
