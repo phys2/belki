@@ -30,6 +30,7 @@ Chart::Chart(Dataset::ConstPtr data) :
 	addAxis(ax, Qt::AlignBottom);
 	addAxis(ay, Qt::AlignLeft);
 	for (auto axis : {ax, ay}) {
+		/* setup nice ticks with per-axis update mechanism */
 		axis->setTickType(QtCharts::QValueAxis::TickType::TicksDynamic);
 		axis->setTickAnchor(0.);
 		connect(axis, &QtCharts::QValueAxis::rangeChanged, [=] { updateTicks(axis); });
@@ -43,13 +44,12 @@ Chart::Chart(Dataset::ConstPtr data) :
 	tracker->setPen({Qt::red});
 	tracker->setZValue(1000);
 
-	/* reset cursor whenever the zoom changes, TODO: why doesn't it work? */
-	connect(ax, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
-	connect(ay, &QtCharts::QValueAxis::rangeChanged, this, &Chart::resetCursor);
-
 	/* setup signal for range changes */
 	// HACK: we expect ay to always be involved, and always update after ax!
 	connect(ay, &QtCharts::QValueAxis::rangeChanged, this, &Chart::areaChanged);
+
+	/* reset cursor whenever the zoom changes */
+	connect(this, &Chart::areaChanged, this, &Chart::resetCursor);
 
 	/* setup zoom history */
 	connect(this, &Chart::areaChanged, [this] {

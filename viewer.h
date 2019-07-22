@@ -29,7 +29,7 @@ signals:
 
 	// signals emitted by us
 	void markerToggled(ProteinId id, bool present);
-	void cursorChanged(QVector<unsigned> samples, QString title = {});
+	void cursorChanged(QVector<unsigned> samples, const QString &title = {});
 	void orderRequested(Dataset::OrderBy order, bool synchronize);
 	void exportRequested(QGraphicsView *source, QString description);
 	void exportRequested(QGraphicsScene *source, QString description);

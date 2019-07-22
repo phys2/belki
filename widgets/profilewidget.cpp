@@ -51,7 +51,7 @@ void ProfileWidget::setData(std::shared_ptr<Dataset> dataset)
 	}
 }
 
-void ProfileWidget::updateProteins(QVector<unsigned> samples, QString title)
+void ProfileWidget::updateProteins(QVector<unsigned> samples, const QString &title)
 {
 	/* clear plot */
 	if (chart) {
