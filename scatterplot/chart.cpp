@@ -181,11 +181,11 @@ void Chart::updateCursor(const QPointF &pos)
 		return;
 
 	if (pos.isNull() || !plotArea().contains(pos)) {
-		if (legend()->contains(pos)) // do not interfer with cluster profile view
-			return;
-		 // disable tracker
 		tracker->hide();
-		emit cursorChanged({});
+
+		// do not interfer with cluster profile view
+		if (pos.isNull() || !legend()->contains(pos)) // would ret. true for {}
+			emit cursorChanged({});
 		return;
 	}
 
