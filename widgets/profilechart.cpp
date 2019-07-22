@@ -19,13 +19,20 @@ ProfileChart::ProfileChart(Dataset::ConstPtr data)
 {
 	setMargins({0, 10, 0, 0});
 
+	/* TODO: do not use bar category axis because we cannot set a strict range.
+	 * instead save labels for later (or grab them later) in a member variable */
 	ax = new QtCharts::QBarCategoryAxis;
-	ay = new QtCharts::QValueAxis;
+	auto ay_ = new QtCharts::QValueAxis;
+	ay_->setLabelFormat("%.2f");
+	auto font = ay_->labelsFont();
+	font.setPointSizeF(font.pointSizeF()*0.75);
+	ay_->setLabelsFont(font);
 	auto range = data->peek<Dataset::Base>()->featureRange;
+	ay = ay_;
 	ay->setRange(range.min, range.max);
 	addAxis(ax, Qt::AlignBottom);
-	addAxis(ay, Qt::AlignLeft);
-	for (auto a : {ax, ay})
+	addAxis(ay, Qt::AlignRight);
+	for (auto a : {ax})
 		a->hide();
 	legend()->hide();
 }
