@@ -44,7 +44,6 @@ void ProfileWidget::setData(std::shared_ptr<Dataset> dataset)
 		// TODO: rework the ownership/lifetime stuff (or wait for our own chartview class)
 		auto old = chart;
 		chart = new ProfileChart(data);
-		chart->setCategories(data->peek<Dataset::Base>()->dimensions);
 		plot->setChart(chart);
 		delete old;
 		plot->setVisible(true);

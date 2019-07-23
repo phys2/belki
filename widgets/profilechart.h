@@ -1,6 +1,8 @@
 #ifndef PROFILECHART_H
 #define PROFILECHART_H
 
+#include "model.h"
+
 #include <QStringList>
 #include <QChart>
 
@@ -13,7 +15,8 @@ class Dataset;
 namespace QtCharts {
 class QAreaSeries;
 class QLineSeries;
-class QAbstractAxis;
+class QCategoryAxis;
+class QValueAxis;
 }
 
 class ProfileChart : public QtCharts::QChart
@@ -27,8 +30,6 @@ public:
 	unsigned numProfiles() { return content.size(); }
 	bool haveStats() { return !stats.mean.empty(); }
 
-	void setCategories(QStringList categories);
-
 	void clear(); // need to be called before addSample calls
 	void addSample(unsigned index, bool marker = false);
 	void finalize(bool fresh = true); // need to be called after addSample calls
@@ -39,7 +40,10 @@ signals:
 	void toggleAverage(bool on);
 
 protected:
-	void computeStats(); // helper to finalize()
+	// helper to constructors
+	void setupAxes(const Features::Range &range, const QStringList &labels, bool small);
+	// helper to finalize()
+	void computeStats();
 
 	/* indices of proteins shown in the graph, as markers or not */
 	std::vector<std::pair<unsigned, bool>> content;
@@ -51,7 +55,8 @@ protected:
 	} stats;
 
 	// axes
-	QtCharts::QAbstractAxis *ax, *ay;
+	QtCharts::QCategoryAxis *ax;
+	QtCharts::QValueAxis *ay;
 
 	// data source
 	std::shared_ptr<Dataset const> data;

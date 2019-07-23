@@ -8,7 +8,6 @@
 #include <QAreaSeries>
 #include <QValueAxis>
 #include <QCategoryAxis>
-#include <QBarCategoryAxis>
 
 #include <opencv2/core/core.hpp>
 
@@ -18,23 +17,9 @@ ProfileChart::ProfileChart(Dataset::ConstPtr data)
     : data(data)
 {
 	setMargins({0, 10, 0, 0});
-
-	/* TODO: do not use bar category axis because we cannot set a strict range.
-	 * instead save labels for later (or grab them later) in a member variable */
-	ax = new QtCharts::QBarCategoryAxis;
-	auto ay_ = new QtCharts::QValueAxis;
-	ay_->setLabelFormat("%.2f");
-	auto font = ay_->labelsFont();
-	font.setPointSizeF(font.pointSizeF()*0.75);
-	ay_->setLabelsFont(font);
-	auto range = data->peek<Dataset::Base>()->featureRange;
-	ay = ay_;
-	ay->setRange(range.min, range.max);
-	addAxis(ax, Qt::AlignBottom);
-	addAxis(ay, Qt::AlignRight);
-	for (auto a : {ax})
-		a->hide();
 	legend()->hide();
+	auto d = data->peek<Dataset::Base>();
+	setupAxes(d->featureRange, d->dimensions, true);
 }
 
 /* big, labelled plot constructor */
@@ -42,23 +27,38 @@ ProfileChart::ProfileChart(ProfileChart *source)
     : content(source->content), stats(source->stats),
       data(source->data)
 {
-	auto ax = new QtCharts::QCategoryAxis;
-	this->ax = ax; // keep QCategoryAxis* in this method
-	ay = new QtCharts::QValueAxis;
-	addAxis(ax, Qt::AlignBottom);
-	addAxis(ay, Qt::AlignLeft);
-
 	setTitle(source->title());
 	legend()->setAlignment(Qt::AlignLeft);
 
+	setupAxes({source->ay->min(), source->ay->max()}, source->ax->categoriesLabels(), false);
+
+	/* Series are non-copyable, so we just recreate them */
+	finalize(false);
+}
+
+void ProfileChart::setupAxes(const Features::Range &range, const QStringList &labels, bool small)
+{
+	ax = new QtCharts::QCategoryAxis;
 	ax->setLabelsAngle(-90);
 	ax->setLabelsPosition(QtCharts::QCategoryAxis::AxisLabelsPositionOnValue);
-	auto labels = qobject_cast<QtCharts::QBarCategoryAxis*>(source->ax)->categories();
 	ax->setRange(0, labels.size() - 1);
-	auto range = data->peek<Dataset::Base>()->featureRange;
-	ay->setRange(range.min, range.max);
+	addAxis(ax, Qt::AlignBottom);
+	if (small)
+		ax->hide();
 
-	auto toggleLabels = [ax, labels] (bool on) {
+	ay = new QtCharts::QValueAxis;
+	if (small) {
+		ay->setLabelFormat("%.2g");
+		auto font = ay->labelsFont();
+		font.setPointSizeF(font.pointSizeF()*0.75);
+		ay->setLabelsFont(font);
+	}
+	ay->setRange(range.min, range.max);
+	addAxis(ay, small ? Qt::AlignRight : Qt::AlignLeft);
+
+	/* setup the hide/show feature for labels. in small view show them (but axis
+	 * is hidden), so that they are kept for future reference */
+	auto toggleLabels = [this,labels] (bool on) {
 		/* QCategoryAxis does not adapt geometry when simply hiding labels. And
 		 * it makes it really complicated for us to replace them :/ */
 		if (on) {
@@ -72,17 +72,8 @@ ProfileChart::ProfileChart(ProfileChart *source)
 				ax->remove(l);
 		}
 	};
-	toggleLabels(false);
+	toggleLabels(small); // enable in small view (to keep them), but disable in large
 	connect(this, &ProfileChart::toggleLabels, toggleLabels);
-
-	/* Series are non-copyable, so we just recreate them */
-	finalize(false);
-}
-
-void ProfileChart::setCategories(QStringList categories)
-{
-	auto a = qobject_cast<QtCharts::QBarCategoryAxis*>(ax);
-	a->setCategories(categories);
 }
 
 void ProfileChart::clear()
@@ -123,7 +114,7 @@ void ProfileChart::finalize(bool fresh)
 	// add & wire a series
 	auto add = [this] (QtCharts::QAbstractSeries *s, bool isIndiv, bool isMarker = false) {
 		addSeries(s);
-		for (auto a : {ax, ay})
+		for (auto a : std::vector<QtCharts::QAbstractAxis*>{ax, ay})
 			s->attachAxis(a);
 		auto signal = isIndiv ? &ProfileChart::toggleIndividual : &ProfileChart::toggleAverage;
 		if (!isMarker) // marker always shows
