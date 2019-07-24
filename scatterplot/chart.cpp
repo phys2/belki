@@ -123,7 +123,7 @@ void Chart::updatePartitions(bool fresh)
 	auto d = data->peek<Dataset::Structure>();
 
 	/* set up partition series */
-	if (fresh) {
+	if (fresh || partitions.empty()) {
 		partitions.clear();
 		if (d->clustering.empty())
 			return; // no clusters means nothing more to do!
