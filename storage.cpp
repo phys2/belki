@@ -324,8 +324,10 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 		auto name = proteins.peek()->proteins[protid].name;
 
 		/* check duplicates */
-		if (seen.count(name))
-			emit ioError(QString("Multiples of protein '%1' found in the dataset!").arg(name));
+		if (seen.count(name)) {
+			emit ioError(QString("Stopped at multiple occurance of protein '%1'!").arg(name));
+			return {};
+		}
 		seen.insert(name);
 
 		/* read coefficients */
