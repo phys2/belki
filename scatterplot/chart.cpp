@@ -14,8 +14,6 @@
 #include <map>
 #include <cmath>
 
-#include <QDebug>
-
 Chart::Chart(Dataset::ConstPtr data) :
     ax(new QtCharts::QValueAxis), ay(new QtCharts::QValueAxis),
     animReset(new QTimer(this)),
@@ -31,9 +29,15 @@ Chart::Chart(Dataset::ConstPtr data) :
 	addAxis(ay, Qt::AlignLeft);
 	for (auto axis : {ax, ay}) {
 		/* setup nice ticks with per-axis update mechanism */
-		axis->setTickType(QtCharts::QValueAxis::TickType::TicksDynamic);
-		axis->setTickAnchor(0.);
-		connect(axis, &QtCharts::QValueAxis::rangeChanged, [=] { updateTicks(axis); });
+		connect(axis, &QtCharts::QValueAxis::rangeChanged, [axis] {
+			// defer custom ticks to avoid penalty when going through animation
+			axis->setTickType(QtCharts::QValueAxis::TickType::TicksFixed);
+			QTimer::singleShot(0, [axis] {
+				if (axis->tickType() == QtCharts::QValueAxis::TickType::TicksFixed) {
+					updateTicks(axis);
+				}
+			});
+		});
 	}
 
 	/* set up master series */
@@ -80,6 +84,10 @@ void Chart::setTitles(const QString &x, const QString &y)
 
 void Chart::display(const QVector<QPointF> &coords)
 {
+	/* avoid custom ticks to explode to huge number during extrem range changes */
+	for (auto axis : {ax, ay})
+		axis->setTickType(QtCharts::QValueAxis::TickType::TicksFixed);
+
 	/* disable fancy transition on full reset */
 	animate(master->pointsVector().empty() ? 0 : 1000);
 
@@ -96,6 +104,8 @@ void Chart::display(const QVector<QPointF> &coords)
 	bbox.adjust(-offset, -offset, offset, offset);
 	ax->setRange(bbox.left(), bbox.right());
 	ay->setRange(bbox.top(), bbox.bottom());
+
+	/* get back to appropriate custom ticks */
 	for (auto axis : {ax, ay})
 		updateTicks(axis);
 
@@ -234,8 +244,12 @@ void Chart::undoZoom(bool full)
 		return;
 
 	auto range = (full ? zoom.history.first() : zoom.history.pop());
-	if (full)
+	if (full) {
 		zoom.history.clear();
+		/* avoid custom ticks to explode to huge number during extrem range changes */
+		for (auto axis : {ax, ay})
+			axis->setTickType(QtCharts::QValueAxis::TickType::TicksFixed);
+	}
 	ax->setRange(range.left(), range.right());
 	ay->setRange(range.top(), range.bottom());
 	// undo triggered push
@@ -345,7 +359,9 @@ void Chart::updateTicks(QtCharts::QValueAxis *axis)
 {
 	auto cleanNumber = QString::number(axis->max() - axis->min(), 'g', 1).toDouble();
 	auto interval = cleanNumber * 0.25;
+	axis->setTickAnchor(0.);
 	axis->setTickInterval(interval);
+	axis->setTickType(QtCharts::QValueAxis::TickType::TicksDynamic);
 }
 
 Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)
