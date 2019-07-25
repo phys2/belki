@@ -16,6 +16,8 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QTimer>
+#include <QMimeData>
+#include <QWidgetAction>
 
 MainWindow::MainWindow(CentralHub &hub) :
     hub(hub),
@@ -186,8 +188,7 @@ void MainWindow::setupActions()
 		auto filename = io->chooseFile(FileIO::OpenStructure);
 		if (filename.isEmpty())
 			return;
-		auto filetype = QFileInfo(filename).suffix();
-		if (filetype == "json")
+		if (QFileInfo(filename).suffix() == "json")
 			hub.importHierarchy(filename);
 		else
 			hub.importAnnotations(filename);
@@ -493,4 +494,60 @@ void MainWindow::addProtein(ProteinId id)
 void MainWindow::toggleMarker(ProteinId id, bool present)
 {
 	markerItems.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
+}
+
+
+void MainWindow::dragEnterEvent(QDragEnterEvent *event)
+{
+	auto urls = event->mimeData()->urls();
+	for (auto i : qAsConst(urls)) {
+		if (!urls.front().toLocalFile().isEmpty()) {
+			event->acceptProposedAction(); // we are given at least one filename
+			break;
+		}
+	}
+}
+
+void MainWindow::dropEvent(QDropEvent *event)
+{
+	auto urls = event->mimeData()->urls();
+	auto title = (urls.size() == 1 ? "Open file as…"
+	                               : QString("Open %1 files as…").arg(urls.size()));
+
+	QMenu chooser(title, this);
+	auto label = new QLabel(QString("<b>%1</b>").arg(title));
+	label->setAlignment(Qt::AlignCenter);
+	label->setMargin(2);
+	auto t = new QWidgetAction(&chooser);
+	t->setDefaultWidget(label);
+	chooser.addAction(t);
+
+	std::map<QAction*, std::function<void(const QString& fn)>> actions = {
+	{chooser.addAction("Dataset"), [this] (auto fn) { hub.importDataset(fn, "Dist"); }},
+	{chooser.addAction("Abundance Dataset"), [this] (auto fn) { hub.importDataset(fn, "AbundanceLeft"); }},
+	{chooser.addAction("Structure"), [this] (auto filename) {
+		if (QFileInfo(filename).suffix() == "json")
+			hub.importHierarchy(filename);
+		else
+			hub.importAnnotations(filename);
+	}},
+	{chooser.addAction("Marker List"), [this] (auto fn) { hub.store.importMarkers(fn); }},
+	{chooser.addAction("Descriptions"), [this] (auto fn) { hub.importDescriptions(fn); }},
+	};
+	chooser.addSeparator();
+	chooser.addAction(style()->standardIcon(QStyle::SP_DialogCancelButton), "Cancel");
+
+	auto choice = chooser.exec(mapToGlobal(event->pos()), t);
+	auto action = actions.find(choice);
+	if (action == actions.end())
+		return; // do not accept event
+
+	for (auto i : qAsConst(urls)) {
+		auto filename = i.toLocalFile();
+		if (!filename.isEmpty())
+			action->second(filename);
+	}
+
+	event->setDropAction(Qt::DropAction::CopyAction);
+	event->accept();
 }

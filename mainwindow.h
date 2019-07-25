@@ -42,6 +42,9 @@ signals:
 	void partitionsToggled(bool show);
 
 protected:
+	void dragEnterEvent(QDragEnterEvent *event) override;
+	void dropEvent(QDropEvent *event) override;
+
 	void setDataset(Dataset::Ptr data);
 	void updateState(Dataset::Touched affected);
 
