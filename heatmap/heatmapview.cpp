@@ -51,9 +51,9 @@ void HeatmapView::resizeEvent(QResizeEvent *event)
 
 void HeatmapView::paintEvent(QPaintEvent *event)
 {
-	auto s = currentState();
+	auto &s = currentState();
 	auto scale = mapToScene(QRect(0, 0, 1, 1)).boundingRect().width();
-	if (scale != s.currentScale) {
+	if (!almost_equal(scale, s.currentScale)) {
 		s.currentScale = scale;
 		if (s.currentScale > s.outerScale && !s.singleColumn) {
 			arrangeScene();
