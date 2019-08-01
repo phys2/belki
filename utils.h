@@ -72,4 +72,10 @@ void erase_if(std::unordered_map<Key,T,Compare,Alloc>& c, Pred pred)
 	}
 }
 
+// roughly comparing float numbers. Most usable for GUI stuff
+template<typename T>
+bool almost_equal(const T& a, const T& b) {
+	return std::abs(a - b) < 0.0001*std::abs(a);
+}
+
 #endif
