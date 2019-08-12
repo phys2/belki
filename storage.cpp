@@ -364,23 +364,23 @@ void Storage::finalizeRead(Features &data, bool normalize)
 	//auto range = features::range_of(data.features, 0.99f);
 	auto range = features::range_of(data.features);
 	// normalize, if needed
-	if (range.min < 0 || range.max > 1) { // simple heuristic to auto-normalize
+	if (normalize && (range.min < 0 || range.max > 1)) {
+		emit ioError(QString("Values outside expected range (instead [%1, %2])."
+		                     "<br>Cutting of negative values and normalizing to [0, 1].")
+		             .arg(range.min).arg(range.max));
+
 		// cut off negative values
 		range.min = 0.;
-		double scale = 1.;
-		if (normalize) {
-			scale = 1. / (range.max - range.min);
-			emit ioError(QString("Values outside expected range (instead [%1, %2])."
-			                     "<br>Normalizing to [0, 1].").arg(range.min).arg(range.max));
-		}
 
+		// normalize
+		double scale = 1. / (range.max - range.min);
 		for (auto &v : data.features) {
 			std::for_each(v.begin(), v.end(), [min=range.min, scale] (double &e) {
 				e = std::max(e - min, 0.) * scale;
 			});
 		}
 	}
-	data.featureRange = {0., (normalize ? 1. : range.max)};
+	data.featureRange = (normalize ? Features::Range{0., 1.} : range);
 	if (data.hasScores())
 		data.scoreRange = features::range_of(data.scores);
 }

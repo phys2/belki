@@ -17,7 +17,6 @@ Features::Range range_of(const vec &source, float fraction)
 		ret.min = std::min(ret.min, mi);
 		ret.max = std::max(ret.max, ma);
 	}
-
 	if (fraction == 0.f || fraction == 1.0f)
 		return ret;
 
