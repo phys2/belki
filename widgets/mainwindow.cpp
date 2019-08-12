@@ -166,31 +166,17 @@ void MainWindow::setupActions()
 	connect(actionQuit, &QAction::triggered, [] { QApplication::exit(); });
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 
-	// TODO a little hack to allow loading of abundance values, we would need
-	// a proper fancy loading dialog in the future…
-	auto loader = [this] (const QString& featureCol) {
-		auto filename = io->chooseFile(FileIO::OpenDataset);
-		if (filename.isEmpty())
-			return;
-		hub.importDataset(filename, featureCol);
-	};
-	connect(actionLoadDataset, &QAction::triggered, [l=loader] { l("Dist"); });
-	connect(actionLoadDatasetAbundance, &QAction::triggered, [l=loader] { l("AbundanceLeft"); });
+	connect(actionLoadDataset, &QAction::triggered, [this] { openFile(Input::DATASET); });
+	connect(actionLoadDatasetAbundance, &QAction::triggered, [this] { openFile(Input::DATASET_RAW); });
+	connect(actionLoadDescriptions, &QAction::triggered, [this] { openFile(Input::DESCRIPTIONS); });
+	connect(actionLoadMarkers, &QAction::triggered, [this] { openFile(Input::MARKERS); });
+	connect(actionImportStructure, &QAction::triggered, [this] { openFile(Input::STRUCTURE); });
 
-	connect(actionLoadDescriptions, &QAction::triggered, [this] {
-		auto filename = io->chooseFile(FileIO::OpenDescriptions);
+	connect(actionSaveMarkers, &QAction::triggered, [this] {
+		auto filename = io->chooseFile(FileIO::SaveMarkers);
 		if (filename.isEmpty())
 			return;
-		hub.importDescriptions(filename);
-	});
-	connect(actionImportStructure, &QAction::triggered, [this] {
-		auto filename = io->chooseFile(FileIO::OpenStructure);
-		if (filename.isEmpty())
-			return;
-		if (QFileInfo(filename).suffix() == "json")
-			hub.importHierarchy(filename);
-		else
-			hub.importAnnotations(filename);
+		hub.store.exportMarkers(filename);
 	});
 	connect(actionExportAnnotations, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::SaveAnnotations);
@@ -218,18 +204,6 @@ void MainWindow::setupActions()
 	});
 	connect(actionShowStructure, &QAction::toggled, this, &MainWindow::partitionsToggled);
 	connect(actionClearMarkers, &QAction::triggered, &hub.proteins, &ProteinDB::clearMarkers);
-	connect(actionLoadMarkers, &QAction::triggered, [this] {
-		auto filename = io->chooseFile(FileIO::OpenMarkers);
-		if (filename.isEmpty())
-			return;
-		hub.store.importMarkers(filename);
-	});
-	connect(actionSaveMarkers, &QAction::triggered, [this] {
-		auto filename = io->chooseFile(FileIO::SaveMarkers);
-		if (filename.isEmpty())
-			return;
-		hub.store.exportMarkers(filename);
-	});
 
 	connect(actionSplice, &QAction::triggered, [this] {
 		if (!data)
@@ -452,6 +426,37 @@ void MainWindow::selectStructure(int id)
 	}
 }
 
+void MainWindow::openFile(Input type, QString fn)
+{
+	/* no preset filename – ask user to select */
+	if (fn.isEmpty()) {
+		const std::map<Input, FileIO::Role> mapping = {
+		    {Input::DATASET, FileIO::OpenDataset},
+		    {Input::DATASET_RAW, FileIO::OpenDataset},
+		    {Input::MARKERS, FileIO::OpenMarkers},
+		    {Input::DESCRIPTIONS, FileIO::OpenDescriptions},
+		    {Input::STRUCTURE, FileIO::OpenStructure},
+		};
+		fn = io->chooseFile(mapping.at(type));
+		if (fn.isEmpty())
+			return; // nothing selected
+	}
+
+	switch (type) {
+	case Input::DATASET:      hub.importDataset(fn, "Dist"); break;
+	case Input::DATASET_RAW:  hub.importDataset(fn, "AbundanceLeft"); break;
+	case Input::MARKERS:      hub.store.importMarkers(fn); break;
+	case Input::DESCRIPTIONS: hub.importDescriptions(fn); break;
+	case Input::STRUCTURE: {
+		if (QFileInfo(fn).suffix() == "json")
+			hub.importHierarchy(fn);
+		else
+			hub.importAnnotations(fn);
+		break;
+	}
+	}
+}
+
 void MainWindow::showHelp()
 {
 	QMessageBox box(this);
@@ -521,17 +526,12 @@ void MainWindow::dropEvent(QDropEvent *event)
 	t->setDefaultWidget(label);
 	chooser.addAction(t);
 
-	std::map<QAction*, std::function<void(const QString& fn)>> actions = {
-	{chooser.addAction("Dataset"), [this] (auto fn) { hub.importDataset(fn, "Dist"); }},
-	{chooser.addAction("Abundance Dataset"), [this] (auto fn) { hub.importDataset(fn, "AbundanceLeft"); }},
-	{chooser.addAction("Structure"), [this] (auto filename) {
-		if (QFileInfo(filename).suffix() == "json")
-			hub.importHierarchy(filename);
-		else
-			hub.importAnnotations(filename);
-	}},
-	{chooser.addAction("Marker List"), [this] (auto fn) { hub.store.importMarkers(fn); }},
-	{chooser.addAction("Descriptions"), [this] (auto fn) { hub.importDescriptions(fn); }},
+	std::map<QAction*, Input> actions = {
+	{chooser.addAction("Dataset"), Input::DATASET},
+	{chooser.addAction("Abundance Dataset"), Input::DATASET_RAW},
+	{chooser.addAction("Structure"), Input::STRUCTURE},
+	{chooser.addAction("Marker List"), Input::MARKERS},
+	{chooser.addAction("Descriptions"), Input::DESCRIPTIONS},
 	};
 	chooser.addSeparator();
 	chooser.addAction(style()->standardIcon(QStyle::SP_DialogCancelButton), "Cancel");
@@ -544,7 +544,7 @@ void MainWindow::dropEvent(QDropEvent *event)
 	for (auto i : qAsConst(urls)) {
 		auto filename = i.toLocalFile();
 		if (!filename.isEmpty())
-			action->second(filename);
+			openFile(action->second, filename);
 	}
 
 	event->setDropAction(Qt::DropAction::CopyAction);
