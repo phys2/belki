@@ -101,10 +101,13 @@ bool ProteinDB::removeMarker(ProteinId id)
 
 size_t ProteinDB::importMarkers(const std::vector<QString> &names)
 {
+	for (const auto &name : names)
+		add(name);
+
 	std::vector<ProteinId> affected;
 	data.l.lockForWrite();
 	for (const auto &name : names) {
-		try {
+		try { // we play it safe, added them just a moment ago
 			auto id = data.find(name);
 			auto [at, isnew] = data.markers.insert(id);
 			if (isnew)
