@@ -57,7 +57,6 @@ target_sources(belki PRIVATE
 	colormap.h colormap.cpp
 	dataset.h dataset.cpp
 	fileio.h fileio.cpp
-	mainwindow.h mainwindow.cpp mainwindow.ui
 	model.h
 	proteindb.h proteindb.cpp
 	storage.h storage.cpp
@@ -68,6 +67,7 @@ target_sources(belki PRIVATE
 # components (they add to target 'belki')
 add_subdirectory(compute)
 add_subdirectory(widgets)
+add_subdirectory(profiles)
 add_subdirectory(scatterplot)
 add_subdirectory(heatmap)
 add_subdirectory(distmat)

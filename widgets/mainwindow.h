@@ -2,17 +2,15 @@
 #define MAINWINDOW_H
 
 #include "ui_mainwindow.h"
-#include "fileio.h"
 #include "dataset.h"
 
 #include <QMainWindow>
-#include <QThread>
 
-#include <memory>
 #include <map>
 #include <unordered_map>
 
 class CentralHub;
+class FileIO;
 class QLabel;
 class QStandardItem;
 class QTreeWidget;

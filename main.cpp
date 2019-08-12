@@ -1,5 +1,5 @@
 #include "centralhub.h"
-#include "mainwindow.h"
+#include "widgets/mainwindow.h"
 
 #include <QChartView>
 #include <QApplication>

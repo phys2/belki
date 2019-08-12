@@ -585,7 +585,7 @@
   <customwidget>
    <class>ProfileWidget</class>
    <extends>QWidget</extends>
-   <header>widgets/profilewidget.h</header>
+   <header>profiles/profilewidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

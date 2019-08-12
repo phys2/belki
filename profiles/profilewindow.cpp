@@ -1,6 +1,7 @@
 #include "profilewindow.h"
 #include "profilechart.h"
-#include "mainwindow.h"
+#include "widgets/mainwindow.h"
+#include "fileio.h"
 
 ProfileWindow::ProfileWindow(ProfileChart *source, QWidget *parent) :
     QMainWindow(parent), chart(new ProfileChart(source)),

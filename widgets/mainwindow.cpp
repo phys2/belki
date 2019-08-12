@@ -1,9 +1,8 @@
 #include "mainwindow.h"
 #include "centralhub.h"
-#include "dataset.h"
 #include "storage.h"
-#include "widgets/profilechart.h"
-#include "widgets/profilewindow.h"
+#include "fileio.h"
+#include "profiles/profilewindow.h"
 #include "widgets/spawndialog.h"
 
 #include <QTreeWidget>
@@ -21,7 +20,7 @@
 
 MainWindow::MainWindow(CentralHub &hub) :
     hub(hub),
-    io(new FileIO(this))
+    io(new FileIO(this)) // cleanup by QObject
 {
 	setupUi(this);
 	setupToolbar();
