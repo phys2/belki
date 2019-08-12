@@ -431,7 +431,7 @@ void Storage::importAnnotations(const QString &filename)
 		/* build new clusters */
 		unsigned groupIndex = 0;
 		while (!in.atEnd()) {
-			auto line = in.readLine().split("\t");
+			auto line = in.readLine().split("\t", QString::SkipEmptyParts);
 			if (line.size() < 2)
 				continue;
 
@@ -573,7 +573,8 @@ void Storage::importMarkers(const QString &filename)
 	while (!in.atEnd()) {
 		QString name;
 		in >> name;
-		names.push_back(name);
+		if (!name.isEmpty())
+			names.push_back(name);
 	}
 	proteins.importMarkers(names);
 }
