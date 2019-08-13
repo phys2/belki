@@ -19,32 +19,42 @@ ProfileChart::ProfileChart(Dataset::ConstPtr data)
 	setMargins({0, 10, 0, 0});
 	legend()->hide();
 	auto d = data->peek<Dataset::Base>();
-	setupAxes(d->featureRange, d->dimensions, true);
+	labels = d->dimensions;
+	setupAxes(d->featureRange, true);
 }
 
 /* big, labelled plot constructor */
 ProfileChart::ProfileChart(ProfileChart *source)
     : content(source->content), stats(source->stats),
-      data(source->data)
+      data(source->data), labels(source->labels)
 {
 	setTitle(source->title());
 	legend()->setAlignment(Qt::AlignLeft);
 
-	setupAxes({source->ay->min(), source->ay->max()}, source->ax->categoriesLabels(), false);
+	setupAxes({source->ay->min(), source->ay->max()}, false);
 
 	/* Series are non-copyable, so we just recreate them */
 	finalize(false);
 }
 
-void ProfileChart::setupAxes(const Features::Range &range, const QStringList &labels, bool small)
+void ProfileChart::setupAxes(const Features::Range &range, bool small)
 {
 	ax = new QtCharts::QCategoryAxis;
-	ax->setLabelsAngle(-90);
-	ax->setLabelsPosition(QtCharts::QCategoryAxis::AxisLabelsPositionOnValue);
 	ax->setRange(0, labels.size() - 1);
 	addAxis(ax, Qt::AlignBottom);
-	if (small)
-		ax->hide();
+	ax->hide();
+
+	if (!small) {
+		/* prepare a secondary axis that will show labels when requested.
+		 * smoother than show/hiding the primary axis w/ labels */
+		axC = new QtCharts::QCategoryAxis;
+		axC->setLabelsAngle(-90);
+		axC->setLabelsPosition(QtCharts::QCategoryAxis::AxisLabelsPositionOnValue);
+		axC->setRange(ax->min(), ax->max());
+		auto i = 0;
+		for (auto &l : qAsConst(labels))
+			axC->append(l, i++);
+	}
 
 	ay = new QtCharts::QValueAxis;
 	if (small) {
@@ -56,24 +66,6 @@ void ProfileChart::setupAxes(const Features::Range &range, const QStringList &la
 	ay->setRange(range.min, range.max);
 	addAxis(ay, small ? Qt::AlignRight : Qt::AlignLeft);
 
-	/* setup the hide/show feature for labels. in small view show them (but axis
-	 * is hidden), so that they are kept for future reference */
-	auto toggleLabels = [this,labels] (bool on) {
-		/* QCategoryAxis does not adapt geometry when simply hiding labels. And
-		 * it makes it really complicated for us to replace them :/ */
-		if (on) {
-			auto i = 0;
-			for (auto &l : qAsConst(labels)) {
-				ax->append(l, i++);
-			}
-		} else {
-			auto categories = ax->categoriesLabels();
-			for (auto &l : qAsConst(categories))
-				ax->remove(l);
-		}
-	};
-	toggleLabels(small); // enable in small view (to keep them), but disable in large
-	connect(this, &ProfileChart::toggleLabels, toggleLabels);
 }
 
 void ProfileChart::clear()
@@ -213,6 +205,14 @@ void ProfileChart::finalize(bool fresh)
 		addMean();
 	if (reduced)
 		addIndividuals(true);
+}
+
+void ProfileChart::toggleLabels(bool on) {
+	/* It appears smoother/faster to add/remove a secondary axis than to show/hide */
+	if (on)
+		addAxis(axC, Qt::AlignBottom);
+	else
+		removeAxis(axC);
 }
 
 void ProfileChart::computeStats()

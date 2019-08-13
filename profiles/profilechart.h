@@ -33,15 +33,15 @@ public:
 	void clear(); // need to be called before addSample calls
 	void addSample(unsigned index, bool marker = false);
 	void finalize(bool fresh = true); // need to be called after addSample calls
+	void toggleLabels(bool on);
 
 signals:
-	void toggleLabels(bool on);
 	void toggleIndividual(bool on);
 	void toggleAverage(bool on);
 
 protected:
 	// helper to constructors
-	void setupAxes(const Features::Range &range, const QStringList &labels, bool small);
+	void setupAxes(const Features::Range &range, bool small);
 	// helper to finalize()
 	void computeStats();
 
@@ -56,10 +56,12 @@ protected:
 
 	// axes
 	QtCharts::QCategoryAxis *ax;
+	QtCharts::QCategoryAxis *axC;
 	QtCharts::QValueAxis *ay;
 
 	// data source
 	std::shared_ptr<Dataset const> data;
+	QStringList labels; // cached, so we don't need to bother dataset
 };
 
 #endif // PROFILECHART_H
