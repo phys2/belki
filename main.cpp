@@ -4,6 +4,7 @@
 #include <QChartView>
 #include <QApplication>
 #include <QIcon>
+#include <QSurfaceFormat>
 
 #include <iostream>
 
@@ -24,6 +25,11 @@ int main(int argc, char *argv[])
 	// revisit these at a later time
 	//QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 	//QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
+	// set aliasing for all GL views
+	auto fmt = QSurfaceFormat::defaultFormat();
+	fmt.setSamples(8);
+	QSurfaceFormat::setDefaultFormat(fmt);
 
 	QApplication a(argc, argv);
 

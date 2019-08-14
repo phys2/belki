@@ -8,7 +8,7 @@ class Chart;
 class ChartView : public QtCharts::QChartView
 {
 public:
-	using QChartView::QChartView;
+	explicit ChartView(QWidget *parent);
 
 protected:
 	// override for internal use (does not work through pointer! scene() is non-virtual)

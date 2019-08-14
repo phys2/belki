@@ -1,5 +1,13 @@
 #include "chartview.h"
 #include "chart.h"
+#include <QOpenGLWidget>
+
+ChartView::ChartView(QWidget *parent)
+    : QChartView(parent)
+{
+	setViewport(new QOpenGLWidget(parent));
+	setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+}
 
 Chart *ChartView::chart()
 {
