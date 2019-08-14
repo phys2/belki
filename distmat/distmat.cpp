@@ -2,7 +2,7 @@
 #include "colormap.h"
 
 #include <opencv2/imgproc/imgproc.hpp>
-#include <tbb/parallel_for_each.h>
+#include <tbb/parallel_for.h>
 
 std::map<Distmat::Measure, Distmat::MeasureFun> Distmat::measures()
 {

@@ -7,7 +7,7 @@
 #include <QRegularExpression>
 
 #include <opencv2/core.hpp>
-#include <tbb/parallel_for_each.h>
+#include <tbb/parallel_for.h>
 #include <unordered_set>
 
 Dataset::Dataset(ProteinDB &proteins, DatasetConfiguration conf)
