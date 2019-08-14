@@ -17,6 +17,7 @@ class QAreaSeries;
 class QLineSeries;
 class QCategoryAxis;
 class QValueAxis;
+class QLogValueAxis;
 }
 
 class ProfileChart : public QtCharts::QChart
@@ -28,20 +29,22 @@ public:
 	ProfileChart(ProfileChart *source);
 
 	unsigned numProfiles() { return content.size(); }
-	bool haveStats() { return !stats.mean.empty(); }
+	bool isLogSpace() { return logSpace; }
 
 	void clear(); // need to be called before addSample calls
 	void addSample(unsigned index, bool marker = false);
-	void finalize(bool fresh = true); // need to be called after addSample calls
+	void finalize(); // need to be called after addSample calls
 	void toggleLabels(bool on);
+	void toggleLogSpace(bool on);
 
 signals:
 	void toggleIndividual(bool on);
 	void toggleAverage(bool on);
 
 protected:
+	void setupSeries();
 	// helper to constructors
-	void setupAxes(const Features::Range &range, bool small);
+	void setupAxes(const Features::Range &range);
 	// helper to finalize()
 	void computeStats();
 
@@ -58,10 +61,17 @@ protected:
 	QtCharts::QCategoryAxis *ax;
 	QtCharts::QCategoryAxis *axC;
 	QtCharts::QValueAxis *ay;
+	QtCharts::QLogValueAxis *ayL;
 
 	// data source
 	std::shared_ptr<Dataset const> data;
 	QStringList labels; // cached, so we don't need to bother dataset
+
+	// state
+	bool small = false;
+	bool showAverage = false;
+	bool showIndividual = true;
+	bool logSpace = false;
 };
 
 #endif // PROFILECHART_H

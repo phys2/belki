@@ -7,37 +7,43 @@
 #include <QLineSeries>
 #include <QAreaSeries>
 #include <QValueAxis>
+#include <QLogValueAxis>
 #include <QCategoryAxis>
 
 #include <opencv2/core/core.hpp>
 
-
 /* small, inset plot constructor */
 ProfileChart::ProfileChart(Dataset::ConstPtr data)
-    : data(data)
+    : data(data),
+      small(true)
 {
 	setMargins({0, 10, 0, 0});
 	legend()->hide();
 	auto d = data->peek<Dataset::Base>();
 	labels = d->dimensions;
-	setupAxes(d->featureRange, true);
+	setupAxes(d->featureRange);
+
+	/* keep in sync */
+	connect(this, &ProfileChart::toggleAverage, [this] (bool on) { showAverage = on; });
+	connect(this, &ProfileChart::toggleIndividual, [this] (bool on) { showIndividual = on; });
 }
 
 /* big, labelled plot constructor */
 ProfileChart::ProfileChart(ProfileChart *source)
     : content(source->content), stats(source->stats),
-      data(source->data), labels(source->labels)
+      data(source->data), labels(source->labels),
+      small(false), logSpace(source->logSpace)
 {
 	setTitle(source->title());
 	legend()->setAlignment(Qt::AlignLeft);
+	setupAxes({source->ay->min(), source->ay->max()});
 
-	setupAxes({source->ay->min(), source->ay->max()}, false);
-
-	/* Series are non-copyable, so we just recreate them */
-	finalize(false);
+	/* keep in sync */
+	connect(this, &ProfileChart::toggleAverage, [this] (bool on) { showAverage = on; });
+	connect(this, &ProfileChart::toggleIndividual, [this] (bool on) { showIndividual = on; });
 }
 
-void ProfileChart::setupAxes(const Features::Range &range, bool small)
+void ProfileChart::setupAxes(const Features::Range &range)
 {
 	ax = new QtCharts::QCategoryAxis;
 	ax->setRange(0, labels.size() - 1);
@@ -64,8 +70,24 @@ void ProfileChart::setupAxes(const Features::Range &range, bool small)
 		ay->setLabelsFont(font);
 	}
 	ay->setRange(range.min, range.max);
-	addAxis(ay, small ? Qt::AlignRight : Qt::AlignLeft);
 
+	ayL = new QtCharts::QLogValueAxis;
+	double lb;
+	if (range.max > 10000)
+		lb = 1;
+	else if (range.max > 100)
+		lb = 0.01;
+	else if (range.max > 10)
+		lb = 0.001;
+	else
+		lb = 0.0001;
+	ayL->setRange(std::max(range.min, lb), std::max(range.max, lb));
+	ayL->setBase(10.);
+	ayL->setLabelFormat("%.2g");
+	ayL->setLabelsFont(ay->labelsFont());
+
+	auto needed = (logSpace ? (QtCharts::QAbstractAxis*)ayL : ay);
+	addAxis(needed, small ? Qt::AlignRight : Qt::AlignLeft);
 }
 
 void ProfileChart::clear()
@@ -80,15 +102,19 @@ void ProfileChart::addSample(unsigned index, bool marker)
 	content.push_back({index, marker});
 }
 
-void ProfileChart::finalize(bool fresh)
+void ProfileChart::finalize() {
+	setupSeries();
+}
+
+void ProfileChart::setupSeries()
 {
-	auto d = data->peek<Dataset::Base>();
-	if (fresh)
+	if (showAverage && stats.mean.empty()) {
 		computeStats();
+		// if we couldn't compute, just disable. GUI should have it disabled already
+		showAverage = !stats.mean.empty();
+	}
 
-	bool reduced = fresh && content.size() >= 25;
-	bool outer = (!fresh || reduced) && haveStats();
-
+	auto d = data->peek<Dataset::Base>();
 	auto p = data->peek<Dataset::Proteins>();
 
 	std::function<bool(const std::pair<unsigned,bool> &a, const std::pair<unsigned,bool> & b)>
@@ -101,23 +127,31 @@ void ProfileChart::finalize(bool fresh)
 		return byName(a, b);
 	};
 	// sort by name, but in small view, put marked last (for z-index)
-	std::sort(content.begin(), content.end(), fresh ? byMarkedThenName : byName);
+	std::sort(content.begin(), content.end(), small ? byMarkedThenName : byName);
 
 	// add & wire a series
 	auto add = [this] (QtCharts::QAbstractSeries *s, bool isIndiv, bool isMarker = false) {
 		addSeries(s);
-		for (auto a : std::vector<QtCharts::QAbstractAxis*>{ax, ay})
-			s->attachAxis(a);
-		auto signal = isIndiv ? &ProfileChart::toggleIndividual : &ProfileChart::toggleAverage;
-		if (!isMarker) // marker always shows
+		s->attachAxis(ax);
+		s->attachAxis(logSpace ? (QtCharts::QAbstractAxis*)ayL : ay);
+		if (!isMarker) {// marker always shows
+			s->setVisible(isIndiv ? showIndividual : showAverage);
+			auto signal = isIndiv ? &ProfileChart::toggleIndividual : &ProfileChart::toggleAverage;
 			connect(this, signal, s, &QtCharts::QAbstractSeries::setVisible);
+		}
 	};
+
+	std::function<double(double)> adjusted;
+	if (logSpace)
+		adjusted = [&] (qreal v) { return std::max(v, ayL->min()); };
+	else
+		adjusted = [] (qreal v) { return v; };
 
 	// setup and add QLineSeries for mean
 	auto addMean = [&] {
 		auto s = new QtCharts::QLineSeries;
 		for (unsigned i = 0; i < stats.mean.size(); ++i) {
-			s->append(i, stats.mean[i]);
+			s->append(i, adjusted(stats.mean[i]));
 		}
 		add(s, false);
 		s->setName("Avg.");
@@ -133,8 +167,8 @@ void ProfileChart::finalize(bool fresh)
 			auto upper = new QtCharts::QLineSeries, lower = new QtCharts::QLineSeries;
 			for (unsigned i = 0; i < stats.mean.size(); ++i) {
 				auto [u, l] = source(i);
-				upper->append(i, u);
-				lower->append(i, l);
+				upper->append(i, adjusted(u));
+				lower->append(i, adjusted(l));
 			}
 			auto s = new QtCharts::QAreaSeries(upper, lower);
 			add(s, false);
@@ -164,7 +198,7 @@ void ProfileChart::finalize(bool fresh)
 		s2->setBorderColor(Qt::gray);
 	};
 
-	// add individual series (in order, after area series)
+	// add individual series (markers or all)
 	auto addIndividuals = [&] (bool onlyMarkers) {
 		for (auto [index, isMarker] : content) {
 			if (onlyMarkers && !isMarker)
@@ -174,8 +208,8 @@ void ProfileChart::finalize(bool fresh)
 			add(s, true, isMarker);
 			QString title = (isMarker ? "<small>★</small>" : "") + d->lookup(p, index).name;
 			// color only markers in small view
-			QColor color = (isMarker || !fresh ? d->lookup(p, index).color : Qt::black);
-			if (isMarker && !fresh) { // acentuate markers in big view
+			QColor color = (isMarker || !small ? d->lookup(p, index).color : Qt::black);
+			if (isMarker && !small) { // acentuate markers in big view
 				auto pen = s->pen();
 				pen.setWidthF(3. * pen.widthF());
 				s->setPen(pen);
@@ -191,20 +225,30 @@ void ProfileChart::finalize(bool fresh)
 				});
 			}
 
-			s->replace(d->featurePoints[index]);
+			auto points = d->featurePoints[index];
+			if (logSpace) {
+				for (auto &i : points)
+					i.setY(adjusted(i.y()));
+			}
+			s->replace(points);
 		}
 	};
 
-	/* add everything in stacking order, based on conditions */
-	if (outer) {
+	if (small) {
+		/* we show either average or individual. only add what's necessary */
+		if (showAverage) {
+			addBgAreas();
+			addMean();
+			addIndividuals(true);
+		} else {
+			addIndividuals(false);
+		}
+	} else {
+		/* add everything in stacking order, to be toggle-able later on */
 		addBgAreas();
-	}
-	if (!reduced)
 		addIndividuals(false);
-	if (outer)
 		addMean();
-	if (reduced)
-		addIndividuals(true);
+	}
 }
 
 void ProfileChart::toggleLabels(bool on) {
@@ -213,6 +257,23 @@ void ProfileChart::toggleLabels(bool on) {
 		addAxis(axC, Qt::AlignBottom);
 	else
 		removeAxis(axC);
+}
+
+void ProfileChart::toggleLogSpace(bool on)
+{
+	if (logSpace == on)
+		return;
+
+	logSpace = on;
+	removeAllSeries();
+
+	auto needed = (logSpace ? (QtCharts::QAbstractAxis*)ayL : ay);
+	auto previous = (logSpace ? (QtCharts::QAbstractAxis*)ay : ayL);
+	removeAxis(previous);
+	addAxis(needed, previous->alignment());
+
+	if (!content.empty())
+		setupSeries();
 }
 
 void ProfileChart::computeStats()

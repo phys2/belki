@@ -44,6 +44,11 @@ void ProfileWidget::setData(std::shared_ptr<Dataset> dataset)
 		// TODO: rework the ownership/lifetime stuff (or wait for our own chartview class)
 		auto old = chart;
 		chart = new ProfileChart(data);
+
+		auto range = data->peek<Dataset::Base>()->featureRange;
+		if (range.min >= 0 && range.max > 10000)
+			chart->toggleLogSpace(true);
+
 		plot->setChart(chart);
 		delete old;
 		plot->setVisible(true);
@@ -74,6 +79,9 @@ void ProfileWidget::updateProteins(QVector<unsigned> samples, const QString &tit
 	}
 
 	/* set up plot */
+	bool reduced = samples.size() >= 25;
+	chart->toggleAverage(reduced);
+	chart->toggleIndividual(!reduced);
 	for (auto i : qAsConst(samples))
 		chart->addSample(i, markers.count(i));
 	chart->finalize();

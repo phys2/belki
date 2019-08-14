@@ -33,12 +33,18 @@ ProfileWindow::ProfileWindow(ProfileChart *source, QWidget *parent) :
 	connect(actionShowLabels, &QAction::toggled, chart, &ProfileChart::toggleLabels);
 	connect(actionShowIndividual, &QAction::toggled, chart, &ProfileChart::toggleIndividual);
 	connect(actionShowAverage, &QAction::toggled, chart, &ProfileChart::toggleAverage);
+	connect(actionLogarithmic, &QAction::toggled, chart, &ProfileChart::toggleLogSpace);
 
-	actionShowIndividual->setChecked(true); // cheap trick: let next one trigger
+	actionShowAverage->setEnabled(chart->numProfiles() >= 2);
+	actionShowAverage->setChecked(chart->numProfiles() >= 10);
 	actionShowIndividual->setChecked(chart->numProfiles() < 50);
 
-	actionShowAverage->setEnabled(chart->haveStats());
-	actionShowAverage->setChecked(chart->haveStats());
+	chart->toggleAverage(actionShowAverage->isChecked());
+	chart->toggleIndividual(actionShowIndividual->isChecked());
+
+	actionLogarithmic->setChecked(chart->isLogSpace());
+
+	chart->finalize();
 
 	/* we are a single popup thingy: self-show and self-delete on close */
 	//setAttribute(Qt::WA_DeleteOnClose); CAUSES CRASH IN QT :-/ FIXME Who's gonna delete?
