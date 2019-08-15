@@ -16,43 +16,47 @@ include(gitversion)
 # add custom (default) compile/link flags in variable cache
 include(flags)
 
-add_executable(belki MACOSX_BUNDLE main.cpp)
-set_target_properties(belki PROPERTIES
+set(APP_NAME belki)
+
+add_executable(${APP_NAME} MACOSX_BUNDLE main.cpp)
+set_target_properties(${APP_NAME} PROPERTIES
 	CXX_STANDARD 17
 	CXX_STANDARD_REQUIRED ON)
 export_version(main.cpp)
 
 ## PLATFORM SUPPORT
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	set_target_properties(belki PROPERTIES LINK_FLAGS_RELEASE "-Wl,-subsystem,windows")
-	target_sources(belki PRIVATE resources/windows.rc)
+	set_target_properties(${APP_NAME} PROPERTIES LINK_FLAGS_RELEASE "-Wl,-subsystem,windows")
+	target_sources(${APP_NAME} PRIVATE resources/windows.rc)
 	export_version(resources/windows.rc)
 endif()
+
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	set(MACOSX_BUNDLE_INFO_PLIST "resources/macos/Info.plist")
 	set(MACOSX_BUNDLE_ICON_FILE icon.icns)
 	set_source_files_properties(resources/icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-	target_sources(belki PRIVATE resources/icon.icns)
+	target_sources(${APP_NAME} PRIVATE resources/icon.icns)
 endif()
 
 ## SOURCES
 # mean shift
-target_sources(belki PRIVATE
+target_sources(${APP_NAME} PRIVATE
 	meanshift/fams.h meanshift/fams.cpp
 	meanshift/io.cpp meanshift/mode_pruning.cpp
 	)
 
 # storage / zip files support
-target_sources(belki PRIVATE storage/qzip.h storage/miniz.h storage/miniz.c)
+target_sources(${APP_NAME} PRIVATE storage/qzip.h storage/miniz.h storage/miniz.c)
 
 # resources
-target_sources(belki PRIVATE
+target_sources(${APP_NAME} PRIVATE
 	resources/index.qrc
 	resources/icons-stock/index.qrc
 	resources/icons-custom/index.qrc
 	)
 
 # main application
-target_sources(belki PRIVATE
+target_sources(${APP_NAME} PRIVATE
 	colormap.h colormap.cpp
 	dataset.h dataset.cpp
 	dimred.h dimred.cpp
@@ -71,5 +75,23 @@ add_subdirectory(distmat)
 add_subdirectory(featweights)
 
 ## link to modules
-target_include_directories(belki SYSTEM PUBLIC ${DEP_INCLUDES})
-target_link_libraries(belki PUBLIC ${DEP_LIBRARIES})
+target_include_directories(${APP_NAME} SYSTEM PUBLIC ${DEP_INCLUDES})
+target_link_libraries(${APP_NAME} PUBLIC ${DEP_LIBRARIES})
+
+### Destination paths below are relative to ${CMAKE_INSTALL_PREFIX}
+##install(TARGETS ${APP_NAME}
+##    BUNDLE DESTINATION . COMPONENT Runtime
+##    RUNTIME DESTINATION bin COMPONENT Runtime
+##    )
+##
+### Note Mac specific extension .app
+##set(APPS "\${CMAKE_INSTALL_PREFIX}/${APP_NAME}.app")
+##
+### Directories to look for dependencies
+##set(DIRS ${CMAKE_BINARY_DIR})
+##
+##install(CODE "include(BundleUtilities)
+##    fixup_bundle(\"${APPS}\" \"\" \"${DIRS}\")")
+##
+##set(CPACK_GENERATOR "DRAGNDROP")
+##include(CPack)
