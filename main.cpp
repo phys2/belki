@@ -22,8 +22,8 @@ int main(int argc, char *argv[])
 	qRegisterMetaType<QVector<QColor>>();
 
 	// revisit these at a later time
-	//QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-	//QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+	QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+	QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
 	QApplication a(argc, argv);
 
