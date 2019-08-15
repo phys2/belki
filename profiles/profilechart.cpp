@@ -11,6 +11,7 @@
 #include <QCategoryAxis>
 
 #include <opencv2/core/core.hpp>
+#include <tbb/parallel_for_each.h>
 
 /* small, inset plot constructor */
 ProfileChart::ProfileChart(Dataset::ConstPtr data)
@@ -198,6 +199,16 @@ void ProfileChart::setupSeries()
 		s2->setBorderColor(Qt::gray);
 	};
 
+	/* prepare adjusted feature points array in log case to speed this up */
+	std::vector<QVector<QPointF>> featurePoints;
+	if (logSpace) {
+		featurePoints = d->featurePoints;
+		tbb::parallel_for_each(featurePoints, [&] (QVector<QPointF> &points) {
+			for (auto &i : points)
+				i.setY(adjusted(i.y()));
+		});
+	}
+
 	// add individual series (markers or all)
 	auto addIndividuals = [&] (bool onlyMarkers) {
 		for (auto [index, isMarker] : content) {
@@ -225,12 +236,7 @@ void ProfileChart::setupSeries()
 				});
 			}
 
-			auto points = d->featurePoints[index];
-			if (logSpace) {
-				for (auto &i : points)
-					i.setY(adjusted(i.y()));
-			}
-			s->replace(points);
+			s->replace(logSpace ? featurePoints[index] : d->featurePoints[index]);
 		}
 	};
 

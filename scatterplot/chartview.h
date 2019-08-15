@@ -24,7 +24,7 @@ protected:
 
 	// workarounds to left-mouse conflict
 	bool rubberState = false;
-	bool rubberPerformed;
+	bool rubberPerformed = false;
 };
 
 #endif // CHARTVIEW_H
