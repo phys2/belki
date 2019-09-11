@@ -295,8 +295,8 @@ void MainWindow::updateState(Dataset::Touched affected)
 		bool haveClustering = !s->clustering.empty();
 		actionShowStructure->setEnabled(haveClustering);
 		actionShowStructure->setChecked(haveClustering);
+		actionExportAnnotations->setEnabled(haveClustering);
 		bool computedClustering = haveClustering && structureSelect->currentData() < 1;
-		actionExportAnnotations->setEnabled(computedClustering);
 		actionPersistAnnotations->setEnabled(computedClustering);
 	}
 	if (affected & Dataset::Touch::HIERARCHY) {
