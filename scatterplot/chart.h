@@ -75,7 +75,8 @@ public slots:
 	void adjustProteinAlpha(qreal adjustment);
 
 	void resetCursor();
-	void updateCursor(const QPointF &pos = {});
+	void moveCursor(const QPointF &pos = {});
+	void scaleCursor(qreal factor);
 
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
@@ -85,13 +86,17 @@ signals:
 
 protected:
 	void animate(int msec);
+	void refreshCursor();
 	static void updateTicks(QtCharts::QValueAxis *axis);
 
-	/* state variables */
+	/* state variables TODO: move some to tab guiState */
 	struct {
 		QRectF current;
 		QStack<QRectF> history;
 	} zoom;
+
+	qreal cursorRadius = 50; // size of cursor circle in coordinate space
+	QPointF cursorCenter;
 
 	struct {
 		bool singleMode = false; // mode to highlight single clusters

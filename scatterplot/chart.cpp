@@ -185,11 +185,12 @@ void Chart::updatePartitions(bool fresh)
 	}
 }
 
-void Chart::updateCursor(const QPointF &pos)
+void Chart::moveCursor(const QPointF &pos)
 {
 	if (cursorLocked)
 		return;
 
+	cursorCenter = pos;
 	if (pos.isNull() || !plotArea().contains(pos)) {
 		tracker->hide();
 
@@ -199,11 +200,21 @@ void Chart::updateCursor(const QPointF &pos)
 		return;
 	}
 
-	const qreal radius = 50;
+	refreshCursor();
+};
 
+void Chart::scaleCursor(qreal factor)
+{
+	cursorRadius *= factor;
+	if (!cursorCenter.isNull())
+		refreshCursor();
+}
+
+void Chart::refreshCursor()
+{
 	// find cursor in feature space (center + range)
-	auto center = mapToValue(pos);
-	auto diff = center - mapToValue(pos + QPointF{radius, 0});
+	auto center = mapToValue(cursorCenter);
+	auto diff = center - mapToValue(cursorCenter + QPointF{cursorRadius, 0});
 	auto range = QPointF::dotProduct(diff, diff);
 
 	// shape the corresponding ellipse in viewport space
@@ -312,7 +323,7 @@ void Chart::zoomAt(const QPointF &pos, qreal factor)
 void Chart::resetCursor()
 {
 	cursorLocked = false;
-	updateCursor();
+	moveCursor();
 }
 
 void Chart::updateMarkers(bool newDisplay)

@@ -9,7 +9,7 @@ Chart *ChartView::chart()
 void ChartView::mouseMoveEvent(QMouseEvent *event)
 {
 	if (!rubberState) {
-		chart()->updateCursor(event->pos());
+		chart()->moveCursor(event->pos());
 	}
 
 	QChartView::mouseMoveEvent(event);
@@ -56,7 +56,7 @@ void ChartView::enterEvent(QEvent *)
 
 void ChartView::leaveEvent(QEvent *)
 {
-	chart()->updateCursor();
+	chart()->moveCursor();
 }
 
 void ChartView::keyReleaseEvent(QKeyEvent *event)
@@ -74,17 +74,25 @@ void ChartView::keyReleaseEvent(QKeyEvent *event)
 	if (event->key() == Qt::Key_S)
 		chart()->toggleSingleMode();
 
-	if (event->modifiers() & Qt::AltModifier) {
-		if (event->key() == Qt::Key_Plus)
-			chart()->adjustProteinAlpha(.05);
-		if (event->key() == Qt::Key_Minus)
-			chart()->adjustProteinAlpha(-.05);
-	} else {
-		if (event->key() == Qt::Key_Plus)
-			chart()->scaleProteins(1.25);
-		if (event->key() == Qt::Key_Minus)
-			chart()->scaleProteins(0.8);
+	auto adjustAlpha = [this] (bool decr) {
+		chart()->adjustProteinAlpha(decr ? -.05 : .05);
+	};
+	auto adjustScale = [this] (bool decr) {
+		chart()->scaleProteins(decr ? 0.8 : 1.25);
+	};
+	auto adjustCursor = [this] (bool decr) {
+		chart()->scaleCursor(decr ? 0.8 : 1.25);
+	};
+
+	if (event->key() == Qt::Key_Plus || event->key() == Qt::Key_Minus) {
+		if (event->modifiers() & Qt::AltModifier)
+			adjustAlpha(event->key() == Qt::Key_Minus);
+		else if (event->modifiers() & Qt::ControlModifier)
+			adjustScale(event->key() == Qt::Key_Minus);
+		else
+			adjustCursor(event->key() == Qt::Key_Minus);
 	}
+
 	if (event->key() == Qt::Key_B)
 		chart()->switchProteinBorders();
 }
@@ -95,6 +103,10 @@ void ChartView::wheelEvent(QWheelEvent *event)
 	if (event->isAccepted())
 		return;
 
-	auto factor = 1. + 0.001*event->delta();
-	chart()->zoomAt(mapToScene(event->pos()), factor);
+	auto factor = [&] (qreal strength) { return 1. + 0.001*strength*event->delta(); };
+
+	if (event->modifiers() & Qt::ControlModifier)
+		chart()->scaleCursor(factor(2.));
+	else
+		chart()->zoomAt(mapToScene(event->pos()), factor(1.));
 }
