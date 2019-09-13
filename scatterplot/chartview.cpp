@@ -7,9 +7,55 @@ ChartView::ChartView(QWidget *parent)
 	setRubberBand(QtCharts::QChartView::RectangleRubberBand); // TODO: issue #5
 }
 
+void ChartView::switchChart(Chart *chart)
+{
+	chart->setConfig(&config);
+	setChart(chart);
+}
+
+void ChartView::releaseChart()
+{
+	setChart(new QtCharts::QChart()); // release ownership
+}
+
 Chart *ChartView::chart()
 {
 	return qobject_cast<Chart*>(QChartView::chart());
+}
+
+void ChartView::toggleSingleMode()
+{
+	config.proteinStyle.singleMode = !config.proteinStyle.singleMode;
+	emit chart()->proteinStyleUpdated();
+}
+
+void ChartView::scaleProteins(qreal factor)
+{
+	config.proteinStyle.size *= factor;
+	emit chart()->proteinStyleUpdated();
+}
+
+void ChartView::switchProteinBorders()
+{
+	const QVector<Qt::PenStyle> rot{
+		Qt::PenStyle::SolidLine, Qt::PenStyle::DotLine, Qt::PenStyle::NoPen};
+	config.proteinStyle.border = rot[(rot.indexOf(config.proteinStyle.border) + 1) % rot.size()];
+	emit chart()->proteinStyleUpdated();
+}
+
+void ChartView::adjustProteinAlpha(qreal adjustment)
+{
+	if (config.proteinStyle.singleMode)
+		return; // avoid hidden changes
+	auto &a = config.proteinStyle.alpha.reg;
+	a = std::min(1., std::max(0., a + adjustment));
+	emit chart()->proteinStyleUpdated();
+}
+
+void ChartView::scaleCursor(qreal factor)
+{
+	config.cursorRadius *= factor;
+	chart()->refreshCursor();
 }
 
 void ChartView::mouseMoveEvent(QMouseEvent *event)
@@ -78,16 +124,16 @@ void ChartView::keyReleaseEvent(QKeyEvent *event)
 		chart()->undoZoom(event->modifiers() & Qt::ShiftModifier);
 
 	if (event->key() == Qt::Key_S)
-		chart()->toggleSingleMode();
+		toggleSingleMode();
 
 	auto adjustAlpha = [this] (bool decr) {
-		chart()->adjustProteinAlpha(decr ? -.05 : .05);
+		adjustProteinAlpha(decr ? -.05 : .05);
 	};
 	auto adjustScale = [this] (bool decr) {
-		chart()->scaleProteins(decr ? 0.8 : 1.25);
+		scaleProteins(decr ? 0.8 : 1.25);
 	};
 	auto adjustCursor = [this] (bool decr) {
-		chart()->scaleCursor(decr ? 0.8 : 1.25);
+		scaleCursor(decr ? 0.8 : 1.25);
 	};
 
 	if (event->key() == Qt::Key_Plus || event->key() == Qt::Key_Minus) {
@@ -100,7 +146,7 @@ void ChartView::keyReleaseEvent(QKeyEvent *event)
 	}
 
 	if (event->key() == Qt::Key_B)
-		chart()->switchProteinBorders();
+		switchProteinBorders();
 }
 
 void ChartView::wheelEvent(QWheelEvent *event)
@@ -112,7 +158,7 @@ void ChartView::wheelEvent(QWheelEvent *event)
 	auto factor = [&] (qreal strength) { return 1. + 0.001*strength*event->delta(); };
 
 	if (event->modifiers() & Qt::ControlModifier)
-		chart()->scaleCursor(factor(2.));
+		scaleCursor(factor(2.));
 	else
 		chart()->zoomAt(mapToScene(event->pos()), factor(1.));
 }

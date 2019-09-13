@@ -14,10 +14,10 @@
 #include <map>
 #include <cmath>
 
-Chart::Chart(Dataset::ConstPtr data) :
+Chart::Chart(Dataset::ConstPtr data, const ChartConfig *config) :
     ax(new QtCharts::QValueAxis), ay(new QtCharts::QValueAxis),
     animReset(new QTimer(this)),
-    data(data)
+    config(config), data(data)
 {
 	/* set up general appearance */
 	// disable grid animations as a lot of distracting stuff happens there
@@ -76,6 +76,13 @@ Chart::Chart(Dataset::ConstPtr data) :
 	});
 }
 
+void Chart::setConfig(const ChartConfig *cfg)
+{
+	config = cfg;
+	emit proteinStyleUpdated();	// TODO this currently does not update colors
+	refreshCursor();
+}
+
 void Chart::setTitles(const QString &x, const QString &y)
 {
 	ax->setTitleText(x);
@@ -131,8 +138,8 @@ void Chart::updatePartitions(bool fresh)
 		animate(0);
 
 		// series needed for soft clustering
-		partitions[-2] = std::make_unique<Proteins>("Unlabeled", proteinStyle.color.unlabeled, this);
-		partitions[-1] = std::make_unique<Proteins>("Mixed", proteinStyle.color.mixed, this);
+		partitions[-2] = std::make_unique<Proteins>("Unlabeled", config->proteinStyle.color.unlabeled, this);
+		partitions[-1] = std::make_unique<Proteins>("Mixed", config->proteinStyle.color.mixed, this);
 
 		// go through clusters in their designated order
 		for (auto i : d->clustering.order) {
@@ -203,11 +210,10 @@ void Chart::moveCursor(const QPointF &pos)
 	refreshCursor();
 };
 
-void Chart::scaleCursor(qreal factor)
+void Chart::resetCursor()
 {
-	cursorRadius *= factor;
-	if (!cursorCenter.isNull())
-		refreshCursor();
+	cursorLocked = false;
+	moveCursor();
 }
 
 void Chart::toggleCursorLock()
@@ -217,9 +223,12 @@ void Chart::toggleCursorLock()
 
 void Chart::refreshCursor()
 {
+	if (cursorCenter.isNull())
+		return;
+
 	// find cursor in feature space (center + range)
 	auto center = mapToValue(cursorCenter);
-	auto diff = center - mapToValue(cursorCenter + QPointF{cursorRadius, 0});
+	auto diff = center - mapToValue(cursorCenter + QPointF{config->cursorRadius, 0});
 	auto range = QPointF::dotProduct(diff, diff);
 
 	// shape the corresponding ellipse in viewport space
@@ -272,35 +281,6 @@ void Chart::undoZoom(bool full)
 	zoom.history.pop();
 }
 
-void Chart::toggleSingleMode()
-{
-	proteinStyle.singleMode = !proteinStyle.singleMode;
-	emit proteinStyleUpdated();
-}
-
-void Chart::scaleProteins(qreal factor)
-{
-	proteinStyle.size *= factor;
-	emit proteinStyleUpdated();
-}
-
-void Chart::switchProteinBorders()
-{
-	const QVector<Qt::PenStyle> rot{
-		Qt::PenStyle::SolidLine, Qt::PenStyle::DotLine, Qt::PenStyle::NoPen};
-	proteinStyle.border = rot[(rot.indexOf(proteinStyle.border) + 1) % rot.size()];
-	emit proteinStyleUpdated();
-}
-
-void Chart::adjustProteinAlpha(qreal adjustment)
-{
-	if (proteinStyle.singleMode)
-		return; // avoid hidden changes
-	auto &a = proteinStyle.alpha.reg;
-	a = std::min(1., std::max(0., a + adjustment));
-	emit proteinStyleUpdated();
-}
-
 void Chart::togglePartitions(bool showPartitions)
 {
 	if (master->isVisible() != showPartitions)
@@ -323,12 +303,6 @@ void Chart::zoomAt(const QPointF &pos, qreal factor)
 
 	auto dt = center.y() - ay->min(), db = ay->max() - center.y();
 	ay->setRange(center.y() - dt*stretch, center.y() + db*stretch);
-}
-
-void Chart::resetCursor()
-{
-	cursorLocked = false;
-	moveCursor();
 }
 
 void Chart::updateMarkers(bool newDisplay)
@@ -420,8 +394,8 @@ void Chart::Proteins::redecorate(bool full, bool hl)
 	auto c = reinterpret_cast<Chart*>(chart());
 	if (!c)
 		return;
+	auto &s = c->config->proteinStyle;
 
-	auto &s = c->proteinStyle;
 	if (full)
 		setMarkerSize(s.size);
 
@@ -470,6 +444,7 @@ void Chart::Marker::reAdd()
 
 void Chart::Marker::setup(Chart *chart)
 {
+	auto config = chart->config;
 	auto s = series.get();
 	chart->addSeries(s);
 
@@ -479,7 +454,7 @@ void Chart::Marker::setup(Chart *chart)
 	s->setBorderColor(Qt::black);
 	s->setColor(chart->data->peek<Dataset::Proteins>()->proteins[sampleId].color);
 	s->setMarkerShape(QtCharts::QScatterSeries::MarkerShapeRectangle);
-	s->setMarkerSize(chart->proteinStyle.size * 1.3333);
+	s->setMarkerSize(config->proteinStyle.size * 1.3333);
 	s->setPointLabelsVisible(true);
 
 	/* allow to remove marker by clicking its legend entry */
@@ -489,8 +464,8 @@ void Chart::Marker::setup(Chart *chart)
 	});
 
 	// follow style changes (note: receiver specified for cleanup on delete!)
-	s->connect(chart, &Chart::proteinStyleUpdated, s, [chart, s] {
+	s->connect(chart, &Chart::proteinStyleUpdated, s, [config, s] {
 		// we only care about size
-		s->setMarkerSize(chart->proteinStyle.size * 1.3333);
+		s->setMarkerSize(config->proteinStyle.size * 1.3333);
 	});
 }

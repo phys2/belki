@@ -61,7 +61,7 @@ ScatterTab::ScatterTab(QWidget *parent) :
 
 ScatterTab::~ScatterTab()
 {
-	view->setChart(new QtCharts::QChart()); // release ownership
+	view->releaseChart(); // avoid double delete
 }
 
 void ScatterTab::selectDataset(unsigned id)
@@ -85,7 +85,7 @@ void ScatterTab::selectDataset(unsigned id)
 	auto scene = current().scene.get();
 	scene->togglePartitions(guiState.showPartitions);
 	scene->updateMarkers();
-	view->setChart(scene);
+	view->switchChart(scene);
 }
 
 void ScatterTab::addDataset(Dataset::Ptr data)
@@ -96,7 +96,7 @@ void ScatterTab::addDataset(Dataset::Ptr data)
 	state.hasScores = data->peek<Dataset::Base>()->hasScores();
 	if (!state.hasScores)
 		state.secondaryDimension = 1;
-	state.scene = std::make_unique<Chart>(data);
+	state.scene = std::make_unique<Chart>(data, view->getConfig());
 
 	auto scene = state.scene.get();
 
