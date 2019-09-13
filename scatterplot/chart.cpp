@@ -210,6 +210,11 @@ void Chart::scaleCursor(qreal factor)
 		refreshCursor();
 }
 
+void Chart::toggleCursorLock()
+{
+	cursorLocked = !cursorLocked;
+}
+
 void Chart::refreshCursor()
 {
 	// find cursor in feature space (center + range)

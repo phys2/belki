@@ -1,6 +1,12 @@
 #include "chartview.h"
 #include "chart.h"
 
+ChartView::ChartView(QWidget *parent)
+    : QtCharts::QChartView(parent)
+{
+	setRubberBand(QtCharts::QChartView::RectangleRubberBand); // TODO: issue #5
+}
+
 Chart *ChartView::chart()
 {
 	return qobject_cast<Chart*>(QChartView::chart());
@@ -44,7 +50,7 @@ void ChartView::mouseReleaseEvent(QMouseEvent *event)
 		return;
 
 	if (event->button() == Qt::LeftButton) {
-		chart()->cursorLocked = !chart()->cursorLocked;
+		chart()->toggleCursorLock();
 	}
 }
 
@@ -66,7 +72,7 @@ void ChartView::keyReleaseEvent(QKeyEvent *event)
 		return;
 
 	if (event->key() == Qt::Key_Space)
-		chart()->cursorLocked = !chart()->cursorLocked;
+		chart()->toggleCursorLock();
 
 	if (event->key() == Qt::Key_Z)
 		chart()->undoZoom(event->modifiers() & Qt::ShiftModifier);

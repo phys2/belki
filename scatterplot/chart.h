@@ -56,8 +56,6 @@ public:
 
 	Chart(Dataset::ConstPtr data);
 
-	bool cursorLocked = false;
-
 public slots:
 	void setTitles(const QString &x, const QString &y);
 	void display(const QVector<QPointF> &coords);
@@ -77,6 +75,7 @@ public slots:
 	void resetCursor();
 	void moveCursor(const QPointF &pos = {});
 	void scaleCursor(qreal factor);
+	void toggleCursorLock();
 
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
@@ -96,6 +95,7 @@ protected:
 	} zoom;
 
 	qreal cursorRadius = 50; // size of cursor circle in coordinate space
+	bool cursorLocked = false;
 	QPointF cursorCenter;
 
 	struct {

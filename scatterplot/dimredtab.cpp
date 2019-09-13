@@ -10,7 +10,6 @@ DimredTab::DimredTab(QWidget *parent) :
     Viewer(parent)
 {
 	setupUi(this);
-	view->setRubberBand(QtCharts::QChartView::RectangleRubberBand); // TODO: issue #5
 
 	// setup toolbar
 	auto anchor = actionCycleBackward;
