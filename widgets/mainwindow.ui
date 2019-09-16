@@ -17,7 +17,7 @@
    <string>Belki</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="resources/index.qrc">
+   <iconset resource="../resources/index.qrc">
     <normaloff>:/appicon</normaloff>:/appicon</iconset>
   </property>
   <property name="unifiedTitleAndToolBarOnMac">
@@ -435,7 +435,7 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="resources/icons-custom/index.qrc">
+    <iconset resource="../resources/icons-custom/index.qrc">
      <normaloff>:/icons/show-partition.svg</normaloff>:/icons/show-partition.svg</iconset>
    </property>
    <property name="text">
@@ -590,8 +590,8 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="resources/index.qrc"/>
-  <include location="resources/icons-custom/index.qrc"/>
+  <include location="../resources/index.qrc"/>
+  <include location="../resources/icons-custom/index.qrc"/>
  </resources>
  <connections/>
 </ui>
