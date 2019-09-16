@@ -36,20 +36,14 @@ MainWindow::MainWindow(CentralHub &hub) :
 		connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset);
 		connect(this, &MainWindow::partitionsToggled, v, &Viewer::inTogglePartitions);
 		connect(&hub.proteins, &ProteinDB::markersToggled, v, &Viewer::inToggleMarkers);
+		connect(this, &MainWindow::orderChanged, v, &Viewer::changeOrder);
 
 		// connect signalling out of view
 		connect(v, &Viewer::markerToggled, this, &MainWindow::toggleMarker);
 		connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateProteins);
-		connect(v, &Viewer::orderRequested, &hub, &CentralHub::changeOrder);
 		connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
 		connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
-
-		// gui synchronization between views
-		for (auto v2 : views) {
-			if (v2 == v)
-				continue;
-			connect(v, &Viewer::orderRequested, v2, &Viewer::changeOrder);
-		}
+		connect(v, &Viewer::orderRequested, this, &MainWindow::orderChanged);
 
 		// set initial state
 		emit v->inUpdateColorset(hub.colorset());
@@ -149,6 +143,9 @@ void MainWindow::setupSignals()
 	connect(famsKSlider, &QSlider::valueChanged, [this] (int v) {
 		hub.runFAMS(v * 0.01f);
 	});
+
+	/* changing order settings */
+	connect(this, &MainWindow::orderChanged, &hub, &CentralHub::changeOrder);
 }
 
 void MainWindow::setupActions()
