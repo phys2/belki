@@ -5,6 +5,12 @@
 #include "profiles/profilewindow.h"
 #include "widgets/spawndialog.h"
 
+#include "scatterplot/dimredtab.h"
+#include "scatterplot/scattertab.h"
+#include "heatmap/heatmaptab.h"
+#include "distmat/distmattab.h"
+#include "featweights/featweightstab.h"
+
 #include <QTreeWidget>
 #include <QFileInfo>
 #include <QDir>
@@ -12,6 +18,7 @@
 #include <QStandardItemModel>
 #include <QAbstractProxyModel>
 #include <QLabel>
+#include <QToolButton>
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QTimer>
@@ -24,31 +31,7 @@ MainWindow::MainWindow(CentralHub &hub) :
 {
 	setupUi(this);
 	setupToolbar();
-
-	auto renderSlot = [this] (auto r, auto d) { io->renderToFile(r, {title, d}); };
-
-	/* Views in tabs */
-	views = {dimredTab, scatterTab, heatmapTab, distmatTab, featweightsTab};
-	for (auto v : views) {
-		// connect singnalling into view
-		connect(&hub, &CentralHub::newDataset, v, &Viewer::addDataset);
-		// see below; disable when it works
-		connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset);
-		connect(this, &MainWindow::partitionsToggled, v, &Viewer::inTogglePartitions);
-		connect(&hub.proteins, &ProteinDB::markersToggled, v, &Viewer::inToggleMarkers);
-		connect(this, &MainWindow::orderChanged, v, &Viewer::changeOrder);
-
-		// connect signalling out of view
-		connect(v, &Viewer::markerToggled, this, &MainWindow::toggleMarker);
-		connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateProteins);
-		connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
-		connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
-		connect(v, &Viewer::orderRequested, this, &MainWindow::orderChanged);
-
-		// set initial state
-		emit v->inUpdateColorset(hub.colorset());
-		emit v->inTogglePartitions(actionShowStructure->isChecked());
-	}
+	setupTabs();
 
 	/* experimental: put to sleep when not visible
 	connect(tabWidget, &QTabWidget::currentChanged, [this] () {
@@ -102,6 +85,33 @@ void MainWindow::setupToolbar()
 
 	// remove container we picked from
 	topBar->deleteLater();
+}
+
+void MainWindow::setupTabs()
+{
+	// "add tab" menu
+	auto *menu = new QMenu("Add tab");
+	for (const auto &[type, name] : tabTitles)
+		menu->addAction(name, [this, t=type] { addTab(t); });
+
+	// integrate into main menu (does not take ownership)
+	menuView->insertMenu(actionCloseAllTabs, menu);
+
+	// button for adding tabs
+	auto *btn = new QToolButton;
+	btn->setIcon(QIcon::fromTheme("tab-new"));
+	btn->setMenu(menu); // does not take ownership
+	btn->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);
+	btn->setMinimumSize(btn->sizeHint()); // ensure button keeps showing when zero tabs
+	tabWidget->setCornerWidget(btn);
+
+	// setup tab closing
+	connect(tabWidget, &QTabWidget::tabCloseRequested,
+	        [this] (auto index) { delete tabWidget->widget(index); });
+
+	// initial tabs
+	addTab(Tab::DIMRED);
+	addTab(Tab::SCATTER);
 }
 
 void MainWindow::setupSignals()
@@ -162,6 +172,11 @@ void MainWindow::setupActions()
 
 	connect(actionQuit, &QAction::triggered, [] { QApplication::exit(); });
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
+	connect(actionCloseAllTabs, &QAction::triggered, [this] {
+		for (int i = tabWidget->count() - 1; i >= 0; --i)
+			delete tabWidget->widget(i);
+		tabHistory.clear();
+	});
 
 	connect(actionLoadDataset, &QAction::triggered, [this] { openFile(Input::DATASET); });
 	connect(actionLoadDatasetAbundance, &QAction::triggered, [this] { openFile(Input::DATASET_RAW); });
@@ -208,7 +223,7 @@ void MainWindow::setupActions()
 		auto s = new SpawnDialog(data, this);
 		// spawn dialog deletes itself, should also kill connection+lambda, right?
 		connect(s, &SpawnDialog::spawn, [this] (auto data, auto& config) {
-			emit hub.spawn(data, config, dimredTab->currentMethod());
+			emit hub.spawn(data, config); // TODO change mechanic, dimredTab->currentMethod());
 		});
 	});
 }
@@ -368,6 +383,53 @@ void MainWindow::finalizeMarkerItems()
 	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
 	m->sort(0);
 	markerWidget->setEnabled(true); // we are in good state now
+}
+
+void MainWindow::addTab(MainWindow::Tab type)
+{
+	Viewer *v;
+	switch (type) {
+	case Tab::DIMRED: v = new DimredTab; break;
+	case Tab::SCATTER: v = new ScatterTab; break;
+	case Tab::HEATMAP: v = new HeatmapTab; break;
+	case Tab::DISTMAT: v = new DistmatTab; break;
+	case Tab::FEATWEIGHTS: v = new FeatweightsTab; break;
+	}
+
+	// connect singnalling into view
+	connect(&hub, &CentralHub::newDataset, v, &Viewer::addDataset);
+	/* use queued conn. to ensure the views get the newDataset signal _first_! */
+	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
+	connect(this, &MainWindow::partitionsToggled, v, &Viewer::inTogglePartitions);
+	connect(&hub.proteins, &ProteinDB::markersToggled, v, &Viewer::inToggleMarkers);
+	connect(this, &MainWindow::orderChanged, v, &Viewer::changeOrder);
+
+	// connect signalling out of view
+	connect(v, &Viewer::markerToggled, this, &MainWindow::toggleMarker);
+	connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateProteins);
+
+	auto renderSlot = [this] (auto r, auto d) { io->renderToFile(r, {title, d}); };
+	connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
+	connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
+
+	connect(v, &Viewer::orderRequested, this, &MainWindow::orderChanged);
+
+	// set initial state
+	emit v->inUpdateColorset(hub.colorset());
+	emit v->inTogglePartitions(actionShowStructure->isChecked());
+	for (auto &[_, d] : hub.datasets())
+		v->addDataset(d);
+	if (data)
+		v->selectDataset(data->id());
+
+	auto title = tabTitles.at(type);
+	auto count = tabHistory.count(type);
+	if (count)
+		title.append(QString(" (%1)").arg(count + 1));
+	tabHistory.insert(type);
+
+	tabWidget->addTab(v, title);
+	tabWidget->setCurrentWidget(v);
 }
 
 void MainWindow::setFilename(QString name)

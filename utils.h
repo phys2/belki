@@ -36,7 +36,7 @@ struct RWLockable {
 template<typename T>
 struct View {
 	View(const T &d, QReadWriteLock &l) : data(d), l(l) { l.lockForRead(); }
-	View(const T &d) : View(d, d.l) {}
+	explicit View(const T &d) : View(d, d.l) {}
 	View(const View&) = delete;
 	View(View&& o) : data(o.data), l(o.l) {}
 	~View() { unlock(); }

@@ -32,6 +32,12 @@ QVector<QColor> CentralHub::colorset()
 	return tableau20;
 }
 
+std::map<unsigned, CentralHub::DataPtr> CentralHub::datasets()
+{
+	QReadLocker _(&data.l);
+	return data.sets; // return a current copy
+}
+
 void CentralHub::setupSignals()
 {
 	/* signal multiplexing */

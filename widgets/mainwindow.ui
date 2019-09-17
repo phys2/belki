@@ -133,39 +133,17 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>-1</number>
       </property>
-      <widget class="DimredTab" name="dimredTab">
-       <attribute name="title">
-        <string>Visualization</string>
-       </attribute>
-      </widget>
-      <widget class="ScatterTab" name="scatterTab">
-       <attribute name="title">
-        <string>Scatter Plot</string>
-       </attribute>
-      </widget>
-      <widget class="HeatmapTab" name="heatmapTab">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <attribute name="title">
-        <string>Heatmap</string>
-       </attribute>
-      </widget>
-      <widget class="DistmatTab" name="distmatTab">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <attribute name="title">
-        <string>Distance Map</string>
-       </attribute>
-      </widget>
-      <widget class="FeatweightsTab" name="featweightsTab">
-       <attribute name="title">
-        <string>Feature Weighting</string>
-       </attribute>
-      </widget>
+      <property name="elideMode">
+       <enum>Qt::ElideLeft</enum>
+      </property>
+      <property name="tabsClosable">
+       <bool>true</bool>
+      </property>
+      <property name="movable">
+       <bool>true</bool>
+      </property>
      </widget>
     </item>
    </layout>
@@ -365,9 +343,16 @@
     <addaction name="separator"/>
     <addaction name="actionPersistAnnotations"/>
    </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>&amp;View</string>
+    </property>
+    <addaction name="actionCloseAllTabs"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuStructure"/>
    <addaction name="menuMarkers"/>
+   <addaction name="menuView"/>
    <addaction name="menuHelp"/>
   </widget>
   <action name="actionLoadDataset">
@@ -550,38 +535,17 @@
     <string>K</string>
    </property>
   </action>
+  <action name="actionCloseAllTabs">
+   <property name="icon">
+    <iconset theme="tab-close">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Close all tabs</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>HeatmapTab</class>
-   <extends>QWidget</extends>
-   <header>heatmap/heatmaptab.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>DistmatTab</class>
-   <extends>QWidget</extends>
-   <header>distmat/distmattab.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>FeatweightsTab</class>
-   <extends>QWidget</extends>
-   <header>featweights/featweightstab.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>DimredTab</class>
-   <extends>QWidget</extends>
-   <header>scatterplot/dimredtab.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>ScatterTab</class>
-   <extends>QWidget</extends>
-   <header>scatterplot/scattertab.h</header>
-   <container>1</container>
-  </customwidget>
   <customwidget>
    <class>ProfileWidget</class>
    <extends>QWidget</extends>

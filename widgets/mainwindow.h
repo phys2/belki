@@ -48,6 +48,10 @@ protected:
 		DESCRIPTIONS
 	};
 
+	enum class Tab {
+		DIMRED, SCATTER, HEATMAP, DISTMAT, FEATWEIGHTS
+	};
+
 	void dragEnterEvent(QDragEnterEvent *event) override;
 	void dropEvent(QDropEvent *event) override;
 
@@ -56,14 +60,17 @@ protected:
 	void openFile(Input type, QString filename = {});
 
 	void setupToolbar();
+	void setupTabs();
 	void setupSignals();
 	void setupActions();
 	void setupMarkerControls();
 	void resetMarkerControls();
 	void finalizeMarkerItems();
+
+	void addTab(Tab type);
+
 	void setFilename(QString name);
 	void setSelectedDataset(unsigned index);
-
 	void selectStructure(int id);
 
 	CentralHub &hub;
@@ -75,7 +82,6 @@ protected:
 	std::map<unsigned, QTreeWidgetItem*> datasetItems;
 	std::unordered_map<ProteinId, QStandardItem*> markerItems;
 
-	std::vector<Viewer*> views;
 	FileIO *io;
 
 	struct {
@@ -84,6 +90,16 @@ protected:
 		QAction *granularity;
 		QAction *famsK;
 	} toolbarActions;
+	std::unique_ptr<QMenu> tabMenu;
+
+	inline static const std::map<Tab, QString> tabTitles = {
+	    {Tab::DIMRED, "Visualization"},
+	    {Tab::SCATTER, "Scatter Plot"},
+	    {Tab::HEATMAP, "Heatmap"},
+	    {Tab::DISTMAT, "Distance Map"},
+	    {Tab::FEATWEIGHTS, "Feature Weighting"},
+	};
+	std::multiset<Tab> tabHistory; // used as per-type incrementing counter
 };
 
 #endif // MAINWINDOW_H

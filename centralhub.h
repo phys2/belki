@@ -23,6 +23,7 @@ public:
 	using ConstDataPtr = Dataset::ConstPtr;
 
 	QVector<QColor> colorset();
+	std::map<unsigned, DataPtr> datasets();
 
 signals:
 	void ioError(const QString &message);
