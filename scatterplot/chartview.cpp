@@ -59,9 +59,8 @@ void ChartView::switchProteinBorders()
 
 void ChartView::adjustProteinAlpha(qreal adjustment)
 {
-	if (config.proteinStyle.singleMode)
-		return; // avoid hidden changes
-	auto &a = config.proteinStyle.alpha.reg;
+	auto &s = config.proteinStyle;
+	auto &a = s.singleMode ? s.alpha.lo : s.alpha.reg;
 	a = std::min(1., std::max(0., a + adjustment));
 	emit chart()->proteinStyleUpdated();
 }
