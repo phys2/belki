@@ -1,6 +1,7 @@
 #ifndef CHART_H
 #define CHART_H
 
+#include "chartconfig.h"
 #include "dataset.h"
 #include "utils.h"
 
@@ -54,9 +55,8 @@ public:
 		void setup(Chart *chart);
 	};
 
-	Chart(Dataset::ConstPtr data);
-
-	bool cursorLocked = false;
+	Chart(Dataset::ConstPtr data, const ChartConfig *config);
+	void setConfig(const ChartConfig *config);
 
 public slots:
 	void setTitles(const QString &x, const QString &y);
@@ -69,13 +69,10 @@ public slots:
 	void zoomAt(const QPointF &pos, qreal factor);
 	void undoZoom(bool full = false);
 
-	void toggleSingleMode();
-	void scaleProteins(qreal factor);
-	void switchProteinBorders();
-	void adjustProteinAlpha(qreal adjustment);
-
+	void refreshCursor();
 	void resetCursor();
-	void updateCursor(const QPointF &pos = {});
+	void moveCursor(const QPointF &pos = {});
+	void toggleCursorLock();
 
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
@@ -87,27 +84,6 @@ protected:
 	void animate(int msec);
 	static void updateTicks(QtCharts::QValueAxis *axis);
 
-	/* state variables */
-	struct {
-		QRectF current;
-		QStack<QRectF> history;
-	} zoom;
-
-	struct {
-		bool singleMode = false; // mode to highlight single clusters
-		qreal size = 15.;
-		struct {
-			qreal reg = .65;
-			qreal hi = .9;
-			qreal lo = .1;
-		} alpha;
-		struct {
-			QColor unlabeled = Qt::white;
-			QColor mixed = Qt::darkGray;
-		} color;
-		Qt::PenStyle border = Qt::PenStyle::DotLine;
-	} proteinStyle;
-
 	/* items in the scene */
 	Proteins *master; // owned by chart
 	// note partitions are also owned by chart, but we delete first and they de-register
@@ -118,6 +94,17 @@ protected:
 	QtCharts::QValueAxis *ax, *ay;
 	// deferred animation reset
 	QTimer *animReset;
+
+	/* GUI state */
+	const ChartConfig *config;
+
+	/* data state variables */
+	struct {
+		QRectF current;
+		QStack<QRectF> history;
+	} zoom;
+	bool cursorLocked = false;
+	QPointF cursorCenter;
 
 	// data source
 	Dataset::ConstPtr data;

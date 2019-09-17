@@ -18,11 +18,12 @@ FileIO::FileIO(QMainWindow *parent) :
 QString FileIO::chooseFile(FileIO::Role purpose, QWidget *p)
 {
 	const QMap<Role, RoleDef> map = {
-	    {OpenDataset, {"Open Dataset", "Peak Volumes Table or ZIP file (*.tsv *.zip)", false, {}}},
-	    {OpenDescriptions, {"Open Descriptions", "Two-column table with descriptions (*.tsv)", false, {}}},
+	    {OpenDataset, {"Open Dataset", "Peak Volumes Table (*.tsv *.txt);; All Files (*)", false, {}}},
+	    {OpenDescriptions, {"Open Descriptions", "Two-column table with descriptions (*.tsv *.txt);; All Files (*)", false, {}}},
 	    {OpenStructure, {"Open Annotations or Clustering",
 	                     "All supported files (*.tsv *.txt *.json);; "
-	                     "Annotation Table / Protein Lists (*.tsv *.txt);; Hierarchical Clustering (*.json)",
+	                     "Annotation Table / Protein Lists (*.tsv *.txt);; Hierarchical Clustering (*.json);; "
+	                     "All Files (*)",
 	                      false, {}}},
 	    {OpenMarkers, {"Open Markers List", "List of markers (*.txt);; All Files (*)", false, {}}},
 	    {SaveMarkers, {"Save Markers to File", "List of markers (*.txt)", true, ".txt"}},

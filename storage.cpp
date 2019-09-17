@@ -299,6 +299,11 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 {
 	auto header = in.readLine().split("\t");
 	header.pop_front(); // first column (also expected to be empty)
+	// allow empty fields at the end caused by Excel export
+	while (header.last().isEmpty())
+		header.removeLast();
+
+	// ensure header consistency
 	if (header.empty() || header.contains("") || header.removeDuplicates()) {
 		emit ioError("Malformed header: Duplicate or empty columns!");
 		return {};

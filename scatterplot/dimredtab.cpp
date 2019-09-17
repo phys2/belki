@@ -10,7 +10,6 @@ DimredTab::DimredTab(QWidget *parent) :
     Viewer(parent)
 {
 	setupUi(this);
-	view->setRubberBand(QtCharts::QChartView::RectangleRubberBand); // TODO: issue #5
 
 	// setup toolbar
 	auto anchor = actionCycleBackward;
@@ -64,7 +63,7 @@ DimredTab::DimredTab(QWidget *parent) :
 
 DimredTab::~DimredTab()
 {
-	view->setChart(new QtCharts::QChart()); // release ownership
+	view->releaseChart(); // avoid double delete
 }
 
 void DimredTab::selectDataset(unsigned id)
@@ -82,7 +81,7 @@ void DimredTab::selectDataset(unsigned id)
 		auto scene = current().scene.get();
 		scene->togglePartitions(guiState.showPartitions);
 		scene->updateMarkers();
-		view->setChart(scene);
+		view->switchChart(scene);
 
 		/* hook into dataset updates */
 		connect(current().data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
@@ -98,7 +97,7 @@ void DimredTab::addDataset(Dataset::Ptr data)
 	auto id = data->id();
 	auto &state = content[id]; // emplace (note: ids are never recycled)
 	state.data = data;
-	state.scene = std::make_unique<Chart>(data);
+	state.scene = std::make_unique<Chart>(data, view->getConfig());
 
 	auto scene = state.scene.get();
 	scene->setTitles("dim 1", "dim 2");
