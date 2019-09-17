@@ -348,6 +348,8 @@
      <string>&amp;View</string>
     </property>
     <addaction name="actionCloseAllTabs"/>
+    <addaction name="separator"/>
+    <addaction name="actionUseOpenGL"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuStructure"/>
@@ -542,6 +544,24 @@
    </property>
    <property name="text">
     <string>&amp;Close all tabs</string>
+   </property>
+  </action>
+  <action name="actionUseOpenGL">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="show-gpu-effects">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>Use &amp;accelerated graphics</string>
+   </property>
+   <property name="toolTip">
+    <string>Use OpenGL acceleration for charts. May be faster or slower.</string>
    </property>
   </action>
  </widget>

@@ -14,6 +14,9 @@ public:
 	void switchChart(Chart *chart);
 	void releaseChart();
 
+public slots:
+	void toggleOpenGL(bool enabled);
+
 protected:
 	// override for internal use (does not work through pointer! scene() is non-virtual)
 	Chart *chart();

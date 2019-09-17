@@ -55,6 +55,7 @@ ScatterTab::ScatterTab(QWidget *parent) :
 		if (current)
 			current().scene->toggleMarkers(ids, present);
 	});
+	connect(this, &Viewer::inToggleOpenGL, view, &ChartView::toggleOpenGL);
 
 	updateEnabled();
 }

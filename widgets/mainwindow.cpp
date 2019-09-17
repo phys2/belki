@@ -196,7 +196,6 @@ void MainWindow::setupActions()
 		clustering->name = name;
 		hub.proteins.addAnnotations(std::move(clustering), false, true);
 	});
-	connect(actionShowStructure, &QAction::toggled, this, &MainWindow::partitionsToggled);
 	connect(actionClearMarkers, &QAction::triggered, &hub.proteins, &ProteinDB::clearMarkers);
 
 	connect(actionSplice, &QAction::triggered, [this] {
@@ -305,7 +304,8 @@ void MainWindow::addTab(MainWindow::Tab type)
 	connect(&hub, &CentralHub::newDataset, v, &Viewer::addDataset);
 	/* use queued conn. to ensure the views get the newDataset signal _first_! */
 	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
-	connect(this, &MainWindow::partitionsToggled, v, &Viewer::inTogglePartitions);
+	connect(actionShowStructure, &QAction::toggled, v, &Viewer::inTogglePartitions);
+	connect(actionUseOpenGL, &QAction::toggled, v, &Viewer::inToggleOpenGL);
 	connect(&hub.proteins, &ProteinDB::markersToggled, v, &Viewer::inToggleMarkers);
 	connect(this, &MainWindow::orderChanged, v, &Viewer::changeOrder);
 
@@ -339,6 +339,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 	// set initial state
 	emit v->inUpdateColorset(hub.colorset());
 	emit v->inTogglePartitions(actionShowStructure->isChecked());
+	emit v->inToggleOpenGL(actionUseOpenGL->isChecked());
 	for (auto &[_, d] : hub.datasets())
 		v->addDataset(d);
 	if (data)

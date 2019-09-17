@@ -5,9 +5,6 @@
 ChartView::ChartView(QWidget *parent)
     : QtCharts::QChartView(parent)
 {
-	setViewport(new QOpenGLWidget(parent));
-	setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
-
 	setRubberBand(QtCharts::QChartView::RectangleRubberBand); // TODO: issue #5
 }
 
@@ -20,6 +17,19 @@ void ChartView::switchChart(Chart *chart)
 void ChartView::releaseChart()
 {
 	setChart(new QtCharts::QChart()); // release ownership
+}
+
+void ChartView::toggleOpenGL(bool enabled)
+{
+	if (enabled == viewport()->inherits(QOpenGLWidget::staticMetaObject.className()))
+		return;
+	if (enabled) {
+		setViewport(new QOpenGLWidget);
+		setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+	} else {
+		setViewport({});
+		setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate);
+	}
 }
 
 Chart *ChartView::chart()

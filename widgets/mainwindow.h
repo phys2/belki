@@ -37,7 +37,6 @@ public slots:
 
 signals:
 	void datasetSelected(unsigned id);
-	void partitionsToggled(bool show);
 	void orderChanged(Dataset::OrderBy reference, bool synchronize);
 
 protected:
