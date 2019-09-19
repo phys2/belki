@@ -130,6 +130,22 @@ void ProfileChart::setupSeries()
 	// sort by name, but in small view, put marked last (for z-index)
 	std::sort(content.begin(), content.end(), small ? byMarkedThenName : byName);
 
+	std::function<double(double)> adjusted;
+	if (logSpace)
+		adjusted = [&] (qreal v) { return std::max(v, ayL->min()); };
+	else
+		adjusted = [] (qreal v) { return v; };
+
+	/* prepare adjusted feature points array in log case to speed this up */
+	std::vector<QVector<QPointF>> featurePoints;
+	if (logSpace) {
+		featurePoints = d->featurePoints;
+		tbb::parallel_for_each(featurePoints, [&] (QVector<QPointF> &points) {
+			for (auto &i : points)
+				i.setY(adjusted(i.y()));
+		});
+	}
+
 	// add & wire a series
 	auto add = [this] (QtCharts::QAbstractSeries *s, bool isIndiv, bool isMarker = false) {
 		addSeries(s);
@@ -141,12 +157,6 @@ void ProfileChart::setupSeries()
 			connect(this, signal, s, &QtCharts::QAbstractSeries::setVisible);
 		}
 	};
-
-	std::function<double(double)> adjusted;
-	if (logSpace)
-		adjusted = [&] (qreal v) { return std::max(v, ayL->min()); };
-	else
-		adjusted = [] (qreal v) { return v; };
 
 	// setup and add QLineSeries for mean
 	auto addMean = [&] {
@@ -198,16 +208,6 @@ void ProfileChart::setupSeries()
 		s2->setColor(Qt::gray);
 		s2->setBorderColor(Qt::gray);
 	};
-
-	/* prepare adjusted feature points array in log case to speed this up */
-	std::vector<QVector<QPointF>> featurePoints;
-	if (logSpace) {
-		featurePoints = d->featurePoints;
-		tbb::parallel_for_each(featurePoints, [&] (QVector<QPointF> &points) {
-			for (auto &i : points)
-				i.setY(adjusted(i.y()));
-		});
-	}
 
 	// add individual series (markers or all)
 	auto addIndividuals = [&] (bool onlyMarkers) {
