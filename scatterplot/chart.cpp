@@ -147,7 +147,7 @@ void Chart::updatePartitions(bool fresh)
 			auto s = new Proteins(g.name, g.color, this);
 			partitions.try_emplace((int)i, s);
 			/* enable profile view updates on legend label hover */
-			auto lm = legend()->markers(s)[0];
+			auto lm = legend()->markers(s).first();
 			connect(lm, &QtCharts::QLegendMarker::hovered, [this, s] (bool active) {
 				if (!active)
 					return;
@@ -183,12 +183,6 @@ void Chart::updatePartitions(bool fresh)
 		for (auto s : {partitions[-2].get(), partitions[-1].get()})
 			if (s->pointsVector().empty())
 				removeSeries(s);
-
-		/* re-order marker series to come up on top of partitions */
-		// unfortunately, due to QCharts suckery, we need to re-create them
-		for (auto &[_, m] : markers) {
-			m.reAdd();
-		}
 	}
 }
 
@@ -334,6 +328,8 @@ void Chart::toggleMarkers(const std::vector<ProteinId> &ids, bool present)
 			} catch (...) {}
 		} else {
 			markers.erase(id);
+			if (firstMarker == id)
+				firstMarker = 0; // invalidate
 		}
 	}
 }
@@ -354,17 +350,36 @@ void Chart::updateTicks(QtCharts::QValueAxis *axis)
 	axis->setTickType(QtCharts::QValueAxis::TickType::TicksDynamic);
 }
 
+ProteinId Chart::findFirstMarker()
+{
+	if (!firstMarker) {
+		unsigned lowest = Marker::nextIndex;
+		for (auto &[id, m] : markers) {
+			if (m.index < lowest) {
+				lowest = m.index;
+				firstMarker = id;
+			}
+		}
+	}
+	return firstMarker; // note: will still be 0 if there are no markers
+}
+
 Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)
 {
 	setName(label);
-	chart->addSeries(this);
+	/* insert _before_ any markers */
+	auto markerId = chart->findFirstMarker();
+	if (markerId)
+		chart->insertSeries(chart->markers.at(markerId).series.get(), this);
+	else
+		chart->addSeries(this);
 	attachAxis(chart->ax);
 	attachAxis(chart->ay);
 
 	setColor(color);
 	redecorate();
 
-	chart->legend()->markers(this)[0]->setShape(QtCharts::QLegend::MarkerShapeCircle);
+	chart->legend()->markers(this).first()->setShape(QtCharts::QLegend::MarkerShapeCircle);
 
 	// follow style changes (note: receiver specified for cleanup on delete!)
 	connect(chart, &Chart::proteinStyleUpdated, this, [this] {
@@ -417,35 +432,18 @@ void Chart::Proteins::redecorate(bool full, bool hl)
 }
 
 Chart::Marker::Marker(Chart *chart, unsigned sampleIndex, ProteinId id)
-    : sampleIndex(sampleIndex), sampleId(id),
+    : index(nextIndex++),
+      sampleIndex(sampleIndex), sampleId(id),
       series(std::make_unique<QtCharts::QScatterSeries>())
-{
-	auto s = series.get();
-	auto label = chart->data->peek<Dataset::Proteins>()->proteins[sampleId].name;
-	s->setName(label);
-
-	s->setPointLabelsFormat(label);
-	auto f = s->pointLabelsFont(); // increase font size (do it only on creation)
-	f.setBold(true);
-	f.setPointSizeF(f.pointSizeF() * 1.3);
-	s->setPointLabelsFont(f);
-
-	s->append(chart->master->pointsVector()[(int)sampleIndex]);
-
-	setup(chart);
-}
-
-void Chart::Marker::reAdd()
-{
-	auto chart = qobject_cast<Chart*>(series->chart());
-	chart->removeSeries(series.get());
-	setup(chart);
-}
-
-void Chart::Marker::setup(Chart *chart)
 {
 	auto config = chart->config;
 	auto s = series.get();
+
+	auto label = chart->data->peek<Dataset::Proteins>()->proteins[sampleId].name;
+	s->setName(label);
+	s->setPointLabelsFormat(label);
+
+	s->append(chart->master->pointsVector()[(int)sampleIndex]);
 	chart->addSeries(s);
 
 	s->attachAxis(chart->ax);
@@ -455,10 +453,14 @@ void Chart::Marker::setup(Chart *chart)
 	s->setColor(chart->data->peek<Dataset::Proteins>()->proteins[sampleId].color);
 	s->setMarkerShape(QtCharts::QScatterSeries::MarkerShapeRectangle);
 	s->setMarkerSize(config->proteinStyle.size * 1.3333);
+	auto f = s->pointLabelsFont(); // increase font size
+	f.setBold(true);
+	f.setPointSizeF(f.pointSizeF() * 1.3);
+	s->setPointLabelsFont(f);
 	s->setPointLabelsVisible(true);
 
 	/* allow to remove marker by clicking its legend entry */
-	auto lm = chart->legend()->markers(s)[0];
+	auto lm = chart->legend()->markers(s).first();
 	connect(lm, &QtCharts::QLegendMarker::clicked, [chart, this] {
 		emit chart->markerToggled(sampleId, false);
 	});

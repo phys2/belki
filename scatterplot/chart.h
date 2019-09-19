@@ -41,9 +41,9 @@ public:
 	struct Marker
 	{
 		Marker(Chart* chart, unsigned sampleIndex, ProteinId id);
-		// remove+add graphicitems (used for z-ordering of chart elements)
-		void reAdd();
 
+		unsigned index; // global index to keep track of orderings
+		inline static unsigned nextIndex = 0; // next index, shared between all charts
 		unsigned sampleIndex;
 		ProteinId sampleId;
 
@@ -52,7 +52,6 @@ public:
 		std::unique_ptr<QtCharts::QScatterSeries> series;
 
 	protected:
-		void setup(Chart *chart);
 	};
 
 	Chart(Dataset::ConstPtr data, const ChartConfig *config);
@@ -82,6 +81,7 @@ signals:
 
 protected:
 	void animate(int msec);
+	ProteinId findFirstMarker();
 	static void updateTicks(QtCharts::QValueAxis *axis);
 
 	/* items in the scene */
@@ -89,6 +89,7 @@ protected:
 	// note partitions are also owned by chart, but we delete first and they de-register
 	std::unordered_map<int, std::unique_ptr<Proteins>> partitions;
 	std::unordered_map<ProteinId, Marker> markers;
+	ProteinId firstMarker = 0; // cached for stack-ordering (0 means none)
 
 	QGraphicsEllipseItem *tracker;
 	QtCharts::QValueAxis *ax, *ay;
