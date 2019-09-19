@@ -270,12 +270,29 @@ void ProfileChart::setupSeries()
 
 void ProfileChart::toggleHighlight(unsigned index)
 {
-	qreal alpha = (index ? .2 : 1.);
-	for (auto &[i, s] : series) {
-		auto c = s->color();
-		c.setAlphaF(i == index ? 1. : alpha);
-		s->setColor(c);
-	}
+	highlightAnim.disconnect();
+	highlightAnim.callOnTimeout([this, index] {
+		bool decrease = (index == 0);
+		bool done = true;
+		for (auto &[i, s] : series) {
+			auto c = s->color();
+			if (i == index || decrease) {
+				if (c.alphaF() < 1.) {
+					c.setAlphaF(std::min(1., c.alphaF() + .15));
+					done = false;
+				}
+			} else {
+				if (c.alphaF() > .2) {
+					c.setAlphaF(std::max(.2, c.alphaF() - .15));
+					done = false;
+				}
+			}
+			s->setColor(c);
+		}
+		if (done)
+			highlightAnim.stop();
+	});
+	highlightAnim.start(25);
 }
 
 void ProfileChart::toggleLabels(bool on) {

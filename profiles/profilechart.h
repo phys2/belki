@@ -5,6 +5,7 @@
 
 #include <QStringList>
 #include <QChart>
+#include <QTimer>
 
 #include <memory>
 
@@ -74,6 +75,7 @@ protected:
 	bool showAverage = false;
 	bool showIndividual = true;
 	bool logSpace = false;
+	QTimer highlightAnim;
 };
 
 #endif // PROFILECHART_H
