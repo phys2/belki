@@ -24,6 +24,7 @@
 #include <QTimer>
 #include <QMimeData>
 #include <QWidgetAction>
+#include <QShortcut>
 
 MainWindow::MainWindow(CentralHub &hub) :
     hub(hub),
@@ -90,6 +91,15 @@ void MainWindow::setupTabs()
 	// setup tab closing
 	connect(tabWidget, &QTabWidget::tabCloseRequested,
 	        [this] (auto index) { delete tabWidget->widget(index); });
+
+	// setup tab switching shortcuts (Alt+<Number>)
+	for (char i = 0, k ='1'; i < 9; ++i, ++k) {
+		auto shortcut = new QShortcut(QKeySequence(QString("Alt+") + k), this);
+		connect(shortcut, &QShortcut::activated, [this, i] {
+			if (tabWidget->count() > i)
+				tabWidget->setCurrentIndex(i);
+		});
+	}
 
 	// initial tabs
 	addTab(Tab::DIMRED);
