@@ -9,6 +9,7 @@
 #include <QValueAxis>
 #include <QLogValueAxis>
 #include <QCategoryAxis>
+#include <QLegendMarker>
 
 #include <opencv2/core/core.hpp>
 #include <tbb/parallel_for_each.h>
@@ -216,6 +217,7 @@ void ProfileChart::setupSeries()
 				continue;
 
 			auto s = new QtCharts::QLineSeries;
+			series[index] = s;
 			add(s, true, isMarker);
 			QString title = (isMarker ? "<small>★</small>" : "") + d->lookup(p, index).name;
 			// color only markers in small view
@@ -237,6 +239,15 @@ void ProfileChart::setupSeries()
 			}
 
 			s->replace(logSpace ? featurePoints[index] : d->featurePoints[index]);
+
+			/* allow highlight through series/marker hover */
+			auto lm = legend()->markers(s).first();
+			connect(lm, &QtCharts::QLegendMarker::hovered, [this,i=index] (bool on) {
+				toggleHighlight(on ? i : 0);
+			});
+			connect(s, &QtCharts::QLineSeries::hovered, [this,i=index] (auto, bool on) {
+				toggleHighlight(on ? i : 0);
+			});
 		}
 	};
 
@@ -254,6 +265,16 @@ void ProfileChart::setupSeries()
 		addBgAreas();
 		addIndividuals(false);
 		addMean();
+	}
+}
+
+void ProfileChart::toggleHighlight(unsigned index)
+{
+	qreal alpha = (index ? .2 : 1.);
+	for (auto &[i, s] : series) {
+		auto c = s->color();
+		c.setAlphaF(i == index ? 1. : alpha);
+		s->setColor(c);
 	}
 }
 

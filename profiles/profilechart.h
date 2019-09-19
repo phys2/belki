@@ -43,13 +43,15 @@ signals:
 
 protected:
 	void setupSeries();
+	void toggleHighlight(unsigned index); // TODO change to ProteinId
 	// helper to constructors
 	void setupAxes(const Features::Range &range);
 	// helper to finalize()
 	void computeStats();
 
 	/* indices of proteins shown in the graph, as markers or not */
-	std::vector<std::pair<unsigned, bool>> content;
+	std::vector<std::pair<unsigned, bool>> content; // TODO work with ProteinIds
+	std::unordered_map<unsigned, QtCharts::QLineSeries*> series; // TODO work with ProteinIds
 	/* statistics representing the data */
 	struct {
 		std::vector<qreal> mean;
