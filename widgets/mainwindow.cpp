@@ -9,6 +9,7 @@
 #include "scatterplot/scattertab.h"
 #include "heatmap/heatmaptab.h"
 #include "distmat/distmattab.h"
+#include "profiles/profiletab.h"
 #include "featweights/featweightstab.h"
 
 #include <QTreeWidget>
@@ -104,6 +105,7 @@ void MainWindow::setupTabs()
 	// initial tabs
 	addTab(Tab::DIMRED);
 	addTab(Tab::SCATTER);
+	addTab(Tab::PROFILES);
 }
 
 void MainWindow::setupSignals()
@@ -307,11 +309,13 @@ void MainWindow::addTab(MainWindow::Tab type)
 	case Tab::SCATTER: v = new ScatterTab; break;
 	case Tab::HEATMAP: v = new HeatmapTab; break;
 	case Tab::DISTMAT: v = new DistmatTab; break;
+	case Tab::PROFILES: v = new ProfileTab; break;
 	case Tab::FEATWEIGHTS: v = new FeatweightsTab; break;
 	}
 
 	// connect singnalling into view
 	connect(&hub, &CentralHub::newDataset, v, &Viewer::addDataset);
+	connect(&hub.proteins, &ProteinDB::proteinAdded, v, &Viewer::inAddProtein);
 	/* use queued conn. to ensure the views get the newDataset signal _first_! */
 	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
 	connect(actionShowStructure, &QAction::toggled, v, &Viewer::inTogglePartitions);
@@ -548,11 +552,11 @@ void MainWindow::displayError(const QString &message)
 	QMessageBox::critical(this, "An error occured", message);
 }
 
-void MainWindow::addProtein(ProteinId id)
+void MainWindow::addProtein(ProteinId id, const Protein &protein)
 {
 	/* setup new item */
 	auto item = new QStandardItem;
-	item->setText(hub.proteins.peek()->proteins[id].name);
+	item->setText(protein.name);
 	item->setData(id);
 	item->setCheckable(true);
 	item->setCheckState(Qt::Unchecked);

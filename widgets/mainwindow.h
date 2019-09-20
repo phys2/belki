@@ -30,7 +30,7 @@ public slots:
 	void showHelp();
 	void displayError(const QString &message);
 
-	void addProtein(ProteinId id);
+	void addProtein(ProteinId id, const Protein &protein);
 	void toggleMarker(ProteinId id, bool present);
 
 	void newDataset(Dataset::Ptr data);
@@ -48,7 +48,7 @@ protected:
 	};
 
 	enum class Tab {
-		DIMRED, SCATTER, HEATMAP, DISTMAT, FEATWEIGHTS
+		DIMRED, SCATTER, HEATMAP, DISTMAT, PROFILES, FEATWEIGHTS
 	};
 
 	void dragEnterEvent(QDragEnterEvent *event) override;
@@ -96,6 +96,7 @@ protected:
 	    {Tab::SCATTER, "Scatter Plot"},
 	    {Tab::HEATMAP, "Heatmap"},
 	    {Tab::DISTMAT, "Distance Map"},
+	    {Tab::PROFILES, "Profiles"},
 	    {Tab::FEATWEIGHTS, "Feature Weighting"},
 	};
 	std::multiset<Tab> tabHistory; // used as per-type incrementing counter

@@ -15,12 +15,16 @@
 #include <tbb/parallel_for_each.h>
 
 /* small, inset plot constructor */
-ProfileChart::ProfileChart(Dataset::ConstPtr data)
+ProfileChart::ProfileChart(Dataset::ConstPtr data, bool small)
     : data(data),
-      small(true)
+      small(small)
 {
-	setMargins({0, 10, 0, 0});
-	legend()->hide();
+	if (small) {
+		setMargins({0, 10, 0, 0});
+		legend()->hide();
+	} else {
+		legend()->setAlignment(Qt::AlignLeft);
+	}
 	auto d = data->peek<Dataset::Base>();
 	labels = d->dimensions;
 	setupAxes(d->featureRange);
@@ -102,8 +106,10 @@ void ProfileChart::clear()
 
 void ProfileChart::addSample(ProteinId id, bool marker)
 {
-	auto index = data->peek<Dataset::Base>()->protIndex.at(id);
-	content.push_back({index, marker});
+	try {
+		auto index = data->peek<Dataset::Base>()->protIndex.at(id);
+		content.push_back({index, marker});
+	} catch (std::out_of_range&) {}
 }
 
 void ProfileChart::addSampleByIndex(unsigned index, bool marker)

@@ -26,7 +26,7 @@ class ProfileChart : public QtCharts::QChart
 	Q_OBJECT
 
 public:
-	ProfileChart(std::shared_ptr<Dataset const> data);
+	ProfileChart(std::shared_ptr<Dataset const> data, bool small=true);
 	ProfileChart(ProfileChart *source);
 
 	unsigned numProfiles() { return content.size(); }

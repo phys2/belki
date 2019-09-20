@@ -23,6 +23,7 @@ public slots:
 
 signals:
 	// signals from outside that we might react to
+	void inAddProtein(ProteinId id, const Protein &protein);
 	void inUpdateColorset(QVector<QColor> colors);
 	void inTogglePartitions(bool show);
 	void inToggleMarkers(const std::vector<ProteinId> ids, bool present);
