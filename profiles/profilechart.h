@@ -33,7 +33,8 @@ public:
 	bool isLogSpace() { return logSpace; }
 
 	void clear(); // need to be called before addSample calls
-	void addSample(unsigned index, bool marker = false);
+	void addSample(ProteinId id, bool marker = false);
+	void addSampleByIndex(unsigned index, bool marker = false);
 	void finalize(); // need to be called after addSample calls
 	void toggleLabels(bool on);
 	void toggleLogSpace(bool on);
@@ -44,15 +45,16 @@ signals:
 
 protected:
 	void setupSeries();
-	void toggleHighlight(unsigned index); // TODO change to ProteinId
-	// helper to constructors
+	void toggleHighlight(unsigned index);
+	// helpers to constructors
+	void setupSignals();
 	void setupAxes(const Features::Range &range);
 	// helper to finalize()
 	void computeStats();
 
 	/* indices of proteins shown in the graph, as markers or not */
-	std::vector<std::pair<unsigned, bool>> content; // TODO work with ProteinIds
-	std::unordered_map<unsigned, QtCharts::QLineSeries*> series; // TODO work with ProteinIds
+	std::vector<std::pair<unsigned, bool>> content;
+	std::unordered_map<unsigned, QtCharts::QLineSeries*> series;
 	/* statistics representing the data */
 	struct {
 		std::vector<qreal> mean;

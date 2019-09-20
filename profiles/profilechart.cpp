@@ -24,10 +24,7 @@ ProfileChart::ProfileChart(Dataset::ConstPtr data)
 	auto d = data->peek<Dataset::Base>();
 	labels = d->dimensions;
 	setupAxes(d->featureRange);
-
-	/* keep in sync */
-	connect(this, &ProfileChart::toggleAverage, [this] (bool on) { showAverage = on; });
-	connect(this, &ProfileChart::toggleIndividual, [this] (bool on) { showIndividual = on; });
+	setupSignals();
 }
 
 /* big, labelled plot constructor */
@@ -39,7 +36,11 @@ ProfileChart::ProfileChart(ProfileChart *source)
 	setTitle(source->title());
 	legend()->setAlignment(Qt::AlignLeft);
 	setupAxes({source->ay->min(), source->ay->max()});
+	setupSignals();
+}
 
+void ProfileChart::setupSignals()
+{
 	/* keep in sync */
 	connect(this, &ProfileChart::toggleAverage, [this] (bool on) { showAverage = on; });
 	connect(this, &ProfileChart::toggleIndividual, [this] (bool on) { showIndividual = on; });
@@ -99,7 +100,13 @@ void ProfileChart::clear()
 	removeAllSeries();
 }
 
-void ProfileChart::addSample(unsigned index, bool marker)
+void ProfileChart::addSample(ProteinId id, bool marker)
+{
+	auto index = data->peek<Dataset::Base>()->protIndex.at(id);
+	content.push_back({index, marker});
+}
+
+void ProfileChart::addSampleByIndex(unsigned index, bool marker)
 {
 	content.push_back({index, marker});
 }

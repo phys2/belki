@@ -83,7 +83,7 @@ void ProfileWidget::updateProteins(QVector<unsigned> samples, const QString &tit
 	chart->toggleAverage(reduced);
 	chart->toggleIndividual(!reduced);
 	for (auto i : qAsConst(samples))
-		chart->addSample(i, markers.count(i));
+		chart->addSampleByIndex(i, markers.count(i));
 	chart->finalize();
 
 	/* set up list */
