@@ -1,5 +1,5 @@
 #include "heatmapscene.h"
-#include "colormap.h"
+#include "compute/colors.h"
 
 #include <QPainter>
 #include <QGraphicsItem>
