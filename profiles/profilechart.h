@@ -5,6 +5,7 @@
 
 #include <QStringList>
 #include <QChart>
+#include <QTimer>
 
 #include <memory>
 
@@ -25,14 +26,15 @@ class ProfileChart : public QtCharts::QChart
 	Q_OBJECT
 
 public:
-	ProfileChart(std::shared_ptr<Dataset const> data);
+	ProfileChart(std::shared_ptr<Dataset const> data, bool small=true);
 	ProfileChart(ProfileChart *source);
 
 	unsigned numProfiles() { return content.size(); }
 	bool isLogSpace() { return logSpace; }
 
 	void clear(); // need to be called before addSample calls
-	void addSample(unsigned index, bool marker = false);
+	void addSample(ProteinId id, bool marker = false);
+	void addSampleByIndex(unsigned index, bool marker = false);
 	void finalize(); // need to be called after addSample calls
 	void toggleLabels(bool on);
 	void toggleLogSpace(bool on);
@@ -43,13 +45,16 @@ signals:
 
 protected:
 	void setupSeries();
-	// helper to constructors
+	void toggleHighlight(unsigned index);
+	// helpers to constructors
+	void setupSignals();
 	void setupAxes(const Features::Range &range);
 	// helper to finalize()
 	void computeStats();
 
 	/* indices of proteins shown in the graph, as markers or not */
 	std::vector<std::pair<unsigned, bool>> content;
+	std::unordered_map<unsigned, QtCharts::QLineSeries*> series;
 	/* statistics representing the data */
 	struct {
 		std::vector<qreal> mean;
@@ -72,6 +77,7 @@ protected:
 	bool showAverage = false;
 	bool showIndividual = true;
 	bool logSpace = false;
+	QTimer highlightAnim;
 };
 
 #endif // PROFILECHART_H

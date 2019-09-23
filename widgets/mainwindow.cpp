@@ -1,9 +1,16 @@
 #include "mainwindow.h"
-#include "centralhub.h"
+#include "datahub.h"
 #include "storage.h"
 #include "fileio.h"
 #include "profiles/profilewindow.h"
 #include "widgets/spawndialog.h"
+
+#include "scatterplot/dimredtab.h"
+#include "scatterplot/scattertab.h"
+#include "heatmap/heatmaptab.h"
+#include "distmat/distmattab.h"
+#include "profiles/profiletab.h"
+#include "featweights/featweightstab.h"
 
 #include <QTreeWidget>
 #include <QFileInfo>
@@ -12,67 +19,21 @@
 #include <QStandardItemModel>
 #include <QAbstractProxyModel>
 #include <QLabel>
+#include <QToolButton>
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QTimer>
 #include <QMimeData>
 #include <QWidgetAction>
+#include <QShortcut>
 
-MainWindow::MainWindow(CentralHub &hub) :
+MainWindow::MainWindow(DataHub &hub) :
     hub(hub),
     io(new FileIO(this)) // cleanup by QObject
 {
 	setupUi(this);
 	setupToolbar();
-
-	auto renderSlot = [this] (auto r, auto d) { io->renderToFile(r, {title, d}); };
-
-	/* Views in tabs */
-	views = {dimredTab, scatterTab, heatmapTab, distmatTab, featweightsTab};
-	for (auto v : views) {
-		// connect singnalling into view
-		connect(&hub, &CentralHub::newDataset, v, &Viewer::addDataset);
-		// see below; disable when it works
-		connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset);
-		connect(this, &MainWindow::partitionsToggled, v, &Viewer::inTogglePartitions);
-		connect(&hub.proteins, &ProteinDB::markersToggled, v, &Viewer::inToggleMarkers);
-
-		// connect signalling out of view
-		connect(v, &Viewer::markerToggled, this, &MainWindow::toggleMarker);
-		connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateProteins);
-		connect(v, &Viewer::orderRequested, &hub, &CentralHub::changeOrder);
-		connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
-		connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
-
-		// gui synchronization between views
-		for (auto v2 : views) {
-			if (v2 == v)
-				continue;
-			connect(v, &Viewer::orderRequested, v2, &Viewer::changeOrder);
-		}
-
-		// set initial state
-		emit v->inUpdateColorset(hub.colorset());
-		emit v->inTogglePartitions(actionShowStructure->isChecked());
-	}
-
-	/* experimental: put to sleep when not visible
-	connect(tabWidget, &QTabWidget::currentChanged, [this] () {
-		auto current = qobject_cast<Viewer*>(tabWidget->currentWidget());
-		for (auto v : views) {
-			if (v == current)
-				v->selectDataset(data ? data->id() : 0);
-			else
-				v->selectDataset(0);
-		}
-	});
-	connect(this, &MainWindow::datasetSelected, [this] (unsigned id) {
-		auto current = qobject_cast<Viewer*>(tabWidget->currentWidget());
-		if (current)
-			current->selectDataset(id);
-	});
-	/// does not work right now with heatmap, distmap, feattab. why? */
-
+	setupTabs();
 	setupMarkerControls();
 	setupSignals(); // after setupToolbar(), signal handlers rely on initialized actions
 	setupActions();
@@ -110,10 +71,47 @@ void MainWindow::setupToolbar()
 	topBar->deleteLater();
 }
 
+void MainWindow::setupTabs()
+{
+	// "add tab" menu
+	auto *menu = new QMenu("Add tab");
+	for (const auto &[type, name] : tabTitles)
+		menu->addAction(name, [this, t=type] { addTab(t); });
+
+	// integrate into main menu (does not take ownership)
+	menuView->insertMenu(actionCloseAllTabs, menu);
+
+	// button for adding tabs
+	auto *btn = new QToolButton;
+	btn->setIcon(QIcon::fromTheme("tab-new"));
+	btn->setMenu(menu); // does not take ownership
+	btn->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);
+	btn->setMinimumSize(btn->sizeHint()); // ensure button keeps showing when zero tabs
+	tabWidget->setCornerWidget(btn);
+
+	// setup tab closing
+	connect(tabWidget, &QTabWidget::tabCloseRequested,
+	        [this] (auto index) { delete tabWidget->widget(index); });
+
+	// setup tab switching shortcuts (Alt+<Number>)
+	for (char i = 0, k ='1'; i < 9; ++i, ++k) {
+		auto shortcut = new QShortcut(QKeySequence(QString("Alt+") + k), this);
+		connect(shortcut, &QShortcut::activated, [this, i] {
+			if (tabWidget->count() > i)
+				tabWidget->setCurrentIndex(i);
+		});
+	}
+
+	// initial tabs
+	addTab(Tab::DIMRED);
+	addTab(Tab::SCATTER);
+	addTab(Tab::PROFILES);
+}
+
 void MainWindow::setupSignals()
 {
 	/* error dialogs */
-	connect(&hub, &CentralHub::ioError, this, &MainWindow::displayError);
+	connect(&hub, &DataHub::ioError, this, &MainWindow::displayError);
 	connect(io, &FileIO::ioError, this, &MainWindow::displayError);
 
 	/* notifications from Protein db */
@@ -131,13 +129,13 @@ void MainWindow::setupSignals()
 			selectStructure((int)id);
 	});
 
-	connect(&hub, &CentralHub::newDataset, this, &MainWindow::newDataset);
+	connect(&hub, &DataHub::newDataset, this, &MainWindow::newDataset);
 
 	/* selecting dataset */
 	connect(datasetSelect, qOverload<int>(&QComboBox::activated), [this] {
 		setDataset(datasetSelect->currentData().value<Dataset::Ptr>());
 	});
-	connect(this, &MainWindow::datasetSelected, &hub, &CentralHub::setCurrent);
+	connect(this, &MainWindow::datasetSelected, &hub, &DataHub::setCurrent);
 	connect(this, &MainWindow::datasetSelected, [this] { profiles->setData(data); });
 	connect(this, &MainWindow::datasetSelected, this, &MainWindow::setSelectedDataset);
 
@@ -145,10 +143,13 @@ void MainWindow::setupSignals()
 	connect(structureSelect, qOverload<int>(&QComboBox::activated), [this] {
 		selectStructure(structureSelect->currentData().value<int>());
 	});
-	connect(granularitySlider, &QSlider::valueChanged, &hub, &CentralHub::createPartition);
+	connect(granularitySlider, &QSlider::valueChanged, &hub, &DataHub::createPartition);
 	connect(famsKSlider, &QSlider::valueChanged, [this] (int v) {
 		hub.runFAMS(v * 0.01f);
 	});
+
+	/* changing order settings */
+	connect(this, &MainWindow::orderChanged, &hub, &DataHub::changeOrder);
 }
 
 void MainWindow::setupActions()
@@ -165,6 +166,11 @@ void MainWindow::setupActions()
 
 	connect(actionQuit, &QAction::triggered, [] { QApplication::exit(); });
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
+	connect(actionCloseAllTabs, &QAction::triggered, [this] {
+		for (int i = tabWidget->count() - 1; i >= 0; --i)
+			delete tabWidget->widget(i);
+		tabHistory.clear();
+	});
 
 	connect(actionLoadDataset, &QAction::triggered, [this] { openFile(Input::DATASET); });
 	connect(actionLoadDatasetAbundance, &QAction::triggered, [this] { openFile(Input::DATASET_RAW); });
@@ -202,7 +208,6 @@ void MainWindow::setupActions()
 		clustering->name = name;
 		hub.proteins.addAnnotations(std::move(clustering), false, true);
 	});
-	connect(actionShowStructure, &QAction::toggled, this, &MainWindow::partitionsToggled);
 	connect(actionClearMarkers, &QAction::triggered, &hub.proteins, &ProteinDB::clearMarkers);
 
 	connect(actionSplice, &QAction::triggered, [this] {
@@ -211,7 +216,7 @@ void MainWindow::setupActions()
 		auto s = new SpawnDialog(data, this);
 		// spawn dialog deletes itself, should also kill connection+lambda, right?
 		connect(s, &SpawnDialog::spawn, [this] (auto data, auto& config) {
-			emit hub.spawn(data, config, dimredTab->currentMethod());
+			emit hub.spawn(data, config); // TODO change mechanic, dimredTab->currentMethod());
 		});
 	});
 }
@@ -268,6 +273,102 @@ void MainWindow::setupMarkerControls()
 	});
 }
 
+void MainWindow::resetMarkerControls()
+{
+	/* enable only proteins that are found in current dataset */
+	if (data) {
+		auto d = data->peek<Dataset::Base>();
+		for (auto& [id, item] : markerItems)
+			item->setEnabled(d->protIndex.count(id));
+	} else {
+		for (auto& [id, item] : markerItems)
+			item->setEnabled(false);
+	}
+}
+
+void MainWindow::finalizeMarkerItems()
+{
+	if (markerWidget->isEnabled()) // already in good state
+		return;
+
+	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
+	m->sort(0);
+	markerWidget->setEnabled(true); // we are in good state now
+}
+
+void MainWindow::toggleMarker(ProteinId id, bool present)
+{
+	markerItems.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
+}
+
+void MainWindow::addTab(MainWindow::Tab type)
+{
+	Viewer *v;
+	switch (type) {
+	case Tab::DIMRED: v = new DimredTab; break;
+	case Tab::SCATTER: v = new ScatterTab; break;
+	case Tab::HEATMAP: v = new HeatmapTab; break;
+	case Tab::DISTMAT: v = new DistmatTab; break;
+	case Tab::PROFILES: v = new ProfileTab; break;
+	case Tab::FEATWEIGHTS: v = new FeatweightsTab; break;
+	}
+
+	// connect singnalling into view
+	connect(&hub, &DataHub::newDataset, v, &Viewer::addDataset);
+	connect(&hub.proteins, &ProteinDB::proteinAdded, v, &Viewer::inAddProtein);
+	/* use queued conn. to ensure the views get the newDataset signal _first_! */
+	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
+	connect(actionShowStructure, &QAction::toggled, v, &Viewer::inTogglePartitions);
+	connect(actionUseOpenGL, &QAction::toggled, v, &Viewer::inToggleOpenGL);
+	connect(&hub.proteins, &ProteinDB::markersToggled, v, &Viewer::inToggleMarkers);
+	connect(this, &MainWindow::orderChanged, v, &Viewer::changeOrder);
+
+	// connect signalling out of view
+	connect(v, &Viewer::markerToggled, this, &MainWindow::toggleMarker);
+	connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateProteins);
+
+	auto renderSlot = [this] (auto r, auto d) { io->renderToFile(r, {title, d}); };
+	connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
+	connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
+
+	connect(v, &Viewer::orderRequested, this, &MainWindow::orderChanged);
+
+	/* experimental: put to sleep when not visible
+	connect(tabWidget, &QTabWidget::currentChanged, [this] () {
+		auto current = qobject_cast<Viewer*>(tabWidget->currentWidget());
+		for (auto v : views) {
+			if (v == current)
+				v->selectDataset(data ? data->id() : 0);
+			else
+				v->selectDataset(0);
+		}
+	});
+	connect(this, &MainWindow::datasetSelected, [this] (unsigned id) {
+		auto current = qobject_cast<Viewer*>(tabWidget->currentWidget());
+		if (current)
+			current->selectDataset(id);
+	});
+	/// does not work right now with heatmap, distmap, feattab. why? */
+
+	// set initial state
+	emit v->inUpdateColorset(hub.colorset());
+	emit v->inTogglePartitions(actionShowStructure->isChecked());
+	emit v->inToggleOpenGL(actionUseOpenGL->isChecked());
+	for (auto &[_, d] : hub.datasets())
+		v->addDataset(d);
+	if (data)
+		v->selectDataset(data->id());
+
+	auto title = tabTitles.at(type);
+	auto count = tabHistory.count(type);
+	if (count)
+		title.append(QString(" (%1)").arg(count + 1));
+	tabHistory.insert(type);
+
+    tabWidget->addTab(v, title);
+	tabWidget->setCurrentWidget(v);
+}
+
 void MainWindow::updateState(Dataset::Touched affected)
 {
 	if (affected & Dataset::Touch::BASE)
@@ -295,8 +396,8 @@ void MainWindow::updateState(Dataset::Touched affected)
 		bool haveClustering = !s->clustering.empty();
 		actionShowStructure->setEnabled(haveClustering);
 		actionShowStructure->setChecked(haveClustering);
+		actionExportAnnotations->setEnabled(haveClustering);
 		bool computedClustering = haveClustering && structureSelect->currentData() < 1;
-		actionExportAnnotations->setEnabled(computedClustering);
 		actionPersistAnnotations->setEnabled(computedClustering);
 	}
 	if (affected & Dataset::Touch::HIERARCHY) {
@@ -348,29 +449,6 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 
 	// TODO wronge place to do this in new storage concept
 	setFilename(data ? hub.store.name() : "");
-}
-
-void MainWindow::resetMarkerControls()
-{
-	/* enable only proteins that are found in current dataset */
-	if (data) {
-		auto d = data->peek<Dataset::Base>();
-		for (auto& [id, item] : markerItems)
-			item->setEnabled(d->protIndex.count(id));
-	} else {
-		for (auto& [id, item] : markerItems)
-			item->setEnabled(false);
-	}
-}
-
-void MainWindow::finalizeMarkerItems()
-{
-	if (markerWidget->isEnabled()) // already in good state
-		return;
-
-	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
-	m->sort(0);
-	markerWidget->setEnabled(true); // we are in good state now
 }
 
 void MainWindow::setFilename(QString name)
@@ -474,11 +552,11 @@ void MainWindow::displayError(const QString &message)
 	QMessageBox::critical(this, "An error occured", message);
 }
 
-void MainWindow::addProtein(ProteinId id)
+void MainWindow::addProtein(ProteinId id, const Protein &protein)
 {
 	/* setup new item */
 	auto item = new QStandardItem;
-	item->setText(hub.proteins.peek()->proteins[id].name);
+	item->setText(protein.name);
 	item->setData(id);
 	item->setCheckable(true);
 	item->setCheckState(Qt::Unchecked);
@@ -494,12 +572,6 @@ void MainWindow::addProtein(ProteinId id)
 	markerWidget->setEnabled(false); // we are "dirty"
 	QTimer::singleShot(0, this, &MainWindow::finalizeMarkerItems);
 }
-
-void MainWindow::toggleMarker(ProteinId id, bool present)
-{
-	markerItems.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
-}
-
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 {

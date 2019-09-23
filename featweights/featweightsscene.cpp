@@ -1,5 +1,5 @@
 #include "featweightsscene.h"
-#include "colormap.h"
+#include "compute/colors.h"
 #include "compute/features.h"
 
 #include <QPainter>

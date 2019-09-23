@@ -1,5 +1,5 @@
-#ifndef CENTRALHUB_H
-#define CENTRALHUB_H
+#ifndef DATAHUB_H
+#define DATAHUB_H
 
 #include "utils.h"
 #include "dataset.h" // for Dataset::OrderBy
@@ -13,16 +13,17 @@
 class ProteinDB;
 class Storage;
 
-class CentralHub : public QObject
+class DataHub : public QObject
 {
 	Q_OBJECT
 public:
-	explicit CentralHub(QObject *parent = nullptr);
+	explicit DataHub(QObject *parent = nullptr);
 
 	using DataPtr = Dataset::Ptr;
 	using ConstDataPtr = Dataset::ConstPtr;
 
 	QVector<QColor> colorset();
+	std::map<unsigned, DataPtr> datasets();
 
 signals:
 	void ioError(const QString &message);
@@ -76,4 +77,4 @@ protected:
 	} guiState;
 };
 
-#endif // CENTRALHUB_H
+#endif

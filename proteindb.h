@@ -59,7 +59,7 @@ public slots:
 
 signals:
 	void ioError(const QString &message);
-	void proteinAdded(ProteinId id);
+	void proteinAdded(ProteinId id, const Protein &protein);
 	void proteinChanged(ProteinId id);
 	void markersToggled(const std::vector<ProteinId> &id, bool present);
 	void structureAvailable(unsigned id, QString name, bool select);

@@ -19,6 +19,8 @@ ProfileWindow::ProfileWindow(ProfileChart *source, QWidget *parent) :
 	toolBar->insertWidget(actionSavePlot, spacer);
 
 	/* chart */
+	/* note: we do not use OpenGL as it has drawing bugs / does not support our
+	 * customizations for score points */
 	chartView->setChart(chart);
 	chartView->setRenderHint(QPainter::Antialiasing);
 

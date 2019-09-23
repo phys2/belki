@@ -14,10 +14,10 @@
 #include <map>
 #include <cmath>
 
-Chart::Chart(Dataset::ConstPtr data) :
+Chart::Chart(Dataset::ConstPtr data, const ChartConfig *config) :
     ax(new QtCharts::QValueAxis), ay(new QtCharts::QValueAxis),
     animReset(new QTimer(this)),
-    data(data)
+    config(config), data(data)
 {
 	/* set up general appearance */
 	// disable grid animations as a lot of distracting stuff happens there
@@ -76,6 +76,13 @@ Chart::Chart(Dataset::ConstPtr data) :
 	});
 }
 
+void Chart::setConfig(const ChartConfig *cfg)
+{
+	config = cfg;
+	emit proteinStyleUpdated();	// TODO this currently does not update colors
+	refreshCursor();
+}
+
 void Chart::setTitles(const QString &x, const QString &y)
 {
 	ax->setTitleText(x);
@@ -131,8 +138,8 @@ void Chart::updatePartitions(bool fresh)
 		animate(0);
 
 		// series needed for soft clustering
-		partitions[-2] = std::make_unique<Proteins>("Unlabeled", proteinStyle.color.unlabeled, this);
-		partitions[-1] = std::make_unique<Proteins>("Mixed", proteinStyle.color.mixed, this);
+		partitions[-2] = std::make_unique<Proteins>("Unlabeled", config->proteinStyle.color.unlabeled, this);
+		partitions[-1] = std::make_unique<Proteins>("Mixed", config->proteinStyle.color.mixed, this);
 
 		// go through clusters in their designated order
 		for (auto i : d->clustering.order) {
@@ -140,7 +147,7 @@ void Chart::updatePartitions(bool fresh)
 			auto s = new Proteins(g.name, g.color, this);
 			partitions.try_emplace((int)i, s);
 			/* enable profile view updates on legend label hover */
-			auto lm = legend()->markers(s)[0];
+			auto lm = legend()->markers(s).first();
 			connect(lm, &QtCharts::QLegendMarker::hovered, [this, s] (bool active) {
 				if (!active)
 					return;
@@ -176,20 +183,15 @@ void Chart::updatePartitions(bool fresh)
 		for (auto s : {partitions[-2].get(), partitions[-1].get()})
 			if (s->pointsVector().empty())
 				removeSeries(s);
-
-		/* re-order marker series to come up on top of partitions */
-		// unfortunately, due to QCharts suckery, we need to re-create them
-		for (auto &[_, m] : markers) {
-			m.reAdd();
-		}
 	}
 }
 
-void Chart::updateCursor(const QPointF &pos)
+void Chart::moveCursor(const QPointF &pos)
 {
 	if (cursorLocked)
 		return;
 
+	cursorCenter = pos;
 	if (pos.isNull() || !plotArea().contains(pos)) {
 		tracker->hide();
 
@@ -199,11 +201,28 @@ void Chart::updateCursor(const QPointF &pos)
 		return;
 	}
 
-	const qreal radius = 50;
+	refreshCursor();
+};
+
+void Chart::resetCursor()
+{
+	cursorLocked = false;
+	moveCursor();
+}
+
+void Chart::toggleCursorLock()
+{
+	cursorLocked = !cursorLocked;
+}
+
+void Chart::refreshCursor()
+{
+	if (cursorCenter.isNull())
+		return;
 
 	// find cursor in feature space (center + range)
-	auto center = mapToValue(pos);
-	auto diff = center - mapToValue(pos + QPointF{radius, 0});
+	auto center = mapToValue(cursorCenter);
+	auto diff = center - mapToValue(cursorCenter + QPointF{config->cursorRadius, 0});
 	auto range = QPointF::dotProduct(diff, diff);
 
 	// shape the corresponding ellipse in viewport space
@@ -256,35 +275,6 @@ void Chart::undoZoom(bool full)
 	zoom.history.pop();
 }
 
-void Chart::toggleSingleMode()
-{
-	proteinStyle.singleMode = !proteinStyle.singleMode;
-	emit proteinStyleUpdated();
-}
-
-void Chart::scaleProteins(qreal factor)
-{
-	proteinStyle.size *= factor;
-	emit proteinStyleUpdated();
-}
-
-void Chart::switchProteinBorders()
-{
-	const QVector<Qt::PenStyle> rot{
-		Qt::PenStyle::SolidLine, Qt::PenStyle::DotLine, Qt::PenStyle::NoPen};
-	proteinStyle.border = rot[(rot.indexOf(proteinStyle.border) + 1) % rot.size()];
-	emit proteinStyleUpdated();
-}
-
-void Chart::adjustProteinAlpha(qreal adjustment)
-{
-	if (proteinStyle.singleMode)
-		return; // avoid hidden changes
-	auto &a = proteinStyle.alpha.reg;
-	a = std::min(1., std::max(0., a + adjustment));
-	emit proteinStyleUpdated();
-}
-
 void Chart::togglePartitions(bool showPartitions)
 {
 	if (master->isVisible() != showPartitions)
@@ -307,12 +297,6 @@ void Chart::zoomAt(const QPointF &pos, qreal factor)
 
 	auto dt = center.y() - ay->min(), db = ay->max() - center.y();
 	ay->setRange(center.y() - dt*stretch, center.y() + db*stretch);
-}
-
-void Chart::resetCursor()
-{
-	cursorLocked = false;
-	updateCursor();
 }
 
 void Chart::updateMarkers(bool newDisplay)
@@ -344,6 +328,8 @@ void Chart::toggleMarkers(const std::vector<ProteinId> &ids, bool present)
 			} catch (...) {}
 		} else {
 			markers.erase(id);
+			if (firstMarker == id)
+				firstMarker = 0; // invalidate
 		}
 	}
 }
@@ -364,17 +350,36 @@ void Chart::updateTicks(QtCharts::QValueAxis *axis)
 	axis->setTickType(QtCharts::QValueAxis::TickType::TicksDynamic);
 }
 
+ProteinId Chart::findFirstMarker()
+{
+	if (!firstMarker) {
+		unsigned lowest = Marker::nextIndex;
+		for (auto &[id, m] : markers) {
+			if (m.index < lowest) {
+				lowest = m.index;
+				firstMarker = id;
+			}
+		}
+	}
+	return firstMarker; // note: will still be 0 if there are no markers
+}
+
 Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)
 {
 	setName(label);
-	chart->addSeries(this);
+	/* insert _before_ any markers */
+	auto markerId = chart->findFirstMarker();
+	if (markerId)
+		chart->insertSeries(chart->markers.at(markerId).series.get(), this);
+	else
+		chart->addSeries(this);
 	attachAxis(chart->ax);
 	attachAxis(chart->ay);
 
 	setColor(color);
 	redecorate();
 
-	chart->legend()->markers(this)[0]->setShape(QtCharts::QLegend::MarkerShapeCircle);
+	chart->legend()->markers(this).first()->setShape(QtCharts::QLegend::MarkerShapeCircle);
 
 	// follow style changes (note: receiver specified for cleanup on delete!)
 	connect(chart, &Chart::proteinStyleUpdated, this, [this] {
@@ -404,8 +409,8 @@ void Chart::Proteins::redecorate(bool full, bool hl)
 	auto c = reinterpret_cast<Chart*>(chart());
 	if (!c)
 		return;
+	auto &s = c->config->proteinStyle;
 
-	auto &s = c->proteinStyle;
 	if (full)
 		setMarkerSize(s.size);
 
@@ -427,34 +432,18 @@ void Chart::Proteins::redecorate(bool full, bool hl)
 }
 
 Chart::Marker::Marker(Chart *chart, unsigned sampleIndex, ProteinId id)
-    : sampleIndex(sampleIndex), sampleId(id),
+    : index(nextIndex++),
+      sampleIndex(sampleIndex), sampleId(id),
       series(std::make_unique<QtCharts::QScatterSeries>())
 {
+	auto config = chart->config;
 	auto s = series.get();
+
 	auto label = chart->data->peek<Dataset::Proteins>()->proteins[sampleId].name;
 	s->setName(label);
-
 	s->setPointLabelsFormat(label);
-	auto f = s->pointLabelsFont(); // increase font size (do it only on creation)
-	f.setBold(true);
-	f.setPointSizeF(f.pointSizeF() * 1.3);
-	s->setPointLabelsFont(f);
 
 	s->append(chart->master->pointsVector()[(int)sampleIndex]);
-
-	setup(chart);
-}
-
-void Chart::Marker::reAdd()
-{
-	auto chart = qobject_cast<Chart*>(series->chart());
-	chart->removeSeries(series.get());
-	setup(chart);
-}
-
-void Chart::Marker::setup(Chart *chart)
-{
-	auto s = series.get();
 	chart->addSeries(s);
 
 	s->attachAxis(chart->ax);
@@ -463,18 +452,22 @@ void Chart::Marker::setup(Chart *chart)
 	s->setBorderColor(Qt::black);
 	s->setColor(chart->data->peek<Dataset::Proteins>()->proteins[sampleId].color);
 	s->setMarkerShape(QtCharts::QScatterSeries::MarkerShapeRectangle);
-	s->setMarkerSize(chart->proteinStyle.size * 1.3333);
+	s->setMarkerSize(config->proteinStyle.size * 1.3333);
+	auto f = s->pointLabelsFont(); // increase font size
+	f.setBold(true);
+	f.setPointSizeF(f.pointSizeF() * 1.3);
+	s->setPointLabelsFont(f);
 	s->setPointLabelsVisible(true);
 
 	/* allow to remove marker by clicking its legend entry */
-	auto lm = chart->legend()->markers(s)[0];
+	auto lm = chart->legend()->markers(s).first();
 	connect(lm, &QtCharts::QLegendMarker::clicked, [chart, this] {
 		emit chart->markerToggled(sampleId, false);
 	});
 
 	// follow style changes (note: receiver specified for cleanup on delete!)
-	s->connect(chart, &Chart::proteinStyleUpdated, s, [chart, s] {
+	s->connect(chart, &Chart::proteinStyleUpdated, s, [config, s] {
 		// we only care about size
-		s->setMarkerSize(chart->proteinStyle.size * 1.3333);
+		s->setMarkerSize(config->proteinStyle.size * 1.3333);
 	});
 }

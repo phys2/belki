@@ -17,6 +17,9 @@
 		<file>list-add.svg</file>
 		<file>lock.svg</file>
 		<file>object-columns.svg</file>
+		<file>show-gpu-effects.svg</file>
+		<file>tab-close.svg</file>
+		<file>tab-new.svg</file>
 		<file>view-fullscreen.svg</file>
 	</qresource>
 </RCC>

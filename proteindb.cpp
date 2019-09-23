@@ -8,6 +8,7 @@ ProteinDB::ProteinDB(QObject *parent)
     : QObject(parent)
 {
 	qRegisterMetaType<ProteinId>("ProteinId"); // needed for typedefs
+	qRegisterMetaType<Protein>("Protein"); // needed for signal
 }
 
 ProteinId ProteinDB::add(const QString &fullname)
@@ -30,10 +31,10 @@ ProteinId ProteinDB::add(const QString &fullname)
 	/* insert */
 	id = data.proteins.size();
 	data.index[p.name] = id;
-	data.proteins.push_back(std::move(p)); // do this last (invalidates p)
+	data.proteins.push_back(p); // don't move, needed in signal
 
 	l.unlock();
-	emit proteinAdded(id);
+	emit proteinAdded(id, p);
 	return id;
 }
 

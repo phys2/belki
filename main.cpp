@@ -1,9 +1,10 @@
-#include "centralhub.h"
+#include "datahub.h"
 #include "widgets/mainwindow.h"
 
 #include <QChartView>
 #include <QApplication>
 #include <QIcon>
+#include <QSurfaceFormat>
 
 #include <iostream>
 
@@ -25,6 +26,11 @@ int main(int argc, char *argv[])
 	QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 	QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
+	// set aliasing for all GL views
+	auto fmt = QSurfaceFormat::defaultFormat();
+	fmt.setSamples(8);
+	QSurfaceFormat::setDefaultFormat(fmt);
+
 	QApplication a(argc, argv);
 
 	// setup icons we ship as fallback for theme icons
@@ -34,7 +40,7 @@ int main(int argc, char *argv[])
 		QIcon::setThemeName("hicolor");
 
 	/* start the application */
-	CentralHub hub;
+	DataHub hub;
 	MainWindow window(hub);
 	window.show();
 

@@ -1,6 +1,6 @@
 #include "profilechart.h"
 #include "profilewindow.h"
-#include "centralhub.h"
+#include "datahub.h"
 #include "proteindb.h"
 #include "dataset.h"
 
@@ -9,24 +9,26 @@
 #include <QValueAxis>
 #include <QLogValueAxis>
 #include <QCategoryAxis>
+#include <QLegendMarker>
 
 #include <opencv2/core/core.hpp>
 #include <tbb/parallel_for_each.h>
 
 /* small, inset plot constructor */
-ProfileChart::ProfileChart(Dataset::ConstPtr data)
+ProfileChart::ProfileChart(Dataset::ConstPtr data, bool small)
     : data(data),
-      small(true)
+      small(small)
 {
-	setMargins({0, 10, 0, 0});
-	legend()->hide();
+	if (small) {
+		setMargins({0, 10, 0, 0});
+		legend()->hide();
+	} else {
+		legend()->setAlignment(Qt::AlignLeft);
+	}
 	auto d = data->peek<Dataset::Base>();
 	labels = d->dimensions;
 	setupAxes(d->featureRange);
-
-	/* keep in sync */
-	connect(this, &ProfileChart::toggleAverage, [this] (bool on) { showAverage = on; });
-	connect(this, &ProfileChart::toggleIndividual, [this] (bool on) { showIndividual = on; });
+	setupSignals();
 }
 
 /* big, labelled plot constructor */
@@ -38,7 +40,11 @@ ProfileChart::ProfileChart(ProfileChart *source)
 	setTitle(source->title());
 	legend()->setAlignment(Qt::AlignLeft);
 	setupAxes({source->ay->min(), source->ay->max()});
+	setupSignals();
+}
 
+void ProfileChart::setupSignals()
+{
 	/* keep in sync */
 	connect(this, &ProfileChart::toggleAverage, [this] (bool on) { showAverage = on; });
 	connect(this, &ProfileChart::toggleIndividual, [this] (bool on) { showIndividual = on; });
@@ -98,7 +104,15 @@ void ProfileChart::clear()
 	removeAllSeries();
 }
 
-void ProfileChart::addSample(unsigned index, bool marker)
+void ProfileChart::addSample(ProteinId id, bool marker)
+{
+	try {
+		auto index = data->peek<Dataset::Base>()->protIndex.at(id);
+		content.push_back({index, marker});
+	} catch (std::out_of_range&) {}
+}
+
+void ProfileChart::addSampleByIndex(unsigned index, bool marker)
 {
 	content.push_back({index, marker});
 }
@@ -130,6 +144,22 @@ void ProfileChart::setupSeries()
 	// sort by name, but in small view, put marked last (for z-index)
 	std::sort(content.begin(), content.end(), small ? byMarkedThenName : byName);
 
+	std::function<double(double)> adjusted;
+	if (logSpace)
+		adjusted = [&] (qreal v) { return std::max(v, ayL->min()); };
+	else
+		adjusted = [] (qreal v) { return v; };
+
+	/* prepare adjusted feature points array in log case to speed this up */
+	std::vector<QVector<QPointF>> featurePoints;
+	if (logSpace) {
+		featurePoints = d->featurePoints;
+		tbb::parallel_for_each(featurePoints, [&] (QVector<QPointF> &points) {
+			for (auto &i : points)
+				i.setY(adjusted(i.y()));
+		});
+	}
+
 	// add & wire a series
 	auto add = [this] (QtCharts::QAbstractSeries *s, bool isIndiv, bool isMarker = false) {
 		addSeries(s);
@@ -141,12 +171,6 @@ void ProfileChart::setupSeries()
 			connect(this, signal, s, &QtCharts::QAbstractSeries::setVisible);
 		}
 	};
-
-	std::function<double(double)> adjusted;
-	if (logSpace)
-		adjusted = [&] (qreal v) { return std::max(v, ayL->min()); };
-	else
-		adjusted = [] (qreal v) { return v; };
 
 	// setup and add QLineSeries for mean
 	auto addMean = [&] {
@@ -199,16 +223,6 @@ void ProfileChart::setupSeries()
 		s2->setBorderColor(Qt::gray);
 	};
 
-	/* prepare adjusted feature points array in log case to speed this up */
-	std::vector<QVector<QPointF>> featurePoints;
-	if (logSpace) {
-		featurePoints = d->featurePoints;
-		tbb::parallel_for_each(featurePoints, [&] (QVector<QPointF> &points) {
-			for (auto &i : points)
-				i.setY(adjusted(i.y()));
-		});
-	}
-
 	// add individual series (markers or all)
 	auto addIndividuals = [&] (bool onlyMarkers) {
 		for (auto [index, isMarker] : content) {
@@ -216,6 +230,7 @@ void ProfileChart::setupSeries()
 				continue;
 
 			auto s = new QtCharts::QLineSeries;
+			series[index] = s;
 			add(s, true, isMarker);
 			QString title = (isMarker ? "<small>★</small>" : "") + d->lookup(p, index).name;
 			// color only markers in small view
@@ -237,6 +252,15 @@ void ProfileChart::setupSeries()
 			}
 
 			s->replace(logSpace ? featurePoints[index] : d->featurePoints[index]);
+
+			/* allow highlight through series/marker hover */
+			auto lm = legend()->markers(s).first();
+			connect(lm, &QtCharts::QLegendMarker::hovered, [this,i=index] (bool on) {
+				toggleHighlight(on ? i : 0);
+			});
+			connect(s, &QtCharts::QLineSeries::hovered, [this,i=index] (auto, bool on) {
+				toggleHighlight(on ? i : 0);
+			});
 		}
 	};
 
@@ -255,6 +279,33 @@ void ProfileChart::setupSeries()
 		addIndividuals(false);
 		addMean();
 	}
+}
+
+void ProfileChart::toggleHighlight(unsigned index)
+{
+	highlightAnim.disconnect();
+	highlightAnim.callOnTimeout([this, index] {
+		bool decrease = (index == 0);
+		bool done = true;
+		for (auto &[i, s] : series) {
+			auto c = s->color();
+			if (i == index || decrease) {
+				if (c.alphaF() < 1.) {
+					c.setAlphaF(std::min(1., c.alphaF() + .15));
+					done = false;
+				}
+			} else {
+				if (c.alphaF() > .2) {
+					c.setAlphaF(std::max(.2, c.alphaF() - .15));
+					done = false;
+				}
+			}
+			s->setColor(c);
+		}
+		if (done)
+			highlightAnim.stop();
+	});
+	highlightAnim.start(25);
 }
 
 void ProfileChart::toggleLabels(bool on) {

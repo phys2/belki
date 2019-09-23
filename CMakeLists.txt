@@ -62,8 +62,7 @@ target_sources(${APP_NAME} PRIVATE
 
 # main application
 target_sources(${APP_NAME} PRIVATE
-	centralhub.h centralhub.cpp
-	colormap.h colormap.cpp
+	datahub.h datahub.cpp
 	dataset.h dataset.cpp
 	fileio.h fileio.cpp
 	model.h

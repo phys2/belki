@@ -1,5 +1,5 @@
 #include "distmat.h"
-#include "colormap.h"
+#include "compute/colors.h"
 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <tbb/parallel_for.h>
