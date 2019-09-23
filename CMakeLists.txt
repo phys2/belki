@@ -31,10 +31,15 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	export_version(resources/windows.rc)
 endif()
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-	set(MACOSX_BUNDLE_INFO_PLIST "resources/macos/Info.plist")
-	set(MACOSX_BUNDLE_ICON_FILE icon.icns)
-	set_source_files_properties(resources/icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+if (APPLE)
+	set_target_properties(${APP_NAME} PROPERTIES 
+		MACOSX_BUNDLE_INFO_PLIST "${PROJECT_SOURCE_DIR}/resources/macos/Info.plist.in"
+		MACOSX_BUNDLE_LONG_VERSION_STRING ${PROJECT_VERSION_GIT}
+		MACOSX_BUNDLE_COPYRIGHT "2019 Johannes Jordan, Universität Freiburg"
+		)
+	set_source_files_properties(resources/icon.icns PROPERTIES 
+		MACOSX_PACKAGE_LOCATION Resources
+		)
 	target_sources(${APP_NAME} PRIVATE resources/icon.icns)
 endif()
 
@@ -56,7 +61,6 @@ target_sources(${APP_NAME} PRIVATE
 	)
 
 # main application
-<<<<<<< HEAD
 target_sources(${APP_NAME} PRIVATE
 	centralhub.h centralhub.cpp
 	colormap.h colormap.cpp
