@@ -1,4 +1,4 @@
-#include "centralhub.h"
+#include "datahub.h"
 #include "widgets/mainwindow.h"
 
 #include <QChartView>
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 		QIcon::setThemeName("hicolor");
 
 	/* start the application */
-	CentralHub hub;
+	DataHub hub;
 	MainWindow window(hub);
 	window.show();
 

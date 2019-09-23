@@ -1,6 +1,6 @@
 #include "profilechart.h"
 #include "profilewindow.h"
-#include "centralhub.h"
+#include "datahub.h"
 #include "proteindb.h"
 #include "dataset.h"
 

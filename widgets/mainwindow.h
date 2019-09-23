@@ -9,7 +9,7 @@
 #include <map>
 #include <unordered_map>
 
-class CentralHub;
+class DataHub;
 class FileIO;
 class QLabel;
 class QStandardItem;
@@ -21,7 +21,7 @@ class MainWindow : public QMainWindow, private Ui::MainWindow
 	Q_OBJECT
 
 public:
-	explicit MainWindow(CentralHub &hub);
+	explicit MainWindow(DataHub &hub);
 
 	const QString& getTitle() const { return title; }
 	FileIO *getIo() { return io; }
@@ -72,7 +72,7 @@ protected:
 	void setSelectedDataset(unsigned index);
 	void selectStructure(int id);
 
-	CentralHub &hub;
+	DataHub &hub;
 	Dataset::Ptr data;
 
 	QString title;

@@ -1,5 +1,5 @@
 #include "mainwindow.h"
-#include "centralhub.h"
+#include "datahub.h"
 #include "storage.h"
 #include "fileio.h"
 #include "profiles/profilewindow.h"
@@ -27,7 +27,7 @@
 #include <QWidgetAction>
 #include <QShortcut>
 
-MainWindow::MainWindow(CentralHub &hub) :
+MainWindow::MainWindow(DataHub &hub) :
     hub(hub),
     io(new FileIO(this)) // cleanup by QObject
 {
@@ -111,7 +111,7 @@ void MainWindow::setupTabs()
 void MainWindow::setupSignals()
 {
 	/* error dialogs */
-	connect(&hub, &CentralHub::ioError, this, &MainWindow::displayError);
+	connect(&hub, &DataHub::ioError, this, &MainWindow::displayError);
 	connect(io, &FileIO::ioError, this, &MainWindow::displayError);
 
 	/* notifications from Protein db */
@@ -129,13 +129,13 @@ void MainWindow::setupSignals()
 			selectStructure((int)id);
 	});
 
-	connect(&hub, &CentralHub::newDataset, this, &MainWindow::newDataset);
+	connect(&hub, &DataHub::newDataset, this, &MainWindow::newDataset);
 
 	/* selecting dataset */
 	connect(datasetSelect, qOverload<int>(&QComboBox::activated), [this] {
 		setDataset(datasetSelect->currentData().value<Dataset::Ptr>());
 	});
-	connect(this, &MainWindow::datasetSelected, &hub, &CentralHub::setCurrent);
+	connect(this, &MainWindow::datasetSelected, &hub, &DataHub::setCurrent);
 	connect(this, &MainWindow::datasetSelected, [this] { profiles->setData(data); });
 	connect(this, &MainWindow::datasetSelected, this, &MainWindow::setSelectedDataset);
 
@@ -143,13 +143,13 @@ void MainWindow::setupSignals()
 	connect(structureSelect, qOverload<int>(&QComboBox::activated), [this] {
 		selectStructure(structureSelect->currentData().value<int>());
 	});
-	connect(granularitySlider, &QSlider::valueChanged, &hub, &CentralHub::createPartition);
+	connect(granularitySlider, &QSlider::valueChanged, &hub, &DataHub::createPartition);
 	connect(famsKSlider, &QSlider::valueChanged, [this] (int v) {
 		hub.runFAMS(v * 0.01f);
 	});
 
 	/* changing order settings */
-	connect(this, &MainWindow::orderChanged, &hub, &CentralHub::changeOrder);
+	connect(this, &MainWindow::orderChanged, &hub, &DataHub::changeOrder);
 }
 
 void MainWindow::setupActions()
@@ -314,7 +314,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 	}
 
 	// connect singnalling into view
-	connect(&hub, &CentralHub::newDataset, v, &Viewer::addDataset);
+	connect(&hub, &DataHub::newDataset, v, &Viewer::addDataset);
 	connect(&hub.proteins, &ProteinDB::proteinAdded, v, &Viewer::inAddProtein);
 	/* use queued conn. to ensure the views get the newDataset signal _first_! */
 	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);

@@ -1,4 +1,4 @@
-#include "centralhub.h"
+#include "datahub.h"
 
 #include "proteindb.h"
 #include "dataset.h"
@@ -17,7 +17,7 @@ const QVector<QColor> tableau20 = {
     {188, 189, 34}, {219, 219, 141}, {23, 190, 207}, {158, 218, 229}
 };
 
-CentralHub::CentralHub(QObject *parent)
+DataHub::DataHub(QObject *parent)
     : QObject(parent),
       store(proteins)
 {
@@ -27,25 +27,25 @@ CentralHub::CentralHub(QObject *parent)
 	setupSignals();
 }
 
-QVector<QColor> CentralHub::colorset()
+QVector<QColor> DataHub::colorset()
 {
 	return tableau20;
 }
 
-std::map<unsigned, CentralHub::DataPtr> CentralHub::datasets()
+std::map<unsigned, DataHub::DataPtr> DataHub::datasets()
 {
 	QReadLocker _(&data.l);
 	return data.sets; // return a current copy
 }
 
-void CentralHub::setupSignals()
+void DataHub::setupSignals()
 {
 	/* signal multiplexing */
 	for (auto o : std::vector<QObject*>{&proteins, &store})
 		connect(o, SIGNAL(ioError(const QString&)), this, SIGNAL(ioError(const QString&)));
 }
 
-void CentralHub::setCurrent(unsigned dataset)
+void DataHub::setCurrent(unsigned dataset)
 {
 	data.l.lockForWrite();
 	data.current = dataset;
@@ -57,7 +57,7 @@ void CentralHub::setCurrent(unsigned dataset)
 		applyAnnotations(guiState.structure.annotationsId);
 }
 
-CentralHub::DataPtr CentralHub::createDataset(DatasetConfiguration config)
+DataHub::DataPtr DataHub::createDataset(DatasetConfiguration config)
 {
 	data.l.lockForWrite();
 	config.id = data.nextId++; // inject id into config
@@ -66,11 +66,11 @@ CentralHub::DataPtr CentralHub::createDataset(DatasetConfiguration config)
 	data.sets[config.id] = dataset;
 	data.l.unlock();
 
-	connect(dataset.get(), &Dataset::ioError, this, &CentralHub::ioError);
+	connect(dataset.get(), &Dataset::ioError, this, &DataHub::ioError);
 	return dataset;
 }
 
-void CentralHub::runOnCurrent(const std::function<void(DataPtr)> &work)
+void DataHub::runOnCurrent(const std::function<void(DataPtr)> &work)
 {
 	QtConcurrent::run([=] {
 		QReadLocker _(&data.l); // RAII
@@ -87,7 +87,7 @@ void CentralHub::runOnCurrent(const std::function<void(DataPtr)> &work)
 	});
 }
 
-void CentralHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay)
+void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay)
 {
 	QtConcurrent::run([=] {
 		auto target = createDataset(config);
@@ -110,7 +110,7 @@ void CentralHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, 
 	});
 }
 
-void CentralHub::importDataset(const QString &filename, const QString featureCol)
+void DataHub::importDataset(const QString &filename, const QString featureCol)
 {
 	QtConcurrent::run([=] {
 		auto dataset = store.openDataset(filename, featureCol);
@@ -143,12 +143,12 @@ void CentralHub::importDataset(const QString &filename, const QString featureCol
 	});
 }
 
-void CentralHub::computeDisplay(const QString &method)
+void DataHub::computeDisplay(const QString &method)
 {
 	runOnCurrent([=] (DataPtr d) { d->computeDisplay(method); });
 }
 
-void CentralHub::applyAnnotations(unsigned id)
+void DataHub::applyAnnotations(unsigned id)
 {
 	guiState.structure.annotationsId = id;
 	runOnCurrent([=] (DataPtr d) {
@@ -156,12 +156,12 @@ void CentralHub::applyAnnotations(unsigned id)
 	});
 }
 
-void CentralHub::exportAnnotations(const QString &filename)
+void DataHub::exportAnnotations(const QString &filename)
 {
 	runOnCurrent([=] (DataPtr d) { store.exportAnnotations(filename, d); });
 }
 
-void CentralHub::applyHierarchy(unsigned id, unsigned granularity)
+void DataHub::applyHierarchy(unsigned id, unsigned granularity)
 {
 	guiState.structure.hierarchyId = id;
 	guiState.structure.annotationsId = 0;
@@ -170,33 +170,33 @@ void CentralHub::applyHierarchy(unsigned id, unsigned granularity)
 	});
 }
 
-void CentralHub::createPartition(unsigned granularity)
+void DataHub::createPartition(unsigned granularity)
 {
 	guiState.structure.granularity = granularity;
 	runOnCurrent([=] (DataPtr d) { d->createPartition(granularity); });
 }
 
-void CentralHub::runFAMS(float k)
+void DataHub::runFAMS(float k)
 {
 	runOnCurrent([=] (DataPtr d) { d->computeFAMS(k); });
 }
 
-void CentralHub::changeOrder(Dataset::OrderBy reference, bool synchronize)
+void DataHub::changeOrder(Dataset::OrderBy reference, bool synchronize)
 {
 	runOnCurrent([=] (DataPtr d) { d->changeOrder(reference, synchronize); });
 }
 
-void CentralHub::importAnnotations(const QString &filename)
+void DataHub::importAnnotations(const QString &filename)
 {
 	QtConcurrent::run([=] { store.importAnnotations(filename); });
 }
 
-void CentralHub::importHierarchy(const QString &filename)
+void DataHub::importHierarchy(const QString &filename)
 {
 	QtConcurrent::run([=] { store.importHierarchy(filename); });
 }
 
-void CentralHub::importDescriptions(const QString &filename)
+void DataHub::importDescriptions(const QString &filename)
 {
 	QtConcurrent::run([=] { store.importDescriptions(filename); });
 }
