@@ -68,8 +68,10 @@ void ProfileTab::rebuildPlot()
 		auto markers = current().data->peek<Dataset::Proteins>()->markers; // copy
 		for (auto m : markers)
 			current().scene->addSample(m, true);
-		for (auto e : guiState.extras)
-			current().scene->addSample(e, false);
+		for (auto e : guiState.extras) {
+			if (!markers.count(e))
+				current().scene->addSample(e, false);
+		}
 	}
 	current().scene->finalize();
 }
@@ -115,7 +117,10 @@ void ProfileTab::setupProteinBox()
 
 	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
 		auto id = ProteinId(i->data().toInt());
-		if (i->checkState() == Qt::Checked)
+		bool wanted = (i->checkState() == Qt::Checked);
+		if (wanted == guiState.extras.count(id)) // check state did not change
+			return;
+		if (wanted)
 			guiState.extras.insert(id);
 		else
 			guiState.extras.erase(id);
@@ -135,7 +140,6 @@ void ProfileTab::setupProteinBox()
 	};
 
 	/* Allow to toggle check state by click */
-	//connect(cpl->popup(), &QAbstractItemView::clicked, toggler);
 	connect(cpl, qOverload<const QModelIndex &>(&QCompleter::activated), toggler);
 
 	/* Allow to toggle by pressing <Enter> in protSearch

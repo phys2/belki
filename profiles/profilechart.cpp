@@ -123,6 +123,9 @@ void ProfileChart::finalize() {
 
 void ProfileChart::setupSeries()
 {
+	//if (content.empty())
+	//	return;
+
 	if (showAverage && stats.mean.empty()) {
 		computeStats();
 		// if we couldn't compute, just disable. GUI should have it disabled already

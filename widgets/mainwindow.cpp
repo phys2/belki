@@ -236,6 +236,9 @@ void MainWindow::setupMarkerControls()
 
 	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
 		auto id = ProteinId(i->data().toInt());
+		// TODO this is called also when items are enabled/disabled
+		// and that happens for quite many proteins at once :-/
+		// it leads to unnecessary work, in this case ProteinDB will write-lock
 		if (i->checkState() == Qt::Checked)
 			hub.proteins.addMarker(id);
 		else
