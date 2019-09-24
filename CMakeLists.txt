@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.9...3.13)
 
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X deployment version")
+
 project(Belki
 	VERSION 1.0
 	DESCRIPTION "Interactive Protein Profile Visualization")
@@ -35,7 +37,13 @@ if (APPLE)
 	set_target_properties(${APP_NAME} PROPERTIES 
 		MACOSX_BUNDLE_INFO_PLIST "${PROJECT_SOURCE_DIR}/resources/macos/Info.plist.in"
 		MACOSX_BUNDLE_LONG_VERSION_STRING ${PROJECT_VERSION_GIT}
-		MACOSX_BUNDLE_COPYRIGHT "2019 Johannes Jordan, Universität Freiburg"
+		MACOSX_BUNDLE_COPYRIGHT "(C) 2019 Institute of Physiology II, Universität Freiburg, Germany"
+		MACOSX_BUNDLE_BUNDLE_NAME ${PROJECT_NAME}
+		MACOSX_BUNDLE_EXECUTABLE_NAME ${APP_NAME}
+		MACOSX_BUNDLE_GUI_IDENTIFIER "de.uni-freiburg.physiologie.belki"
+		MACOSX_BUNDLE_LONG_VERSION_STRING "${PROJECT_NAME} ${PROJECT_VERSION}"
+		MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+		MACOSX_BUNDLE_ICON_FILE "icon.icns"
 		)
 	set_source_files_properties(resources/icon.icns PROPERTIES 
 		MACOSX_PACKAGE_LOCATION Resources
