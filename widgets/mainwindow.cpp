@@ -106,6 +106,7 @@ void MainWindow::setupTabs()
 	addTab(Tab::DIMRED);
 	addTab(Tab::SCATTER);
 	addTab(Tab::PROFILES);
+	tabWidget->setCurrentIndex(0);
 }
 
 void MainWindow::setupSignals()
