@@ -93,7 +93,7 @@ Annotations partition(const HrClustering &in, unsigned granularity)
 	flood = [&] (unsigned hIndex, unsigned cIndex) {
 		auto &current = hrclusters[hIndex];
 		if (current.protein)
-			ret.groups.at(cIndex).members.push_back(current.protein.value());
+			ret.groups.at(cIndex).members.push_back(current.protein.value_or(0));
 		for (auto c : current.children)
 			flood(c, cIndex);
 	};
