@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
 	// set aliasing for all GL views
 	auto fmt = QSurfaceFormat::defaultFormat();
-	fmt.setSamples(8);
+	fmt.setSamples(4);
 	QSurfaceFormat::setDefaultFormat(fmt);
 
 	QApplication a(argc, argv);
