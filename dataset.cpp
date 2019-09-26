@@ -211,7 +211,9 @@ void Dataset::applyAnnotations(unsigned id)
 
 	// others: apply from proteindb, if not already applied
 	if (s.clusteringId != id) {
-		touched |= applyAnnotations(*std::get_if<::Annotations>(&proteins.peek()->structures.at(id)), id);
+		// would use std::get(), but not available on MacOS 10.13
+		const auto &cl = *std::get_if<::Annotations>(&proteins.peek()->structures.at(id));
+		touched |= applyAnnotations(cl, id);
 	}
 
 	s.l.unlock();
@@ -225,6 +227,7 @@ void Dataset::applyHierarchy(unsigned id, unsigned granularity)
 	Touched touched = Touch::HIERARCHY;
 
 	s.l.lockForWrite();
+	// would use std::get(), but not available on MacOS 10.13
 	s.hierarchy = *std::get_if<HrClustering>(&proteins.peek()->structures.at(id));
 
 	if (s.order.synchronizing &&

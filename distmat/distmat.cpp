@@ -39,8 +39,8 @@ void Distmat::computeMatrix(const std::vector<std::vector<double>> &features)
 	matrix = cv::Mat1f(sidelen, sidelen);
 
 	/* amass all the combinations we need for filling a symmetric matrix */
-	std::vector<cv::Point2i> coords;
-	for (int y = 0; y < (unsigned)sidelen; ++y) {
+	std::vector<cv::Point2i> coords; // use int for matrix() indexing later on
+	for (int y = 0; y < (int)sidelen; ++y) {
 		for (int x = 0; x <= y; ++x)
 			coords.push_back({x, y});
 	}
@@ -49,7 +49,7 @@ void Distmat::computeMatrix(const std::vector<std::vector<double>> &features)
 	auto m = measures()[measure];
 	tbb::parallel_for((size_t)0, coords.size(), [&] (size_t i) {
 		auto c = coords[i];
-		const auto &a = features[c.x], &b = features[c.y];
+		const auto &a = features[(size_t)c.x], &b = features[(size_t)c.y];
 		matrix(c) = matrix(c.x, c.y) = (float)m(a, b);
 	});
 }
