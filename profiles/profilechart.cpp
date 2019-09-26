@@ -101,6 +101,7 @@ void ProfileChart::clear()
 {
 	stats = {};
 	content.clear();
+	series.clear();
 	removeAllSeries();
 }
 
