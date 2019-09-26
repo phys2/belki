@@ -211,7 +211,7 @@ void Dataset::applyAnnotations(unsigned id)
 
 	// others: apply from proteindb, if not already applied
 	if (s.clusteringId != id) {
-		touched |= applyAnnotations(std::get<::Annotations>(proteins.peek()->structures.at(id)), id);
+		touched |= applyAnnotations(*std::get_if<::Annotations>(&proteins.peek()->structures.at(id)), id);
 	}
 
 	s.l.unlock();
@@ -225,7 +225,7 @@ void Dataset::applyHierarchy(unsigned id, unsigned granularity)
 	Touched touched = Touch::HIERARCHY;
 
 	s.l.lockForWrite();
-	s.hierarchy = std::get<HrClustering>(proteins.peek()->structures.at(id));
+	s.hierarchy = *std::get_if<HrClustering>(&proteins.peek()->structures.at(id));
 
 	if (s.order.synchronizing &&
 	    (s.order.reference == OrderBy::HIERARCHY ||
@@ -390,7 +390,7 @@ void Dataset::orderProteins(OrderBy reference)
 			auto &current = s.hierarchy.clusters[hIndex];
 			if (current.protein) {
 				try {
-					auto i = d->protIndex.at(current.protein.value());
+					auto i = d->protIndex.at(current.protein.value_or(0));
 					index.push_back(i);
 					seen.insert(i);
 				} catch (std::out_of_range &) {}
