@@ -23,6 +23,7 @@ public:
 protected:
 	struct DataState : public Viewer::DataState {
 		std::unique_ptr<ProfileChart> scene;
+		bool logSpace = false;
 	};
 
 	void rebuildPlot(); // TODO temporary hack
@@ -36,6 +37,7 @@ protected:
 
 	struct {
 		std::set<ProteinId> extras;
+		bool showLabels = false;
 	} guiState;
 
 	ContentMap<DataState> content;

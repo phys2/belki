@@ -314,6 +314,8 @@ void ProfileChart::toggleHighlight(unsigned index)
 
 void ProfileChart::toggleLabels(bool on) {
 	/* It appears smoother/faster to add/remove a secondary axis than to show/hide */
+	if (axes().contains(axC) == on)
+		return;
 	if (on)
 		addAxis(axC, Qt::AlignBottom);
 	else

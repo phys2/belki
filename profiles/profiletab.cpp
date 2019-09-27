@@ -25,6 +25,7 @@ ProfileTab::ProfileTab(QWidget *parent) :
 		emit exportRequested(view, "Selected Profiles");
 	});
 	connect(actionShowLabels, &QAction::toggled, [this] (bool on) {
+		guiState.showLabels = on;
 		if (current) current().scene->toggleLabels(on);
 	});
 	connect(actionShowAverage, &QAction::toggled, [this] (bool on) {
@@ -34,7 +35,10 @@ ProfileTab::ProfileTab(QWidget *parent) :
 		if (current) current().scene->toggleIndividual(on);
 	});
 	connect(actionLogarithmic, &QAction::toggled, [this] (bool on) {
-		if (current) current().scene->toggleLogSpace(on);
+		if (current) {
+			current().logSpace = on;
+			current().scene->toggleLogSpace(on);
+		}
 	});
 
 	/* connect incoming signals */
@@ -59,7 +63,12 @@ void ProfileTab::selectDataset(unsigned id)
 	// pass guiState onto chart
 	auto scene = current().scene.get();
 	rebuildPlot();  // TODO temporary hack
+	scene->toggleLabels(guiState.showLabels);
 	updateProteinItems();
+
+	// apply datastate
+	actionLogarithmic->setChecked(current().logSpace);
+
 	view->setChart(scene);
 }
 
@@ -72,8 +81,10 @@ void ProfileTab::addDataset(Dataset::Ptr data)
 	// TODO: code dupl. from profilewidget.
 	// have a bool in the data model instead. use also in heatmap!
 	auto range = data->peek<Dataset::Base>()->featureRange;
-	if (range.min >= 0 && range.max > 10000)
+	if (range.min >= 0 && range.max > 10000) {
+		state.logSpace = true;
 		state.scene->toggleLogSpace(true);
+	}
 
 	/* connect outgoing signals */
 	// auto scene = state.scene.get();
