@@ -11,7 +11,9 @@ ProfileTab::ProfileTab(QWidget *parent) :
 {
 	setupUi(this);
 	setupProteinBox();
-	toolBar->insertWidget(actionSavePlot, proteinBox);
+	auto anchor = actionShowLabels;
+	toolBar->insertWidget(anchor, proteinBox);
+	toolBar->insertSeparator(anchor);
 
 	// right-align screenshot button
 	auto* spacer = new QWidget();
@@ -21,6 +23,18 @@ ProfileTab::ProfileTab(QWidget *parent) :
 	/* connect toolbar actions */
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, "Selected Profiles");
+	});
+	connect(actionShowLabels, &QAction::toggled, [this] (bool on) {
+		if (current) current().scene->toggleLabels(on);
+	});
+	connect(actionShowAverage, &QAction::toggled, [this] (bool on) {
+		if (current) current().scene->toggleAverage(on);
+	});
+	connect(actionShowIndividual, &QAction::toggled, [this] (bool on) {
+		if (current) current().scene->toggleIndividual(on);
+	});
+	connect(actionLogarithmic, &QAction::toggled, [this] (bool on) {
+		if (current) current().scene->toggleLogSpace(on);
 	});
 
 	/* connect incoming signals */
@@ -55,6 +69,11 @@ void ProfileTab::addDataset(Dataset::Ptr data)
 	auto &state = content[id]; // emplace (note: ids are never recycled)
 	state.data = data;
 	state.scene = std::make_unique<ProfileChart>(data, false);
+	// TODO: code dupl. from profilewidget.
+	// have a bool in the data model instead. use also in heatmap!
+	auto range = data->peek<Dataset::Base>()->featureRange;
+	if (range.min >= 0 && range.max > 10000)
+		state.scene->toggleLogSpace(true);
 
 	/* connect outgoing signals */
 	// auto scene = state.scene.get();
@@ -63,17 +82,18 @@ void ProfileTab::addDataset(Dataset::Ptr data)
 
 void ProfileTab::rebuildPlot()
 {
-	current().scene->clear();
-	{
-		auto markers = current().data->peek<Dataset::Proteins>()->markers; // copy
-		for (auto m : markers)
-			current().scene->addSample(m, true);
-		for (auto e : guiState.extras) {
-			if (!markers.count(e))
-				current().scene->addSample(e, false);
-		}
+	auto scene = current().scene.get();
+
+	scene->clear();
+	auto markers = current().data->peek<Dataset::Proteins>()->markers; // copy
+	for (auto m : markers)
+		scene->addSample(m, true);
+	for (auto e : guiState.extras) {
+		if (!markers.count(e))
+			scene->addSample(e, false);
 	}
-	current().scene->finalize();
+	scene->finalize();
+	actionShowAverage->setEnabled(scene->numProfiles() >= 2);
 }
 
 void ProfileTab::addProtein(ProteinId id, const Protein &protein)

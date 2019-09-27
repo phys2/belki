@@ -89,6 +89,9 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionShowLabels"/>
+   <addaction name="separator"/>
+   <addaction name="actionLogarithmic"/>
    <addaction name="actionSavePlot"/>
   </widget>
   <action name="actionSavePlot">
@@ -106,6 +109,73 @@
     <string>Print</string>
    </property>
   </action>
+  <action name="actionShowAverage">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../resources/icons-custom/index.qrc">
+     <normaloff>:/icons/show-average.svg</normaloff>:/icons/show-average.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Average Profile</string>
+   </property>
+   <property name="shortcut">
+    <string>A</string>
+   </property>
+  </action>
+  <action name="actionShowIndividual">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../resources/icons-custom/index.qrc">
+     <normaloff>:/icons/show-individual.svg</normaloff>:/icons/show-individual.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Individual Profiles</string>
+   </property>
+   <property name="shortcut">
+    <string>I</string>
+   </property>
+  </action>
+  <action name="actionShowLabels">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../resources/icons-custom/index.qrc">
+     <normaloff>:/icons/show-labels.svg</normaloff>:/icons/show-labels.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Labels</string>
+   </property>
+   <property name="toolTip">
+    <string>Show Sample Labels</string>
+   </property>
+   <property name="shortcut">
+    <string>L</string>
+   </property>
+  </action>
+  <action name="actionLogarithmic">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../resources/icons-custom/index.qrc">
+     <normaloff>:/icons/logspace-off.svg</normaloff>
+     <normalon>:/icons/logspace-on.svg</normalon>:/icons/logspace-off.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Logarithmic</string>
+   </property>
+   <property name="toolTip">
+    <string>Plot data on a log10 axis</string>
+   </property>
+   <property name="shortcut">
+    <string>Shift+L</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -114,6 +184,8 @@
    <header location="global">QChartView</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../resources/icons-custom/index.qrc"/>
+ </resources>
  <connections/>
 </ui>
