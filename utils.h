@@ -4,8 +4,14 @@
 #include <QReadWriteLock>
 #include <QString>
 #include <QHash>
+#include <QMetaType>
 #include <unordered_map>
 #include <functional>
+
+enum class MessageType {
+	INFO, WARNING, CRITICAL
+};
+Q_DECLARE_METATYPE(MessageType)
 
 class NonCopyable
 {

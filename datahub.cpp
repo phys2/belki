@@ -37,7 +37,8 @@ void DataHub::setupSignals()
 {
 	/* signal multiplexing */
 	for (auto o : std::vector<QObject*>{&proteins, &store})
-		connect(o, SIGNAL(ioError(const QString&)), this, SIGNAL(ioError(const QString&)));
+		connect(o, SIGNAL(ioError(const QString&, MessageType)),
+		        this, SIGNAL(ioError(const QString&, MessageType)));
 }
 
 void DataHub::setCurrent(unsigned dataset)
@@ -61,7 +62,6 @@ DataHub::DataPtr DataHub::createDataset(DatasetConfiguration config)
 	data.sets[config.id] = dataset;
 	data.l.unlock();
 
-	connect(dataset.get(), &Dataset::ioError, this, &DataHub::ioError);
 	return dataset;
 }
 

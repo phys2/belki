@@ -1,10 +1,10 @@
 #ifndef DATAHUB_H
 #define DATAHUB_H
 
-#include "utils.h"
 #include "dataset.h" // for Dataset::OrderBy
 #include "proteindb.h"
 #include "storage.h"
+#include "utils.h"
 
 #include <QObject>
 #include <map>
@@ -26,7 +26,7 @@ public:
 	std::map<unsigned, DataPtr> datasets();
 
 signals:
-	void ioError(const QString &message);
+	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
 	void newDataset(DataPtr data);
 
 public slots:

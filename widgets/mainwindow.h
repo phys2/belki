@@ -3,6 +3,7 @@
 
 #include "ui_mainwindow.h"
 #include "dataset.h"
+#include "utils.h"
 
 #include <QMainWindow>
 
@@ -28,7 +29,7 @@ public:
 
 public slots:
 	void showHelp();
-	void displayError(const QString &message);
+	void displayMessage(const QString &message, MessageType type = MessageType::CRITICAL);
 
 	void addProtein(ProteinId id, const Protein &protein);
 	void toggleMarker(ProteinId id, bool present);

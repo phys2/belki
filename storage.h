@@ -33,7 +33,7 @@ public:
 	void exportMarkers(const QString &filename);
 
 signals: // IMPORTANT: when connecting to lambda, provide target object pointer for thread-affinity
-	void ioError(const QString &message);
+	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
 	void newDisplay(const QString &name, bool loaded=false);
 
 public slots: // IMPORTANT: never call these directly! use signals for thread-affinity

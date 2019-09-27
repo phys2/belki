@@ -132,7 +132,6 @@ public:
 
 signals:
 	void update(Touched);
-	void ioError(const QString &message);
 
 protected:
 	/* note: our protected helpers typically assume write locks in place and

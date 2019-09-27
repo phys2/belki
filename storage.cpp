@@ -372,7 +372,7 @@ void Storage::finalizeRead(Features &data, bool normalize)
 	if (normalize && (range.min < 0 || range.max > 1)) {
 		emit ioError(QString("Values outside expected range (instead [%1, %2])."
 		                     "<br>Cutting of negative values and normalizing to [0, 1].")
-		             .arg(range.min).arg(range.max));
+		             .arg(range.min).arg(range.max), MessageType::INFO);
 
 		// cut off negative values
 		range.min = 0.;

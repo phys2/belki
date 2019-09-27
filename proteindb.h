@@ -1,8 +1,8 @@
 #ifndef PROTEINDB_H
 #define PROTEINDB_H
 
-#include "utils.h"
 #include "model.h"
+#include "utils.h"
 
 #include <QObject>
 #include <QVector>
@@ -58,7 +58,7 @@ public slots:
 	void updateColorset(const QVector<QColor>& colors);
 
 signals:
-	void ioError(const QString &message);
+	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
 	void proteinAdded(ProteinId id, const Protein &protein);
 	void proteinChanged(ProteinId id);
 	void markersToggled(const std::vector<ProteinId> &id, bool present);

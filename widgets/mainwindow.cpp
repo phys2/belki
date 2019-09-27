@@ -112,8 +112,8 @@ void MainWindow::setupTabs()
 void MainWindow::setupSignals()
 {
 	/* error dialogs */
-	connect(&hub, &DataHub::ioError, this, &MainWindow::displayError);
-	connect(io, &FileIO::ioError, this, &MainWindow::displayError);
+	connect(&hub, &DataHub::ioError, this, &MainWindow::displayMessage);
+	connect(io, &FileIO::ioError, this, &MainWindow::displayMessage);
 
 	/* notifications from Protein db */
 	connect(&hub.proteins, &ProteinDB::proteinAdded, this, &MainWindow::addProtein);
@@ -551,9 +551,19 @@ void MainWindow::showHelp()
 	box.exec();
 }
 
-void MainWindow::displayError(const QString &message)
+void MainWindow::displayMessage(const QString &message, MessageType type)
 {
-	QMessageBox::critical(this, "An error occured", message);
+	switch (type) {
+	case MessageType::INFO:
+		QMessageBox::information(this, "Please note", message);
+		break;
+	case MessageType::WARNING:
+		QMessageBox::warning(this, "Warning", message);
+		break;
+	case MessageType::CRITICAL:
+		QMessageBox::critical(this, "An error occured", message);
+		break;
+	}
 }
 
 void MainWindow::addProtein(ProteinId id, const Protein &protein)

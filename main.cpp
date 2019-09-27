@@ -1,5 +1,6 @@
 #include "datahub.h"
 #include "widgets/mainwindow.h"
+#include "utils.h"
 
 #include <QChartView>
 #include <QApplication>
@@ -21,6 +22,7 @@ int main(int argc, char *argv[])
 
 	// register additional types needed in queued connections
 	qRegisterMetaType<QVector<QColor>>();
+	qRegisterMetaType<MessageType>();
 
 	// revisit these at a later time
 	QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);

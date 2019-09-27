@@ -123,13 +123,14 @@ void Dataset::computeDisplays()
 	r.l.unlock();
 }
 
+// TODO move parsing to storage
 bool Dataset::readDisplay(const QString& name, QTextStream &in)
 {
 	QVector<QPointF> data;
 	while (!in.atEnd()) {
 		auto line = in.readLine().split("\t");
 		if (line.size() != 2) {
-			ioError(QString("Input malformed at line %2 in display %1").arg(name, data.size()+1));
+			// TODO ioError(QString("Input malformed at line %2 in display %1").arg(name, data.size()+1));
 			return false;
 		}
 
@@ -137,7 +138,7 @@ bool Dataset::readDisplay(const QString& name, QTextStream &in)
 	}
 
 	if (data.size() != (int)peek<Base>()->features.size()) {
-		ioError(QString("Display %1 length does not match source length!").arg(name));
+		// TODO ioError(QString("Display %1 length does not match source length!").arg(name));
 		return false;
 	}
 
