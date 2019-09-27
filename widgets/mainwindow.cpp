@@ -307,7 +307,7 @@ void MainWindow::toggleMarker(ProteinId id, bool present)
 
 void MainWindow::addTab(MainWindow::Tab type)
 {
-	Viewer *v;
+	Viewer *v(nullptr);
 	switch (type) {
 	case Tab::DIMRED: v = new DimredTab; break;
 	case Tab::SCATTER: v = new ScatterTab; break;
