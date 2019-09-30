@@ -79,7 +79,7 @@ public:
 	struct Representation : RWLockable {
 		// feature reduced point sets
 		std::map<QString, QVector<QPointF>> display;
-		// TODO: put distmats here
+		// TODO: put distmats here & put this in model.h
 	};
 
 	struct Structure : RWLockable {

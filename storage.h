@@ -14,6 +14,7 @@ class ProteinDB;
 class Dataset;
 class QTextStream;
 class QJsonDocument;
+class QCborValue;
 
 class Storage : public QObject
 {
@@ -41,11 +42,17 @@ public slots: // IMPORTANT: never call these directly! use signals for thread-af
 	void importDescriptions(const QString &filename);
 	void importAnnotations(const QString &filename);
 	void importHierarchy(const QString &filename);
-	void exportAnnotations(const QString &filename, std::shared_ptr<Dataset const> data);
+	void exportAnnotations(const QString &filename, std::shared_ptr<const Dataset> data);
+
+	void saveProjectAs(const QString &filename, std::vector<std::shared_ptr<const Dataset>> snapshot);
 
 protected:
 	Features::Ptr readSimpleSource(QTextStream &in, bool normalize);
 	void finalizeRead(Features &data, bool normalize);
+
+	QCborValue serializeDataset(std::shared_ptr<const Dataset> src);
+	QCborValue serializeProteinDB();
+	QCborValue serializeStructure(const Structure &src);
 
 	void storeDisplay(const Dataset &data, const QString& name);
 

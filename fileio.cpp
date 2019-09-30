@@ -30,6 +30,7 @@ QString FileIO::chooseFile(FileIO::Role purpose, QWidget *p)
 	    {SaveAnnotations, {"Save Annotations to File", "Annotation table (*.tsv)", true, ".tsv"}},
 	    //with pdf//{SavePlot, {"Save Plot to File", "Scalable Vector Graphics (*.svg);; Portable Document Format (*.pdf);; Portable Network Graphics (*.png)", true, {}}},
 	    {SavePlot, {"Save Plot to File", "Scalable Vector Graphics (*.svg);; Portable Network Graphics (*.png)", true, {}}},
+	    {SaveProject, {"Save Project to File", "Belki Project File (*.belki)", true, ".belki"}},
 	};
 
 	if (!p)

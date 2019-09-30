@@ -330,6 +330,7 @@
     <addaction name="separator"/>
     <addaction name="actionLoadDescriptions"/>
     <addaction name="separator"/>
+    <addaction name="actionSaveAs"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuMarkers">
@@ -577,6 +578,17 @@
    </property>
    <property name="toolTip">
     <string>Use OpenGL acceleration for charts. May be faster or slower.</string>
+   </property>
+  </action>
+  <action name="actionSaveAs">
+   <property name="icon">
+    <iconset theme="document-save-as"/>
+   </property>
+   <property name="text">
+    <string>Save as…</string>
+   </property>
+   <property name="toolTip">
+    <string>Save whole project to a new file</string>
    </property>
   </action>
  </widget>

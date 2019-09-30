@@ -48,6 +48,8 @@ public slots:
 
 	void importDescriptions(const QString &filename);
 
+	void saveProjectAs(const QString &filename);
+
 public:
 	ProteinDB proteins;
 	Storage store; // TODO make protected

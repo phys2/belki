@@ -195,3 +195,14 @@ void DataHub::importDescriptions(const QString &filename)
 {
 	QtConcurrent::run([=] { store.importDescriptions(filename); });
 }
+
+void DataHub::saveProjectAs(const QString &filename)
+{
+	QtConcurrent::run([=] {
+		QReadLocker _(&data.l);
+		std::vector<Dataset::ConstPtr> snapshot;
+		for (auto &[k, v] : data.sets)
+			snapshot.push_back(v);
+		store.saveProjectAs(filename, snapshot);
+	});
+}

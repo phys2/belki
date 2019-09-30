@@ -220,6 +220,14 @@ void MainWindow::setupActions()
 			emit hub.spawn(data, config); // TODO change mechanic, dimredTab->currentMethod());
 		});
 	});
+
+	connect(actionSaveAs, &QAction::triggered, [this] {
+		auto filename = io->chooseFile(FileIO::SaveProject);
+		if (filename.isEmpty())
+			return;
+		hub.saveProjectAs(filename);
+		// TODO: change our project filename to this one
+	});
 }
 
 void MainWindow::setupMarkerControls()

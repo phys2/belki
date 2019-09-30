@@ -23,7 +23,8 @@ public:
 		OpenMarkers,
 		SaveMarkers,
 		SaveAnnotations,
-		SavePlot
+		SavePlot,
+		SaveProject
 	};
 
 	struct RoleDef {

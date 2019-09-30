@@ -73,9 +73,9 @@ struct Annotations {
 struct HrClustering {
 	struct Cluster {
 		double distance;
-		std::optional<ProteinId> protein;
 		unsigned parent;
 		std::vector<unsigned> children;
+		std::optional<ProteinId> protein;
 	};
 
 	QString name;
