@@ -751,6 +751,10 @@ void Storage::importMarkers(const QString &filename)
 		if (!name.isEmpty())
 			names.push_back(name);
 	}
+
+	if (names.size() > 500)
+		return ioError(QString("Refusing to load too many (%1) markers.").arg(names.size()));
+
 	proteins.importMarkers(names);
 }
 
