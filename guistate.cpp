@@ -1,0 +1,131 @@
+#include "guistate.h"
+#include "widgets/mainwindow.h"
+
+#include <QStandardItemModel>
+#include <QAbstractProxyModel>
+#include <QTimer>
+
+GuiState::GuiState(DataHub &hub) : hub(hub)
+{
+	datasetControl.model = new QStandardItemModel(this);
+	setupMarkerControl();
+
+	connect(&hub.proteins, &ProteinDB::proteinAdded, this, &GuiState::addProtein);
+	connect(&hub.proteins, &ProteinDB::markersToggled,
+	        this, [this] (auto ids, bool present) {
+		auto state = present ? Qt::Checked : Qt::Unchecked;
+		for (auto id : ids)
+			this->markerControl.items.at(id)->setCheckState(state);
+	});
+	connect(&hub, &DataHub::newDataset, this, &GuiState::addDataset);
+}
+
+unsigned GuiState::addWindow()
+{
+	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(hub));
+	auto target = it->second;
+	target->setDatasetControlModel(datasetControl.model);
+	target->setMarkerControlModel(markerControl.model);
+
+	connect(target, &MainWindow::newWindowRequested,
+	        this, &GuiState::addWindow);
+	connect(target, &MainWindow::closeWindowRequested, this,
+	        [this,id=it->first] { removeWindow(id); });
+	connect(target, &MainWindow::markerFlipped, this, &GuiState::flipMarker);
+	connect(target, &MainWindow::markerToggled, this, &GuiState::toggleMarker);
+
+	// pick latest dataset as a starting point
+	auto datasets = hub.datasets();
+	if (!datasets.empty())
+		target->setDataset(hub.datasets().rbegin()->second);
+
+	target->show();
+	return it->first;
+}
+
+void GuiState::removeWindow(unsigned id)
+{
+	auto w = windows.at(id);
+	w->deleteLater(); // do not delete a window within its close event
+	windows.erase(id);
+	if (windows.empty())
+		QApplication::quit();
+}
+
+void GuiState::addDataset(Dataset::Ptr dataset)
+{
+	auto conf = dataset->config();
+	auto parent = (conf.parent ? datasetControl.items.at(conf.parent)
+	                           : datasetControl.model->invisibleRootItem()); // top level
+	auto item = new QStandardItem(conf.name);
+	item->setData(dataset->id(), Qt::UserRole);
+	item->setData(QVariant::fromValue(dataset), Qt::UserRole + 1);
+	parent->appendRow(item);
+	datasetControl.items[conf.id] = item;
+
+	// auto-select
+	for (auto &[k, v] : windows)
+		v->setDataset(dataset);
+}
+
+void GuiState::addProtein(ProteinId id, const Protein &protein)
+{
+	/* setup new item */
+	auto item = new QStandardItem;
+	item->setText(protein.name);
+	item->setData(id);
+	item->setCheckable(true);
+	item->setCheckState(Qt::Unchecked);
+
+	/* add item to model */
+	markerControl.model->appendRow(item);
+	markerControl.items[id] = item;
+
+	/* ensure items are sorted in the end, but defer sorting */
+	markerControl.dirty = true;
+	QTimer::singleShot(0, this, &GuiState::sortMarkerModel);
+}
+
+void GuiState::flipMarker(QModelIndex i)
+{
+	if (!i.isValid())
+		return; // didn't click on a row, e.g. clicked on a checkmark
+	while (auto proxy = qobject_cast<const QAbstractProxyModel*>(i.model()))
+		i = proxy->mapToSource(i);
+	auto item = markerControl.model->itemFromIndex(i);
+	if (!item->isEnabled())
+		return;
+	item->setCheckState(item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked);
+}
+
+void GuiState::toggleMarker(ProteinId id, bool present)
+{
+	markerControl.items.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
+}
+
+void GuiState::setupMarkerControl()
+{
+	markerControl.model = new QStandardItemModel(this);
+	connect(markerControl.model, &QStandardItemModel::itemChanged,
+	        [this] (QStandardItem *i) {
+		// TODO this is called also when items are enabled/disabled
+		// and that happens for quite many proteins at once :-/
+		auto id = ProteinId(i->data().toInt());
+		bool wanted = i->checkState() == Qt::Checked;
+		if (hub.proteins.peek()->markers.count(id) == wanted)
+			return;
+		if (wanted)
+			hub.proteins.addMarker(id);
+		else
+			hub.proteins.removeMarker(id);
+	});
+}
+
+void GuiState::sortMarkerModel()
+{
+	if (!markerControl.dirty) // already in good state
+		return;
+	markerControl.model->sort(0);
+	markerControl.dirty = false;
+}
+

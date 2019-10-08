@@ -204,9 +204,6 @@
     <number>1</number>
    </attribute>
    <widget class="QWidget" name="markerWidget">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
     <layout class="QVBoxLayout" name="verticalLayout_4">
      <property name="leftMargin">
       <number>0</number>
@@ -246,6 +243,9 @@
        </property>
        <property name="horizontalScrollBarPolicy">
         <enum>Qt::ScrollBarAlwaysOff</enum>
+       </property>
+       <property name="editTriggers">
+        <set>QAbstractItemView::NoEditTriggers</set>
        </property>
        <property name="selectionMode">
         <enum>QAbstractItemView::NoSelection</enum>

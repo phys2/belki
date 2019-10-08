@@ -12,17 +12,16 @@
 #include "profiles/profiletab.h"
 #include "featweights/featweightstab.h"
 
-#include <QTreeWidget>
+#include <QTreeView>
 #include <QFileInfo>
 #include <QDir>
 #include <QCompleter>
-#include <QStandardItemModel>
 #include <QAbstractProxyModel>
+#include <QStandardItemModel>
 #include <QLabel>
 #include <QToolButton>
 #include <QMessageBox>
 #include <QInputDialog>
-#include <QTimer>
 #include <QMimeData>
 #include <QWidgetAction>
 #include <QShortcut>
@@ -35,7 +34,6 @@ MainWindow::MainWindow(DataHub &hub) :
 	setupUi(this);
 	setupToolbar();
 	setupTabs();
-	setupMarkerControls();
 	setupSignals(); // after setupToolbar(), signal handlers rely on initialized actions
 	setupActions();
 
@@ -45,15 +43,6 @@ MainWindow::MainWindow(DataHub &hub) :
 
 void MainWindow::setupToolbar()
 {
-	// setup datasets selection model+view
-	datasetTree = new QTreeWidget(this);
-	datasetTree->setHeaderHidden(true);
-	datasetTree->setFrameShape(QFrame::Shape::NoFrame);
-	datasetTree->setSelectionMode(QTreeWidget::SelectionMode::NoSelection);
-	datasetTree->setItemsExpandable(false);
-	datasetSelect->setModel(datasetTree->model());
-	datasetSelect->setView(datasetTree);
-
 	// put datasets and some space before partition area
 	auto anchor = actionShowStructure;
 	toolBar->insertWidget(anchor, datasetLabel);
@@ -116,25 +105,18 @@ void MainWindow::setupSignals()
 	connect(io, &FileIO::ioError, this, &MainWindow::displayMessage);
 
 	/* notifications from Protein db */
-	connect(&hub.proteins, &ProteinDB::proteinAdded, this, &MainWindow::addProtein);
-	connect(&hub.proteins, &ProteinDB::markersToggled, this, [this] (auto ids, bool present) {
-		auto state = present ? Qt::Checked : Qt::Unchecked;
-		for (auto id : ids)
-			this->markerItems.at(id)->setCheckState(state);
-	});
 	connect(&hub.proteins, &ProteinDB::structureAvailable, this,
 	        [this] (unsigned id, QString name, bool select) {
+		// TODO move to GuiState
 		auto icon = (hub.proteins.peek()->isHierarchy(id) ? "hierarchy" : "annotations");
 		structureSelect->addItem(QIcon(QString(":/icons/type-%1.svg").arg(icon)), name, id);
 		if (select)
 			selectStructure((int)id);
 	});
 
-	connect(&hub, &DataHub::newDataset, this, &MainWindow::newDataset);
-
 	/* selecting dataset */
 	connect(datasetSelect, qOverload<int>(&QComboBox::activated), [this] {
-		setDataset(datasetSelect->currentData().value<Dataset::Ptr>());
+		setDataset(datasetSelect->currentData(Qt::UserRole + 1).value<Dataset::Ptr>());
 	});
 	connect(this, &MainWindow::datasetSelected, [this] { profiles->setData(data); });
 	connect(this, &MainWindow::datasetSelected, this, &MainWindow::setSelectedDataset);
@@ -235,11 +217,28 @@ void MainWindow::setupActions()
 		// TODO: change our project filename to this one
 	});
 }
-
-void MainWindow::setupMarkerControls()
+void MainWindow::setDatasetControlModel(QStandardItemModel *m)
 {
-	/* setup completer with empty model */
-	auto m = new QStandardItemModel(this);
+	// setup datasets selection model+view
+	datasetTree = new QTreeView(this);
+	datasetTree->setModel(m);
+	datasetTree->setHeaderHidden(true);
+	datasetTree->setFrameShape(QFrame::Shape::NoFrame);
+	datasetTree->setSelectionMode(QTreeView::SelectionMode::NoSelection);
+	datasetTree->setItemsExpandable(false);
+	datasetSelect->setModel(datasetTree->model());
+	datasetSelect->setView(datasetTree);
+
+	connect(m, &QStandardItemModel::rowsInserted, [this] {
+		datasetTree->expandAll();
+	});
+}
+
+void MainWindow::setMarkerControlModel(QStandardItemModel *source)
+{
+	/* setup completer with model */
+	markerModel.setSourceModel(source);
+	auto m = &markerModel;
 	auto cpl = new QCompleter(m, this);
 	cpl->setCaseSensitivity(Qt::CaseInsensitive);
 	// we expect model entries to be sorted
@@ -248,36 +247,13 @@ void MainWindow::setupMarkerControls()
 	protSearch->setCompleter(cpl);
 	protList->setModel(cpl->completionModel());
 
-	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
-		auto id = ProteinId(i->data().toInt());
-		// TODO this is called also when items are enabled/disabled
-		// and that happens for quite many proteins at once :-/
-		// it leads to unnecessary work, in this case ProteinDB will write-lock
-		if (i->checkState() == Qt::Checked)
-			hub.proteins.addMarker(id);
-		else
-			hub.proteins.removeMarker(id);
-	});
-
-	auto toggler = [m] (QModelIndex i) {
-		if (!i.isValid())
-			return; // didn't click on a row, e.g. clicked on a checkmark
-		auto proxy = qobject_cast<const QAbstractProxyModel*>(i.model());
-		if (!proxy)
-			return; // sorry, can't do this!
-		auto item = m->itemFromIndex(proxy->mapToSource(i));
-		if (!item->isEnabled())
-			return;
-		item->setCheckState(item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked);
-	};
-
 	/* Allow to toggle check state by click */
-	connect(protList, &QListView::clicked, toggler);
+	connect(protList, &QListView::clicked, this, &MainWindow::markerFlipped);
 
 	/* Allow to toggle by pressing <Enter> in protSearch */
-	connect(protSearch, &QLineEdit::returnPressed, [this, cpl, toggler] {
+	connect(protSearch, &QLineEdit::returnPressed, [this, cpl] {
 		if (cpl->currentCompletion() == protSearch->text()) // still relevant
-			toggler(cpl->currentIndex());
+			emit markerFlipped(cpl->currentIndex());
 	});
 
 	/* Implement behavior such as updating the filter also when a character is removed.
@@ -289,34 +265,6 @@ void MainWindow::setupMarkerControls()
 		}
 		lastText = text;
 	});
-}
-
-void MainWindow::resetMarkerControls()
-{
-	/* enable only proteins that are found in current dataset */
-	if (data) {
-		auto d = data->peek<Dataset::Base>();
-		for (auto& [id, item] : markerItems)
-			item->setEnabled(d->protIndex.count(id));
-	} else {
-		for (auto& [id, item] : markerItems)
-			item->setEnabled(false);
-	}
-}
-
-void MainWindow::finalizeMarkerItems()
-{
-	if (markerWidget->isEnabled()) // already in good state
-		return;
-
-	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
-	m->sort(0);
-	markerWidget->setEnabled(true); // we are in good state now
-}
-
-void MainWindow::toggleMarker(ProteinId id, bool present)
-{
-	markerItems.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 }
 
 void MainWindow::addTab(MainWindow::Tab type)
@@ -342,7 +290,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 	connect(this, &MainWindow::orderChanged, v, &Viewer::changeOrder);
 
 	// connect signalling out of view
-	connect(v, &Viewer::markerToggled, this, &MainWindow::toggleMarker);
+	connect(v, &Viewer::markerToggled, this, &MainWindow::markerToggled);
 	connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateProteins);
 
 	auto renderSlot = [this] (auto r, auto d) { io->renderToFile(r, {title, d}); };
@@ -389,8 +337,15 @@ void MainWindow::addTab(MainWindow::Tab type)
 
 void MainWindow::updateState(Dataset::Touched affected)
 {
-	if (affected & Dataset::Touch::BASE)
-		resetMarkerControls();
+	if (affected & Dataset::Touch::BASE) {
+		markerModel.available.clear();
+		if (data) {
+			auto d = data->peek<Dataset::Base>();
+			for (auto &id : d->protIds)
+				markerModel.available.insert(id);
+		}
+		protList->reset();
+	}
 
 	if (!data) {
 		/* hide and disable widgets that need data or even more */
@@ -424,23 +379,6 @@ void MainWindow::updateState(Dataset::Touched affected)
 			granularitySlider->setMaximum(reasonable);
 		}
 	}
-}
-
-void MainWindow::newDataset(Dataset::Ptr dataset)
-{
-	/* add to datasets */
-	auto conf = dataset->config();
-	auto parent = (conf.parent ? datasetItems.at(conf.parent)
-	                           : datasetTree->invisibleRootItem()); // top level
-	auto item = new QTreeWidgetItem(parent);
-	item->setExpanded(true);
-	item->setText(0, conf.name);
-	item->setData(0, Qt::UserRole, QVariant::fromValue(dataset));
-	datasetItems[conf.id] = item;
-
-	/* auto select */
-	setDataset(dataset);
-	toolbarActions.datasets->setEnabled(true);
 }
 
 void MainWindow::setDataset(Dataset::Ptr selected)
@@ -481,16 +419,34 @@ void MainWindow::setFilename(QString name)
 	setWindowFilePath(name);
 }
 
-void MainWindow::setSelectedDataset(unsigned index)
+#include <iostream>
+
+void MainWindow::setSelectedDataset(unsigned id)
 {
+	auto model = qobject_cast<QStandardItemModel*>(datasetTree->model());
+	std::function<QModelIndex(QModelIndex)> search;
+	search = [&] (QModelIndex parent) -> QModelIndex {
+		std::cerr << model->rowCount(parent) << "\t";
+		for (int r = 0; r < model->rowCount(parent); ++r) {
+	        QModelIndex index = model->index(r, 0, parent);
+	        if (model->data(index, Qt::UserRole) == id)
+				return index;
+	        if (model->hasChildren(index))
+				return search(index);
+	    }
+		return {};
+	};
+	auto index = search(model->invisibleRootItem()->index());
+	std::cerr << id << "\t" << index.row() << std::endl;
+
 	/* this is a tad tricky to do due to Qt interface limitations */
 	// make item current in tree to get hold of its index
-	datasetTree->setCurrentItem(datasetItems.at(index));
+	datasetTree->setCurrentIndex(index);
 	// make item's parent reference point and provide index in relation to parent
 	datasetSelect->setRootModelIndex(datasetTree->currentIndex().parent());
 	datasetSelect->setCurrentIndex(datasetTree->currentIndex().row());
 	// reset combobox to display full tree again
-	datasetTree->setCurrentItem(datasetTree->invisibleRootItem());
+	datasetTree->setCurrentIndex(model->invisibleRootItem()->index());
 	datasetSelect->setRootModelIndex(datasetTree->currentIndex());
 }
 
@@ -581,27 +537,6 @@ void MainWindow::displayMessage(const QString &message, MessageType type)
 	}
 }
 
-void MainWindow::addProtein(ProteinId id, const Protein &protein)
-{
-	/* setup new item */
-	auto item = new QStandardItem;
-	item->setText(protein.name);
-	item->setData(id);
-	item->setCheckable(true);
-	item->setCheckState(Qt::Unchecked);
-	// expect new protein not to be in current dataset (yet)
-	item->setEnabled(false);
-
-	/* add item to model */
-	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
-	m->appendRow(item);
-	markerItems[id] = item;
-
-	/* ensure items are sorted in the end, but defer sorting */
-	markerWidget->setEnabled(false); // we are "dirty"
-	QTimer::singleShot(0, this, &MainWindow::finalizeMarkerItems);
-}
-
 void MainWindow::applyAnnotations(unsigned id)
 {
 	// TODO guiState.structure.annotationsId = id;
@@ -689,22 +624,11 @@ void MainWindow::closeEvent(QCloseEvent *)
 	emit closeWindowRequested();
 }
 
-unsigned MainWindowRegistry::addWindow()
+Qt::ItemFlags MainWindow::CustomEnableProxyModel::flags(const QModelIndex &index) const
 {
-	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(hub));
-	connect(it->second, &MainWindow::newWindowRequested,
-	        this, &MainWindowRegistry::addWindow);
-	connect(it->second, &MainWindow::closeWindowRequested, this,
-	        [this,id=it->first] { removeWindow(id); });
-	it->second->show();
-	return it->first;
-}
-
-void MainWindowRegistry::removeWindow(unsigned id)
-{
-	auto w = windows.at(id);
-	w->deleteLater(); // do not delete a window within its close event
-	windows.erase(id);
-	if (windows.empty())
-		QApplication::quit();
+	auto flags = sourceModel()->flags(mapToSource(index));
+	flags.setFlag(Qt::ItemFlag::ItemIsEnabled,
+	              available.empty() ? false :
+	                                  available.count(data(index, Qt::UserRole + 1).toInt()));
+	return flags;
 }

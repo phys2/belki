@@ -6,35 +6,18 @@
 #include "utils.h"
 
 #include <QMainWindow>
+#include <QIdentityProxyModel>
 
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 
 class DataHub;
 class FileIO;
 class QLabel;
-class QStandardItem;
-class QTreeWidget;
-class QTreeWidgetItem;
-class MainWindow;
-
-class MainWindowRegistry : public QObject
-{
-	Q_OBJECT
-
-public:
-	explicit MainWindowRegistry(DataHub &hub) : hub(hub) {}
-
-public slots:
-	unsigned addWindow();
-	void removeWindow(unsigned id);
-
-protected:
-	std::map<unsigned, MainWindow*> windows;
-	unsigned nextId = 1;
-
-	DataHub &hub;
-};
+class QTreeView;
+class QStandardItemModel;
+class QTreeWidgetItem; // todo remove
 
 class MainWindow : public QMainWindow, private Ui::MainWindow
 {
@@ -46,20 +29,21 @@ public:
 	const QString& getTitle() const { return title; }
 	FileIO *getIo() { return io; }
 
+	void setDatasetControlModel(QStandardItemModel *m);
+	void setMarkerControlModel(QStandardItemModel *m);
+
 public slots:
 	void showHelp();
 	void displayMessage(const QString &message, MessageType type = MessageType::CRITICAL);
-
-	void addProtein(ProteinId id, const Protein &protein);
-	void toggleMarker(ProteinId id, bool present);
-
-	void newDataset(Dataset::Ptr data);
+	void setDataset(Dataset::Ptr data);
 
 signals:
 	void newWindowRequested();
 	void closeWindowRequested();
 	void datasetSelected(unsigned id);
 	void orderChanged(Dataset::OrderBy reference, bool synchronize);
+	void markerFlipped(QModelIndex i);
+	void markerToggled(ProteinId id, bool present);
 
 protected:
 	enum class Input {
@@ -73,11 +57,20 @@ protected:
 		DIMRED, SCATTER, HEATMAP, DISTMAT, PROFILES, FEATWEIGHTS
 	};
 
+	struct CustomEnableProxyModel : QIdentityProxyModel {
+		using QIdentityProxyModel::QIdentityProxyModel;
+
+		Qt::ItemFlags flags(const QModelIndex &index) const override;
+
+		// TODO: use more clever/efficient cache which items should be enabled (in itemdata?)
+		// esp. we can do it per-dataset instead of per-window
+		std::unordered_set<ProteinId> available;
+	};
+
 	void dragEnterEvent(QDragEnterEvent *event) override;
 	void dropEvent(QDropEvent *event) override;
 	void closeEvent(QCloseEvent* event) override;
 
-	void setDataset(Dataset::Ptr data);
 	void updateState(Dataset::Touched affected);
 	void openFile(Input type, QString filename = {});
 
@@ -85,14 +78,11 @@ protected:
 	void setupTabs();
 	void setupSignals();
 	void setupActions();
-	void setupMarkerControls();
-	void resetMarkerControls();
-	void finalizeMarkerItems();
 
 	void addTab(Tab type);
 
 	void setFilename(QString name);
-	void setSelectedDataset(unsigned index);
+	void setSelectedDataset(unsigned id);
 	void selectStructure(int id);
 
 	void applyAnnotations(unsigned id);
@@ -107,9 +97,8 @@ protected:
 
 	QString title;
 
-	QTreeWidget *datasetTree;
-	std::map<unsigned, QTreeWidgetItem*> datasetItems;
-	std::unordered_map<ProteinId, QStandardItem*> markerItems;
+	CustomEnableProxyModel markerModel;
+	QTreeView *datasetTree;
 
 	FileIO *io;
 

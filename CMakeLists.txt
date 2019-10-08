@@ -73,6 +73,7 @@ target_sources(${APP_NAME} PRIVATE
 	datahub.h datahub.cpp
 	dataset.h dataset.cpp
 	fileio.h fileio.cpp
+	guistate.h guistate.cpp
 	model.h
 	proteindb.h proteindb.cpp
 	storage.h storage.cpp
