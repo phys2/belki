@@ -555,6 +555,7 @@ void MainWindow::openFile(Input type, QString fn)
 
 void MainWindow::showHelp()
 {
+	// TODO this leads to an awkward window format that doesn't fit on screen
 	QMessageBox box(this);
 	box.setWindowTitle("Help");
 	box.setIcon(QMessageBox::Information);
