@@ -124,8 +124,12 @@ void ProfileChart::finalize() {
 
 void ProfileChart::setupSeries()
 {
-	//if (content.empty())
-	//	return;
+	if (content.empty())
+		return;
+
+	/* TODO: rework this so we only setup what is seen on screen, and use
+	 * insertSeries() on toggles. Note that we might also need a legendmarker
+	 * sorting functionality. */
 
 	if (showAverage && stats.mean.empty()) {
 		computeStats();
