@@ -1,65 +1,51 @@
 #include "heatmapscene.h"
+#include "compute/colors.h"
 
 #include <QPainter>
 #include <QGraphicsItem>
+#include <QGraphicsSceneHoverEvent>
 
-#include <QtDebug>
-
-HeatmapScene::HeatmapScene(Dataset &data) : data(data)
+HeatmapScene::HeatmapScene(Dataset::Ptr data) : data(data)
 {
+	auto d = data->peek<Dataset::Base>();
 
-}
-
-void HeatmapScene::setScale(qreal scale)
-{
-	pixelScale = scale;
-	// markers use pixelScale
-	for (auto& [i, m] : markers)
-		m.rearrange(profiles[i]->pos());
-}
-
-void HeatmapScene::reset(bool haveData)
-{
-	profiles.clear();
-	markers.clear();
-	clear(); // removes & deletes all items (ie. profiles)
-
-	if (!haveData) {
-		return;
-	}
-
-	auto d = data.peek();
-
-	/* build up scene with new data */
-	profiles.resize((unsigned)d->features.size());
+	/* build up scene with data */
+	profiles.resize(d->features.size());
 	for (unsigned i = 0; i < profiles.size(); ++i) {
 		// setup profile graphics item
-		auto h = new Profile(i, d->features[(int)i]);
+		auto h = new Profile(i, d);
 		h->setBrush(Qt::transparent);
 
 		// add to scene and our own container
 		addItem(h);
 		profiles[i] = h;
 	}
-
-	// empty data shouldn't happen but right now can when a file cannot be read completely,
-	// in the future this should result in IOError already earlier
-	if (profiles.empty())
-		return;
+	// note: order will be done in first rearrange() (when view is available)
+	// note: colors will be done in first recolor() by updateColorset()
 
 	// save for later
 	layout.columnWidth = profiles[0]->boundingRect().width();
 
-	// arrange screen in case we already got a view up
-	if (viewport.isValid())
-		rearrange(viewport);
+	/* setup updates from dataset */
+	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
+		if (touched & Dataset::Touch::ORDER)
+			reorder();
+		if (touched & Dataset::Touch::CLUSTERS)
+			recolor();
+	});
+}
+
+void HeatmapScene::setScale(qreal scale)
+{
+	pixelScale = scale;
+	// markers use pixelScale
+	for (auto& [_, m] : markers)
+		m.rearrange(profiles[m.sampleIndex]->pos());
 }
 
 void HeatmapScene::rearrange(QSize newViewport)
 {
 	viewport = newViewport; // keep information in case we have to stop here
-	if (profiles.empty())
-		return;
 
 	auto aspect = (viewport.width() / layout.columnWidth) / viewport.height();
 	layout.columns = (unsigned)std::floor(std::sqrt(profiles.size() * aspect));
@@ -69,7 +55,7 @@ void HeatmapScene::rearrange(QSize newViewport)
 
 void HeatmapScene::rearrange(unsigned columns)
 {
-	if (!columns || profiles.empty())
+	if (!columns)
 		return;
 
 	layout.rows = (unsigned)std::ceil(profiles.size() / (float)columns);
@@ -88,7 +74,11 @@ void HeatmapScene::reorder()
 	if (!layout.rows) // view is not set-up yet
 		return;
 
-	auto d = data.peek();
+	auto d = data->peek<Dataset::Structure>();
+
+	/* optimization: disable slow stuff as we move everything around */
+	auto indexer = itemIndexMethod();
+	setItemIndexMethod(QGraphicsScene::ItemIndexMethod::NoIndex);
 
 	for (unsigned i = 0; i < profiles.size(); ++i) {
 		auto p = profiles[d->order.index[i]];
@@ -96,24 +86,36 @@ void HeatmapScene::reorder()
 	}
 
 	// sync marker positions
-	for (auto& [i, m] : markers)
-		m.rearrange(profiles[i]->pos());
+	for (auto& [_, m] : markers)
+		m.rearrange(profiles[m.sampleIndex]->pos());
+
+	/* optimization: restore index (used for hover events) */
+	setItemIndexMethod(indexer);
 }
 
-void HeatmapScene::updateColorset(QVector<QColor> colors)
+void HeatmapScene::updateMarkers()
 {
-	colorset = colors;
-	recolor();
-	// TODO: re-initialize markers
+	auto p = data->peek<Dataset::Proteins>();
+
+	// remove outdated
+	erase_if(markers, [&p] (auto it) { return !p->markers.count(it->first); });
+
+	// insert missing
+	toggleMarkers({p->markers.begin(), p->markers.end()}, true);
 }
 
-void HeatmapScene::toggleMarker(unsigned sampleIndex, bool present)
+void HeatmapScene::toggleMarkers(const std::vector<ProteinId> &ids, bool present)
 {
-	if (present) {
-		auto pos = profiles[sampleIndex]->pos();
-		markers.try_emplace(sampleIndex, this, sampleIndex, pos);
-	} else {
-		markers.erase(sampleIndex);
+	for (auto id : ids) {
+		if (present) {
+			try {
+				auto index = data->peek<Dataset::Base>()->protIndex.at(id);
+				auto pos = profiles[index]->pos();
+				markers.try_emplace(id, this, index, pos);
+			} catch (...) {}
+		} else {
+			markers.erase(id);
+		}
 	}
 }
 
@@ -125,7 +127,7 @@ void HeatmapScene::togglePartitions(bool show)
 
 void HeatmapScene::recolor()
 {
-	auto d = data.peek();
+	auto d = data->peek<Dataset::Structure>();
 	if (!showPartitions || d->clustering.empty()) {
 		for (auto &p : profiles)
 			p->setBrush(Qt::transparent);
@@ -137,7 +139,7 @@ void HeatmapScene::recolor()
 		const auto &assoc = d->clustering.memberships[i];
 		switch (assoc.size()) {
 		case 1:
-			profiles[i]->setBrush(d->clustering.clusters[*assoc.begin()].color);
+			profiles[i]->setBrush(d->clustering.groups.at(*assoc.begin()).color);
 			break;
 		default: // TODO: maybe set to White on multiple memberships
 			profiles[i]->setBrush(Qt::transparent);
@@ -146,17 +148,23 @@ void HeatmapScene::recolor()
 	update();
 }
 
-HeatmapScene::Profile::Profile(unsigned index, const std::vector<double> &features, QGraphicsItem *parent)
-    : QAbstractGraphicsShapeItem(parent),
-      index(index), features(features)
+HeatmapScene::Profile::Profile(unsigned index, View<Dataset::Base> &d)
+    : index(index)
 {
+	features = Colormap::prepare(cv::Mat(d->features[index]),
+	                             d->featureRange.scale(), d->featureRange.min);
+	if (d->hasScores()) {
+		// apply score colormap flipped (low scores are better)
+		scores = Colormap::stoplight_mild.apply(cv::Mat(d->scores[index]) * -1.,
+		                         d->scoreRange.scale(), -d->scoreRange.max);
+	}
 	setAcceptHoverEvents(true);
 }
 
 QRectF HeatmapScene::Profile::boundingRect() const
 {
 	auto s = scene()->style;
-	return {0, 0, 2. * s.margin + (qreal)features.size() * s.expansion, 1};
+	return {0, 0, 2. * s.margin + features.rows * s.expansion, 1};
 }
 
 void HeatmapScene::Profile::paint(QPainter *painter, const QStyleOptionGraphicsItem*, QWidget*)
@@ -181,11 +189,13 @@ void HeatmapScene::Profile::paint(QPainter *painter, const QStyleOptionGraphicsI
 	if (b.color() != Qt::transparent)
 		painter->fillRect(QRectF(0, 0, s.margin, 1), b.color());
 
-	painter->fillRect(QRectF(s.margin, 0, (qreal)features.size() * s.expansion, 1),
+	painter->fillRect(QRectF(s.margin, 0, features.rows * s.expansion, 1),
 	                  highlight ? s.cursor : bg);
 
-	for (unsigned i = 0; i < features.size(); ++i) {
-		fg.setAlphaF(features[i]);
+	for (auto i = 0; i < features.rows; ++i) {
+		if (!scores.empty())
+			fg = Colormap::qcolor(scores(i, 0));
+		fg.setAlpha(features(i, 0));
 		QRectF r(s.margin + i * s.expansion, 0, s.expansion, 1);
 		painter->fillRect(r, fg);
 	}
@@ -206,13 +216,26 @@ void HeatmapScene::Profile::hoverLeaveEvent(QGraphicsSceneHoverEvent*)
 	update();
 }
 
+void HeatmapScene::Profile::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
+{
+	// display a tooltip to expose the dimension the mouse is over
+	auto s = scene()->style;
+	auto index = int((event->pos().x() - s.margin) / s.expansion);
+	if (index < 0 || index >= features.rows) {
+		setToolTip({});
+		return;
+	}
+	setToolTip(scene()->data->peek<Dataset::Base>()->dimensions.at(index));
+}
+
 HeatmapScene::Marker::Marker(HeatmapScene *scene, unsigned sampleIndex, const QPointF &pos)
     : sampleIndex(sampleIndex)
 {
-	auto meta = scene->data.peek()->proteins[sampleIndex];
+	auto p = scene->data->peek<Dataset::Proteins>();
+	auto &meta = scene->data->peek<Dataset::Base>()->lookup(p, sampleIndex);
 
 	QBrush fill(QColor{0, 0, 0, 127});
-	QPen outline(meta.color.dark(300));
+	QPen outline(meta.color.darker(300));
 	outline.setCosmetic(true);
 	backdrop.reset(scene->addRect({}));
 	backdrop->setBrush(fill);

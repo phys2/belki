@@ -4,6 +4,8 @@
 #include "ui_heatmaptab.h"
 #include "viewer.h"
 
+#include <memory>
+
 class HeatmapScene;
 
 class HeatmapTab : public Viewer, private Ui::HeatmapTab
@@ -12,12 +14,25 @@ class HeatmapTab : public Viewer, private Ui::HeatmapTab
 
 public:
 	explicit HeatmapTab(QWidget *parent = nullptr);
-	void init(Dataset *data) override;
+
+	void selectDataset(unsigned id) override;
+	void addDataset(Dataset::Ptr data) override;
 
 protected:
-	void setupOrderUI();
+	struct DataState : public Viewer::DataState {
+		std::unique_ptr<HeatmapScene> scene;
+	};
 
-	HeatmapScene *scene;
+	void setupOrderUI();
+	void updateEnabled();
+
+	struct {
+		bool singleColumn = false;
+		bool showPartitions; // initialized by MainWindow
+	} guiState;
+
+	ContentMap<DataState> content;
+	Current<DataState> current;
 };
 
 #endif // HEATMAPTAB_H

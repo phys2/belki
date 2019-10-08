@@ -50,8 +50,7 @@ bool FAMS::MergedMode::invalidateIfSmall(int smallest)
 std::pair<double, int>
 FAMS::findClosest(const Mode& mode, const std::vector<MergedMode> &foomodes) {
 	// distance and index
-	std::pair<double, int> closest
-			= std::make_pair(std::numeric_limits<double>::infinity(), -1);
+	auto closest = std::make_pair(std::numeric_limits<double>::infinity(), -1);
 
 	for (size_t i = 0; i < foomodes.size(); i++) {
 		if (!foomodes[i].valid)

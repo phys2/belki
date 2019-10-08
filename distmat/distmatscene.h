@@ -11,16 +11,13 @@
 #include <QGraphicsLineItem>
 
 #include <map>
+#include <unordered_map>
 
 class DistmatScene : public GraphicsScene
 {
 	Q_OBJECT
 public:
-	enum class Direction {
-		PER_PROTEIN,
-		PER_DIMENSION,
-	};
-	Q_ENUM(Direction)
+	using Direction = Dataset::Direction;
 
 	struct LegendItem
 	{
@@ -42,7 +39,7 @@ public:
 	};
 
 	struct Marker : public LegendItem {
-		Marker(DistmatScene* scene, unsigned sampleIndex);
+		Marker(DistmatScene* scene, unsigned sampleIndex, ProteinId id);
 
 		unsigned sampleIndex;
 	};
@@ -61,26 +58,28 @@ public:
 		std::map<Qt::Edge, QGraphicsPixmapItem*> items;
 	};
 
-	DistmatScene(Dataset &data);
+	DistmatScene(Dataset::Ptr data, bool dialogMode = false);
 
 	void setViewport(const QRectF &rect, qreal scale) override;
 
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
+	void selectionChanged(const std::vector<bool> dimensionSelected);
 
 public slots:
-	void reset(bool haveData = false);
-	void setDirection(DistmatScene::Direction direction);
+	void setDirection(Direction direction);
 	void reorder();
 	void recolor();
 
 	void updateColorset(QVector<QColor> colors);
 
-	void toggleMarker(unsigned sampleIndex, bool present);
+	void updateMarkers();
+	void toggleMarkers(const std::vector<ProteinId> &ids, bool present);
 	void togglePartitions(bool showPartitions);
 
 protected:
 	void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
+	void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
 
 	void setDisplay();
 	void rearrange();
@@ -88,20 +87,25 @@ protected:
 	void updateRenderQuality();
 	qreal computeCoord(unsigned sampleIndex);
 
-	Direction currentDirection = Direction::PER_PROTEIN;
+	Direction currentDirection = Direction::PER_DIMENSION;
 	std::map<Direction, Distmat> matrices;
 
-	Dataset &data;
+	Dataset::Ptr data;
 	QVector<QColor> colorset;
 
 	QGraphicsPixmapItem *display;
 
+	// we are used in a dialog
+	bool dialogMode;
 	// annotations used in PER_PROTEIN:
 	bool showPartitions = true;
 	Clusterbars clusterbars;
-	std::map<unsigned, Marker> markers;
+	std::unordered_map<ProteinId, Marker> markers;
 	// annotations used in PER_DIRECTION:
-	std::vector<LegendItem> dimensionLabels;
+	std::map<unsigned, LegendItem> dimensionLabels;
+
+	// dialog mode: selectable dimensions
+	std::vector<bool> dimensionSelected;
 };
 
 #endif // DISTMATSCENE_H

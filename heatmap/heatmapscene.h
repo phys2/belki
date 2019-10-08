@@ -7,6 +7,9 @@
 #include <QGraphicsScene>
 #include <QAbstractGraphicsShapeItem>
 
+#include <opencv2/core.hpp>
+#include <unordered_map>
+
 class HeatmapScene : public QGraphicsScene
 {
 	Q_OBJECT
@@ -14,14 +17,16 @@ public:
 
 	struct Profile : public QAbstractGraphicsShapeItem
 	{
-		Profile(unsigned index, const std::vector<double> &features, QGraphicsItem *parent = nullptr);
+		Profile(unsigned index, View<Dataset::Base> &data);
 
 		QRectF boundingRect() const override;
 		void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
 		unsigned index;
-		 // feature vector (own copy), TODO: we could avoid a copy but would need to lock dataset…
-		std::vector<double> features;
+		// feature vector as alpha values (0…255)
+		cv::Mat1b features;
+		// scores as color values (RGB)
+		cv::Mat3b scores;
 
 	protected:
 		// override for internal use (does not work through pointer! scene() is non-virtual)
@@ -29,6 +34,7 @@ public:
 
 		void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
 		void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
+		void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
 
 		bool highlight = false;
 	};
@@ -50,7 +56,7 @@ public:
 		std::unique_ptr<QGraphicsRectItem> backdrop;
 	};
 
-	HeatmapScene(Dataset &data);
+	HeatmapScene(Dataset::Ptr data);
 
 	void setScale(qreal scale);
 
@@ -58,23 +64,21 @@ signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
 
 public slots:
-	void reset(bool haveData = false);
 	void rearrange(QSize viewport);
 	void rearrange(unsigned columns);
 	void recolor();
 	void reorder();
 
-	void updateColorset(QVector<QColor> colors);
-
-	void toggleMarker(unsigned sampleIndex, bool present);
+	void updateMarkers();
+	void toggleMarkers(const std::vector<ProteinId> &ids, bool present);
 	void togglePartitions(bool showPartitions);
 
 protected:
-	Dataset &data;
+	Dataset::Ptr data;
 
 	struct {
 		QColor bg = Qt::white, fg = Qt::black;
-		QColor cursor = Qt::red;
+		QColor cursor = Qt::blue;
 		bool inverted = true;
 		bool mixin = true;
 
@@ -83,14 +87,13 @@ protected:
 	} style;
 
 	struct {
-		unsigned rows, columns = 1;
+		unsigned rows = 0, columns = 1;
 		qreal columnWidth = 0.;
 	} layout;
 
 	std::vector<Profile*> profiles;
-	std::map<unsigned, Marker> markers;
+	std::unordered_map<ProteinId, Marker> markers;
 	bool showPartitions = true;
-	QVector<QColor> colorset;
 
 	QSize viewport; // size of the viewport in _screen_ coordinates
 	qreal pixelScale; // size of a pixel in scene coordinates

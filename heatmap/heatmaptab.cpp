@@ -11,34 +11,63 @@ HeatmapTab::HeatmapTab(QWidget *parent) :
 	auto* spacer = new QWidget();
 	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	toolBar->insertWidget(actionSavePlot, spacer);
+
+	/* connect toolbar actions */
+	connect(actionToggleSingleCol, &QAction::toggled, [this] (bool toggle) {
+		guiState.singleColumn = toggle;
+		if (current)
+			view->setColumnMode(toggle);
+	});
+	connect(actionSavePlot, &QAction::triggered, [this] {
+		if (current)
+			emit exportRequested(current().scene.get(), "Heatmap");
+	});
+
+	/* connect incoming signals */
+	connect(this, &Viewer::inTogglePartitions, [this] (bool show) {
+		guiState.showPartitions = show;
+		if (current)
+			current().scene->togglePartitions(show);
+	});
+	connect(this, &Viewer::inToggleMarkers, [this] (auto ids, bool present) {
+		// we do not keep track of markers for inactive scenes
+		if (current)
+			current().scene->toggleMarkers(ids, present);
+	});
+
+	/* propagate initial state */
+	actionToggleSingleCol->setChecked(guiState.singleColumn);
+
+	updateEnabled();
 }
 
-void HeatmapTab::init(Dataset *data)
+void HeatmapTab::selectDataset(unsigned id)
 {
-	scene = new HeatmapScene(*data);
+	current = {id, &content[id]};
+	updateEnabled();
 
-	connect(this, &Viewer::inUpdateColorset, scene, &HeatmapScene::updateColorset);
-	connect(this, &Viewer::inReset, scene, &HeatmapScene::reset);
-	connect(this, &Viewer::inRepartition, [this] (bool withOrder) {
-		if (withOrder)
-			scene->reorder();
-		scene->recolor();
-	});
-	connect(this, &Viewer::inReorder, scene, &HeatmapScene::reorder);
-	connect(this, &Viewer::inToggleMarker, scene, &HeatmapScene::toggleMarker);
-	connect(this, &Viewer::inTogglePartitions, scene, &HeatmapScene::togglePartitions);
+	if (!current)
+		return;
 
-	connect(scene, &HeatmapScene::cursorChanged, this, &Viewer::cursorChanged);
-
-	// we are good to go on reset(true), but not on reset(false)
-	connect(this, &Viewer::inReset, [this] (bool haveData) { setEnabled(haveData); });
-
-	connect(actionToggleSingleCol, &QAction::toggled, view, &HeatmapView::setColumnMode);
-	connect(actionSavePlot, &QAction::triggered, [this] {
-		emit exportRequested(scene, "Heatmap");
-	});
-
+	// pass guiState onto scene
+	auto scene = current().scene.get();
+	scene->togglePartitions(guiState.showPartitions);
+	scene->updateMarkers();
 	view->setScene(scene);
+	view->setColumnMode(guiState.singleColumn);
+}
+
+void HeatmapTab::addDataset(Dataset::Ptr data)
+{
+	auto id = data->id();
+	auto &state = content[id]; // emplace (note: ids are never recycled)
+	state.data = data;
+	state.scene = std::make_unique<HeatmapScene>(data);
+
+	auto scene = state.scene.get();
+
+	/* connect outgoing signals */
+	connect(scene, &HeatmapScene::cursorChanged, this, &Viewer::cursorChanged);
 }
 
 /* Note: shared code between DistmatTab and HeatmapTab */
@@ -70,4 +99,11 @@ void HeatmapTab::setupOrderUI()
 
 	// remove container we picked from
 	orderBar->deleteLater();
+}
+
+void HeatmapTab::updateEnabled()
+{
+	bool on = current;
+	setEnabled(on);
+	view->setVisible(on);
 }

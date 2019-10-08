@@ -1,9 +1,11 @@
-#include "mainwindow.h"
-#include "dataset.h" // to register type
+#include "datahub.h"
+#include "widgets/mainwindow.h"
+#include "utils.h"
 
 #include <QChartView>
 #include <QApplication>
 #include <QIcon>
+#include <QSurfaceFormat>
 
 #include <iostream>
 
@@ -16,24 +18,39 @@ Q_IMPORT_PLUGIN(QSvgIconPlugin)
 
 int main(int argc, char *argv[])
 {
+	std::cout << "Running Belki " PROJECT_VERSION << std::endl;
+
 	// register additional types needed in queued connections
 	qRegisterMetaType<QVector<QColor>>();
-	qRegisterMetaType<Dataset::OrderBy>();
+	qRegisterMetaType<MessageType>();
+
+	// revisit these at a later time
+	QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+	QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
+	// set aliasing for all GL views
+	auto fmt = QSurfaceFormat::defaultFormat();
+	fmt.setSamples(4);
+	QSurfaceFormat::setDefaultFormat(fmt);
 
 	QApplication a(argc, argv);
 
-	// setup our custom icon theme if there is no system theme (e.g. OSX, Windows)
-	if (QIcon::themeName().isEmpty() || QIcon::themeName() == "hicolor")
-		QIcon::setThemeName("Breeze");
+	// setup icons we ship as fallback for theme icons
+	QIcon::setFallbackSearchPaths(QIcon::fallbackSearchPaths() << ":/icons");
+	// on non-theme platforms, we need to tell Qt to even _try_
+	if (QIcon::themeName().isEmpty())
+		QIcon::setThemeName("hicolor");
 
-	MainWindow window;
+	/* start the application */
+	DataHub hub;
+	MainWindow window(hub);
 	window.show();
 
+	/* support some basic arguments */
 	if (argc >= 2) // pass initial filename as single argument
-		window.openDataset(argv[1]);
+		hub.importDataset(argv[1]);
 	if (argc >= 3)
-		window.importAnnotations(argv[2]);
+		hub.importAnnotations(argv[2]);
 
-	std::cout << "Running Belki " PROJECT_VERSION << std::endl;
 	return a.exec();
 }

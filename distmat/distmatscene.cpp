@@ -7,16 +7,43 @@
 
 #include <QtDebug>
 
-DistmatScene::DistmatScene(Dataset &data)
-    : data(data), clusterbars(this)
+DistmatScene::DistmatScene(Dataset::Ptr data, bool dialogMode)
+    : data(data),
+      dialogMode(dialogMode),
+      clusterbars(this)
 {
+	/* set scene rectangle */
+	qreal offset = (dialogMode ? .01 : .1); // some "feel good" borders
+	QRectF rect{QPointF{-offset, -offset}, QPointF{1. + offset, 1. + offset}};
+	if (dialogMode) // hack: provide extra space for labels, educated guess
+		rect.adjust(-1., 0, 0, 0);
+	setSceneRect(rect);
+
+	/* setup display */
 	display = new QGraphicsPixmapItem;
 	display->setShapeMode(QGraphicsPixmapItem::ShapeMode::BoundingRectShape);
-	display->setCursor(Qt::CursorShape::CrossCursor);
+	if (!dialogMode)
+		display->setCursor(Qt::CursorShape::CrossCursor);
 	addItem(display); // scene takes ownership and will clean it up
 
-	qreal offset = .1; // some "feel good" borders
-	setSceneRect({QPointF{-offset, -offset}, QPointF{1. + offset, 1. + offset}});
+	/* setup dimension labels */
+	// after display, for z-order
+	auto dim = data->peek<Dataset::Base>()->dimensions; // QStringList COW
+	dimensionSelected.resize((size_t)dim.size(), true); // all dims selected by default
+	for (int i = 0; i < dim.size(); ++i)
+		dimensionLabels.try_emplace((size_t)i, this, (qreal)(i+0.5)/dim.size(), dim.at(i));
+
+	/* trigger computation (also set dimension label visibility) */
+	// TODO: better do this on first draw event
+	setDirection(currentDirection);
+
+	/* setup updates from dataset */
+	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
+		if (touched & Dataset::Touch::ORDER)
+			reorder(); // calls recolor()
+		else if (touched & Dataset::Touch::CLUSTERS)
+			recolor();
+	});
 }
 
 void DistmatScene::setViewport(const QRectF &rect, qreal scale)
@@ -35,7 +62,6 @@ void DistmatScene::setDisplay()
 	auto scale = 1./display->boundingRect().width();
 	display->setTransform(QTransform::fromTranslate(0, 1).scale(scale, -scale));
 	updateRenderQuality();
-	display->setVisible(true);
 }
 
 void DistmatScene::setDirection(DistmatScene::Direction direction)
@@ -58,44 +84,24 @@ void DistmatScene::setDirection(DistmatScene::Direction direction)
 
 	switch (direction) {
 	case Direction::PER_PROTEIN:
-		m.computeMatrix(data.peek()->features);
+		m.computeMatrix(data->peek<Dataset::Base>()->features);
 		reorder(); // calls setDisplay()
 		break;
 	case Direction::PER_DIMENSION:
-		auto d = data.peek();
+		auto d = data->peek<Dataset::Base>();
 		// re-arrange data to obtain per-dimension feature vectors
-		QVector<std::vector<double> >
-		        features(d->dimensions.size(), std::vector<double>((size_t)d->features.size()));
-		for (int i = 0; i < d->features.size(); ++i) {
+		std::vector<std::vector<double>>
+		        features((size_t)d->dimensions.size(), std::vector<double>(d->features.size()));
+		for (size_t i = 0; i < d->features.size(); ++i) {
 			for (size_t j = 0; j < d->features[i].size(); ++j) {
-				features[j][(size_t)i] = d->features[i][j];
+				features[j][i] = d->features[i][j];
 			}
 		}
+		d.unlock();
 		m.computeMatrix(features);
 		m.computeImage([] (int y, int x) { return cv::Point(x, y); });
 		setDisplay();
 	}
-}
-
-void DistmatScene::reset(bool haveData)
-{
-	matrices.clear();
-	display->setVisible(false);
-	clusterbars.update({}); // clears
-	dimensionLabels.clear();
-	markers.clear();
-
-	if (!haveData) {
-		return;
-	}
-
-	// setup new dimension labels
-	auto dim = data.peek()->dimensions; // QStringList COW
-	for (int i = 0; i < dim.size(); ++i)
-		dimensionLabels.emplace_back(this, (qreal)(i+0.5)/dim.size(), dim[i]);
-
-	// trigger computation (also set dimension label visibilty)
-	setDirection(currentDirection);
 }
 
 void DistmatScene::reorder()
@@ -105,7 +111,7 @@ void DistmatScene::reorder()
 
 	if (matrices.count(Direction::PER_PROTEIN)) {
 		/* re-do display with current ordering */
-		auto d = data.peek();
+		auto d = data->peek<Dataset::Structure>();
 		matrices[Direction::PER_PROTEIN].computeImage([&d] (int y, int x) {
 			return cv::Point(d->order.index[x], d->order.index[y]);
 		});
@@ -117,7 +123,7 @@ void DistmatScene::reorder()
 	recolor();
 
 	/* reflect new order in markers */
-	for (auto& [i, m] : markers) {
+	for (auto& [_, m] : markers) {
 		m.coordinate = computeCoord(m.sampleIndex);
 		m.rearrange(viewport.left(), vpScale);
 	}
@@ -125,7 +131,7 @@ void DistmatScene::reorder()
 
 void DistmatScene::recolor()
 {
-	auto d = data.peek();
+	auto d = data->peek<Dataset::Structure>();
 	auto &cl = d->clustering;
 	if (cl.empty()) {
 		// no clustering, disappear
@@ -143,7 +149,7 @@ void DistmatScene::recolor()
 			clusterbar.setPixelColor(i, 0, Qt::transparent);
 			break;
 		case 1:
-			clusterbar.setPixelColor(i, 0, cl.clusters[*assoc.begin()].color);
+			clusterbar.setPixelColor(i, 0, cl.groups.at(*assoc.begin()).color);
 			break;
 		default:
 			clusterbar.setPixelColor(i, 0, Qt::white);
@@ -165,16 +171,16 @@ void DistmatScene::rearrange()
 	clusterbars.rearrange({topleft, botright}, outerMargin);
 
 	/* rescale & shift labels */
-	for (auto& [i, m] : markers)
+	for (auto &[_, m] : markers)
 		m.rearrange(viewport.left(), vpScale);
-	for (auto &l : dimensionLabels)
+	for (auto &[_, l] : dimensionLabels)
 		l.rearrange(viewport.left(), vpScale);
 }
 
 void DistmatScene::updateVisibilities()
 {
-	for (auto &l : dimensionLabels)
-		l.setVisible(currentDirection == Direction::PER_DIMENSION);
+	for (auto &[i, l] : dimensionLabels)
+		l.setVisible(currentDirection == Direction::PER_DIMENSION && dimensionSelected[i]);
 	for (auto &[_, m] : markers)
 		m.setVisible(currentDirection == Direction::PER_PROTEIN);
 	clusterbars.setVisible(showPartitions && currentDirection == Direction::PER_PROTEIN);
@@ -190,12 +196,28 @@ void DistmatScene::updateRenderQuality()
 	display->update();
 }
 
-void DistmatScene::toggleMarker(unsigned sampleIndex, bool present)
+void DistmatScene::updateMarkers()
 {
-	if (present)
-		markers.try_emplace(sampleIndex, this, sampleIndex);
-	else
-		markers.erase(sampleIndex);
+	auto p = data->peek<Dataset::Proteins>();
+
+	// remove outdated
+	erase_if(markers, [&p] (auto it) { return !p->markers.count(it->first); });
+
+	// insert missing
+	toggleMarkers({p->markers.begin(), p->markers.end()}, true);
+}
+
+void DistmatScene::toggleMarkers(const std::vector<ProteinId> &ids, bool present)
+{
+	for (auto id : ids) {
+		if (present) {
+			try {
+				markers.try_emplace(id, this, data->peek<Dataset::Base>()->protIndex.at(id), id);
+			} catch (...) {}
+		} else {
+			markers.erase(id);
+		}
+	}
 }
 
 void DistmatScene::togglePartitions(bool show)
@@ -224,7 +246,7 @@ void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 	cv::Point_<unsigned> idx = {(unsigned)pos.x(), (unsigned)pos.y()};
 	if (currentDirection == Direction::PER_PROTEIN) {
 		// need to back-translate
-		auto d = data.peek();
+		auto d = data->peek<Dataset::Structure>();
 		idx = {d->order.index[(size_t)pos.x()],
 		       d->order.index[(size_t)pos.y()]};
 	}
@@ -237,8 +259,23 @@ void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 		return;
 
 	/* emit cursor change */
-	auto d = data.peek();
 	emit cursorChanged({idx.x, idx.y});
+}
+
+void DistmatScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
+{
+	if (dialogMode && display->scene() && currentDirection == Direction::PER_DIMENSION) {
+		// see mouseMoveEvent()
+		auto y = (unsigned)display->mapFromScene(event->scenePos()).y();
+		if (y < dimensionSelected.size()) {
+			dimensionSelected[y] = !dimensionSelected[y];
+			updateVisibilities();
+			emit selectionChanged(dimensionSelected);
+			event->accept();
+		}
+	}
+
+	QGraphicsScene::mouseReleaseEvent(event);
 }
 
 void DistmatScene::updateColorset(QVector<QColor> colors)
@@ -250,9 +287,9 @@ void DistmatScene::updateColorset(QVector<QColor> colors)
 
 qreal DistmatScene::computeCoord(unsigned sampleIndex)
 {
-	auto d = data.peek();
-	auto pos = d->order.rankOf[sampleIndex];
-	return (qreal)(pos + 0.5) / d->proteins.size();
+	auto s = data->peek<Dataset::Structure>();
+	auto pos = s->order.rankOf[sampleIndex];
+	return (qreal)(pos + 0.5) / data->peek<Dataset::Base>()->protIds.size();
 }
 
 DistmatScene::LegendItem::LegendItem(qreal coord) : coordinate(coord) {}
@@ -264,17 +301,23 @@ DistmatScene::LegendItem::LegendItem(DistmatScene *scene, qreal coord, QString t
 
 void DistmatScene::LegendItem::setup(DistmatScene *scene, QString title, QColor color)
 {
-	QBrush fill(QColor{0, 0, 0, 127});
-	QPen outline(color.dark(300));
-	outline.setCosmetic(true);
-	backdrop.reset(scene->addRect({}));
-	backdrop->setBrush(fill);
-	backdrop->setPen(outline);
+	QColor bgColor{0, 0, 0, 127};
+	if (scene->dialogMode) {
+		color = Qt::black;
+		bgColor = {255, 255, 255, 191};
+	}
 
 	line.reset(scene->addLine({}));
 	QPen pen(color.darker(150));
 	pen.setCosmetic(true);
 	line->setPen(pen);
+
+	QBrush fill(bgColor);
+	QPen outline(color.darker(300));
+	outline.setCosmetic(true);
+	backdrop.reset(scene->addRect({}));
+	backdrop->setBrush(fill);
+	backdrop->setPen(outline);
 
 	// do label last, so it will be on top of its backdrop
 	label.reset(scene->addSimpleText(title));
@@ -286,11 +329,11 @@ void DistmatScene::LegendItem::setup(DistmatScene *scene, QString title, QColor 
 	rearrange(scene->viewport.left(), scene->vpScale);
 }
 
-DistmatScene::Marker::Marker(DistmatScene *scene, unsigned sampleIndex)
+DistmatScene::Marker::Marker(DistmatScene *scene, unsigned sampleIndex, ProteinId id)
     : LegendItem(scene->computeCoord(sampleIndex)), sampleIndex(sampleIndex)
 {
-	auto meta = scene->data.peek()->proteins[sampleIndex];
-	setup(scene, meta.name, meta.color);
+	const auto protein = scene->data->peek<Dataset::Proteins>()->proteins[id];
+	setup(scene, protein.name, protein.color);
 	setVisible(scene->currentDirection == Direction::PER_PROTEIN);
 }
 

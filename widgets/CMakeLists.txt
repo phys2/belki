@@ -1,6 +1,6 @@
-target_sources(belki PRIVATE
+target_sources(${APP_NAME} PRIVATE
+	mainwindow.h mainwindow.cpp mainwindow.ui
 	graphicsscene.h graphicsscene.cpp
 	graphicsview.h graphicsview.cpp
-	profilechart.h profilechart.cpp
-	profilewindow.h profilewindow.cpp profilewindow.ui
+	spawndialog.h spawndialog.cpp spawndialog.ui
 	)

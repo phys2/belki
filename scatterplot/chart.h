@@ -1,6 +1,7 @@
 #ifndef CHART_H
 #define CHART_H
 
+#include "chartconfig.h"
 #include "dataset.h"
 #include "utils.h"
 
@@ -39,86 +40,75 @@ public:
 
 	struct Marker
 	{
-		Marker(unsigned sampleIndex, Chart* chart);
-		// remove+add graphicitems (used for z-ordering of chart elements)
-		void reAdd();
+		Marker(Chart* chart, unsigned sampleIndex, ProteinId id);
 
+		unsigned index; // global index to keep track of orderings
+		inline static unsigned nextIndex = 0; // next index, shared between all charts
 		unsigned sampleIndex;
+		ProteinId sampleId;
 
 		// items are added to the scene, so we make them non-copyable
+		// although scene also owns them, we delete first and they de-register
 		std::unique_ptr<QtCharts::QScatterSeries> series;
 
 	protected:
-		void setup(Chart *chart);
 	};
 
-	Chart(Dataset &data);
+	Chart(Dataset::ConstPtr data, const ChartConfig *config);
+	void setConfig(const ChartConfig *config);
 
-	void clear();
-	void clearPartitions();
-	void display(const QString& set);
-	void updatePartitions();
+public slots:
+	void setTitles(const QString &x, const QString &y);
+	void display(const QVector<QPointF> &coords);
+	void updatePartitions(bool fresh);
+	void togglePartitions(bool showPartitions);
+	void updateMarkers(bool newDisplay = false);
+	void toggleMarkers(const std::vector<ProteinId> &ids, bool present);
 
 	void zoomAt(const QPointF &pos, qreal factor);
 	void undoZoom(bool full = false);
 
-	void toggleSingleMode();
-	void scaleProteins(qreal factor);
-	void switchProteinBorders();
-	void adjustProteinAlpha(qreal adjustment);
-
-	bool cursorLocked = false;
-
-public slots:
+	void refreshCursor();
 	void resetCursor();
-	void updateCursor(const QPointF &pos = {});
-	void togglePartitions(bool showPartitions);
-	void updateColorset(QVector<QColor> colors);
-	void toggleMarker(unsigned sampleIndex, bool present);
+	void moveCursor(const QPointF &pos = {});
+	void toggleCursorLock();
 
 signals:
-	void areaChanged();
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
-	void markerToggled(unsigned sampleIndex, bool present);
+	void markerToggled(ProteinId id, bool present);
+	void areaChanged();
 	void proteinStyleUpdated();
 
 protected:
 	void animate(int msec);
-
-	// data source
-	Dataset &data;
+	ProteinId findFirstMarker();
+	static void updateTicks(QtCharts::QValueAxis *axis);
 
 	/* items in the scene */
-
 	Proteins *master; // owned by chart
+	// note partitions are also owned by chart, but we delete first and they de-register
 	std::unordered_map<int, std::unique_ptr<Proteins>> partitions;
-	std::map<unsigned, Marker> markers;
+	std::unordered_map<ProteinId, Marker> markers;
+	ProteinId firstMarker = 0; // cached for stack-ordering (0 means none)
 
 	QGraphicsEllipseItem *tracker;
 	QtCharts::QValueAxis *ax, *ay;
+	// deferred animation reset
+	QTimer *animReset;
 
-	/* state variables */
+	/* GUI state */
+	const ChartConfig *config;
 
+	/* data state variables */
 	struct {
 		QRectF current;
 		QStack<QRectF> history;
 	} zoom;
+	bool cursorLocked = false;
+	QPointF cursorCenter;
 
-	struct {
-		bool singleMode = false; // mode to highlight single clusters
-		qreal size = 15.;
-		struct {
-			qreal reg = .65;
-			qreal hi = .9;
-			qreal lo = .1;
-		} alpha;
-		Qt::PenStyle border = Qt::PenStyle::DotLine;
-	} proteinStyle;
-
-	QVector<QColor> colorset;
-
-	// deferred animation reset
-	QTimer *animReset;
+	// data source
+	Dataset::ConstPtr data;
 };
 
 #endif /* CHART_H */

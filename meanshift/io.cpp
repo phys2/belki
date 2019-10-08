@@ -12,7 +12,7 @@ using namespace std;
 
 namespace seg_meanshift {
 
-bool FAMS::importPoints(const QVector<std::vector<double>> &features, bool normalize) {
+bool FAMS::importPoints(const std::vector<std::vector<double>>& features, bool normalize) {
 	// w_ and h_ are only used for result output (i.e. in io.cpp)
 	n_ = features.size();
 	d_ = features.at(0).size(); // dimensionality
@@ -27,7 +27,7 @@ bool FAMS::importPoints(const QVector<std::vector<double>> &features, bool norma
 		auto &target = dataholder[i];
 		target.resize(d_);
 
-		float factor = 65535.;
+		double factor = 65535.;
 		if (normalize) {
 			double n = cv::norm(source, cv::NORM_L2);
 			if (n == 0.)

@@ -1,0 +1,26 @@
+<RCC>
+	<qresource prefix="/icons">
+		<file>application-exit.svg</file>
+		<file>arrow-left.svg</file>
+		<file>arrow-right.svg</file>
+		<file>camera-photo.svg</file>
+		<file>document-import.svg</file>
+		<file>document-export.svg</file>
+		<file>document-open.svg</file>
+		<file>document-preview.svg</file>
+		<file>document-save.svg</file>
+		<file>document-save-as.svg</file>
+		<file>document-new.svg</file>
+		<file>document-new-from-template.svg</file>
+		<file>draw-star.svg</file>
+		<file>edit-delete.svg</file>
+		<file>help-about.svg</file>
+		<file>list-add.svg</file>
+		<file>lock.svg</file>
+		<file>object-columns.svg</file>
+		<file>show-gpu-effects.svg</file>
+		<file>tab-close.svg</file>
+		<file>tab-new.svg</file>
+		<file>view-fullscreen.svg</file>
+	</qresource>
+</RCC>

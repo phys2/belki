@@ -1,0 +1,13 @@
+<RCC>
+	<qresource prefix="/icons">
+		<file>show-partition.svg</file>
+		<file>show-average.svg</file>
+		<file>show-individual.svg</file>
+		<file>show-labels.svg</file>
+		<file>logspace-on.svg</file>
+		<file>logspace-off.svg</file>
+		<file>type-annotations.svg</file>
+		<file>type-hierarchy.svg</file>
+		<file>type-meanshift.svg</file>
+	</qresource>
+</RCC>

@@ -18,17 +18,19 @@ FileIO::FileIO(QMainWindow *parent) :
 QString FileIO::chooseFile(FileIO::Role purpose, QWidget *p)
 {
 	const QMap<Role, RoleDef> map = {
-	    {OpenDataset, {"Open Dataset", "Peak Volumes Table or ZIP file (*.tsv *.zip)", false, {}}},
-	    {OpenDescriptions, {"Open Descriptions", "Two-column table with descriptions (*.tsv)", false, {}}},
-	    {OpenClustering, {"Open Annotations or Clustering",
-	                      "All supported files (*.tsv *.txt *.json);; "
-	                      "Annotation Table / Protein Lists (*.tsv *.txt);; Hierarchical Clustering (*.json)",
+	    {OpenDataset, {"Open Dataset", "Peak Volumes Table (*.tsv *.txt);; All Files (*)", false, {}}},
+	    {OpenDescriptions, {"Open Descriptions", "Two-column table with descriptions (*.tsv *.txt);; All Files (*)", false, {}}},
+	    {OpenStructure, {"Open Annotations or Clustering",
+	                     "All supported files (*.tsv *.txt *.json);; "
+	                     "Annotation Table / Protein Lists (*.tsv *.txt);; Hierarchical Clustering (*.json);; "
+	                     "All Files (*)",
 	                      false, {}}},
 	    {OpenMarkers, {"Open Markers List", "List of markers (*.txt);; All Files (*)", false, {}}},
 	    {SaveMarkers, {"Save Markers to File", "List of markers (*.txt)", true, ".txt"}},
 	    {SaveAnnotations, {"Save Annotations to File", "Annotation table (*.tsv)", true, ".tsv"}},
 	    //with pdf//{SavePlot, {"Save Plot to File", "Scalable Vector Graphics (*.svg);; Portable Document Format (*.pdf);; Portable Network Graphics (*.png)", true, {}}},
 	    {SavePlot, {"Save Plot to File", "Scalable Vector Graphics (*.svg);; Portable Network Graphics (*.png)", true, {}}},
+	    {SaveProject, {"Save Project to File", "Belki Project File (*.belki)", true, ".belki"}},
 	};
 
 	if (!p)

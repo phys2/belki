@@ -1,8 +1,8 @@
 #include "distmat.h"
-#include "colormap.h"
+#include "compute/colors.h"
 
 #include <opencv2/imgproc/imgproc.hpp>
-#include <tbb/parallel_for_each.h>
+#include <tbb/parallel_for.h>
 
 std::map<Distmat::Measure, Distmat::MeasureFun> Distmat::measures()
 {
@@ -33,15 +33,15 @@ std::map<Distmat::Measure, Distmat::MeasureFun> Distmat::measures()
 	};
 }
 
-void Distmat::computeMatrix(const QVector<std::vector<double> > &features)
+void Distmat::computeMatrix(const std::vector<std::vector<double>> &features)
 {
 	auto sidelen = features.size();
 	matrix = cv::Mat1f(sidelen, sidelen);
 
 	/* amass all the combinations we need for filling a symmetric matrix */
-	std::vector<cv::Point_<size_t>> coords;
-	for (size_t y = 0; y < (unsigned)sidelen; ++y) {
-		for (size_t x = 0; x <= y; ++x)
+	std::vector<cv::Point2i> coords; // use int for matrix() indexing later on
+	for (int y = 0; y < (int)sidelen; ++y) {
+		for (int x = 0; x <= y; ++x)
 			coords.push_back({x, y});
 	}
 
@@ -49,7 +49,7 @@ void Distmat::computeMatrix(const QVector<std::vector<double> > &features)
 	auto m = measures()[measure];
 	tbb::parallel_for((size_t)0, coords.size(), [&] (size_t i) {
 		auto c = coords[i];
-		const auto &a = features[c.x], &b = features[c.y];
+		const auto &a = features[(size_t)c.x], &b = features[(size_t)c.y];
 		matrix(c) = matrix(c.x, c.y) = (float)m(a, b);
 	});
 }
@@ -80,5 +80,5 @@ void Distmat::computeImage(const TranslateFun &translate)
 			        = (uchar)((matrix(translate(y, x)) - minVal)*scale);
 	});
 
-	image = colormap::apply(matrixB);
+	image = Colormap::pixmap(Colormap::magma.apply(matrixB));
 }

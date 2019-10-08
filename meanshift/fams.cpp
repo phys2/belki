@@ -42,6 +42,14 @@ FAMS::~FAMS() {
 #define drand48()    (rand() * 1.0 / RAND_MAX)
 #endif
 
+void FAMS::resetState() {
+	progress = progress_old = 0.;
+	cancelled = false;
+	modes = std::vector<Mode>(modes.size());
+	prunedModes = {};
+	prunedIndex = {};
+}
+
 // Choose a subset of points on which to perform the mean shift operation
 void FAMS::selectStartPoints(double percent, int jump) {
 	if (datapoints.empty())

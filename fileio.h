@@ -1,8 +1,9 @@
 #ifndef FILEIO_H
 #define FILEIO_H
 
-#include <QObject>
+#include "utils.h"
 
+#include <QObject>
 #include <map>
 
 class QMainWindow;
@@ -18,11 +19,12 @@ public:
 	enum Role {
 		OpenDataset,
 		OpenDescriptions,
-		OpenClustering,
+		OpenStructure,
 		OpenMarkers,
 		SaveMarkers,
 		SaveAnnotations,
-		SavePlot
+		SavePlot,
+		SaveProject
 	};
 
 	struct RoleDef {
@@ -42,7 +44,7 @@ public:
 	QString chooseFile(Role purpose, QWidget *p = nullptr);
 
 signals:
-	void ioError(const QString &message);
+	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
 
 public slots:
 	// use source::render() to create image file (source may be QWidget or QGraphicsScene)
