@@ -16,6 +16,25 @@ class QLabel;
 class QStandardItem;
 class QTreeWidget;
 class QTreeWidgetItem;
+class MainWindow;
+
+class MainWindowRegistry : public QObject
+{
+	Q_OBJECT
+
+public:
+	explicit MainWindowRegistry(DataHub &hub) : hub(hub) {}
+
+public slots:
+	unsigned addWindow();
+	void removeWindow(unsigned id);
+
+protected:
+	std::map<unsigned, MainWindow*> windows;
+	unsigned nextId = 1;
+
+	DataHub &hub;
+};
 
 class MainWindow : public QMainWindow, private Ui::MainWindow
 {
@@ -37,6 +56,8 @@ public slots:
 	void newDataset(Dataset::Ptr data);
 
 signals:
+	void newWindowRequested();
+	void closeWindowRequested();
 	void datasetSelected(unsigned id);
 	void orderChanged(Dataset::OrderBy reference, bool synchronize);
 
@@ -54,6 +75,7 @@ protected:
 
 	void dragEnterEvent(QDragEnterEvent *event) override;
 	void dropEvent(QDropEvent *event) override;
+	void closeEvent(QCloseEvent* event) override;
 
 	void setDataset(Dataset::Ptr data);
 	void updateState(Dataset::Touched affected);
@@ -72,6 +94,13 @@ protected:
 	void setFilename(QString name);
 	void setSelectedDataset(unsigned index);
 	void selectStructure(int id);
+
+	void applyAnnotations(unsigned id);
+	void applyHierarchy(unsigned id, unsigned granularity);
+	void createPartition(unsigned granularity);
+
+	void runInBackground(const std::function<void()> &work);
+	void runOnData(const std::function<void(Dataset::Ptr)> &work);
 
 	DataHub &hub;
 	Dataset::Ptr data;

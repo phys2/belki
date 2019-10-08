@@ -22,5 +22,6 @@
 		<file>tab-close.svg</file>
 		<file>tab-new.svg</file>
 		<file>view-fullscreen.svg</file>
+		<file>window-new.svg</file>
 	</qresource>
 </RCC>

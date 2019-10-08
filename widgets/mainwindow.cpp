@@ -26,6 +26,7 @@
 #include <QMimeData>
 #include <QWidgetAction>
 #include <QShortcut>
+#include <QtConcurrent>
 
 MainWindow::MainWindow(DataHub &hub) :
     hub(hub),
@@ -79,12 +80,11 @@ void MainWindow::setupTabs()
 		menu->addAction(name, [this, t=type] { addTab(t); });
 
 	// integrate into main menu (does not take ownership)
-	menuView->insertMenu(actionCloseAllTabs, menu);
+	actionAddTab->setMenu(menu);
 
 	// button for adding tabs
 	auto *btn = new QToolButton;
-	btn->setIcon(QIcon::fromTheme("tab-new"));
-	btn->setMenu(menu); // does not take ownership
+	btn->setDefaultAction(actionAddTab);
 	btn->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);
 	btn->setMinimumSize(btn->sizeHint()); // ensure button keeps showing when zero tabs
 	tabWidget->setCornerWidget(btn);
@@ -136,21 +136,26 @@ void MainWindow::setupSignals()
 	connect(datasetSelect, qOverload<int>(&QComboBox::activated), [this] {
 		setDataset(datasetSelect->currentData().value<Dataset::Ptr>());
 	});
-	connect(this, &MainWindow::datasetSelected, &hub, &DataHub::setCurrent);
 	connect(this, &MainWindow::datasetSelected, [this] { profiles->setData(data); });
 	connect(this, &MainWindow::datasetSelected, this, &MainWindow::setSelectedDataset);
+	// TODO: sync new dataset with guiState (annotation/hierarchy,ordering…)
 
 	/* selecting/altering partition */
 	connect(structureSelect, qOverload<int>(&QComboBox::activated), [this] {
 		selectStructure(structureSelect->currentData().value<int>());
 	});
-	connect(granularitySlider, &QSlider::valueChanged, &hub, &DataHub::createPartition);
+	connect(granularitySlider, &QSlider::valueChanged, [this] (int v) {
+		// TODO guiState.structure.granularity = (unsigned)v;
+		runOnData([v=unsigned(v)] (auto d) { d->createPartition(v); });
+	});
 	connect(famsKSlider, &QSlider::valueChanged, [this] (int v) {
-		hub.runFAMS(v * 0.01f);
+		runOnData([k=v*0.01f] (auto d) { d->computeFAMS(k); });
 	});
 
 	/* changing order settings */
-	connect(this, &MainWindow::orderChanged, &hub, &DataHub::changeOrder);
+	connect(this, &MainWindow::orderChanged, [this] (Dataset::OrderBy ref, bool sync) {
+		runOnData([ref,sync] (auto d) { d->changeOrder(ref, sync); });
+	});
 }
 
 void MainWindow::setupActions()
@@ -167,6 +172,7 @@ void MainWindow::setupActions()
 
 	connect(actionQuit, &QAction::triggered, [] { QApplication::exit(); });
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
+	connect(actionNewWindow, &QAction::triggered, this, &MainWindow::newWindowRequested);
 	connect(actionCloseAllTabs, &QAction::triggered, [this] {
 		for (int i = tabWidget->count() - 1; i >= 0; --i)
 			delete tabWidget->widget(i);
@@ -183,14 +189,14 @@ void MainWindow::setupActions()
 		auto filename = io->chooseFile(FileIO::SaveMarkers);
 		if (filename.isEmpty())
 			return;
-		hub.store.exportMarkers(filename);
+		runInBackground([&s=hub.store,filename] { s.exportMarkers(filename); });
 	});
 	connect(actionExportAnnotations, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::SaveAnnotations);
 		if (filename.isEmpty())
 			return;
 
-		hub.exportAnnotations(filename);
+		runOnData([&s=hub.store,filename] (auto d) { s.exportAnnotations(filename, d); });
 	});
 	connect(actionPersistAnnotations, &QAction::triggered, [this] {
 		if (!data)
@@ -207,7 +213,7 @@ void MainWindow::setupActions()
 			return; // user cancelled
 
 		clustering->name = name;
-		hub.proteins.addAnnotations(std::move(clustering), false, true);
+		hub.proteins.addAnnotations(std::move(clustering), false, true); // TODO: in bg?
 	});
 	connect(actionClearMarkers, &QAction::triggered, &hub.proteins, &ProteinDB::clearMarkers);
 
@@ -497,10 +503,10 @@ void MainWindow::selectStructure(int id)
 	toolbarActions.famsK->setVisible(false);
 
 	if (id == 0) { // "None"
-		hub.applyAnnotations(0);
+		runOnData([] (auto d) { d->applyAnnotations(0); });
 		return;
 	} else if (id == -1) { // Mean shift
-		hub.runFAMS(famsKSlider->value() * 0.01f);
+		runOnData([k=famsKSlider->value()*0.01f] (auto d) { d->computeFAMS(k); });
 		toolbarActions.famsK->setVisible(true);
 		return;
 	}
@@ -509,10 +515,10 @@ void MainWindow::selectStructure(int id)
 
 	// check between hierarchy and annotations
 	if (this->hub.proteins.peek()->isHierarchy((unsigned)id)) {
-		hub.applyHierarchy((unsigned)id, (unsigned)granularitySlider->value());
+		runOnData([id,v=granularitySlider->value()] (auto d) { d->applyHierarchy(id, v); });
 		toolbarActions.granularity->setVisible(true);
 	} else {
-		hub.applyAnnotations((unsigned)id);
+		runOnData([id] (auto d) { d->applyAnnotations(id); });
 	}
 }
 
@@ -535,13 +541,13 @@ void MainWindow::openFile(Input type, QString fn)
 	switch (type) {
 	case Input::DATASET:      hub.importDataset(fn, "Dist"); break;
 	case Input::DATASET_RAW:  hub.importDataset(fn, "AbundanceLeft"); break;
-	case Input::MARKERS:      hub.store.importMarkers(fn); break;
-	case Input::DESCRIPTIONS: hub.importDescriptions(fn); break;
+	case Input::MARKERS:      runInBackground([&s=hub.store,fn] { s.importMarkers(fn); }); break;
+	case Input::DESCRIPTIONS: runInBackground([&s=hub.store,fn] { s.importDescriptions(fn); }); break;
 	case Input::STRUCTURE: {
 		if (QFileInfo(fn).suffix() == "json")
-			hub.importHierarchy(fn);
+			runInBackground([&s=hub.store,fn] { s.importHierarchy(fn); });
 		else
-			hub.importAnnotations(fn);
+			runInBackground([&s=hub.store,fn] { s.importAnnotations(fn); });
 		break;
 	}
 	}
@@ -595,6 +601,38 @@ void MainWindow::addProtein(ProteinId id, const Protein &protein)
 	QTimer::singleShot(0, this, &MainWindow::finalizeMarkerItems);
 }
 
+void MainWindow::applyAnnotations(unsigned id)
+{
+	// TODO guiState.structure.annotationsId = id;
+	runOnData([=] (auto d) { d->applyAnnotations(id); });
+}
+
+void MainWindow::applyHierarchy(unsigned id, unsigned granularity)
+{
+	// TODO guiState.structure.hierarchyId = id;
+	// guiState.structure.annotationsId = 0;
+	runOnData([=] (auto d) { d->applyHierarchy(id, granularity); });
+}
+
+void MainWindow::createPartition(unsigned granularity)
+{
+	// TODO guiState.structure.granularity = granularity;
+	runOnData([=] (auto d) { d->createPartition(granularity); });
+}
+
+void MainWindow::runInBackground(const std::function<void()> &work)
+{
+	QtConcurrent::run([=] { work(); });
+}
+
+void MainWindow::runOnData(const std::function<void(Dataset::Ptr)> &work)
+{
+	if (!data)
+		return;
+	// pass shared ptr als lambda arg so thread works on own copy
+	runInBackground([target=data,work] { work(target); });
+}
+
 void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 {
 	auto urls = event->mimeData()->urls();
@@ -643,4 +681,29 @@ void MainWindow::dropEvent(QDropEvent *event)
 
 	event->setDropAction(Qt::DropAction::CopyAction);
 	event->accept();
+}
+
+void MainWindow::closeEvent(QCloseEvent *)
+{
+	emit closeWindowRequested();
+}
+
+unsigned MainWindowRegistry::addWindow()
+{
+	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(hub));
+	connect(it->second, &MainWindow::newWindowRequested,
+	        this, &MainWindowRegistry::addWindow);
+	connect(it->second, &MainWindow::closeWindowRequested, this,
+	        [this,id=it->first] { removeWindow(id); });
+	it->second->show();
+	return it->first;
+}
+
+void MainWindowRegistry::removeWindow(unsigned id)
+{
+	auto w = windows.at(id);
+	w->deleteLater(); // do not delete a window within its close event
+	windows.erase(id);
+	if (windows.empty())
+		QApplication::quit();
 }

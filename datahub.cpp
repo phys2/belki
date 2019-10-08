@@ -41,18 +41,6 @@ void DataHub::setupSignals()
 		        this, SIGNAL(ioError(const QString&, MessageType)));
 }
 
-void DataHub::setCurrent(unsigned dataset)
-{
-	data.l.lockForWrite();
-	data.current = dataset;
-	data.l.unlock();
-
-	if (guiState.structure.hierarchyId)
-		applyHierarchy(guiState.structure.hierarchyId, guiState.structure.granularity);
-	else
-		applyAnnotations(guiState.structure.annotationsId);
-}
-
 DataHub::DataPtr DataHub::createDataset(DatasetConfiguration config)
 {
 	data.l.lockForWrite();
@@ -63,23 +51,6 @@ DataHub::DataPtr DataHub::createDataset(DatasetConfiguration config)
 	data.l.unlock();
 
 	return dataset;
-}
-
-void DataHub::runOnCurrent(const std::function<void(DataPtr)> &work)
-{
-	QtConcurrent::run([=] {
-		QReadLocker _(&data.l); // RAII
-		if (!data.current)
-			return;
-		auto target = data.sets.at(data.current);
-
-		/* Target is a shared_ptr and can be used without the container lock.
-		 * Dataset does its own locking. It is important to unlock early here,
-		 * so that long computations do not affect the ability to switch current
-		 * dataset. */
-		_.unlock();
-		work(target);
-	});
 }
 
 void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay)
@@ -136,64 +107,6 @@ void DataHub::importDataset(const QString &filename, const QString featureCol)
 			return;
 		target->computeDisplays();
 	});
-}
-
-void DataHub::computeDisplay(const QString &method)
-{
-	runOnCurrent([=] (DataPtr d) { d->computeDisplay(method); });
-}
-
-void DataHub::applyAnnotations(unsigned id)
-{
-	guiState.structure.annotationsId = id;
-	runOnCurrent([=] (DataPtr d) {
-		d->applyAnnotations(id);
-	});
-}
-
-void DataHub::exportAnnotations(const QString &filename)
-{
-	runOnCurrent([=] (DataPtr d) { store.exportAnnotations(filename, d); });
-}
-
-void DataHub::applyHierarchy(unsigned id, unsigned granularity)
-{
-	guiState.structure.hierarchyId = id;
-	guiState.structure.annotationsId = 0;
-	runOnCurrent([=] (DataPtr d) {
-		d->applyHierarchy(id, granularity);
-	});
-}
-
-void DataHub::createPartition(unsigned granularity)
-{
-	guiState.structure.granularity = granularity;
-	runOnCurrent([=] (DataPtr d) { d->createPartition(granularity); });
-}
-
-void DataHub::runFAMS(float k)
-{
-	runOnCurrent([=] (DataPtr d) { d->computeFAMS(k); });
-}
-
-void DataHub::changeOrder(Dataset::OrderBy reference, bool synchronize)
-{
-	runOnCurrent([=] (DataPtr d) { d->changeOrder(reference, synchronize); });
-}
-
-void DataHub::importAnnotations(const QString &filename)
-{
-	QtConcurrent::run([=] { store.importAnnotations(filename); });
-}
-
-void DataHub::importHierarchy(const QString &filename)
-{
-	QtConcurrent::run([=] { store.importHierarchy(filename); });
-}
-
-void DataHub::importDescriptions(const QString &filename)
-{
-	QtConcurrent::run([=] { store.importDescriptions(filename); });
 }
 
 void DataHub::saveProjectAs(const QString &filename)

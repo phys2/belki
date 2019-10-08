@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
 	QSurfaceFormat::setDefaultFormat(fmt);
 
 	QApplication a(argc, argv);
+	a.setQuitOnLastWindowClosed(false);
 
 	// setup icons we ship as fallback for theme icons
 	QIcon::setFallbackSearchPaths(QIcon::fallbackSearchPaths() << ":/icons");
@@ -43,14 +44,14 @@ int main(int argc, char *argv[])
 
 	/* start the application */
 	DataHub hub;
-	MainWindow window(hub);
-	window.show();
+	MainWindowRegistry reg(hub);
+	reg.addWindow();
 
 	/* support some basic arguments */
 	if (argc >= 2) // pass initial filename as single argument
 		hub.importDataset(argv[1]);
 	if (argc >= 3)
-		hub.importAnnotations(argv[2]);
+		hub.store.importAnnotations(argv[2]);
 
 	return a.exec();
 }

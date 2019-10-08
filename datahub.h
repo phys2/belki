@@ -30,29 +30,14 @@ signals:
 	void newDataset(DataPtr data);
 
 public slots:
-	void setCurrent(unsigned dataset = 0); // 0 for none
 	void spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay = {});
 	void importDataset(const QString &filename, const QString featureCol = {});
-
-	void computeDisplay(const QString &method);
-	// todo readDisplay()
-
-	void applyAnnotations(unsigned id);
-	void applyHierarchy(unsigned id, unsigned granularity);
-	void createPartition(unsigned granularity);
-	void importAnnotations(const QString &filename);
-	void exportAnnotations(const QString &filename);
-	void importHierarchy(const QString &filename);
-	void runFAMS(float k);
-	void changeOrder(Dataset::OrderBy reference, bool synchronize);
-
-	void importDescriptions(const QString &filename);
 
 	void saveProjectAs(const QString &filename);
 
 public:
 	ProteinDB proteins;
-	Storage store; // TODO make protected
+	Storage store;
 
 protected:
 	void setupSignals();
@@ -63,12 +48,10 @@ protected:
 
 	struct : public RWLockable {
 		std::map<unsigned, DataPtr> sets;
-		// we hand out ids starting from 1. So current = 0 means no dataset
-		unsigned current = 0;
 		unsigned nextId = 1;
 	} data;
 
-	// configuration to apply when switching datasets
+	// configuration to apply when switching datasets // TODO THIS GOES TO MAINWINDOW
 	struct {
 		struct {
 			// last-selected structure (annotations/hierarchy) id (used when dataset changes)

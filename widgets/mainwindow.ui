@@ -363,6 +363,9 @@
     <property name="title">
      <string>&amp;View</string>
     </property>
+    <addaction name="actionNewWindow"/>
+    <addaction name="separator"/>
+    <addaction name="actionAddTab"/>
     <addaction name="actionCloseAllTabs"/>
     <addaction name="separator"/>
     <addaction name="actionUseOpenGL"/>
@@ -589,6 +592,25 @@
    </property>
    <property name="toolTip">
     <string>Save whole project to a new file</string>
+   </property>
+  </action>
+  <action name="actionNewWindow">
+   <property name="icon">
+    <iconset theme="window-new"/>
+   </property>
+   <property name="text">
+    <string>New &amp;Window</string>
+   </property>
+   <property name="toolTip">
+    <string>Open new window for this project</string>
+   </property>
+  </action>
+  <action name="actionAddTab">
+   <property name="icon">
+    <iconset theme="tab-new"/>
+   </property>
+   <property name="text">
+    <string>Add &amp;Tab</string>
    </property>
   </action>
  </widget>
