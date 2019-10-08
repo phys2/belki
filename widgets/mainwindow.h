@@ -15,7 +15,7 @@
 class DataHub;
 class FileIO;
 class QLabel;
-class QTreeWidget;
+class QTreeView;
 class QStandardItemModel;
 class QTreeWidgetItem; // todo remove
 
@@ -29,13 +29,13 @@ public:
 	const QString& getTitle() const { return title; }
 	FileIO *getIo() { return io; }
 
+	void setDatasetControlModel(QStandardItemModel *m);
 	void setMarkerControlModel(QStandardItemModel *m);
 
 public slots:
 	void showHelp();
 	void displayMessage(const QString &message, MessageType type = MessageType::CRITICAL);
-
-	void newDataset(Dataset::Ptr data);
+	void setDataset(Dataset::Ptr data);
 
 signals:
 	void newWindowRequested();
@@ -71,7 +71,6 @@ protected:
 	void dropEvent(QDropEvent *event) override;
 	void closeEvent(QCloseEvent* event) override;
 
-	void setDataset(Dataset::Ptr data);
 	void updateState(Dataset::Touched affected);
 	void openFile(Input type, QString filename = {});
 
@@ -83,7 +82,7 @@ protected:
 	void addTab(Tab type);
 
 	void setFilename(QString name);
-	void setSelectedDataset(unsigned index);
+	void setSelectedDataset(unsigned id);
 	void selectStructure(int id);
 
 	void applyAnnotations(unsigned id);
@@ -99,8 +98,7 @@ protected:
 	QString title;
 
 	CustomEnableProxyModel markerModel;
-	QTreeWidget *datasetTree;
-	std::map<unsigned, QTreeWidgetItem*> datasetItems;
+	QTreeView *datasetTree;
 
 	FileIO *io;
 

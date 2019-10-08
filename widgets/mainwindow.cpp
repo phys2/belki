@@ -12,7 +12,7 @@
 #include "profiles/profiletab.h"
 #include "featweights/featweightstab.h"
 
-#include <QTreeWidget>
+#include <QTreeView>
 #include <QFileInfo>
 #include <QDir>
 #include <QCompleter>
@@ -43,15 +43,6 @@ MainWindow::MainWindow(DataHub &hub) :
 
 void MainWindow::setupToolbar()
 {
-	// setup datasets selection model+view
-	datasetTree = new QTreeWidget(this);
-	datasetTree->setHeaderHidden(true);
-	datasetTree->setFrameShape(QFrame::Shape::NoFrame);
-	datasetTree->setSelectionMode(QTreeWidget::SelectionMode::NoSelection);
-	datasetTree->setItemsExpandable(false);
-	datasetSelect->setModel(datasetTree->model());
-	datasetSelect->setView(datasetTree);
-
 	// put datasets and some space before partition area
 	auto anchor = actionShowStructure;
 	toolBar->insertWidget(anchor, datasetLabel);
@@ -123,11 +114,9 @@ void MainWindow::setupSignals()
 			selectStructure((int)id);
 	});
 
-	connect(&hub, &DataHub::newDataset, this, &MainWindow::newDataset);
-
 	/* selecting dataset */
 	connect(datasetSelect, qOverload<int>(&QComboBox::activated), [this] {
-		setDataset(datasetSelect->currentData().value<Dataset::Ptr>());
+		setDataset(datasetSelect->currentData(Qt::UserRole + 1).value<Dataset::Ptr>());
 	});
 	connect(this, &MainWindow::datasetSelected, [this] { profiles->setData(data); });
 	connect(this, &MainWindow::datasetSelected, this, &MainWindow::setSelectedDataset);
@@ -226,6 +215,22 @@ void MainWindow::setupActions()
 			return;
 		hub.saveProjectAs(filename);
 		// TODO: change our project filename to this one
+	});
+}
+void MainWindow::setDatasetControlModel(QStandardItemModel *m)
+{
+	// setup datasets selection model+view
+	datasetTree = new QTreeView(this);
+	datasetTree->setModel(m);
+	datasetTree->setHeaderHidden(true);
+	datasetTree->setFrameShape(QFrame::Shape::NoFrame);
+	datasetTree->setSelectionMode(QTreeView::SelectionMode::NoSelection);
+	datasetTree->setItemsExpandable(false);
+	datasetSelect->setModel(datasetTree->model());
+	datasetSelect->setView(datasetTree);
+
+	connect(m, &QStandardItemModel::rowsInserted, [this] {
+		datasetTree->expandAll();
 	});
 }
 
@@ -376,23 +381,6 @@ void MainWindow::updateState(Dataset::Touched affected)
 	}
 }
 
-void MainWindow::newDataset(Dataset::Ptr dataset)
-{
-	/* add to datasets */
-	auto conf = dataset->config();
-	auto parent = (conf.parent ? datasetItems.at(conf.parent)
-	                           : datasetTree->invisibleRootItem()); // top level
-	auto item = new QTreeWidgetItem(parent);
-	item->setExpanded(true);
-	item->setText(0, conf.name);
-	item->setData(0, Qt::UserRole, QVariant::fromValue(dataset));
-	datasetItems[conf.id] = item;
-
-	/* auto select */
-	setDataset(dataset);
-	toolbarActions.datasets->setEnabled(true);
-}
-
 void MainWindow::setDataset(Dataset::Ptr selected)
 {
 	if (data == selected)
@@ -431,16 +419,34 @@ void MainWindow::setFilename(QString name)
 	setWindowFilePath(name);
 }
 
-void MainWindow::setSelectedDataset(unsigned index)
+#include <iostream>
+
+void MainWindow::setSelectedDataset(unsigned id)
 {
+	auto model = qobject_cast<QStandardItemModel*>(datasetTree->model());
+	std::function<QModelIndex(QModelIndex)> search;
+	search = [&] (QModelIndex parent) -> QModelIndex {
+		std::cerr << model->rowCount(parent) << "\t";
+		for (int r = 0; r < model->rowCount(parent); ++r) {
+	        QModelIndex index = model->index(r, 0, parent);
+	        if (model->data(index, Qt::UserRole) == id)
+				return index;
+	        if (model->hasChildren(index))
+				return search(index);
+	    }
+		return {};
+	};
+	auto index = search(model->invisibleRootItem()->index());
+	std::cerr << id << "\t" << index.row() << std::endl;
+
 	/* this is a tad tricky to do due to Qt interface limitations */
 	// make item current in tree to get hold of its index
-	datasetTree->setCurrentItem(datasetItems.at(index));
+	datasetTree->setCurrentIndex(index);
 	// make item's parent reference point and provide index in relation to parent
 	datasetSelect->setRootModelIndex(datasetTree->currentIndex().parent());
 	datasetSelect->setCurrentIndex(datasetTree->currentIndex().row());
 	// reset combobox to display full tree again
-	datasetTree->setCurrentItem(datasetTree->invisibleRootItem());
+	datasetTree->setCurrentIndex(model->invisibleRootItem()->index());
 	datasetSelect->setRootModelIndex(datasetTree->currentIndex());
 }
 

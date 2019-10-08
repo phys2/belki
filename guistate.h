@@ -7,7 +7,6 @@
 
 class QStandardItem;
 class QStandardItemModel;
-class QTreeWidgetItem;
 class MainWindow;
 
 class GuiState : public QObject
@@ -21,6 +20,7 @@ public slots:
 	unsigned addWindow();
 	void removeWindow(unsigned id);
 
+	void addDataset(Dataset::Ptr dataset);
 	void addProtein(ProteinId id, const Protein &protein);
 	void flipMarker(QModelIndex i);
 	void toggleMarker(ProteinId id, bool present);
@@ -31,6 +31,11 @@ protected:
 
 	std::map<unsigned, MainWindow*> windows;
 	unsigned nextId = 1;
+
+	struct {
+		QStandardItemModel *model;
+		std::map<unsigned, QStandardItem*> items;
+	} datasetControl;
 
 	struct {
 		QStandardItemModel *model;

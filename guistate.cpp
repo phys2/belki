@@ -7,6 +7,7 @@
 
 GuiState::GuiState(DataHub &hub) : hub(hub)
 {
+	datasetControl.model = new QStandardItemModel(this);
 	setupMarkerControl();
 
 	connect(&hub.proteins, &ProteinDB::proteinAdded, this, &GuiState::addProtein);
@@ -16,12 +17,14 @@ GuiState::GuiState(DataHub &hub) : hub(hub)
 		for (auto id : ids)
 			this->markerControl.items.at(id)->setCheckState(state);
 	});
+	connect(&hub, &DataHub::newDataset, this, &GuiState::addDataset);
 }
 
 unsigned GuiState::addWindow()
 {
 	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(hub));
 	auto target = it->second;
+	target->setDatasetControlModel(datasetControl.model);
 	target->setMarkerControlModel(markerControl.model);
 
 	connect(target, &MainWindow::newWindowRequested,
@@ -30,6 +33,11 @@ unsigned GuiState::addWindow()
 	        [this,id=it->first] { removeWindow(id); });
 	connect(target, &MainWindow::markerFlipped, this, &GuiState::flipMarker);
 	connect(target, &MainWindow::markerToggled, this, &GuiState::toggleMarker);
+
+	// pick latest dataset as a starting point
+	auto datasets = hub.datasets();
+	if (!datasets.empty())
+		target->setDataset(hub.datasets().rbegin()->second);
 
 	target->show();
 	return it->first;
@@ -42,6 +50,22 @@ void GuiState::removeWindow(unsigned id)
 	windows.erase(id);
 	if (windows.empty())
 		QApplication::quit();
+}
+
+void GuiState::addDataset(Dataset::Ptr dataset)
+{
+	auto conf = dataset->config();
+	auto parent = (conf.parent ? datasetControl.items.at(conf.parent)
+	                           : datasetControl.model->invisibleRootItem()); // top level
+	auto item = new QStandardItem(conf.name);
+	item->setData(dataset->id(), Qt::UserRole);
+	item->setData(QVariant::fromValue(dataset), Qt::UserRole + 1);
+	parent->appendRow(item);
+	datasetControl.items[conf.id] = item;
+
+	// auto-select
+	for (auto &[k, v] : windows)
+		v->setDataset(dataset);
 }
 
 void GuiState::addProtein(ProteinId id, const Protein &protein)
