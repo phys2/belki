@@ -229,9 +229,11 @@ void MainWindow::setupActions()
 	});
 }
 
-void MainWindow::setMarkerControlModel(QStandardItemModel *m)
+void MainWindow::setMarkerControlModel(QStandardItemModel *source)
 {
 	/* setup completer with model */
+	markerModel.setSourceModel(source);
+	auto m = &markerModel;
 	auto cpl = new QCompleter(m, this);
 	cpl->setCaseSensitivity(Qt::CaseInsensitive);
 	// we expect model entries to be sorted
@@ -258,20 +260,6 @@ void MainWindow::setMarkerControlModel(QStandardItemModel *m)
 		}
 		lastText = text;
 	});
-}
-
-void MainWindow::resetMarkerControls()
-{
-	/* enable only proteins that are found in current dataset */
-/*	TODO: use QIdentityProxyModel where we cache/return custom flags per item
- * if (data) {
-		auto d = data->peek<Dataset::Base>();
-		for (auto& [id, item] : markerItems)
-			item->setEnabled(d->protIndex.count(id));
-	} else {
-		for (auto& [id, item] : markerItems)
-			item->setEnabled(false);
-	}*/
 }
 
 void MainWindow::addTab(MainWindow::Tab type)
@@ -344,8 +332,15 @@ void MainWindow::addTab(MainWindow::Tab type)
 
 void MainWindow::updateState(Dataset::Touched affected)
 {
-	if (affected & Dataset::Touch::BASE)
-		resetMarkerControls();
+	if (affected & Dataset::Touch::BASE) {
+		markerModel.available.clear();
+		if (data) {
+			auto d = data->peek<Dataset::Base>();
+			for (auto &id : d->protIds)
+				markerModel.available.insert(id);
+		}
+		protList->reset();
+	}
 
 	if (!data) {
 		/* hide and disable widgets that need data or even more */
@@ -620,4 +615,13 @@ void MainWindow::dropEvent(QDropEvent *event)
 void MainWindow::closeEvent(QCloseEvent *)
 {
 	emit closeWindowRequested();
+}
+
+Qt::ItemFlags MainWindow::CustomEnableProxyModel::flags(const QModelIndex &index) const
+{
+	auto flags = sourceModel()->flags(mapToSource(index));
+	flags.setFlag(Qt::ItemFlag::ItemIsEnabled,
+	              available.empty() ? false :
+	                                  available.count(data(index, Qt::UserRole + 1).toInt()));
+	return flags;
 }

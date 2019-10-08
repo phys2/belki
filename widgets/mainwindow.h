@@ -6,9 +6,11 @@
 #include "utils.h"
 
 #include <QMainWindow>
+#include <QIdentityProxyModel>
 
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 
 class DataHub;
 class FileIO;
@@ -55,6 +57,16 @@ protected:
 		DIMRED, SCATTER, HEATMAP, DISTMAT, PROFILES, FEATWEIGHTS
 	};
 
+	struct CustomEnableProxyModel : QIdentityProxyModel {
+		using QIdentityProxyModel::QIdentityProxyModel;
+
+		Qt::ItemFlags flags(const QModelIndex &index) const override;
+
+		// TODO: use more clever/efficient cache which items should be enabled (in itemdata?)
+		// esp. we can do it per-dataset instead of per-window
+		std::unordered_set<ProteinId> available;
+	};
+
 	void dragEnterEvent(QDragEnterEvent *event) override;
 	void dropEvent(QDropEvent *event) override;
 	void closeEvent(QCloseEvent* event) override;
@@ -67,8 +79,6 @@ protected:
 	void setupTabs();
 	void setupSignals();
 	void setupActions();
-	void resetMarkerControls();
-	void finalizeMarkerItems();
 
 	void addTab(Tab type);
 
@@ -88,6 +98,7 @@ protected:
 
 	QString title;
 
+	CustomEnableProxyModel markerModel;
 	QTreeWidget *datasetTree;
 	std::map<unsigned, QTreeWidgetItem*> datasetItems;
 

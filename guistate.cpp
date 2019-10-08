@@ -66,9 +66,9 @@ void GuiState::flipMarker(QModelIndex i)
 {
 	if (!i.isValid())
 		return; // didn't click on a row, e.g. clicked on a checkmark
-	auto proxy = qobject_cast<const QAbstractProxyModel*>(i.model());
-	auto item = markerControl.model->itemFromIndex(
-	                proxy ? proxy->mapToSource(i) : i);
+	while (auto proxy = qobject_cast<const QAbstractProxyModel*>(i.model()))
+		i = proxy->mapToSource(i);
+	auto item = markerControl.model->itemFromIndex(i);
 	if (!item->isEnabled())
 		return;
 	item->setCheckState(item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked);
@@ -88,8 +88,8 @@ void GuiState::setupMarkerControl()
 		// and that happens for quite many proteins at once :-/
 		auto id = ProteinId(i->data().toInt());
 		bool wanted = i->checkState() == Qt::Checked;
-		//if (hub.proteins.peek()->markers.count(id) == wanted)
-		//	return;
+		if (hub.proteins.peek()->markers.count(id) == wanted)
+			return;
 		if (wanted)
 			hub.proteins.addMarker(id);
 		else
