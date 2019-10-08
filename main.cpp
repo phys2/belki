@@ -1,5 +1,5 @@
 #include "datahub.h"
-#include "widgets/mainwindow.h"
+#include "guistate.h"
 #include "utils.h"
 
 #include <QChartView>
@@ -44,8 +44,8 @@ int main(int argc, char *argv[])
 
 	/* start the application */
 	DataHub hub;
-	MainWindowRegistry reg(hub);
-	reg.addWindow();
+	GuiState gui(hub);
+	gui.addWindow();
 
 	/* support some basic arguments */
 	if (argc >= 2) // pass initial filename as single argument

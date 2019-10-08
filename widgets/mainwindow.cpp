@@ -16,13 +16,12 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QCompleter>
-#include <QStandardItemModel>
 #include <QAbstractProxyModel>
+#include <QStandardItemModel>
 #include <QLabel>
 #include <QToolButton>
 #include <QMessageBox>
 #include <QInputDialog>
-#include <QTimer>
 #include <QMimeData>
 #include <QWidgetAction>
 #include <QShortcut>
@@ -35,7 +34,6 @@ MainWindow::MainWindow(DataHub &hub) :
 	setupUi(this);
 	setupToolbar();
 	setupTabs();
-	setupMarkerControls();
 	setupSignals(); // after setupToolbar(), signal handlers rely on initialized actions
 	setupActions();
 
@@ -116,14 +114,9 @@ void MainWindow::setupSignals()
 	connect(io, &FileIO::ioError, this, &MainWindow::displayMessage);
 
 	/* notifications from Protein db */
-	connect(&hub.proteins, &ProteinDB::proteinAdded, this, &MainWindow::addProtein);
-	connect(&hub.proteins, &ProteinDB::markersToggled, this, [this] (auto ids, bool present) {
-		auto state = present ? Qt::Checked : Qt::Unchecked;
-		for (auto id : ids)
-			this->markerItems.at(id)->setCheckState(state);
-	});
 	connect(&hub.proteins, &ProteinDB::structureAvailable, this,
 	        [this] (unsigned id, QString name, bool select) {
+		// TODO move to GuiState
 		auto icon = (hub.proteins.peek()->isHierarchy(id) ? "hierarchy" : "annotations");
 		structureSelect->addItem(QIcon(QString(":/icons/type-%1.svg").arg(icon)), name, id);
 		if (select)
@@ -236,10 +229,9 @@ void MainWindow::setupActions()
 	});
 }
 
-void MainWindow::setupMarkerControls()
+void MainWindow::setMarkerControlModel(QStandardItemModel *m)
 {
-	/* setup completer with empty model */
-	auto m = new QStandardItemModel(this);
+	/* setup completer with model */
 	auto cpl = new QCompleter(m, this);
 	cpl->setCaseSensitivity(Qt::CaseInsensitive);
 	// we expect model entries to be sorted
@@ -248,36 +240,13 @@ void MainWindow::setupMarkerControls()
 	protSearch->setCompleter(cpl);
 	protList->setModel(cpl->completionModel());
 
-	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
-		auto id = ProteinId(i->data().toInt());
-		// TODO this is called also when items are enabled/disabled
-		// and that happens for quite many proteins at once :-/
-		// it leads to unnecessary work, in this case ProteinDB will write-lock
-		if (i->checkState() == Qt::Checked)
-			hub.proteins.addMarker(id);
-		else
-			hub.proteins.removeMarker(id);
-	});
-
-	auto toggler = [m] (QModelIndex i) {
-		if (!i.isValid())
-			return; // didn't click on a row, e.g. clicked on a checkmark
-		auto proxy = qobject_cast<const QAbstractProxyModel*>(i.model());
-		if (!proxy)
-			return; // sorry, can't do this!
-		auto item = m->itemFromIndex(proxy->mapToSource(i));
-		if (!item->isEnabled())
-			return;
-		item->setCheckState(item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked);
-	};
-
 	/* Allow to toggle check state by click */
-	connect(protList, &QListView::clicked, toggler);
+	connect(protList, &QListView::clicked, this, &MainWindow::markerFlipped);
 
 	/* Allow to toggle by pressing <Enter> in protSearch */
-	connect(protSearch, &QLineEdit::returnPressed, [this, cpl, toggler] {
+	connect(protSearch, &QLineEdit::returnPressed, [this, cpl] {
 		if (cpl->currentCompletion() == protSearch->text()) // still relevant
-			toggler(cpl->currentIndex());
+			emit markerFlipped(cpl->currentIndex());
 	});
 
 	/* Implement behavior such as updating the filter also when a character is removed.
@@ -294,29 +263,15 @@ void MainWindow::setupMarkerControls()
 void MainWindow::resetMarkerControls()
 {
 	/* enable only proteins that are found in current dataset */
-	if (data) {
+/*	TODO: use QIdentityProxyModel where we cache/return custom flags per item
+ * if (data) {
 		auto d = data->peek<Dataset::Base>();
 		for (auto& [id, item] : markerItems)
 			item->setEnabled(d->protIndex.count(id));
 	} else {
 		for (auto& [id, item] : markerItems)
 			item->setEnabled(false);
-	}
-}
-
-void MainWindow::finalizeMarkerItems()
-{
-	if (markerWidget->isEnabled()) // already in good state
-		return;
-
-	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
-	m->sort(0);
-	markerWidget->setEnabled(true); // we are in good state now
-}
-
-void MainWindow::toggleMarker(ProteinId id, bool present)
-{
-	markerItems.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
+	}*/
 }
 
 void MainWindow::addTab(MainWindow::Tab type)
@@ -342,7 +297,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 	connect(this, &MainWindow::orderChanged, v, &Viewer::changeOrder);
 
 	// connect signalling out of view
-	connect(v, &Viewer::markerToggled, this, &MainWindow::toggleMarker);
+	connect(v, &Viewer::markerToggled, this, &MainWindow::markerToggled);
 	connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateProteins);
 
 	auto renderSlot = [this] (auto r, auto d) { io->renderToFile(r, {title, d}); };
@@ -580,27 +535,6 @@ void MainWindow::displayMessage(const QString &message, MessageType type)
 	}
 }
 
-void MainWindow::addProtein(ProteinId id, const Protein &protein)
-{
-	/* setup new item */
-	auto item = new QStandardItem;
-	item->setText(protein.name);
-	item->setData(id);
-	item->setCheckable(true);
-	item->setCheckState(Qt::Unchecked);
-	// expect new protein not to be in current dataset (yet)
-	item->setEnabled(false);
-
-	/* add item to model */
-	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
-	m->appendRow(item);
-	markerItems[id] = item;
-
-	/* ensure items are sorted in the end, but defer sorting */
-	markerWidget->setEnabled(false); // we are "dirty"
-	QTimer::singleShot(0, this, &MainWindow::finalizeMarkerItems);
-}
-
 void MainWindow::applyAnnotations(unsigned id)
 {
 	// TODO guiState.structure.annotationsId = id;
@@ -686,24 +620,4 @@ void MainWindow::dropEvent(QDropEvent *event)
 void MainWindow::closeEvent(QCloseEvent *)
 {
 	emit closeWindowRequested();
-}
-
-unsigned MainWindowRegistry::addWindow()
-{
-	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(hub));
-	connect(it->second, &MainWindow::newWindowRequested,
-	        this, &MainWindowRegistry::addWindow);
-	connect(it->second, &MainWindow::closeWindowRequested, this,
-	        [this,id=it->first] { removeWindow(id); });
-	it->second->show();
-	return it->first;
-}
-
-void MainWindowRegistry::removeWindow(unsigned id)
-{
-	auto w = windows.at(id);
-	w->deleteLater(); // do not delete a window within its close event
-	windows.erase(id);
-	if (windows.empty())
-		QApplication::quit();
 }

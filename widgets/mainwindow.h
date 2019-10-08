@@ -13,28 +13,9 @@
 class DataHub;
 class FileIO;
 class QLabel;
-class QStandardItem;
 class QTreeWidget;
-class QTreeWidgetItem;
-class MainWindow;
-
-class MainWindowRegistry : public QObject
-{
-	Q_OBJECT
-
-public:
-	explicit MainWindowRegistry(DataHub &hub) : hub(hub) {}
-
-public slots:
-	unsigned addWindow();
-	void removeWindow(unsigned id);
-
-protected:
-	std::map<unsigned, MainWindow*> windows;
-	unsigned nextId = 1;
-
-	DataHub &hub;
-};
+class QStandardItemModel;
+class QTreeWidgetItem; // todo remove
 
 class MainWindow : public QMainWindow, private Ui::MainWindow
 {
@@ -46,12 +27,11 @@ public:
 	const QString& getTitle() const { return title; }
 	FileIO *getIo() { return io; }
 
+	void setMarkerControlModel(QStandardItemModel *m);
+
 public slots:
 	void showHelp();
 	void displayMessage(const QString &message, MessageType type = MessageType::CRITICAL);
-
-	void addProtein(ProteinId id, const Protein &protein);
-	void toggleMarker(ProteinId id, bool present);
 
 	void newDataset(Dataset::Ptr data);
 
@@ -60,6 +40,8 @@ signals:
 	void closeWindowRequested();
 	void datasetSelected(unsigned id);
 	void orderChanged(Dataset::OrderBy reference, bool synchronize);
+	void markerFlipped(QModelIndex i);
+	void markerToggled(ProteinId id, bool present);
 
 protected:
 	enum class Input {
@@ -85,7 +67,6 @@ protected:
 	void setupTabs();
 	void setupSignals();
 	void setupActions();
-	void setupMarkerControls();
 	void resetMarkerControls();
 	void finalizeMarkerItems();
 
@@ -109,7 +90,6 @@ protected:
 
 	QTreeWidget *datasetTree;
 	std::map<unsigned, QTreeWidgetItem*> datasetItems;
-	std::unordered_map<ProteinId, QStandardItem*> markerItems;
 
 	FileIO *io;
 
