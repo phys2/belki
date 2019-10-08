@@ -9,6 +9,7 @@ ProteinDB::ProteinDB(QObject *parent)
 {
 	qRegisterMetaType<ProteinId>("ProteinId"); // needed for typedefs
 	qRegisterMetaType<Protein>("Protein"); // needed for signal
+	qRegisterMetaType<ProteinVec>(); // needed for signal
 }
 
 ProteinId ProteinDB::add(const QString &fullname)
@@ -115,7 +116,8 @@ size_t ProteinDB::importMarkers(const std::vector<QString> &names)
 	}
 	data.l.unlock();
 
-	emit markersToggled(affected, true);
+	if (!affected.empty())
+		emit markersToggled(affected, true);
 	return affected.size();
 }
 

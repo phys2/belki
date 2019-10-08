@@ -12,6 +12,8 @@
 #include <variant>
 
 using ProteinId = unsigned; // for semantic distinction
+using ProteinVec = std::vector<ProteinId>;
+
 struct Protein {
 	// first part of protein name, used as identifier
 	QString name;
