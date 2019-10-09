@@ -1,21 +1,44 @@
 #include "guistate.h"
 #include "widgets/mainwindow.h"
 
-#include <QStandardItemModel>
 #include <QAbstractProxyModel>
 #include <QTimer>
 
 GuiState::GuiState(DataHub &hub) : hub(hub)
 {
-	datasetControl.model = new QStandardItemModel(this);
-	setupMarkerControl();
+	auto addStructureItem = [this] (QString name, QString icon, int id) {
+		auto item = new QStandardItem(name);
+		if (!icon.isEmpty())
+			item->setIcon(QIcon(icon));
+		item->setData(id, Qt::UserRole);
+		structureModel.appendRow(item);
+	};
 
+	/* prepare default structure items */
+	addStructureItem("None", {}, 0);
+	addStructureItem("Adaptive Mean Shift", ":/icons/type-meanshift.svg", -1);
+
+	/* internal wiring */
+	connect(&markerControl.model, &QStandardItemModel::itemChanged,
+	        this, &GuiState::handleMarkerChange);
+
+	/* notifications from Protein db */
 	connect(&hub.proteins, &ProteinDB::proteinAdded, this, &GuiState::addProtein);
 	connect(&hub.proteins, &ProteinDB::markersToggled,
 	        this, [this] (auto ids, bool present) {
 		auto state = present ? Qt::Checked : Qt::Unchecked;
 		for (auto id : ids)
 			this->markerControl.items.at(id)->setCheckState(state);
+	});
+	connect(&hub.proteins, &ProteinDB::structureAvailable, this,
+	        [this,addStructureItem] (unsigned id, QString name, bool select) {
+		auto icon = (this->hub.proteins.peek()->isHierarchy(id) ? "hierarchy" : "annotations");
+		addStructureItem(name, QString(":/icons/type-%1.svg").arg(icon), (int)id);
+		if (select) {
+			auto target = focused();
+			if (target)
+				target->selectStructure((int)id);
+		}
 	});
 	connect(&hub, &DataHub::newDataset, this, &GuiState::addDataset);
 }
@@ -24,8 +47,9 @@ unsigned GuiState::addWindow()
 {
 	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(hub));
 	auto target = it->second;
-	target->setDatasetControlModel(datasetControl.model);
-	target->setMarkerControlModel(markerControl.model);
+	target->setDatasetControlModel(&datasetControl.model);
+	target->setMarkerControlModel(&markerControl.model);
+	target->setStructureControlModel(&structureModel);
 
 	connect(target, &MainWindow::newWindowRequested,
 	        this, &GuiState::addWindow);
@@ -56,7 +80,7 @@ void GuiState::addDataset(Dataset::Ptr dataset)
 {
 	auto conf = dataset->config();
 	auto parent = (conf.parent ? datasetControl.items.at(conf.parent)
-	                           : datasetControl.model->invisibleRootItem()); // top level
+	                           : datasetControl.model.invisibleRootItem()); // top level
 	auto item = new QStandardItem(conf.name);
 	item->setData(dataset->id(), Qt::UserRole);
 	item->setData(QVariant::fromValue(dataset), Qt::UserRole + 1);
@@ -64,8 +88,9 @@ void GuiState::addDataset(Dataset::Ptr dataset)
 	datasetControl.items[conf.id] = item;
 
 	// auto-select
-	for (auto &[k, v] : windows)
-		v->setDataset(dataset);
+	auto target = focused();
+	if (target)
+		target->setDataset(dataset);
 }
 
 void GuiState::addProtein(ProteinId id, const Protein &protein)
@@ -78,7 +103,7 @@ void GuiState::addProtein(ProteinId id, const Protein &protein)
 	item->setCheckState(Qt::Unchecked);
 
 	/* add item to model */
-	markerControl.model->appendRow(item);
+	markerControl.model.appendRow(item);
 	markerControl.items[id] = item;
 
 	/* ensure items are sorted in the end, but defer sorting */
@@ -92,7 +117,7 @@ void GuiState::flipMarker(QModelIndex i)
 		return; // didn't click on a row, e.g. clicked on a checkmark
 	while (auto proxy = qobject_cast<const QAbstractProxyModel*>(i.model()))
 		i = proxy->mapToSource(i);
-	auto item = markerControl.model->itemFromIndex(i);
+	auto item = markerControl.model.itemFromIndex(i);
 	if (!item->isEnabled())
 		return;
 	item->setCheckState(item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked);
@@ -103,29 +128,36 @@ void GuiState::toggleMarker(ProteinId id, bool present)
 	markerControl.items.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 }
 
-void GuiState::setupMarkerControl()
+void GuiState::handleMarkerChange(QStandardItem *item)
 {
-	markerControl.model = new QStandardItemModel(this);
-	connect(markerControl.model, &QStandardItemModel::itemChanged,
-	        [this] (QStandardItem *i) {
-		// TODO this is called also when items are enabled/disabled
-		// and that happens for quite many proteins at once :-/
-		auto id = ProteinId(i->data().toInt());
-		bool wanted = i->checkState() == Qt::Checked;
-		if (hub.proteins.peek()->markers.count(id) == wanted)
-			return;
-		if (wanted)
-			hub.proteins.addMarker(id);
-		else
-			hub.proteins.removeMarker(id);
-	});
+	auto id = ProteinId(item->data().toInt());
+	bool wanted = item->checkState() == Qt::Checked;
+	/* We are called on check state change, but also other item changes,
+	   e.g. quite many items get enabled/disabled regularly. */
+	if (hub.proteins.peek()->markers.count(id) == wanted)
+		return;
+	if (wanted)
+		hub.proteins.addMarker(id);
+	else
+		hub.proteins.removeMarker(id);
 }
 
 void GuiState::sortMarkerModel()
 {
 	if (!markerControl.dirty) // already in good state
 		return;
-	markerControl.model->sort(0);
+	markerControl.model.sort(0);
 	markerControl.dirty = false;
+}
+
+MainWindow *GuiState::focused()
+{
+	if (windows.empty())
+		return nullptr;
+	for (auto &[k, v] : windows) {
+		if (v->hasFocus())
+			return v;
+	}
+	return windows.rbegin()->second; // default to latest
 }
 

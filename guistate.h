@@ -4,6 +4,7 @@
 #include "datahub.h"
 
 #include <QObject>
+#include <QStandardItemModel>
 
 class QStandardItem;
 class QStandardItemModel;
@@ -25,23 +26,28 @@ public slots:
 	void flipMarker(QModelIndex i);
 	void toggleMarker(ProteinId id, bool present);
 
+	void handleMarkerChange(QStandardItem *item);
+
 protected:
-	void setupMarkerControl();
 	void sortMarkerModel();
+
+	MainWindow *focused();
 
 	std::map<unsigned, MainWindow*> windows;
 	unsigned nextId = 1;
 
 	struct {
-		QStandardItemModel *model;
+		QStandardItemModel model;
 		std::map<unsigned, QStandardItem*> items;
 	} datasetControl;
 
 	struct {
-		QStandardItemModel *model;
+		QStandardItemModel model;
 		std::unordered_map<ProteinId, QStandardItem*> items;
 		bool dirty = false;
 	} markerControl;
+
+	QStandardItemModel structureModel;
 
 	DataHub &hub;
 };

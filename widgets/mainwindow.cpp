@@ -50,8 +50,6 @@ void MainWindow::setupToolbar()
 	toolBar->insertSeparator(anchor);
 
 	// fill-up partition area
-	structureSelect->addItem("None", 0);
-	structureSelect->addItem(QIcon(":/icons/type-meanshift.svg"), "Adaptive Mean Shift", -1);
 	toolBar->insertWidget(anchor, structureLabel);
 	toolbarActions.structure = toolBar->insertWidget(anchor, structureSelect);
 	toolbarActions.granularity = toolBar->addWidget(granularitySlider);
@@ -103,16 +101,6 @@ void MainWindow::setupSignals()
 	/* error dialogs */
 	connect(&hub, &DataHub::ioError, this, &MainWindow::displayMessage);
 	connect(io, &FileIO::ioError, this, &MainWindow::displayMessage);
-
-	/* notifications from Protein db */
-	connect(&hub.proteins, &ProteinDB::structureAvailable, this,
-	        [this] (unsigned id, QString name, bool select) {
-		// TODO move to GuiState
-		auto icon = (hub.proteins.peek()->isHierarchy(id) ? "hierarchy" : "annotations");
-		structureSelect->addItem(QIcon(QString(":/icons/type-%1.svg").arg(icon)), name, id);
-		if (select)
-			selectStructure((int)id);
-	});
 
 	/* selecting dataset */
 	connect(datasetSelect, qOverload<int>(&QComboBox::activated), [this] {
@@ -266,6 +254,11 @@ void MainWindow::setMarkerControlModel(QStandardItemModel *source)
 		}
 		lastText = text;
 	});
+}
+
+void MainWindow::setStructureControlModel(QStandardItemModel *m)
+{
+	structureSelect->setModel(m);
 }
 
 void MainWindow::addTab(MainWindow::Tab type)

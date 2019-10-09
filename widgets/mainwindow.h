@@ -30,11 +30,13 @@ public:
 
 	void setDatasetControlModel(QStandardItemModel *m);
 	void setMarkerControlModel(QStandardItemModel *m);
+	void setStructureControlModel(QStandardItemModel *m);
 
 public slots:
 	void showHelp();
 	void displayMessage(const QString &message, MessageType type = MessageType::CRITICAL);
 	void setDataset(Dataset::Ptr data);
+	void selectStructure(int id);
 
 signals:
 	void newWindowRequested();
@@ -56,6 +58,7 @@ protected:
 		DIMRED, SCATTER, HEATMAP, DISTMAT, PROFILES, FEATWEIGHTS
 	};
 
+	/* our proxy to individually enable/disable protein entries based on dataset */
 	struct CustomEnableProxyModel : QIdentityProxyModel {
 		using QIdentityProxyModel::QIdentityProxyModel;
 
@@ -82,7 +85,6 @@ protected:
 
 	void setFilename(QString name);
 	void setSelectedDataset(unsigned id);
-	void selectStructure(int id);
 
 	void applyAnnotations(unsigned id);
 	void applyHierarchy(unsigned id, unsigned granularity);
