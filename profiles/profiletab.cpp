@@ -123,7 +123,8 @@ void ProfileTab::addProtein(ProteinId id, const Protein &protein)
 	proteinItems[id] = item;
 
 	/* ensure items are sorted in the end, but defer sorting */
-	proteinBox->setEnabled(false); // we are "dirty"
+	proteinBox->setEnabled(false);
+	proteinModelDirty = true;
 	QTimer::singleShot(0, this, &ProfileTab::finalizeProteinBox);
 }
 
@@ -183,11 +184,12 @@ void ProfileTab::setupProteinBox()
 
 void ProfileTab::finalizeProteinBox()
 {
-	if (proteinBox->isEnabled()) // already in good state
+	if (!proteinModelDirty) // already in good state
 		return;
 
 	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
 	m->sort(0);
+	proteinModelDirty = false;
 	proteinBox->setEnabled(true); // we are in good state now
 }
 
