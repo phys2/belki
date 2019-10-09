@@ -46,6 +46,7 @@ void Dataset::spawn(Features::Ptr in)
 	b.protIndex = std::move(in->protIndex);
 	b.features = std::move(in->features);
 	b.featureRange = std::move(in->featureRange);
+	b.logSpace = std::move(in->logSpace);
 	b.scores = std::move(in->scores);
 	b.scoreRange = std::move(in->scoreRange);
 

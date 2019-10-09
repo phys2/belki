@@ -45,8 +45,7 @@ void ProfileWidget::setData(std::shared_ptr<Dataset> dataset)
 		auto old = chart;
 		chart = new ProfileChart(data);
 
-		auto range = data->peek<Dataset::Base>()->featureRange;
-		if (range.min >= 0 && range.max > 10000)
+		if (data->peek<Dataset::Base>()->logSpace)
 			chart->toggleLogSpace(true);
 
 		plot->setChart(chart);

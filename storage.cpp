@@ -391,6 +391,7 @@ void Storage::finalizeRead(Features &data, bool normalize)
 		}
 	}
 	data.featureRange = (normalize ? Features::Range{0., 1.} : range);
+	data.logSpace = (data.featureRange.min >= 0 && data.featureRange.max > 10000);
 	if (data.hasScores())
 		data.scoreRange = features::range_of(data.scores);
 }
@@ -433,11 +434,14 @@ QCborValue Storage::serializeDataset(std::shared_ptr<const Dataset> src)
 		displays.insert(k, packDisplay(v));
 	}
 
+	auto features = packFeatures(b->features, b->featureRange);
+	features.insert({"logspace", b->logSpace});
 	QCborMap ret{
 		{"dimensions", dimensions},
 		{"protIds", protIds},
-		{"features", packFeatures(b->features, b->featureRange)},
-	};
+		{"features", features},
+	};	
+
 	if (b->hasScores())
 		ret.insert({"scores", packFeatures(b->scores, b->scoreRange)});
 	ret.insert({"displays", displays});

@@ -78,10 +78,7 @@ void ProfileTab::addDataset(Dataset::Ptr data)
 	auto &state = content[id]; // emplace (note: ids are never recycled)
 	state.data = data;
 	state.scene = std::make_unique<ProfileChart>(data, false);
-	// TODO: code dupl. from profilewidget.
-	// have a bool in the data model instead. use also in heatmap!
-	auto range = data->peek<Dataset::Base>()->featureRange;
-	if (range.min >= 0 && range.max > 10000) {
+	if (data->peek<Dataset::Base>()->logSpace) {
 		state.logSpace = true;
 		state.scene->toggleLogSpace(true);
 	}

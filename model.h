@@ -46,6 +46,7 @@ struct Features {
 	// original data
 	Vec features;
 	Range featureRange;
+	bool logSpace = false;
 
 	// measurement scores
 	Vec scores;
