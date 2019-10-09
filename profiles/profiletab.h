@@ -34,6 +34,7 @@ protected:
 	void updateProteinItems();
 
 	std::unordered_map<ProteinId, QStandardItem*> proteinItems;
+	bool proteinModelDirty = false;
 
 	struct {
 		std::set<ProteinId> extras;
