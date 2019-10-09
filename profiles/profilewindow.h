@@ -18,7 +18,6 @@ public:
 
 protected:
 	ProfileChart *chart;
-	MainWindow *mainWindow;
 };
 
 #endif // PROFILEWINDOW_H

@@ -29,6 +29,7 @@ public:
 	ProfileChart(std::shared_ptr<Dataset const> data, bool small=true);
 	ProfileChart(ProfileChart *source);
 
+	std::shared_ptr<Dataset const> dataset() { return data; }
 	unsigned numProfiles() { return content.size(); }
 	bool isLogSpace() { return logSpace; }
 

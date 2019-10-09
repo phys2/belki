@@ -24,7 +24,6 @@ class MainWindow : public QMainWindow, private Ui::MainWindow
 public:
 	explicit MainWindow(DataHub &hub);
 
-	const QString& getTitle() const { return title; }
 	FileIO *getIo() { return io; }
 
 public slots:
@@ -70,13 +69,12 @@ protected:
 	void addTab(Tab type);
 
 	void setFilename(QString name);
-	void setSelectedDataset(unsigned index);
+	void setSelectedDataset(unsigned id);
 	void selectStructure(int id);
 
 	DataHub &hub;
 	Dataset::Ptr data;
 
-	QString title;
 
 	QTreeWidget *datasetTree;
 	std::map<unsigned, QTreeWidgetItem*> datasetItems;
