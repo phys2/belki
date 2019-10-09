@@ -221,16 +221,17 @@ void MainWindow::setDatasetControlModel(QStandardItemModel *m)
 {
 	// setup datasets selection model+view
 	datasetTree = new QTreeView(this);
-	datasetTree->setModel(m);
 	datasetTree->setHeaderHidden(true);
 	datasetTree->setFrameShape(QFrame::Shape::NoFrame);
 	datasetTree->setSelectionMode(QTreeView::SelectionMode::NoSelection);
 	datasetTree->setItemsExpandable(false);
+	datasetTree->setModel(m);
+	datasetTree->expandAll(); // model can already have data
 	datasetSelect->setModel(datasetTree->model());
 	datasetSelect->setView(datasetTree);
 
 	connect(m, &QStandardItemModel::rowsInserted, [this] {
-		datasetTree->expandAll();
+		datasetTree->expandAll(); // ensure derived datasets are always visible
 	});
 }
 
@@ -416,28 +417,30 @@ void MainWindow::setFilename(QString name)
 	}
 
 	setWindowTitle(QString("%1 – Belki").arg(name));
+	// TODO: right now the name is mangled. need to keep both
 	setWindowFilePath(name);
 }
-
-#include <iostream>
 
 void MainWindow::setSelectedDataset(unsigned id)
 {
 	auto model = qobject_cast<QStandardItemModel*>(datasetTree->model());
+
+	/* we need to traverse model, no applicable finder provided by Qt */
 	std::function<QModelIndex(QModelIndex)> search;
 	search = [&] (QModelIndex parent) -> QModelIndex {
-		std::cerr << model->rowCount(parent) << "\t";
 		for (int r = 0; r < model->rowCount(parent); ++r) {
-	        QModelIndex index = model->index(r, 0, parent);
-	        if (model->data(index, Qt::UserRole) == id)
-				return index;
-	        if (model->hasChildren(index))
-				return search(index);
+	        auto current = model->index(r, 0, parent);
+	        if (model->data(current, Qt::UserRole) == id)
+				return current;
+			if (model->hasChildren(current)) {
+				auto index = search(current);
+				if (index.isValid())
+					return index;
+			}
 	    }
 		return {};
 	};
 	auto index = search(model->invisibleRootItem()->index());
-	std::cerr << id << "\t" << index.row() << std::endl;
 
 	/* this is a tad tricky to do due to Qt interface limitations */
 	// make item current in tree to get hold of its index
