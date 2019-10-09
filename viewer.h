@@ -23,6 +23,7 @@ public slots:
 
 signals:
 	// signals from outside that we might react to
+	// TODO: code that conveys the resulting current state to new instantiations
 	void inAddProtein(ProteinId id, const Protein &protein);
 	void inUpdateColorset(QVector<QColor> colors);
 	void inTogglePartitions(bool show);
