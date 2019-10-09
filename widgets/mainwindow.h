@@ -26,7 +26,6 @@ class MainWindow : public QMainWindow, private Ui::MainWindow
 public:
 	explicit MainWindow(DataHub &hub);
 
-	const QString& getTitle() const { return title; }
 	FileIO *getIo() { return io; }
 
 	void setDatasetControlModel(QStandardItemModel *m);
@@ -94,8 +93,6 @@ protected:
 
 	DataHub &hub;
 	Dataset::Ptr data;
-
-	QString title;
 
 	CustomEnableProxyModel markerModel;
 	QTreeView *datasetTree;

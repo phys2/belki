@@ -294,7 +294,12 @@ void MainWindow::addTab(MainWindow::Tab type)
 	connect(v, &Viewer::markerToggled, this, &MainWindow::markerToggled);
 	connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateProteins);
 
-	auto renderSlot = [this] (auto r, auto d) { io->renderToFile(r, {title, d}); };
+	auto renderSlot = [this] (auto r, auto d) {
+		auto title = windowTitle();
+		if (data)
+			title = data->config().name;
+		io->renderToFile(r, {title, d});
+	};
 	connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
 	connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
 

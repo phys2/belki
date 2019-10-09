@@ -4,9 +4,9 @@
 #include "fileio.h"
 
 ProfileWindow::ProfileWindow(ProfileChart *source, QWidget *parent) :
-    QMainWindow(parent), chart(new ProfileChart(source)),
-    mainWindow(qobject_cast<MainWindow*>(parent))
+    QMainWindow(parent), chart(new ProfileChart(source))
 {
+	auto mainWindow = qobject_cast<MainWindow*>(parent);
 	if (!mainWindow)
 		throw std::runtime_error("Parent of ProfileWindow is not a MainWindow!");
 
@@ -25,8 +25,8 @@ ProfileWindow::ProfileWindow(ProfileChart *source, QWidget *parent) :
 	chartView->setRenderHint(QPainter::Antialiasing);
 
 	/* actions */
-	connect(actionSavePlot, &QAction::triggered, [this] {
-		auto title = mainWindow->getTitle();
+	connect(actionSavePlot, &QAction::triggered, [this,mainWindow] {
+		auto title = chart->dataset()->config().name;
 		auto desc = chart->title();
 		if (desc.isEmpty())
 			desc = "Selected Profiles";
