@@ -39,7 +39,7 @@ public:
 
 	explicit ProteinDB(QObject *parent = nullptr);
 
-	const QVector<QColor>& groupColors() { return colorset; }
+	const QVector<QColor>& groupColors() { return groupColorset; }
 	View peek() { return View(data); }
 
 	ProteinId add(const QString& fullname);
@@ -70,7 +70,7 @@ protected:
 
 	Public data;
 
-	QVector<QColor> colorset;
+	QVector<QColor> colorset, groupColorset;
 };
 
 #endif // PROTEINDB_H
