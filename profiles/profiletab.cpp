@@ -7,7 +7,7 @@
 #include <QListWidget>
 
 ProfileTab::ProfileTab(QWidget *parent) :
-    Viewer(parent)
+    Viewer(parent), proteinModel(guiState.extras)
 {
 	setupUi(this);
 	setupProteinBox();
@@ -42,7 +42,6 @@ ProfileTab::ProfileTab(QWidget *parent) :
 	});
 
 	/* connect incoming signals */
-	connect(this, &Viewer::inAddProtein, this, &ProfileTab::addProtein);
 	connect(this, &Viewer::inToggleMarkers, [this] (auto ids, bool present) {
 		// we do not keep track of markers for inactive scenes
 		if (current)
@@ -50,6 +49,11 @@ ProfileTab::ProfileTab(QWidget *parent) :
 	});
 
 	updateEnabled();
+}
+
+void ProfileTab::setProteinModel(QAbstractItemModel *m)
+{
+	proteinModel.setSourceModel(m);
 }
 
 void ProfileTab::selectDataset(unsigned id)
@@ -64,7 +68,6 @@ void ProfileTab::selectDataset(unsigned id)
 	auto scene = current().scene.get();
 	rebuildPlot();  // TODO temporary hack
 	scene->toggleLabels(guiState.showLabels);
-	updateProteinItems();
 
 	// apply datastate
 	actionLogarithmic->setChecked(current().logSpace);
@@ -104,27 +107,6 @@ void ProfileTab::rebuildPlot()
 	actionShowAverage->setEnabled(scene->numProfiles() >= 2);
 }
 
-void ProfileTab::addProtein(ProteinId id, const Protein &protein)
-{
-	/* setup new item */
-	auto item = new QStandardItem;
-	item->setText(protein.name);
-	item->setData(id);
-	item->setCheckable(true);
-	item->setCheckState(Qt::Unchecked);
-	// item->setEnabled(false); // would be great, but seems the later flip is expensive 😟
-
-	/* add item to model */
-	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
-	m->appendRow(item);
-	proteinItems[id] = item;
-
-	/* ensure items are sorted in the end, but defer sorting */
-	proteinBox->setEnabled(false);
-	proteinModelDirty = true;
-	QTimer::singleShot(0, this, &ProfileTab::finalizeProteinBox);
-}
-
 void ProfileTab::updateEnabled()
 {
 	bool on = current;
@@ -135,7 +117,7 @@ void ProfileTab::updateEnabled()
 void ProfileTab::setupProteinBox()
 {
 	/* setup completer with empty model */
-	auto m = new QStandardItemModel(this);
+	auto m = &proteinModel;
 	auto cpl = new QCompleter(m, this);
 	cpl->setCaseSensitivity(Qt::CaseInsensitive);
 	// we expect model entries to be sorted
@@ -144,28 +126,18 @@ void ProfileTab::setupProteinBox()
 	cpl->setMaxVisibleItems(10);
 	protSearch->setCompleter(cpl);
 
-	connect(m, &QStandardItemModel::itemChanged, [this] (QStandardItem *i) {
-		auto id = ProteinId(i->data().toInt());
-		bool wanted = (i->checkState() == Qt::Checked);
-		if (wanted == guiState.extras.count(id)) // check state did not change
-			return;
-		if (wanted)
-			guiState.extras.insert(id);
-		else
-			guiState.extras.erase(id);
-		rebuildPlot(); // TODO temporary hack
-	});
-
-	auto toggler = [m] (QModelIndex i) {
+	auto toggler = [this] (QModelIndex i) {
 		if (!i.isValid())
 			return; // didn't click on a row, e.g. clicked on a checkmark
 		auto proxy = qobject_cast<const QAbstractProxyModel*>(i.model());
 		if (!proxy)
 			return; // sorry, can't do this!
-		auto item = m->itemFromIndex(proxy->mapToSource(i));
-		if (!item->isEnabled())
-			return;
-		item->setCheckState(item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked);
+		auto id = unsigned(proteinModel.data(proxy->mapToSource(i), Qt::UserRole + 1).toInt());
+		if (guiState.extras.count(id))
+			guiState.extras.erase(id);
+		else
+			guiState.extras.insert(id);
+		rebuildPlot();
 	};
 
 	/* Allow to toggle check state by click */
@@ -179,25 +151,15 @@ void ProfileTab::setupProteinBox()
 	});*/
 }
 
-void ProfileTab::finalizeProteinBox()
+QVariant ProfileTab::CustomCheckedProxyModel::data(const QModelIndex &index, int role) const
 {
-	if (!proteinModelDirty) // already in good state
-		return;
+	if (role != Qt::CheckStateRole)
+		return QIdentityProxyModel::data(index, role);
 
-	auto m = qobject_cast<QStandardItemModel*>(protSearch->completer()->model());
-	m->sort(0);
-	proteinModelDirty = false;
-	proteinBox->setEnabled(true); // we are in good state now
-}
+	if (marked.count((unsigned)data(index, Qt::UserRole + 1).toInt()))
+		return Qt::Checked;
 
-void ProfileTab::updateProteinItems()
-{
-	if (current) {
-		auto d = current().data->peek<Dataset::Base>();
-		for (auto& [id, item] : proteinItems)
-			item->setEnabled(d->protIndex.count(id));
-	} else {
-		for (auto& [id, item] : proteinItems)
-			item->setEnabled(false);
-	}
+	// use "partially checked" to pass-on marker state
+	auto d = sourceModel()->data(mapToSource(index), role);
+	return (d == Qt::Checked ? Qt::PartiallyChecked : d);
 }

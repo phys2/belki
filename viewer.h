@@ -8,6 +8,7 @@
 
 class QGraphicsScene;
 class QGraphicsView;
+class QAbstractItemModel;
 
 class Viewer : public QMainWindow
 {
@@ -17,14 +18,14 @@ public:
 	using QMainWindow::QMainWindow;
 	virtual ~Viewer() {}
 
+	virtual void setProteinModel(QAbstractItemModel*) {}
+
 public slots:
 	virtual void selectDataset(unsigned id)=0;
 	virtual void addDataset(Dataset::Ptr data)=0;
 
 signals:
 	// signals from outside that we might react to
-	// TODO: code that conveys the resulting current state to new instantiations
-	void inAddProtein(ProteinId id, const Protein &protein);
 	void inUpdateColorset(QVector<QColor> colors);
 	void inTogglePartitions(bool show);
 	void inToggleMarkers(const ProteinVec &ids, bool present);

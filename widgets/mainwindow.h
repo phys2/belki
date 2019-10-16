@@ -76,6 +76,7 @@ protected:
 	void updateState(Dataset::Touched affected);
 	void openFile(Input type, QString filename = {});
 
+	void setupModelViews();
 	void setupToolbar();
 	void setupTabs();
 	void setupSignals();

@@ -32,6 +32,7 @@ MainWindow::MainWindow(DataHub &hub) :
     io(new FileIO(this)) // cleanup by QObject
 {
 	setupUi(this);
+	setupModelViews(); // before setupTabs(), tabs may need models
 	setupToolbar();
 	setupTabs();
 	setupSignals(); // after setupToolbar(), signal handlers rely on initialized actions
@@ -39,6 +40,49 @@ MainWindow::MainWindow(DataHub &hub) :
 
 	// initialize widgets to be empty & most-restrictive
 	updateState(Dataset::Touch::BASE);
+}
+
+void MainWindow::setupModelViews()
+{
+	/** Proteins/Markers **/
+
+	/* setup completer with model */
+	auto m = &markerModel;
+	auto cpl = new QCompleter(m, this);
+	cpl->setCaseSensitivity(Qt::CaseInsensitive);
+	// we expect model entries to be sorted
+	cpl->setModelSorting(QCompleter::CaseInsensitivelySortedModel);
+	cpl->setCompletionMode(QCompleter::InlineCompletion);
+	protSearch->setCompleter(cpl);
+	protList->setModel(cpl->completionModel());
+
+	/* Allow to toggle check state by click */
+	connect(protList, &QListView::clicked, this, &MainWindow::markerFlipped);
+
+	/* Allow to toggle by pressing <Enter> in protSearch */
+	connect(protSearch, &QLineEdit::returnPressed, [this, cpl] {
+		if (cpl->currentCompletion() == protSearch->text()) // still relevant
+			emit markerFlipped(cpl->currentIndex());
+	});
+
+	/* Implement behavior such as updating the filter also when a character is removed.
+	 * It seems by default, QCompleter only updates when new characters are added. */
+	QString lastText;
+	connect(protSearch, &QLineEdit::textEdited, [cpl, lastText] (const QString &text) mutable {
+		if (text.length() < lastText.length()) {
+			cpl->setCompletionPrefix(text);
+		}
+		lastText = text;
+	});
+
+	/** Datasets **/
+	// setup datasets selection model+view
+	datasetTree = new QTreeView(this);
+	datasetTree->setHeaderHidden(true);
+	datasetTree->setFrameShape(QFrame::Shape::NoFrame);
+	datasetTree->setSelectionMode(QTreeView::SelectionMode::NoSelection);
+	datasetTree->setItemsExpandable(false);
+	datasetSelect->setView(datasetTree);
 }
 
 void MainWindow::setupToolbar()
@@ -207,17 +251,11 @@ void MainWindow::setupActions()
 }
 void MainWindow::setDatasetControlModel(QStandardItemModel *m)
 {
-	// setup datasets selection model+view
-	datasetTree = new QTreeView(this);
-	datasetTree->setHeaderHidden(true);
-	datasetTree->setFrameShape(QFrame::Shape::NoFrame);
-	datasetTree->setSelectionMode(QTreeView::SelectionMode::NoSelection);
-	datasetTree->setItemsExpandable(false);
 	datasetTree->setModel(m);
 	datasetTree->expandAll(); // model can already have data
 	datasetSelect->setModel(datasetTree->model());
-	datasetSelect->setView(datasetTree);
 
+	// note: this never happens, but on a switch we might need to disconnect old model
 	connect(m, &QStandardItemModel::rowsInserted, [this] {
 		datasetTree->expandAll(); // ensure derived datasets are always visible
 	});
@@ -225,35 +263,7 @@ void MainWindow::setDatasetControlModel(QStandardItemModel *m)
 
 void MainWindow::setMarkerControlModel(QStandardItemModel *source)
 {
-	/* setup completer with model */
 	markerModel.setSourceModel(source);
-	auto m = &markerModel;
-	auto cpl = new QCompleter(m, this);
-	cpl->setCaseSensitivity(Qt::CaseInsensitive);
-	// we expect model entries to be sorted
-	cpl->setModelSorting(QCompleter::CaseInsensitivelySortedModel);
-	cpl->setCompletionMode(QCompleter::InlineCompletion);
-	protSearch->setCompleter(cpl);
-	protList->setModel(cpl->completionModel());
-
-	/* Allow to toggle check state by click */
-	connect(protList, &QListView::clicked, this, &MainWindow::markerFlipped);
-
-	/* Allow to toggle by pressing <Enter> in protSearch */
-	connect(protSearch, &QLineEdit::returnPressed, [this, cpl] {
-		if (cpl->currentCompletion() == protSearch->text()) // still relevant
-			emit markerFlipped(cpl->currentIndex());
-	});
-
-	/* Implement behavior such as updating the filter also when a character is removed.
-	 * It seems by default, QCompleter only updates when new characters are added. */
-	QString lastText;
-	connect(protSearch, &QLineEdit::textEdited, [cpl, lastText] (const QString &text) mutable {
-		if (text.length() < lastText.length()) {
-			cpl->setCompletionPrefix(text);
-		}
-		lastText = text;
-	});
 }
 
 void MainWindow::setStructureControlModel(QStandardItemModel *m)
@@ -273,9 +283,10 @@ void MainWindow::addTab(MainWindow::Tab type)
 	case Tab::FEATWEIGHTS: v = new FeatweightsTab; break;
 	}
 
+	v->setProteinModel(&markerModel);
+
 	// connect singnalling into view
 	connect(&hub, &DataHub::newDataset, v, &Viewer::addDataset);
-	connect(&hub.proteins, &ProteinDB::proteinAdded, v, &Viewer::inAddProtein);
 	/* use queued conn. to ensure the views get the newDataset signal _first_! */
 	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
 	connect(actionShowStructure, &QAction::toggled, v, &Viewer::inTogglePartitions);

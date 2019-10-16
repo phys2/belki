@@ -4,11 +4,13 @@
 #include "ui_profiletab.h"
 #include "viewer.h"
 
+#include <QIdentityProxyModel>
+
 #include <memory>
+#include <set>
 #include <unordered_map>
 
 class ProfileChart;
-class QStandardItem;
 
 class ProfileTab : public Viewer, private Ui::ProfileTab
 {
@@ -16,6 +18,8 @@ class ProfileTab : public Viewer, private Ui::ProfileTab
 
 public:
 	explicit ProfileTab(QWidget *parent = nullptr);
+
+	void setProteinModel(QAbstractItemModel *) override;
 
 	void selectDataset(unsigned id) override;
 	void addDataset(Dataset::Ptr data) override;
@@ -26,15 +30,20 @@ protected:
 		bool logSpace = false;
 	};
 
+	/* our proxy that reflects extra proteins in plot (transforms check state) */
+	struct CustomCheckedProxyModel : QIdentityProxyModel {
+		CustomCheckedProxyModel(std::set<ProteinId> &marked) : marked(marked) {}
+
+		QVariant data(const QModelIndex &index, int role) const override;
+
+		std::set<ProteinId> &marked;
+	};
+
 	void rebuildPlot(); // TODO temporary hack
-	void addProtein(ProteinId id, const Protein &protein);
 	void updateEnabled();
 	void setupProteinBox();
-	void finalizeProteinBox();
-	void updateProteinItems();
 
-	std::unordered_map<ProteinId, QStandardItem*> proteinItems;
-	bool proteinModelDirty = false;
+	CustomCheckedProxyModel proteinModel;
 
 	struct {
 		std::set<ProteinId> extras;
