@@ -24,6 +24,8 @@ public:
 	void selectDataset(unsigned id) override;
 	void addDataset(Dataset::Ptr data) override;
 
+	bool eventFilter(QObject *watched, QEvent *event) override;
+
 protected:
 	struct DataState : public Viewer::DataState {
 		std::unique_ptr<ProfileChart> scene;

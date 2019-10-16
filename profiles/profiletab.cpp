@@ -91,6 +91,19 @@ void ProfileTab::addDataset(Dataset::Ptr data)
 	// none right now
 }
 
+bool ProfileTab::eventFilter(QObject *watched, QEvent *event)
+{
+	auto ret = Viewer::eventFilter(watched, event);
+
+	/* open completer popup when clicking on protsearch line edit */
+	if (watched == protSearch && event->type() == QEvent::MouseButtonPress) {
+		if (static_cast<QMouseEvent*>(event)->button() == Qt::LeftButton)
+			protSearch->completer()->complete();
+	}
+
+	return ret;
+}
+
 void ProfileTab::rebuildPlot()
 {
 	auto scene = current().scene.get();
@@ -125,6 +138,9 @@ void ProfileTab::setupProteinBox()
 	cpl->setCompletionMode(QCompleter::UnfilteredPopupCompletion);
 	cpl->setMaxVisibleItems(10);
 	protSearch->setCompleter(cpl);
+
+	// let us watch out for clicks
+	protSearch->installEventFilter(this);
 
 	auto toggler = [this] (QModelIndex i) {
 		if (!i.isValid())
