@@ -163,7 +163,10 @@ void ProteinDB::updateColorset(const QVector<QColor> &colors)
 {
 	QWriteLocker _(&data.l);
 
-	colorset = colors;
+	groupColorset = colorset = colors;
+	for (auto &c : groupColorset)
+		c = c.lighter(130); // 30 % lighter
+
 	for (auto &p : data.proteins)
 		p.color = colorFor(p);
 }
