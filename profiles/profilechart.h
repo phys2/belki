@@ -46,7 +46,7 @@ signals:
 
 protected:
 	void setupSeries();
-	void toggleHighlight(unsigned index);
+	void toggleHighlight(int index = -1);
 	// helpers to constructors
 	void setupSignals();
 	void setupAxes(const Features::Range &range);

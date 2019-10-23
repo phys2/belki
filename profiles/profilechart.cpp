@@ -264,10 +264,10 @@ void ProfileChart::setupSeries()
 			/* allow highlight through series/marker hover */
 			auto lm = legend()->markers(s).first();
 			connect(lm, &QtCharts::QLegendMarker::hovered, [this,i=index] (bool on) {
-				toggleHighlight(on ? i : 0);
+				toggleHighlight(on ? (int)i : -1);
 			});
 			connect(s, &QtCharts::QLineSeries::hovered, [this,i=index] (auto, bool on) {
-				toggleHighlight(on ? i : 0);
+				toggleHighlight(on ? (int)i : -1);
 			});
 		}
 	};
@@ -289,15 +289,15 @@ void ProfileChart::setupSeries()
 	}
 }
 
-void ProfileChart::toggleHighlight(unsigned index)
+void ProfileChart::toggleHighlight(int index)
 {
 	highlightAnim.disconnect();
 	highlightAnim.callOnTimeout([this, index] {
-		bool decrease = (index == 0);
+		bool decrease = (index < 0);
 		bool done = true;
 		for (auto &[i, s] : series) {
 			auto c = s->color();
-			if (i == index || decrease) {
+			if ((int)i == index || decrease) {
 				if (c.alphaF() < 1.) {
 					c.setAlphaF(std::min(1., c.alphaF() + .15));
 					done = false;
