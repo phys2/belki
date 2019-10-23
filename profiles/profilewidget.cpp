@@ -62,7 +62,7 @@ void ProfileWidget::updateProteins(QVector<unsigned> samples, const QString &tit
 		chart->clear();
 	}
 
-	if (samples.empty() || !data) {
+	if (samples.empty() || !data || !chart) {
 		proteinList->clear();
 		setDisabled(true);
 		return;

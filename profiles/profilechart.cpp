@@ -101,8 +101,8 @@ void ProfileChart::setupAxes(const Features::Range &range)
 	ayL->setLabelFormat("%.2g");
 	ayL->setLabelsFont(ay->labelsFont());
 
-	auto needed = (logSpace ? (QtCharts::QAbstractAxis*)ayL : ay);
-	addAxis(needed, small ? Qt::AlignRight : Qt::AlignLeft);
+	addAxis(logSpace ? (QtCharts::QAbstractAxis*)ayL : ay,
+	        small ? Qt::AlignRight : Qt::AlignLeft);
 }
 
 void ProfileChart::clear()
