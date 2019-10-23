@@ -397,8 +397,7 @@ void ProfileChart::toggleLogSpace(bool on)
 	removeAxis(previous);
 	addAxis(needed, previous->alignment());
 
-	if (!content.empty())
-		setupSeries();
+	setupSeries();
 }
 
 void ProfileChart::computeStats()
