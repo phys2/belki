@@ -227,8 +227,8 @@ void ProfileChart::setupSeries()
 			return {stats.mean[i] + stats.stddev[i], stats.mean[i] - stats.stddev[i]};
 		});
 		s2->setName("σ (SD)");
-		s2->setColor(Qt::gray);
-		s2->setBorderColor(Qt::gray);
+		s2->setColor(Qt::lightGray);
+		s2->setBorderColor(Qt::lightGray);
 	};
 
 	// add individual series (markers or all)
