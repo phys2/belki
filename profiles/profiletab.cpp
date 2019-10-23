@@ -29,7 +29,12 @@ ProfileTab::ProfileTab(QWidget *parent) :
 		if (current) current().scene->toggleLabels(on);
 	});
 	connect(actionShowAverage, &QAction::toggled, [this] (bool on) {
+		guiState.showAverage = on;
 		if (current) current().scene->toggleAverage(on);
+	});
+	connect(actionShowQuantiles, &QAction::toggled, [this] (bool on) {
+		guiState.showQuantiles = on;
+		if (current) current().scene->toggleQuantiles(on);
 	});
 	connect(actionShowIndividual, &QAction::toggled, [this] (bool on) {
 		if (current) current().scene->toggleIndividual(on);
@@ -68,6 +73,8 @@ void ProfileTab::selectDataset(unsigned id)
 	auto scene = current().scene.get();
 	rebuildPlot();  // TODO temporary hack
 	scene->toggleLabels(guiState.showLabels);
+	scene->toggleAverage(guiState.showAverage);
+	scene->toggleQuantiles(guiState.showQuantiles);
 
 	// apply datastate
 	actionLogarithmic->setChecked(current().logSpace);
@@ -80,7 +87,7 @@ void ProfileTab::addDataset(Dataset::Ptr data)
 	auto id = data->id();
 	auto &state = content[id]; // emplace (note: ids are never recycled)
 	state.data = data;
-	state.scene = std::make_unique<ProfileChart>(data, false);
+	state.scene = std::make_unique<ProfileChart>(data, false, true);
 	if (data->peek<Dataset::Base>()->logSpace) {
 		state.logSpace = true;
 		state.scene->toggleLogSpace(true);
@@ -117,7 +124,6 @@ void ProfileTab::rebuildPlot()
 			scene->addSample(e, false);
 	}
 	scene->finalize();
-	actionShowAverage->setEnabled(scene->numProfiles() >= 2);
 }
 
 void ProfileTab::updateEnabled()

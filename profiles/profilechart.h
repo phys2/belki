@@ -8,6 +8,7 @@
 #include <QTimer>
 
 #include <memory>
+#include <set>
 
 class ProfileWindow;
 class ProteinDB;
@@ -26,7 +27,7 @@ class ProfileChart : public QtCharts::QChart
 	Q_OBJECT
 
 public:
-	ProfileChart(std::shared_ptr<Dataset const> data, bool small=true);
+	ProfileChart(std::shared_ptr<Dataset const> data, bool small=true, bool global=false);
 	ProfileChart(ProfileChart *source);
 
 	std::shared_ptr<Dataset const> dataset() { return data; }
@@ -43,8 +44,15 @@ public:
 signals:
 	void toggleIndividual(bool on);
 	void toggleAverage(bool on);
+	void toggleQuantiles(bool on);
 
 protected:
+	enum class SeriesCategory { // see showCategories
+		INDIVIDUAL,
+		AVERAGE,
+		QUANTILE
+	};
+
 	void setupSeries();
 	void toggleHighlight(int index = -1);
 	// helpers to constructors
@@ -61,6 +69,7 @@ protected:
 		std::vector<qreal> mean;
 		std::vector<qreal> stddev;
 		std::vector<qreal> min, max;
+		std::vector<qreal> quant25, quant50, quant75;
 	} stats;
 
 	// axes
@@ -75,9 +84,9 @@ protected:
 
 	// state
 	bool small = false;
-	bool showAverage = false;
-	bool showIndividual = true;
+	std::set<SeriesCategory> showCategories = {SeriesCategory::INDIVIDUAL};
 	bool logSpace = false;
+	bool globalStats = false;
 	QTimer highlightAnim;
 };
 

@@ -15,9 +15,10 @@
 #include <tbb/parallel_for_each.h>
 
 /* small, inset plot constructor */
-ProfileChart::ProfileChart(Dataset::ConstPtr data, bool small)
+ProfileChart::ProfileChart(Dataset::ConstPtr data, bool small, bool global)
     : data(data),
-      small(small)
+      small(small),
+      globalStats(global)
 {
 	if (small) {
 		setMargins({0, 10, 0, 0});
@@ -46,8 +47,15 @@ ProfileChart::ProfileChart(ProfileChart *source)
 void ProfileChart::setupSignals()
 {
 	/* keep in sync */
-	connect(this, &ProfileChart::toggleAverage, [this] (bool on) { showAverage = on; });
-	connect(this, &ProfileChart::toggleIndividual, [this] (bool on) { showIndividual = on; });
+	// TODO awkward as hell; reduce to one slot instead of direct connect to series
+	// will need to change the logic anyways when we insert/remove series on-demand
+	auto toggler = [this] (SeriesCategory cat, bool on) {
+		if (on)	showCategories.insert(cat);
+		else	showCategories.erase(cat);
+	};
+	connect(this, &ProfileChart::toggleAverage, [toggler] (bool on) { toggler(SeriesCategory::AVERAGE, on); });
+	connect(this, &ProfileChart::toggleIndividual, [toggler] (bool on) { toggler(SeriesCategory::INDIVIDUAL, on); });
+	connect(this, &ProfileChart::toggleQuantiles, [toggler] (bool on) { toggler(SeriesCategory::QUANTILE, on); });
 }
 
 void ProfileChart::setupAxes(const Features::Range &range)
@@ -93,13 +101,14 @@ void ProfileChart::setupAxes(const Features::Range &range)
 	ayL->setLabelFormat("%.2g");
 	ayL->setLabelsFont(ay->labelsFont());
 
-	auto needed = (logSpace ? (QtCharts::QAbstractAxis*)ayL : ay);
-	addAxis(needed, small ? Qt::AlignRight : Qt::AlignLeft);
+	addAxis(logSpace ? (QtCharts::QAbstractAxis*)ayL : ay,
+	        small ? Qt::AlignRight : Qt::AlignLeft);
 }
 
 void ProfileChart::clear()
 {
-	stats = {};
+	if (!globalStats)
+		stats = {};
 	content.clear();
 	series.clear();
 	removeAllSeries();
@@ -124,17 +133,21 @@ void ProfileChart::finalize() {
 
 void ProfileChart::setupSeries()
 {
-	if (content.empty())
+	if (content.empty() && !globalStats)
 		return;
 
 	/* TODO: rework this so we only setup what is seen on screen, and use
 	 * insertSeries() on toggles. Note that we might also need a legendmarker
 	 * sorting functionality. */
 
-	if (showAverage && stats.mean.empty()) {
+	// compute stats always for large plots, but also when avg. is shown in small plot
+	if ((showCategories.count(SeriesCategory::AVERAGE) || !small) && stats.mean.empty()) {
 		computeStats();
 		// if we couldn't compute, just disable. GUI should have it disabled already
-		showAverage = !stats.mean.empty();
+		if (stats.mean.empty())
+			showCategories.erase(SeriesCategory::AVERAGE);
+		if (stats.quant25.empty())
+			showCategories.erase(SeriesCategory::QUANTILE);
 	}
 
 	auto d = data->peek<Dataset::Base>();
@@ -169,15 +182,19 @@ void ProfileChart::setupSeries()
 	}
 
 	// add & wire a series
-	auto add = [this] (QtCharts::QAbstractSeries *s, bool isIndiv, bool isMarker = false) {
+	auto add = [this] (QtCharts::QAbstractSeries *s, SeriesCategory cat, bool isMarker = false) {
 		addSeries(s);
 		s->attachAxis(ax);
 		s->attachAxis(logSpace ? (QtCharts::QAbstractAxis*)ayL : ay);
-		if (!isMarker) {// marker always shows
-			s->setVisible(isIndiv ? showIndividual : showAverage);
-			auto signal = isIndiv ? &ProfileChart::toggleIndividual : &ProfileChart::toggleAverage;
-			connect(this, signal, s, &QtCharts::QAbstractSeries::setVisible);
-		}
+		if (isMarker) // marker always shows
+			return;
+		s->setVisible(showCategories.count(cat));
+		std::map<SeriesCategory, void(ProfileChart::*)(bool)> sigs = {
+			{SeriesCategory::INDIVIDUAL, &ProfileChart::toggleIndividual},
+			{SeriesCategory::AVERAGE, &ProfileChart::toggleAverage},
+			{SeriesCategory::QUANTILE, &ProfileChart::toggleQuantiles},
+		};
+		connect(this, sigs.at(cat), s, &QtCharts::QAbstractSeries::setVisible);
 	};
 
 	// setup and add QLineSeries for mean
@@ -186,7 +203,7 @@ void ProfileChart::setupSeries()
 		for (unsigned i = 0; i < stats.mean.size(); ++i) {
 			s->append(i, adjusted(stats.mean[i]));
 		}
-		add(s, false);
+		add(s, SeriesCategory::AVERAGE);
 		s->setName("Avg.");
 		auto pen = s->pen();
 		pen.setColor(Qt::black);
@@ -195,8 +212,8 @@ void ProfileChart::setupSeries()
 	};
 
 	// setup and add QAreaSeries for range and stddev
-	auto addBgAreas = [&] {
-		auto create = [&] (auto source) {
+	auto addBgAreas = [&] (const std::set<SeriesCategory> &categories) {
+		auto create = [&] (auto source, SeriesCategory cat) {
 			auto upper = new QtCharts::QLineSeries, lower = new QtCharts::QLineSeries;
 			for (unsigned i = 0; i < stats.mean.size(); ++i) {
 				auto [u, l] = source(i);
@@ -204,31 +221,72 @@ void ProfileChart::setupSeries()
 				lower->append(i, adjusted(l));
 			}
 			auto s = new QtCharts::QAreaSeries(upper, lower);
-			add(s, false);
+			add(s, cat);
 			return s;
 		};
 
 		// create range series (min-max)
-		auto s1 = create([&] (unsigned i) -> std::pair<qreal,qreal> {
-			return {stats.max[i], stats.min[i]};
-		});
-		s1->setName("Range");
-		auto pen = s1->pen(); // border
-		pen.setColor(Qt::lightGray);
-		pen.setWidthF(0);
-		s1->setPen(pen);
-		auto b = s1->brush(); // fill
-		b.setColor(Qt::lightGray);
-		b.setStyle(Qt::BrushStyle::BDiagPattern);
-		s1->setBrush(b);
+		{
+			auto s = create([&] (unsigned i) -> std::pair<qreal,qreal> {
+				return {stats.max[i], stats.min[i]};
+			}, SeriesCategory::AVERAGE);
+			s->setName("Range");
+			auto border = s->pen();
+			border.setColor(Qt::lightGray);
+			border.setWidthF(0);
+			s->setPen(border);
+			auto fill = s->brush();
+			fill.setColor(Qt::lightGray);
+			fill.setStyle(Qt::BrushStyle::BDiagPattern);
+			s->setBrush(fill);
+		}
 
-		// create stddev series
-		auto s2 = create([&] (unsigned i) -> std::pair<qreal,qreal> {
-			return {stats.mean[i] + stats.stddev[i], stats.mean[i] - stats.stddev[i]};
-		});
-		s2->setName("σ (SD)");
-		s2->setColor(Qt::gray);
-		s2->setBorderColor(Qt::gray);
+		if (categories.count(SeriesCategory::AVERAGE)) {
+			// create stddev series
+			auto s = create([&] (unsigned i) -> std::pair<qreal,qreal> {
+				return {stats.mean[i] + stats.stddev[i], stats.mean[i] - stats.stddev[i]};
+			}, SeriesCategory::AVERAGE);
+			s->setName("σ (SD)");
+			s->setColor(Qt::lightGray);
+			s->setBorderColor(Qt::lightGray);
+		}
+
+		if (categories.count(SeriesCategory::QUANTILE)) {
+			// create quantile series
+			auto s = create([&] (unsigned i) -> std::pair<qreal,qreal> {
+				return {stats.quant25[i], 0.};
+			}, SeriesCategory::QUANTILE);
+			auto border = s->pen(); // border
+			border.setWidthF(border.widthF() * 0.5);
+			auto c = QColor(Qt::gray).lighter(90);
+			auto fill = s->brush();
+			s->setName("Quant. 25");
+			fill.setColor(c);
+			fill.setStyle(Qt::BrushStyle::Dense5Pattern);
+			s->setBrush(fill);
+			s->setPen(border);
+			s->setBorderColor(c);
+			s = create([&] (unsigned i) -> std::pair<qreal,qreal> {
+				return {stats.quant50[i], stats.quant25[i]};
+			}, SeriesCategory::QUANTILE);
+			s->setName("Quant. 50");
+			fill = s->brush();
+			fill.setColor(c);
+			fill.setStyle(Qt::BrushStyle::Dense6Pattern);
+			s->setBrush(fill);
+			s->setPen(border);
+			s->setBorderColor(c);
+			s = create([&] (unsigned i) -> std::pair<qreal,qreal> {
+				return {stats.quant75[i], stats.quant50[i]};
+			}, SeriesCategory::QUANTILE);
+			s->setName("Quant. 75");
+			fill = s->brush();
+			fill.setColor(c);
+			fill.setStyle(Qt::BrushStyle::Dense7Pattern);
+			s->setBrush(fill);
+			s->setPen(border);
+			s->setBorderColor(c);
+		}
 	};
 
 	// add individual series (markers or all)
@@ -239,7 +297,7 @@ void ProfileChart::setupSeries()
 
 			auto s = new QtCharts::QLineSeries;
 			series[index] = s;
-			add(s, true, isMarker);
+			add(s, SeriesCategory::INDIVIDUAL, isMarker);
 			QString title = (isMarker ? "<small>★</small>" : "") + d->lookup(p, index).name;
 			// color only markers in small view
 			QColor color = (isMarker || !small ? d->lookup(p, index).color : Qt::black);
@@ -274,8 +332,8 @@ void ProfileChart::setupSeries()
 
 	if (small) {
 		/* we show either average or individual. only add what's necessary */
-		if (showAverage) {
-			addBgAreas();
+		if (showCategories.count(SeriesCategory::AVERAGE)) {
+			addBgAreas({SeriesCategory::AVERAGE});
 			addMean();
 			addIndividuals(true);
 		} else {
@@ -283,7 +341,7 @@ void ProfileChart::setupSeries()
 		}
 	} else {
 		/* add everything in stacking order, to be toggle-able later on */
-		addBgAreas();
+		addBgAreas({SeriesCategory::AVERAGE, SeriesCategory::QUANTILE});
 		addIndividuals(false);
 		addMean();
 	}
@@ -345,24 +403,47 @@ void ProfileChart::toggleLogSpace(bool on)
 
 void ProfileChart::computeStats()
 {
-	if (content.size() < 2)
+	if (!globalStats && content.size() < 2)
 		return;
 
 	auto d = data->peek<Dataset::Base>();
 	auto len = (size_t)d->dimensions.size();
 
-	for (auto v : {&stats.mean, &stats.stddev, &stats.min, &stats.max})
+	for (auto v : {&stats.mean, &stats.stddev,
+		           &stats.min, &stats.max,
+		           &stats.quant25, &stats.quant50, &stats.quant75})
 		v->resize(len);
 
 	/* compute statistics per-dimension */
-	for (size_t i = 0; i < len; ++i) {
-		std::vector<double> f(content.size());
-		for (size_t j = 0; j < content.size(); ++j)
-			f[j] = d->features[content[j].first][i];
+	auto nFeats = globalStats ? d->features.size() : content.size();
+	auto statsPerDim = [&] (unsigned dim) {
+		std::vector<double> f(nFeats);
+		if (globalStats) {
+			for (size_t j = 0; j < nFeats; ++j)
+				f[j] = d->features[j][dim];
+		} else {
+			for (size_t j = 0; j < nFeats; ++j)
+				f[j] = d->features[content[j].first][dim];
+		}
+
 		cv::Scalar m, s;
 		cv::meanStdDev(f, m, s);
-		stats.mean[i] = m[0];
-		stats.stddev[i] = s[0];
-		cv::minMaxLoc(f, &stats.min[i], &stats.max[i]);
+		stats.mean[dim] = m[0];
+		stats.stddev[dim] = s[0];
+
+		//cv::minMaxLoc(f, &stats.min[dim], &stats.max[dim]);
+		std::sort(f.begin(), f.end());
+		stats.min[dim] = f.front();
+		stats.max[dim] = f.back();
+		stats.quant25[dim] = f[nFeats / 4];
+		stats.quant50[dim] = f[nFeats / 2];
+		stats.quant75[dim] = f[(nFeats * 3) / 4];
+	};
+
+	if (nFeats < 1000) {
+		for (size_t i = 0; i < len; ++i)
+			statsPerDim(i);
+	} else {
+		tbb::parallel_for(size_t(0), len, [&] (size_t i) { statsPerDim(i); });
 	}
 }

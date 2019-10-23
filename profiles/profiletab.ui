@@ -90,6 +90,8 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionShowLabels"/>
+   <addaction name="actionShowAverage"/>
+   <addaction name="actionShowQuantiles"/>
    <addaction name="separator"/>
    <addaction name="actionLogarithmic"/>
    <addaction name="actionSavePlot"/>
@@ -120,6 +122,9 @@
    <property name="text">
     <string>Average Profile</string>
    </property>
+   <property name="toolTip">
+    <string>Show average profile</string>
+   </property>
    <property name="shortcut">
     <string>A</string>
    </property>
@@ -134,6 +139,9 @@
    </property>
    <property name="text">
     <string>Individual Profiles</string>
+   </property>
+   <property name="toolTip">
+    <string>Show individual profiles</string>
    </property>
    <property name="shortcut">
     <string>I</string>
@@ -151,7 +159,7 @@
     <string>Labels</string>
    </property>
    <property name="toolTip">
-    <string>Show Sample Labels</string>
+    <string>Show sample labels</string>
    </property>
    <property name="shortcut">
     <string>L</string>
@@ -174,6 +182,24 @@
    </property>
    <property name="shortcut">
     <string>Shift+L</string>
+   </property>
+  </action>
+  <action name="actionShowQuantiles">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../resources/icons-custom/index.qrc">
+     <normaloff>:/icons/show-quantiles.svg</normaloff>:/icons/show-quantiles.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Per-dimension Quantiles</string>
+   </property>
+   <property name="toolTip">
+    <string>Show per-dimension quantiles</string>
+   </property>
+   <property name="shortcut">
+    <string>Q</string>
    </property>
   </action>
  </widget>
