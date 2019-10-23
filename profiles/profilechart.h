@@ -26,7 +26,7 @@ class ProfileChart : public QtCharts::QChart
 	Q_OBJECT
 
 public:
-	ProfileChart(std::shared_ptr<Dataset const> data, bool small=true);
+	ProfileChart(std::shared_ptr<Dataset const> data, bool small=true, bool global=false);
 	ProfileChart(ProfileChart *source);
 
 	std::shared_ptr<Dataset const> dataset() { return data; }
@@ -78,6 +78,7 @@ protected:
 	bool showAverage = false;
 	bool showIndividual = true;
 	bool logSpace = false;
+	bool globalStats = false;
 	QTimer highlightAnim;
 };
 

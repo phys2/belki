@@ -41,6 +41,7 @@ protected:
 	struct {
 		std::set<ProteinId> extras;
 		bool showLabels = false;
+		bool showAverage = false;
 	} guiState;
 
 	ContentMap<DataState> content;

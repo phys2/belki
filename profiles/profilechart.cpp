@@ -15,9 +15,10 @@
 #include <tbb/parallel_for_each.h>
 
 /* small, inset plot constructor */
-ProfileChart::ProfileChart(Dataset::ConstPtr data, bool small)
+ProfileChart::ProfileChart(Dataset::ConstPtr data, bool small, bool global)
     : data(data),
-      small(small)
+      small(small),
+      globalStats(global)
 {
 	if (small) {
 		setMargins({0, 10, 0, 0});
@@ -99,7 +100,8 @@ void ProfileChart::setupAxes(const Features::Range &range)
 
 void ProfileChart::clear()
 {
-	stats = {};
+	if (!globalStats)
+		stats = {};
 	content.clear();
 	series.clear();
 	removeAllSeries();
@@ -124,14 +126,14 @@ void ProfileChart::finalize() {
 
 void ProfileChart::setupSeries()
 {
-	if (content.empty())
+	if (content.empty() && !globalStats)
 		return;
 
 	/* TODO: rework this so we only setup what is seen on screen, and use
 	 * insertSeries() on toggles. Note that we might also need a legendmarker
 	 * sorting functionality. */
 
-	if (showAverage && stats.mean.empty()) {
+	if ((showAverage || !small) && stats.mean.empty()) {
 		computeStats();
 		// if we couldn't compute, just disable. GUI should have it disabled already
 		showAverage = !stats.mean.empty();
@@ -345,7 +347,7 @@ void ProfileChart::toggleLogSpace(bool on)
 
 void ProfileChart::computeStats()
 {
-	if (content.size() < 2)
+	if (!globalStats && content.size() < 2)
 		return;
 
 	auto d = data->peek<Dataset::Base>();
@@ -356,9 +358,15 @@ void ProfileChart::computeStats()
 
 	/* compute statistics per-dimension */
 	for (size_t i = 0; i < len; ++i) {
-		std::vector<double> f(content.size());
-		for (size_t j = 0; j < content.size(); ++j)
-			f[j] = d->features[content[j].first][i];
+		std::vector<double> f(globalStats ? d->features.size() : content.size());
+		if (globalStats) {
+			for (size_t j = 0; j < d->features.size(); ++j)
+				f[j] = d->features[j][i];
+		} else {
+			for (size_t j = 0; j < content.size(); ++j)
+				f[j] = d->features[content[j].first][i];
+		}
+
 		cv::Scalar m, s;
 		cv::meanStdDev(f, m, s);
 		stats.mean[i] = m[0];
