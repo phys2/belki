@@ -42,6 +42,7 @@ protected:
 		std::set<ProteinId> extras;
 		bool showLabels = false;
 		bool showAverage = false;
+		bool showQuantiles = false;
 	} guiState;
 
 	ContentMap<DataState> content;

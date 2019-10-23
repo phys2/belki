@@ -32,6 +32,10 @@ ProfileTab::ProfileTab(QWidget *parent) :
 		guiState.showAverage = on;
 		if (current) current().scene->toggleAverage(on);
 	});
+	connect(actionShowQuantiles, &QAction::toggled, [this] (bool on) {
+		guiState.showQuantiles = on;
+		if (current) current().scene->toggleQuantiles(on);
+	});
 	connect(actionShowIndividual, &QAction::toggled, [this] (bool on) {
 		if (current) current().scene->toggleIndividual(on);
 	});
@@ -66,6 +70,7 @@ void ProfileTab::selectDataset(unsigned id)
 	rebuildPlot();  // TODO temporary hack
 	scene->toggleLabels(guiState.showLabels);
 	scene->toggleAverage(guiState.showAverage);
+	scene->toggleQuantiles(guiState.showQuantiles);
 	updateProteinItems();
 
 	// apply datastate

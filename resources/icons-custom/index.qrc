@@ -4,6 +4,7 @@
 		<file>show-average.svg</file>
 		<file>show-individual.svg</file>
 		<file>show-labels.svg</file>
+		<file>show-quantiles.svg</file>
 		<file>logspace-on.svg</file>
 		<file>logspace-off.svg</file>
 		<file>type-annotations.svg</file>

@@ -91,6 +91,7 @@
    </attribute>
    <addaction name="actionShowLabels"/>
    <addaction name="actionShowAverage"/>
+   <addaction name="actionShowQuantiles"/>
    <addaction name="separator"/>
    <addaction name="actionLogarithmic"/>
    <addaction name="actionSavePlot"/>
@@ -181,6 +182,24 @@
    </property>
    <property name="shortcut">
     <string>Shift+L</string>
+   </property>
+  </action>
+  <action name="actionShowQuantiles">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../resources/icons-custom/index.qrc">
+     <normaloff>:/icons/show-quantiles.svg</normaloff>:/icons/show-quantiles.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Per-dimension Quantiles</string>
+   </property>
+   <property name="toolTip">
+    <string>Show per-dimension quantiles</string>
+   </property>
+   <property name="shortcut">
+    <string>Q</string>
    </property>
   </action>
  </widget>
