@@ -22,7 +22,6 @@ public:
 	using DataPtr = Dataset::Ptr;
 	using ConstDataPtr = Dataset::ConstPtr;
 
-	QVector<QColor> colorset();
 	std::map<unsigned, DataPtr> datasets();
 
 signals:

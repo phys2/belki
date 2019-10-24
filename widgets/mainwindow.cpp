@@ -38,6 +38,10 @@ MainWindow::MainWindow(DataHub &hub) :
 	setupSignals(); // after setupToolbar(), signal handlers rely on initialized actions
 	setupActions();
 
+	// initialize window state
+	actionShowStructure->setChecked(state->showAnnotations);
+	actionUseOpenGL->setChecked(state->useOpenGl);
+
 	// initialize widgets to be empty & most-restrictive
 	updateState(Dataset::Touch::BASE);
 }
@@ -153,6 +157,16 @@ void MainWindow::setupSignals()
 	connect(this, &MainWindow::datasetSelected, [this] { profiles->setData(data); });
 	connect(this, &MainWindow::datasetSelected, this, &MainWindow::setSelectedDataset);
 	// TODO: sync new dataset with guiState (annotation/hierarchy,ordering…)
+
+	/* changing window settings */
+	connect(actionShowStructure, &QAction::toggled, [this] (bool on) {
+		state->showAnnotations = on;
+		emit state->annotationsToggled();
+	});
+	connect(actionUseOpenGL, &QAction::toggled, [this] (bool on) {
+		state->useOpenGl = on;
+		emit state->openGlToggled();
+	});
 
 	/* selecting/altering partition */
 	connect(structureSelect, qOverload<int>(&QComboBox::activated), [this] {
@@ -283,20 +297,19 @@ void MainWindow::addTab(MainWindow::Tab type)
 	case Tab::FEATWEIGHTS: v = new FeatweightsTab; break;
 	}
 
+	v->setWindowState(state);
 	v->setProteinModel(&markerModel);
 
 	// connect singnalling into view
 	connect(&hub, &DataHub::newDataset, v, &Viewer::addDataset);
 	/* use queued conn. to ensure the views get the newDataset signal _first_! */
 	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
-	connect(actionShowStructure, &QAction::toggled, v, &Viewer::inTogglePartitions);
-	connect(actionUseOpenGL, &QAction::toggled, v, &Viewer::inToggleOpenGL);
 	connect(&hub.proteins, &ProteinDB::markersToggled, v, &Viewer::inToggleMarkers);
 	connect(this, &MainWindow::orderChanged, v, &Viewer::changeOrder);
 
 	// connect signalling out of view
 	connect(v, &Viewer::markerToggled, this, &MainWindow::markerToggled);
-	connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateProteins);
+	connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateDisplay);
 
 	auto renderSlot = [this] (auto r, auto d) {
 		auto title = windowTitle();
@@ -326,10 +339,6 @@ void MainWindow::addTab(MainWindow::Tab type)
 	});
 	/// does not work right now with heatmap, distmap, feattab. why? */
 
-	// set initial state
-	emit v->inUpdateColorset(hub.colorset());
-	emit v->inTogglePartitions(actionShowStructure->isChecked());
-	emit v->inToggleOpenGL(actionUseOpenGL->isChecked());
 	for (auto &[_, d] : hub.datasets())
 		v->addDataset(d);
 	if (data)

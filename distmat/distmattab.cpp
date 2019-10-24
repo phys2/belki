@@ -14,26 +14,16 @@ DistmatTab::DistmatTab(QWidget *parent) :
 
 	/* connect toolbar actions */
 	connect(actionToggleDistdir, &QAction::toggled, [this] (bool toggle) {
-		guiState.direction = toggle ? Dataset::Direction::PER_DIMENSION
+		tabState.direction = toggle ? Dataset::Direction::PER_DIMENSION
 		                            : Dataset::Direction::PER_PROTEIN;
 		if (current)
-			current().scene->setDirection(guiState.direction);
+			current().scene->setDirection(tabState.direction);
 	});
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, "Distance Matrix");
 	});
 
 	/* connect incoming signals */
-	connect(this, &Viewer::inUpdateColorset, [this] (auto colors) {
-		guiState.colorset = colors;
-		if (current)
-			current().scene->updateColorset(colors);
-	});
-	connect(this, &Viewer::inTogglePartitions, [this] (bool show) {
-		guiState.showPartitions = show;
-		if (current)
-			current().scene->togglePartitions(show);
-	});
 	connect(this, &Viewer::inToggleMarkers, [this] (auto ids, bool present) {
 		// we do not keep track of markers for inactive scenes
 		if (current)
@@ -41,9 +31,21 @@ DistmatTab::DistmatTab(QWidget *parent) :
 	});
 
 	/* propagate initial state */
-	actionToggleDistdir->setChecked(guiState.direction == Dataset::Direction::PER_DIMENSION);
+	actionToggleDistdir->setChecked(tabState.direction == Dataset::Direction::PER_DIMENSION);
 
 	updateEnabled();
+}
+
+void DistmatTab::setWindowState(std::shared_ptr<WindowState> s)
+{
+	Viewer::setWindowState(s);
+
+	/* connect state change signals */
+	auto ws = s.get();
+	connect(ws, &WindowState::annotationsToggled, [this] () {
+		if (current)
+			current().scene->togglePartitions(windowState->showAnnotations);
+	});
 }
 
 void DistmatTab::selectDataset(unsigned id)
@@ -56,9 +58,8 @@ void DistmatTab::selectDataset(unsigned id)
 
 	// pass guiState onto chart
 	auto scene = current().scene.get();
-	scene->updateColorset(guiState.colorset);
-	scene->setDirection(guiState.direction);
-	scene->togglePartitions(guiState.showPartitions);
+	scene->setDirection(tabState.direction);
+	scene->togglePartitions(windowState->showAnnotations);
 	scene->updateMarkers();
 	// todo hack
 	emit orderRequested(orderSelect->currentData().value<Dataset::OrderBy>(),

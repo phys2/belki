@@ -826,7 +826,3 @@ QStringList Storage::trimCrap(QStringList values)
 
 	return values;
 }
-
-void Storage::updateColorset(QVector<QColor> colors) {
-	colorset = colors;
-}

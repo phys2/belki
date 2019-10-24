@@ -16,9 +16,14 @@ public:
 
 public slots:
 	void setData(std::shared_ptr<Dataset> data);
-	void updateProteins(QVector<unsigned> samples, const QString &title = {});
+	void updateDisplay(QVector<unsigned> samples, const QString &title = {});
 
 protected:
+	void update();
+
+
+	QVector<unsigned> samples;
+
 	ProfileChart *chart = nullptr;
 	std::shared_ptr<Dataset> data;
 };

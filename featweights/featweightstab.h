@@ -18,6 +18,8 @@ class FeatweightsTab : public Viewer, private Ui::FeatweightsTab
 public:
 	explicit FeatweightsTab(QWidget *parent = nullptr);
 
+	void setWindowState(std::shared_ptr<WindowState> s) override;
+
 	void selectDataset(unsigned id) override;
 	void addDataset(Dataset::Ptr data) override;
 
@@ -34,8 +36,7 @@ protected:
 	struct {
 		bool useAlternate = false;
 		FeatweightsScene::Weighting weighting = FeatweightsScene::Weighting::OFFSET;
-		QVector<QColor> colorset; // initialized by MainWindow
-	} guiState;
+	} tabState;
 
 	std::vector<QAction*> scoreActions;
 	ContentMap<DataState> content;

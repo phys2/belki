@@ -43,21 +43,15 @@ DimredTab::DimredTab(QWidget *parent) :
 	connect(transformSelect, qOverload<const QString&>(&QComboBox::activated),
 	        [this] (auto name) {
 		selectDisplay(name);
-		guiState.preferredDisplay = name;
+		tabState.preferredDisplay = name;
 	});
 
 	/* connect incoming signals */
-	connect(this, &Viewer::inTogglePartitions, [this] (bool show) {
-		guiState.showPartitions = show;
-		if (current)
-			current().scene->togglePartitions(show);
-	});
 	connect(this, &Viewer::inToggleMarkers, [this] (auto ids, bool present) {
 		// we do not keep track of markers for inactive scenes
 		if (current)
 			current().scene->toggleMarkers(ids, present);
 	});
-	connect(this, &Viewer::inToggleOpenGL, view, &ChartView::toggleOpenGL);
 
 	updateEnabled();
 }
@@ -65,6 +59,22 @@ DimredTab::DimredTab(QWidget *parent) :
 DimredTab::~DimredTab()
 {
 	view->releaseChart(); // avoid double delete
+}
+
+void DimredTab::setWindowState(std::shared_ptr<WindowState> s)
+{
+	Viewer::setWindowState(s);
+	view->toggleOpenGL(s->useOpenGl);
+
+	/* connect state change signals */
+	auto ws = s.get();
+	connect(ws, &WindowState::annotationsToggled, [this] () {
+		if (current)
+			current().scene->togglePartitions(windowState->showAnnotations);
+	});
+	connect(ws, &WindowState::openGlToggled, [this] () {
+		view->toggleOpenGL(windowState->useOpenGl);
+	});
 }
 
 void DimredTab::selectDataset(unsigned id)
@@ -80,7 +90,7 @@ void DimredTab::selectDataset(unsigned id)
 	if (enabled) {
 		// pass guiState onto chart
 		auto scene = current().scene.get();
-		scene->togglePartitions(guiState.showPartitions);
+		scene->togglePartitions(windowState->showAnnotations);
 		scene->updateMarkers();
 		view->switchChart(scene);
 
@@ -130,7 +140,7 @@ QString DimredTab::currentMethod() const
 void DimredTab::computeDisplay(const QString &name, const QString &id) {
 	if (!current)
 		return;
-	guiState.preferredDisplay = id;
+	tabState.preferredDisplay = id;
 	auto d = current().data;
 	QtConcurrent::run([d,name] { d->computeDisplay(name); });
 }
@@ -170,7 +180,7 @@ void DimredTab::updateMenus() {
 
 	auto previous = current().displayName;
 	auto least = d->display.rbegin()->first;
-	for (auto &i : {guiState.preferredDisplay, previous, least}) {
+	for (auto &i : {tabState.preferredDisplay, previous, least}) {
 		if (d->display.count(i)) {
 			selectDisplay(i);
 			break;

@@ -4,27 +4,15 @@
 #include "dataset.h"
 #include "storage.h"
 
-#include <compute/colors.h>
-
 #include <QtConcurrent>
 #include <QThread>
 #include <QVector>
-#include <QColor>
 
 DataHub::DataHub(QObject *parent)
     : QObject(parent),
       store(proteins)
 {
-	proteins.updateColorset(colorset());
-	store.updateColorset(colorset());
-
 	setupSignals();
-}
-
-QVector<QColor> DataHub::colorset()
-{
-	//return Palette::tableau20;
-	return Palette::iwanthue20;
 }
 
 std::map<unsigned, DataHub::DataPtr> DataHub::datasets()
@@ -46,7 +34,8 @@ DataHub::DataPtr DataHub::createDataset(DatasetConfiguration config)
 	data.l.lockForWrite();
 	config.id = data.nextId++; // inject id into config
 	auto dataset = std::make_shared<Dataset>(proteins, config);
-	dataset->moveToThread(thread()); // ensure the object does not live in threadpool!
+	// ensure the object does not live in threadpool (creating thread)!
+	dataset->moveToThread(thread());
 	data.sets[config.id] = dataset;
 	data.l.unlock();
 

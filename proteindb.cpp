@@ -1,5 +1,6 @@
 #include "proteindb.h"
 #include "compute/annotations.h"
+#include <compute/colors.h>
 
 #include <QTextStream>
 #include <QRegularExpression>
@@ -10,6 +11,11 @@ ProteinDB::ProteinDB(QObject *parent)
 	qRegisterMetaType<ProteinId>("ProteinId"); // needed for typedefs
 	qRegisterMetaType<Protein>("Protein"); // needed for signal
 	qRegisterMetaType<ProteinVec>(); // needed for signal
+
+	colorset = Palette::iwanthue20;
+	groupColorset = colorset;
+	for (auto &c : groupColorset)
+		c = c.lighter(130); // 30 % lighter
 }
 
 ProteinId ProteinDB::add(const QString &fullname)
@@ -157,18 +163,6 @@ void ProteinDB::addHierarchy(std::unique_ptr<HrClustering> h, bool select)
 	data.l.unlock();
 
 	emit structureAvailable(id, name, select);
-}
-
-void ProteinDB::updateColorset(const QVector<QColor> &colors)
-{
-	QWriteLocker _(&data.l);
-
-	groupColorset = colorset = colors;
-	for (auto &c : groupColorset)
-		c = c.lighter(130); // 30 % lighter
-
-	for (auto &p : data.proteins)
-		p.color = colorFor(p);
 }
 
 QColor ProteinDB::colorFor(const Protein &subject)

@@ -36,6 +36,9 @@ void ProfileWidget::setData(std::shared_ptr<Dataset> dataset)
 	if (dataset == data)
 		return;
 
+	if (data)
+		disconnect(data.get());
+
 	data = dataset;
 	proteinList->clear();
 	plot->setVisible(false);
@@ -54,13 +57,20 @@ void ProfileWidget::setData(std::shared_ptr<Dataset> dataset)
 	}
 }
 
-void ProfileWidget::updateProteins(QVector<unsigned> samples, const QString &title)
+void ProfileWidget::updateDisplay(QVector<unsigned> newSamples, const QString &title)
+{
+	samples = newSamples;
+	if (chart)
+		chart->setTitle(title);
+
+	update();
+}
+
+void ProfileWidget::update()
 {
 	/* clear plot */
-	if (chart) {
-		chart->setTitle(title);
+	if (chart)
 		chart->clear();
-	}
 
 	if (samples.empty() || !data || !chart) {
 		proteinList->clear();

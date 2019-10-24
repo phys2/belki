@@ -7,7 +7,7 @@
 #include <QListWidget>
 
 ProfileTab::ProfileTab(QWidget *parent) :
-    Viewer(parent), proteinModel(guiState.extras)
+    Viewer(parent), proteinModel(tabState.extras)
 {
 	setupUi(this);
 	setupProteinBox();
@@ -25,15 +25,15 @@ ProfileTab::ProfileTab(QWidget *parent) :
 		emit exportRequested(view, "Selected Profiles");
 	});
 	connect(actionShowLabels, &QAction::toggled, [this] (bool on) {
-		guiState.showLabels = on;
+		tabState.showLabels = on;
 		if (current) current().scene->toggleLabels(on);
 	});
 	connect(actionShowAverage, &QAction::toggled, [this] (bool on) {
-		guiState.showAverage = on;
+		tabState.showAverage = on;
 		if (current) current().scene->toggleAverage(on);
 	});
 	connect(actionShowQuantiles, &QAction::toggled, [this] (bool on) {
-		guiState.showQuantiles = on;
+		tabState.showQuantiles = on;
 		if (current) current().scene->toggleQuantiles(on);
 	});
 	connect(actionShowIndividual, &QAction::toggled, [this] (bool on) {
@@ -72,9 +72,9 @@ void ProfileTab::selectDataset(unsigned id)
 	// pass guiState onto chart
 	auto scene = current().scene.get();
 	rebuildPlot();  // TODO temporary hack
-	scene->toggleLabels(guiState.showLabels);
-	scene->toggleAverage(guiState.showAverage);
-	scene->toggleQuantiles(guiState.showQuantiles);
+	scene->toggleLabels(tabState.showLabels);
+	scene->toggleAverage(tabState.showAverage);
+	scene->toggleQuantiles(tabState.showQuantiles);
 
 	// apply datastate
 	actionLogarithmic->setChecked(current().logSpace);
@@ -119,7 +119,7 @@ void ProfileTab::rebuildPlot()
 	auto markers = current().data->peek<Dataset::Proteins>()->markers; // copy
 	for (auto m : markers)
 		scene->addSample(m, true);
-	for (auto e : guiState.extras) {
+	for (auto e : tabState.extras) {
 		if (!markers.count(e))
 			scene->addSample(e, false);
 	}
@@ -155,10 +155,10 @@ void ProfileTab::setupProteinBox()
 		if (!proxy)
 			return; // sorry, can't do this!
 		auto id = unsigned(proteinModel.data(proxy->mapToSource(i), Qt::UserRole + 1).toInt());
-		if (guiState.extras.count(id))
-			guiState.extras.erase(id);
+		if (tabState.extras.count(id))
+			tabState.extras.erase(id);
 		else
-			guiState.extras.insert(id);
+			tabState.extras.insert(id);
 		rebuildPlot();
 	};
 

@@ -36,25 +36,20 @@ FeatweightsTab::FeatweightsTab(QWidget *parent) :
 		current().scene->applyScoreThreshold(toDouble(isMaximum ? std::nan("") : v));
 	});
 	connect(actionToggleChart, &QAction::toggled, [this] (bool useAlternate) {
-		guiState.useAlternate = useAlternate;
+		tabState.useAlternate = useAlternate;
 		if (current)
 			current().scene->toggleImage(useAlternate);
 	});
 	connect(weightingSelect, QOverload<int>::of(&QComboBox::activated), [this] () {
-		guiState.weighting = weightingSelect->currentData().value<FeatweightsScene::Weighting>();
+		tabState.weighting = weightingSelect->currentData().value<FeatweightsScene::Weighting>();
 		if (current)
-			current().scene->setWeighting(guiState.weighting);
+			current().scene->setWeighting(tabState.weighting);
 	});
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, "Distance Matrix");
 	});
 
 	/* connect incoming signals */
-	connect(this, &Viewer::inUpdateColorset, [this] (auto colors) {
-		guiState.colorset = colors;
-		if (current)
-			current().scene->updateColorset(colors);
-	});
 	connect(this, &Viewer::inToggleMarkers, [this] (auto ids, bool present) {
 		// we do not keep track of markers for inactive scenes
 		if (current)
@@ -62,11 +57,23 @@ FeatweightsTab::FeatweightsTab(QWidget *parent) :
 	});
 
 	/* propagate initial state */
-	actionToggleChart->setChecked(guiState.useAlternate);
+	actionToggleChart->setChecked(tabState.useAlternate);
 	weightingSelect->setCurrentIndex(weightingSelect->findData(
 	                                     QVariant::fromValue(FeatweightsScene::Weighting::OFFSET)));
 
 	updateEnabled();
+}
+
+void FeatweightsTab::setWindowState(std::shared_ptr<WindowState> s)
+{
+	Viewer::setWindowState(s);
+
+	/* connect state change signals */
+	auto ws = s.get();
+	connect(ws, &WindowState::colorsetUpdated, [this] () {
+		if (current)
+			current().scene->updateColorset(windowState->standardColors);
+	});
 }
 
 void FeatweightsTab::selectDataset(unsigned id)
@@ -81,9 +88,9 @@ void FeatweightsTab::selectDataset(unsigned id)
 
 	// pass guiState onto scene
 	auto scene = current().scene.get();
-	scene->updateColorset(guiState.colorset);
+	scene->updateColorset(windowState->standardColors);
 	scene->setWeighting(weightingSelect->currentData().value<FeatweightsScene::Weighting>());
-	scene->toggleImage(guiState.useAlternate);
+	scene->toggleImage(tabState.useAlternate);
 	scene->updateMarkers();
 	view->setScene(scene);
 }

@@ -4,6 +4,7 @@
 #include "ui_mainwindow.h"
 #include "dataset.h"
 #include "utils.h"
+#include "windowstate.h"
 
 #include <QMainWindow>
 #include <QIdentityProxyModel>
@@ -96,6 +97,7 @@ protected:
 
 	DataHub &hub;
 	Dataset::Ptr data;
+	std::shared_ptr<WindowState> state = std::make_shared<WindowState>();
 
 	CustomEnableProxyModel markerModel;
 	QTreeView *datasetTree;

@@ -52,7 +52,7 @@ protected:
 		bool showLabels = false;
 		bool showAverage = false;
 		bool showQuantiles = false;
-	} guiState;
+	} tabState;
 
 	ContentMap<DataState> content;
 	Current<DataState> current;

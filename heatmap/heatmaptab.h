@@ -15,6 +15,8 @@ class HeatmapTab : public Viewer, private Ui::HeatmapTab
 public:
 	explicit HeatmapTab(QWidget *parent = nullptr);
 
+	void setWindowState(std::shared_ptr<WindowState> s) override;
+
 	void selectDataset(unsigned id) override;
 	void addDataset(Dataset::Ptr data) override;
 
@@ -28,8 +30,7 @@ protected:
 
 	struct {
 		bool singleColumn = false;
-		bool showPartitions; // initialized by MainWindow
-	} guiState;
+	} tabState;
 
 	ContentMap<DataState> content;
 	Current<DataState> current;

@@ -3,8 +3,10 @@
 
 #include "proteindb.h"
 #include "dataset.h"
+#include "windowstate.h"
 
 #include <QMainWindow>
+#include <memory>
 
 class QGraphicsScene;
 class QGraphicsView;
@@ -19,6 +21,11 @@ public:
 	virtual ~Viewer() {}
 
 	virtual void setProteinModel(QAbstractItemModel*) {}
+	virtual void setWindowState(std::shared_ptr<WindowState> s)
+	{
+		disconnect(windowState.get());
+		windowState = s;
+	}
 
 public slots:
 	virtual void selectDataset(unsigned id)=0;
@@ -26,10 +33,7 @@ public slots:
 
 signals:
 	// signals from outside that we might react to
-	void inUpdateColorset(QVector<QColor> colors);
-	void inTogglePartitions(bool show);
 	void inToggleMarkers(const ProteinVec &ids, bool present);
-	void inToggleOpenGL(bool enabled);
 
 	// signals emitted by us
 	void markerToggled(ProteinId id, bool present);
@@ -56,6 +60,8 @@ protected:
 		unsigned id = 0;
 		State *p = nullptr;
 	};
+
+	std::shared_ptr<WindowState> windowState = std::make_shared<WindowState>();
 };
 
 #endif // VIEWER_H

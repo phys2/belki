@@ -45,17 +45,11 @@ ScatterTab::ScatterTab(QWidget *parent) :
 	        this, &ScatterTab::selectSecondaryDimension);
 
 	/* connect incoming signals */
-	connect(this, &Viewer::inTogglePartitions, [this] (bool show) {
-		guiState.showPartitions = show;
-		if (current)
-			current().scene->togglePartitions(show);
-	});
 	connect(this, &Viewer::inToggleMarkers, [this] (auto ids, bool present) {
 		// we do not keep track of markers for inactive scenes
 		if (current)
 			current().scene->toggleMarkers(ids, present);
 	});
-	connect(this, &Viewer::inToggleOpenGL, view, &ChartView::toggleOpenGL);
 
 	updateEnabled();
 }
@@ -63,6 +57,22 @@ ScatterTab::ScatterTab(QWidget *parent) :
 ScatterTab::~ScatterTab()
 {
 	view->releaseChart(); // avoid double delete
+}
+
+void ScatterTab::setWindowState(std::shared_ptr<WindowState> s)
+{
+	Viewer::setWindowState(s);
+	view->toggleOpenGL(s->useOpenGl);
+
+	/* connect state change signals */
+	auto ws = s.get();
+	connect(ws, &WindowState::annotationsToggled, [this] () {
+		if (current)
+			current().scene->togglePartitions(windowState->showAnnotations);
+	});
+	connect(ws, &WindowState::openGlToggled, [this] () {
+		view->toggleOpenGL(windowState->useOpenGl);
+	});
 }
 
 void ScatterTab::selectDataset(unsigned id)
@@ -84,7 +94,7 @@ void ScatterTab::selectDataset(unsigned id)
 
 	// pass guiState onto chart
 	auto scene = current().scene.get();
-	scene->togglePartitions(guiState.showPartitions);
+	scene->togglePartitions(windowState->showAnnotations);
 	scene->updateMarkers();
 	view->switchChart(scene);
 }

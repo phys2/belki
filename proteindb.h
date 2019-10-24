@@ -54,9 +54,6 @@ public:
 	void addAnnotations(std::unique_ptr<Annotations> data, bool select, bool pristine = false);
 	void addHierarchy(std::unique_ptr<HrClustering> data, bool select);
 
-public slots:
-	void updateColorset(const QVector<QColor>& colors);
-
 signals:
 	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
 	void proteinAdded(ProteinId id, const Protein &protein);

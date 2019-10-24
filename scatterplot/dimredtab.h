@@ -20,6 +20,8 @@ public:
 	explicit DimredTab(QWidget *parent = nullptr);
 	~DimredTab() override;
 
+	void setWindowState(std::shared_ptr<WindowState> s) override;
+
 	void selectDataset(unsigned id) override;
 	void addDataset(Dataset::Ptr data) override;
 
@@ -38,8 +40,7 @@ protected:
 
 	struct {
 		QString preferredDisplay; // init to none
-		bool showPartitions; // initialized by MainWindow
-	} guiState;
+	} tabState;
 
 	ContentMap<DataState> content;
 	Current<DataState> current;

@@ -15,6 +15,8 @@ class DistmatTab : public Viewer, private Ui::DistmatTab
 public:
 	explicit DistmatTab(QWidget *parent = nullptr);
 
+	void setWindowState(std::shared_ptr<WindowState> s) override;
+
 	void selectDataset(unsigned id) override;
 	void addDataset(Dataset::Ptr data) override;
 
@@ -28,9 +30,7 @@ protected:
 
 	struct {
 		Dataset::Direction direction = Dataset::Direction::PER_DIMENSION;
-		bool showPartitions; // initialized by MainWindow
-		QVector<QColor> colorset; // initialized by MainWindow
-	} guiState;
+	} tabState;
 
 	ContentMap<DataState> content;
 	Current<DataState> current;

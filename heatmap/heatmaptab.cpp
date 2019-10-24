@@ -14,7 +14,7 @@ HeatmapTab::HeatmapTab(QWidget *parent) :
 
 	/* connect toolbar actions */
 	connect(actionToggleSingleCol, &QAction::toggled, [this] (bool toggle) {
-		guiState.singleColumn = toggle;
+		tabState.singleColumn = toggle;
 		if (current)
 			view->setColumnMode(toggle);
 	});
@@ -24,11 +24,6 @@ HeatmapTab::HeatmapTab(QWidget *parent) :
 	});
 
 	/* connect incoming signals */
-	connect(this, &Viewer::inTogglePartitions, [this] (bool show) {
-		guiState.showPartitions = show;
-		if (current)
-			current().scene->togglePartitions(show);
-	});
 	connect(this, &Viewer::inToggleMarkers, [this] (auto ids, bool present) {
 		// we do not keep track of markers for inactive scenes
 		if (current)
@@ -36,9 +31,21 @@ HeatmapTab::HeatmapTab(QWidget *parent) :
 	});
 
 	/* propagate initial state */
-	actionToggleSingleCol->setChecked(guiState.singleColumn);
+	actionToggleSingleCol->setChecked(tabState.singleColumn);
 
 	updateEnabled();
+}
+
+void HeatmapTab::setWindowState(std::shared_ptr<WindowState> s)
+{
+	Viewer::setWindowState(s);
+
+	/* connect state change signals */
+	auto ws = s.get();
+	connect(ws, &WindowState::annotationsToggled, [this] () {
+		if (current)
+			current().scene->togglePartitions(windowState->showAnnotations);
+	});
 }
 
 void HeatmapTab::selectDataset(unsigned id)
@@ -51,10 +58,10 @@ void HeatmapTab::selectDataset(unsigned id)
 
 	// pass guiState onto scene
 	auto scene = current().scene.get();
-	scene->togglePartitions(guiState.showPartitions);
+	scene->togglePartitions(windowState->showAnnotations);
 	scene->updateMarkers();
 	view->setScene(scene);
-	view->setColumnMode(guiState.singleColumn);
+	view->setColumnMode(tabState.singleColumn);
 }
 
 void HeatmapTab::addDataset(Dataset::Ptr data)

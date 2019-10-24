@@ -68,10 +68,6 @@ signals:
 
 public slots:
 	void setDirection(Direction direction);
-	void reorder();
-	void recolor();
-
-	void updateColorset(QVector<QColor> colors);
 
 	void updateMarkers();
 	void toggleMarkers(const std::vector<ProteinId> &ids, bool present);
@@ -82,6 +78,8 @@ protected:
 	void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
 
 	void setDisplay();
+	void reorder();
+	void recolor();
 	void rearrange();
 	void updateVisibilities();
 	void updateRenderQuality();
@@ -91,7 +89,6 @@ protected:
 	std::map<Direction, Distmat> matrices;
 
 	Dataset::Ptr data;
-	QVector<QColor> colorset;
 
 	QGraphicsPixmapItem *display;
 

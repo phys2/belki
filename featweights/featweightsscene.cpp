@@ -308,6 +308,7 @@ void FeatweightsScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 void FeatweightsScene::updateColorset(QVector<QColor> colors)
 {
 	colorset = colors;
+	update();
 }
 
 void FeatweightsScene::setWeighting(Weighting w)

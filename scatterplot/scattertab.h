@@ -13,6 +13,8 @@ public:
 	explicit ScatterTab(QWidget *parent = nullptr);
 	~ScatterTab() override;
 
+	void setWindowState(std::shared_ptr<WindowState> s) override;
+
 	void selectDataset(unsigned id) override;
 	void addDataset(Dataset::Ptr data) override;
 
@@ -29,9 +31,7 @@ protected:
 	void selectSecondaryDimension(int index);
 	bool updateEnabled();
 
-	struct {
-		bool showPartitions; // initialized by MainWindow
-	} guiState;
+	struct {} tabState;
 
 	ContentMap<DataState> content;
 	Current<DataState> current;

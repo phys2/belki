@@ -37,8 +37,7 @@ signals: // IMPORTANT: when connecting to lambda, provide target object pointer 
 	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
 	void newDisplay(const QString &name, bool loaded=false);
 
-public slots: // IMPORTANT: never call these directly! use signals for thread-affinity
-	void updateColorset(QVector<QColor> colors);
+public slots:
 	void importDescriptions(const QString &filename);
 	void importAnnotations(const QString &filename);
 	void importHierarchy(const QString &filename);
@@ -66,7 +65,6 @@ protected:
 	} d;
 
 	ProteinDB &proteins;
-	QVector<QColor> colorset;
 };
 
 #endif // STORAGE_H

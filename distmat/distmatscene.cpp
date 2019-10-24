@@ -278,13 +278,6 @@ void DistmatScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 	QGraphicsScene::mouseReleaseEvent(event);
 }
 
-void DistmatScene::updateColorset(QVector<QColor> colors)
-{
-	colorset = colors;
-	recolor();
-	// TODO: re-initialize markers
-}
-
 qreal DistmatScene::computeCoord(unsigned sampleIndex)
 {
 	auto s = data->peek<Dataset::Structure>();
