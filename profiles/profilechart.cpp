@@ -89,8 +89,8 @@ void ProfileChart::setupAxes(const Features::Range &range)
 
 	ayL = new QtCharts::QLogValueAxis;
 	// use sanitized range for logscale axis
-	range = features::log_valid(range);
-	ayL->setRange(range.min, range.max);
+	auto lrange = features::log_valid(range);
+	ayL->setRange(lrange.min, lrange.max);
 	ayL->setBase(10.);
 	ayL->setLabelFormat("%.2g");
 	ayL->setLabelsFont(ay->labelsFont());
