@@ -64,6 +64,20 @@ Features::Range range_of(const vec &source, float fraction)
 	return ret;
 }
 
+Features::Range log_valid(const Features::Range &range)
+{
+	double lb;
+	if (range.max > 10000)
+		lb = 1;
+	else if (range.max > 100)
+		lb = 0.01;
+	else if (range.max > 10)
+		lb = 0.001;
+	else
+		lb = 0.0001;
+	return {std::max(range.min, lb), std::max(range.max, lb)};
+}
+
 unsigned cutoff_effect(const vec &source, double threshold)
 {
 	auto check = [&] (size_t index) {

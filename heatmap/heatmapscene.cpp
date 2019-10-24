@@ -1,5 +1,6 @@
 #include "heatmapscene.h"
 #include "compute/colors.h"
+#include "compute/features.h"
 
 #include <QPainter>
 #include <QGraphicsItem>
@@ -151,8 +152,15 @@ void HeatmapScene::recolor()
 HeatmapScene::Profile::Profile(unsigned index, View<Dataset::Base> &d)
     : index(index)
 {
-	features = Colormap::prepare(cv::Mat(d->features[index]),
-	                             d->featureRange.scale(), d->featureRange.min);
+	auto feat = cv::Mat(d->features[index]);
+	auto range = d->featureRange;
+	if (d->logSpace) {
+		range = features::log_valid(range);
+		cv::log(cv::max(feat, range.min), feat);
+		range.min = cv::log(range.min); range.max = cv::log(range.max);
+	}
+	features = Colormap::prepare(feat, range.scale(), range.min);
+
 	if (d->hasScores()) {
 		// apply score colormap flipped (low scores are better)
 		scores = Colormap::stoplight_mild.apply(cv::Mat(d->scores[index]) * -1.,

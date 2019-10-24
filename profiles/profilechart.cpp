@@ -3,6 +3,7 @@
 #include "datahub.h"
 #include "proteindb.h"
 #include "dataset.h"
+#include "compute/features.h"
 
 #include <QLineSeries>
 #include <QAreaSeries>
@@ -87,16 +88,9 @@ void ProfileChart::setupAxes(const Features::Range &range)
 	ay->setRange(range.min, range.max);
 
 	ayL = new QtCharts::QLogValueAxis;
-	double lb;
-	if (range.max > 10000)
-		lb = 1;
-	else if (range.max > 100)
-		lb = 0.01;
-	else if (range.max > 10)
-		lb = 0.001;
-	else
-		lb = 0.0001;
-	ayL->setRange(std::max(range.min, lb), std::max(range.max, lb));
+	// use sanitized range for logscale axis
+	range = features::log_valid(range);
+	ayL->setRange(range.min, range.max);
 	ayL->setBase(10.);
 	ayL->setLabelFormat("%.2g");
 	ayL->setLabelsFont(ay->labelsFont());
