@@ -42,30 +42,17 @@ public:
 	};
 	Q_ENUM(Direction)
 
-	enum class OrderBy {
-		FILE,
-		NAME,
-		HIERARCHY,
-		CLUSTERING
-	};
-	Q_ENUM(OrderBy)
-
+	/* local (enhanced) copy of global annotations or internal annotations */
 	struct Annotations : ::Annotations {
-		explicit Annotations(size_t numProteins = 0) : memberships(numProteins) {}
 		Annotations(const ::Annotations &source, const Features &data);
-		bool empty() const { return groups.empty(); }
 
 		// memberships of each protein from dataset perspective
 		std::vector<std::set<unsigned>> memberships;
 	};
 
-	struct Order {
-		OrderBy reference = OrderBy::HIERARCHY;
-		bool synchronizing = true; // re-calculate whenever the source changes
-		bool fallback = true; // enable one-off synchronization
-
-		std::vector<unsigned> index; // protein indices ordered
-		std::vector<unsigned> rankOf; // position of each protein in the order
+	struct Order : ::Order {
+		std::vector<unsigned> index = {}; // protein indices ordered
+		std::vector<unsigned> rankOf = {}; // position of each protein in the order
 	};
 
 	struct Base : Features, RWLockable {
@@ -83,15 +70,24 @@ public:
 	};
 
 	struct Structure : RWLockable {
-		// clusters / hierarchy, if available
-		Annotations clustering;
-		HrClustering hierarchy;
+		// picks from annotations if available
+		const Annotations* fetch(const Annotations::Meta &desc) const;
+		// picks from hierarchies if available
+		const HrClustering* fetch(const HrClustering::Meta &desc) const;
+		// picks from orders or picks fallback
+		const Order& fetch(::Order desc) const;
 
-		unsigned clusteringId = 0; // state info to avoid recomputation (0 = none/special)
+		// available annotations by global id, 0 means internal
+		std::multimap<unsigned, Annotations> annotations;
 
-		// order of proteins
-		// determined by hierarchy or clusters (if available), pos. in file, or name
-		Order order;
+		// available hierarchies by global id
+		std::map<unsigned, HrClustering> hierarchies;
+
+		// available protein orderings (in dataset scope) by global id,
+		// 0 means based on internal annot.
+		std::multimap<unsigned, Order> orders;
+		// default orders (always available)
+		Order fileOrder, nameOrder;
 	};
 
 	enum class Touch {
@@ -108,8 +104,6 @@ public:
 	const DatasetConfiguration& config() const { return conf; }
 	unsigned id() const { return conf.id; }
 
-	static const std::map<OrderBy, QString> availableOrders();
-
 	template<typename T>
 	View<T> peek() const; // see specializations in cpp
 
@@ -124,11 +118,10 @@ public:
 	void computeFAMS(float k);
 
 	void applyClustering(const QString &name, const Features::Vec &modes, const std::vector<int>& index);
-	void applyAnnotations(unsigned id);
-	void applyHierarchy(unsigned id, unsigned granularity = 0);
-	void createPartition(unsigned granularity);
+	void prepareAnnotations(const Annotations::Meta &desc);
+	void prepareHierarchy(const HrClustering::Meta &desc, const Annotations::Meta &cutdesc);
+	void prepareOrder(const ::Order &desc);
 	void cancelFAMS();
-	void changeOrder(OrderBy reference, bool synchronize);
 
 signals:
 	void update(Touched);
@@ -136,9 +129,8 @@ signals:
 protected:
 	/* note: our protected helpers typically assume write locks in place and
 	 * do not emit updates. */
-	Touched calculatePartition(unsigned granularity);
-	Touched applyAnnotations(const ::Annotations &source, unsigned id = 0, bool reorderProts = true);
-	void orderProteins(OrderBy reference);
+	Touched storeAnnotations(const ::Annotations &source, bool withOrder = true);
+	void computeOrder(const ::Order &desc);
 
 	void computeCentroids(Annotations &target);
 

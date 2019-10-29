@@ -13,6 +13,7 @@
 
 class QColor;
 class QTimer;
+class WindowState;
 
 namespace QtCharts {
 class QValueAxis;
@@ -55,13 +56,17 @@ public:
 	};
 
 	Chart(Dataset::ConstPtr data, const ChartConfig *config);
+	void setState(std::shared_ptr<WindowState> s);
 	void setConfig(const ChartConfig *config);
+
+	void hibernate();
+	void wakeup();
 
 public slots:
 	void setTitles(const QString &x, const QString &y);
 	void display(const QVector<QPointF> &coords);
-	void updatePartitions(bool fresh);
-	void togglePartitions(bool showPartitions);
+	void changeAnnotations();
+	void toggleAnnotations();
 	void updateMarkers(bool newDisplay = false);
 	void toggleMarkers(const std::vector<ProteinId> &ids, bool present);
 
@@ -80,6 +85,7 @@ signals:
 	void proteinStyleUpdated();
 
 protected:
+	void updatePartitions();
 	void animate(int msec);
 	ProteinId findFirstMarker();
 	static void updateTicks(QtCharts::QValueAxis *axis);
@@ -97,6 +103,7 @@ protected:
 	QTimer *animReset;
 
 	/* GUI state */
+	bool awake = false;
 	const ChartConfig *config;
 
 	/* data state variables */
@@ -109,6 +116,7 @@ protected:
 
 	// data source
 	Dataset::ConstPtr data;
+	std::shared_ptr<WindowState> state;
 };
 
 #endif /* CHART_H */

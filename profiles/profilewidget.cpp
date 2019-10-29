@@ -2,11 +2,13 @@
 #include "profilechart.h"
 #include "profilewindow.h"
 #include "dataset.h"
+#include "windowstate.h"
 
 #include <random>
 
 ProfileWidget::ProfileWidget(QWidget *parent) :
-    QWidget(parent)
+    QWidget(parent),
+    state(std::make_shared<WindowState>())
 {
 	setupUi(this);
 
@@ -120,8 +122,11 @@ void ProfileWidget::update()
 		return d->lookup(p, a).name < d->lookup(p, b).name;
 	});
 
+	// obtain annotations, if available
+	auto s = data->peek<Dataset::Structure>(); // keep while we operate with Annot*!
+	auto annotations = s->fetch(state->annotations);
+
 	// compose list
-	auto s = data->peek<Dataset::Structure>();
 	QString content;
 	QString tpl("<b><a href='https://uniprot.org/uniprot/%1_%2'>%1</a></b> <small>%3 <i>%4</i></small><br>");
 	for (auto i : qAsConst(samples)) {
@@ -129,9 +134,13 @@ void ProfileWidget::update()
 		if (markers.count(i))
 			content.append("<small>★</small>");
 		auto &prot = d->lookup(p, i);
-		auto &m = s->clustering.memberships[i];
-		auto clusters = std::accumulate(m.begin(), m.end(), QStringList(),
-		    [&s] (QStringList a, unsigned b) { return a << s->clustering.groups.at(b).name; });
+		QStringList clusters;
+		if (annotations) {
+			auto &m = annotations->memberships[i];
+			clusters = std::accumulate(m.begin(), m.end(), QStringList(),
+			                           [&annotations] (QStringList a, unsigned b) {
+			                            return a << annotations->groups.at(b).name; });
+		}
 		content.append(tpl.arg(prot.name, prot.species, clusters.join(", "), prot.description));
 	}
 	proteinList->setText(text.arg(content));

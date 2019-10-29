@@ -43,7 +43,6 @@ signals:
 	void newWindowRequested();
 	void closeWindowRequested();
 	void datasetSelected(unsigned id);
-	void orderChanged(Dataset::OrderBy reference, bool synchronize);
 	void markerFlipped(QModelIndex i);
 	void markerToggled(ProteinId id, bool present);
 
@@ -88,9 +87,9 @@ protected:
 	void setFilename(QString name);
 	void setSelectedDataset(unsigned id);
 
-	void applyAnnotations(unsigned id);
-	void applyHierarchy(unsigned id, unsigned granularity);
-	void createPartition(unsigned granularity);
+	void selectAnnotations(unsigned id);
+	void selectHierarchy(unsigned id, unsigned granularity);
+	void switchHierarchyPartition(unsigned granularity);
 
 	void runInBackground(const std::function<void()> &work);
 	void runOnData(const std::function<void(Dataset::Ptr)> &work);

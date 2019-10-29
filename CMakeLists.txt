@@ -79,7 +79,7 @@ target_sources(${APP_NAME} PRIVATE
 	storage.h storage.cpp
 	utils.h
 	viewer.h
-	windowstate.h
+	windowstate.h windowstate.cpp
 	)
 
 # components (they add to target 'belki')

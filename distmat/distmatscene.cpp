@@ -1,4 +1,5 @@
 #include "distmatscene.h"
+#include "windowstate.h"
 
 #include <QPainter>
 #include <QGraphicsPixmapItem>
@@ -8,9 +9,9 @@
 #include <QtDebug>
 
 DistmatScene::DistmatScene(Dataset::Ptr data, bool dialogMode)
-    : data(data),
-      dialogMode(dialogMode),
-      clusterbars(this)
+    : dialogMode(dialogMode),
+      data(data),
+      state(std::make_shared<WindowState>())
 {
 	/* set scene rectangle */
 	qreal offset = (dialogMode ? .01 : .1); // some "feel good" borders
@@ -41,7 +42,7 @@ DistmatScene::DistmatScene(Dataset::Ptr data, bool dialogMode)
 	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
 		if (touched & Dataset::Touch::ORDER)
 			reorder(); // calls recolor()
-		else if (touched & Dataset::Touch::CLUSTERS)
+		else if (touched & Dataset::Touch::CLUSTERS && !haveAnnotations)
 			recolor();
 	});
 }
@@ -111,53 +112,57 @@ void DistmatScene::reorder()
 
 	if (matrices.count(Direction::PER_PROTEIN)) {
 		/* re-do display with current ordering */
-		auto d = data->peek<Dataset::Structure>();
-		matrices[Direction::PER_PROTEIN].computeImage([&d] (int y, int x) {
-			return cv::Point(d->order.index[x], d->order.index[y]);
+		auto d = data->peek<Dataset::Structure>(); // keep while we use order
+		auto &order = d->fetch(state->order);
+		matrices[Direction::PER_PROTEIN].computeImage([&order] (int y, int x) {
+			return cv::Point(order.index[x], order.index[y]);
 		});
+
 		if (currentDirection == Direction::PER_PROTEIN)
 			setDisplay();
 	}
 
+	/* reflect new order in markers */
+	for (auto& [_, m] : markers)
+		m.coordinate = computeCoord(m.sampleIndex);
+
 	/* reflect new order in clusterbars */
 	recolor();
 
-	/* reflect new order in markers */
-	for (auto& [_, m] : markers) {
-		m.coordinate = computeCoord(m.sampleIndex);
-		m.rearrange(viewport.left(), vpScale);
-	}
+	rearrange();
 }
 
 void DistmatScene::recolor()
 {
-	auto d = data->peek<Dataset::Structure>();
-	auto &cl = d->clustering;
-	if (cl.empty()) {
+	auto d = data->peek<Dataset::Structure>(); // keep while we use annot./order!
+	auto annotations = d->fetch(state->annotations);
+	haveAnnotations = annotations;
+	if (!haveAnnotations) {
 		// no clustering, disappear
 		clusterbars.setVisible(false);
 		return;
 	}
 
 	/* setup a colored bar that indicates cluster membership */
-	const auto &source = d->order.index;
+	const auto &source = d->fetch(state->order).index;
 	QImage clusterbar(source.size(), 1, QImage::Format_ARGB32);
 	for (int i = 0; i < (int)source.size(); ++i) {
-		const auto &assoc = cl.memberships[source[(size_t)i]];
+		const auto &assoc = annotations->memberships[source[(size_t)i]];
 		switch (assoc.size()) {
 		case 0:
 			clusterbar.setPixelColor(i, 0, Qt::transparent);
 			break;
 		case 1:
-			clusterbar.setPixelColor(i, 0, cl.groups.at(*assoc.begin()).color);
+			clusterbar.setPixelColor(i, 0, annotations->groups.at(*assoc.begin()).color);
 			break;
 		default:
 			clusterbar.setPixelColor(i, 0, Qt::white);
 		}
 	}
 
+	d.unlock();
+
 	clusterbars.update(clusterbar);
-	rearrange();
 	updateVisibilities();
 }
 
@@ -183,7 +188,8 @@ void DistmatScene::updateVisibilities()
 		l.setVisible(currentDirection == Direction::PER_DIMENSION && dimensionSelected[i]);
 	for (auto &[_, m] : markers)
 		m.setVisible(currentDirection == Direction::PER_PROTEIN);
-	clusterbars.setVisible(showPartitions && currentDirection == Direction::PER_PROTEIN);
+	clusterbars.setVisible(state->showAnnotations && haveAnnotations &&
+	                       currentDirection == Direction::PER_PROTEIN);
 }
 
 void DistmatScene::updateRenderQuality()
@@ -220,9 +226,14 @@ void DistmatScene::toggleMarkers(const std::vector<ProteinId> &ids, bool present
 	}
 }
 
-void DistmatScene::togglePartitions(bool show)
+void DistmatScene::changeAnnotations()
 {
-	showPartitions = show;
+	haveAnnotations = false;
+	recolor();
+}
+
+void DistmatScene::toggleAnnotations()
+{
 	updateVisibilities();
 }
 
@@ -247,8 +258,8 @@ void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 	if (currentDirection == Direction::PER_PROTEIN) {
 		// need to back-translate
 		auto d = data->peek<Dataset::Structure>();
-		idx = {d->order.index[(size_t)pos.x()],
-		       d->order.index[(size_t)pos.y()]};
+		auto &order = d->fetch(state->order);
+		idx = {order.index[(size_t)pos.x()], order.index[(size_t)pos.y()]};
 	}
 
 	/* display current value */
@@ -281,7 +292,7 @@ void DistmatScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 qreal DistmatScene::computeCoord(unsigned sampleIndex)
 {
 	auto s = data->peek<Dataset::Structure>();
-	auto pos = s->order.rankOf[sampleIndex];
+	auto pos = s->fetch(state->order).rankOf[sampleIndex];
 	return (qreal)(pos + 0.5) / data->peek<Dataset::Base>()->protIds.size();
 }
 

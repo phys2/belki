@@ -15,19 +15,8 @@ Dataset::Dataset(ProteinDB &proteins, DatasetConfiguration conf)
 {
 	qRegisterMetaType<DatasetConfiguration>();
 	qRegisterMetaType<Touched>("Touched");
-	qRegisterMetaType<OrderBy>();
 	qRegisterMetaType<Ptr>("DataPtr");
 	qRegisterMetaType<ConstPtr>("ConstDataPtr");
-}
-
-const std::map<Dataset::OrderBy, QString> Dataset::availableOrders()
-{
-	return {
-		{OrderBy::FILE, "Position in File"},
-		{OrderBy::NAME, "Protein Name"},
-		{OrderBy::HIERARCHY, "Hierarchy"},
-		{OrderBy::CLUSTERING, "Cluster/Annotations"},
-	};
 }
 
 template<>
@@ -53,11 +42,9 @@ void Dataset::spawn(Features::Ptr in)
 	/* pre-cache features as QPoints for plotting */
 	b.featurePoints = features::pointify(b.features);
 
-	// ensure clustering is properly initialized if accessed
-	s.clustering = Annotations(b.protIds.size());
-
-	// calculate initial order
-	orderProteins(s.order.reference);
+	/* calculate default orders */
+	computeOrder({Order::FILE});
+	computeOrder({Order::NAME});
 }
 
 void Dataset::spawn(ConstPtr srcholder)
@@ -92,11 +79,11 @@ void Dataset::spawn(ConstPtr srcholder)
 	b.featureRange = bIn->featureRange; // note: no adaptive handling yet
 	b.featurePoints = features::pointify(b.features);
 
-	// also copy structure
+	// also copy structures, as they are still valid (right now: 1:1 protein matching)
 	auto sIn = srcholder->peek<Structure>();
-	s.hierarchy = sIn->hierarchy;
-	s.clustering = sIn->clustering;
-	s.order = sIn->order;
+	s.annotations = sIn->annotations; // TODO: recompute modes
+	computeOrder({Order::FILE});
+	computeOrder({Order::NAME});
 }
 
 void Dataset::computeDisplay(const QString& request)
@@ -171,10 +158,9 @@ void Dataset::applyClustering(const QString& name, const Features::Vec &modes, c
 	auto d = peek<Base>();
 
 	/* Note: we do not work with our descendant of Annotations and set memberships
-	 * directly, as they would need to be yet again updated after pruning. */
+	 * directly, as pruning invalidates them. */
 	::Annotations target;
-	target.name = name;
-	target.source = conf.id;
+	target.meta = {Annotations::Meta::SIMPLE, 0, name, conf.id}; // TODO meanshift +k
 
 	for (unsigned i = 0; i < modes.size(); ++i)
 		target.groups[i] = {QString("Cluster #%1").arg(i+1), {}, {}, modes[i]};
@@ -189,79 +175,57 @@ void Dataset::applyClustering(const QString& name, const Features::Vec &modes, c
 	annotations::color(target, proteins.groupColors());
 
 	s.l.lockForWrite();
-	auto touched = applyAnnotations(target, 0, true);
+	auto touched = storeAnnotations(target, true);
 	s.l.unlock();
 
 	emit update(touched);
 }
 
-void Dataset::applyAnnotations(unsigned id)
+void Dataset::prepareAnnotations(const Annotations::Meta &desc)
 {
-	// just in case it's running
-	if (meanshift)
-		meanshift->cancel();
+	if (peek<Structure>()->fetch(desc))
+		return; // already there
 
 	s.l.lockForWrite();
 	Touched touched;
 
-	// 0: clean in any case
-	if (id == 0 && !s.clustering.empty()) {
-		s.clustering = Annotations(peek<Base>()->protIds.size());
-		s.clusteringId = 0;
-		touched |= Touch::CLUSTERS;
-	}
-
-	// others: apply from proteindb, if not already applied
-	if (s.clusteringId != id) {
+	if (desc.id > 0) {
+		/* apply existing annotations from proteindb */
 		// would use std::get(), but not available on MacOS 10.13
-		const auto &cl = *std::get_if<::Annotations>(&proteins.peek()->structures.at(id));
-		touched |= applyAnnotations(cl, id);
+		const auto &src = *std::get_if<::Annotations>(&proteins.peek()->structures.at(desc.id));
+		touched |= storeAnnotations(src);
+	} else {
+		/* special cases */
+		// TODO meanshift+calcpartitions
 	}
 
 	s.l.unlock();
 	emit update(touched);
 }
 
-void Dataset::applyHierarchy(unsigned id, unsigned granularity)
+void Dataset::prepareHierarchy(const HrClustering::Meta &desc, const Annotations::Meta &cutdesc)
 {
-	// note: to remove a hierarchy (by passing id 0) is not supported yet
+	if (peek<Structure>()->fetch(desc))
+		return; // already there   TODO what about cutdesc?
 
-	Touched touched = Touch::HIERARCHY;
+	// TODO TODO TODO
+}
 
+void Dataset::prepareOrder(const ::Order &desc)
+{
+	if (peek<Structure>()->fetch(desc).type == desc.type) // didn't fall back
+		return; // already there
+
+	QWriteLocker _s(&s.l);
+	computeOrder(desc);
+	_s.unlock();
+	emit update(Touch::ORDER);
+}
+
+/* TODO void Dataset::createPartition(unsigned sourceId, unsigned granularity)
+{
+	s.hierarchy = *std::get_if<HrClustering>(&proteins.peek()->structures.at(id)); // Apple no std::get
 	s.l.lockForWrite();
-	// would use std::get(), but not available on MacOS 10.13
-	s.hierarchy = *std::get_if<HrClustering>(&proteins.peek()->structures.at(id));
-
-	if (s.order.synchronizing &&
-	    (s.order.reference == OrderBy::HIERARCHY ||
-	     s.order.reference == OrderBy::CLUSTERING)) {
-		orderProteins(OrderBy::HIERARCHY);
-		touched |= Touch::ORDER;
-	}
-
-	if (granularity != 0) {
-		touched |= calculatePartition(granularity);
-	}
-	s.l.unlock();
-
-	emit update(touched);
-}
-
-void Dataset::createPartition(unsigned granularity)
-{
-	// just in case it's running
-	if (meanshift)
-		meanshift->cancel();
-
-	s.l.lockForWrite();
-	auto touched = calculatePartition(granularity);
-	s.l.unlock();
-
-	emit update(touched);
-}
-
-Dataset::Touched Dataset::calculatePartition(unsigned granularity)
-{
 	auto target = annotations::partition(s.hierarchy, granularity);
 	target.name = QString("%2 at granularity %1").arg(granularity).arg(s.hierarchy.name);
 	target.source = conf.id;
@@ -270,30 +234,28 @@ Dataset::Touched Dataset::calculatePartition(unsigned granularity)
 	annotations::order(target, true);
 	annotations::color(target, proteins.groupColors());
 
-	return applyAnnotations(target, 0, false);
-}
+	auto touched = prepareAnnotations(target, false);
+	s.l.unlock();
 
-Dataset::Touched Dataset::applyAnnotations(const ::Annotations &source, unsigned id, bool reorderProts)
+	emit update(touched);
+} */
+
+Dataset::Touched Dataset::storeAnnotations(const ::Annotations &source, bool withOrder)
 {
 	/* Note: caller has locked s for us for writing */
 
-	s.clustering = Annotations(source, *peek<Base>());
+	auto it = s.annotations.emplace(source.meta.id, Annotations{source, *peek<Base>()});
+	auto &target = it->second;
 
 	/* calculate centroids, if not already there and compatible */
-	bool needCentroids = s.clustering.source != conf.id;
-	if (!s.clustering.empty() && source.groups.begin()->second.mode.empty())
+	bool needCentroids = target.meta.dataset != conf.id;
+	if (!target.groups.empty() && target.groups.begin()->second.mode.empty())
 		needCentroids = true;
 	if (needCentroids)
-		computeCentroids(s.clustering);
+		computeCentroids(target);
 
 	Touched touched = Touch::CLUSTERS;
-	if (reorderProts && s.order.synchronizing && s.order.reference == OrderBy::CLUSTERING) {
-		orderProteins(OrderBy::CLUSTERING);
-		touched |= Touch::ORDER;
-	}
-
-	s.clusteringId = id;
-
+	/* TODO would we like to pre-compute order here as well? */
 	return touched;
 }
 
@@ -309,20 +271,6 @@ QByteArray Dataset::exportDisplay(const QString &name) const
 		out << it->x() << "\t" << it->y() << endl;
 
 	return ret;
-}
-
-void Dataset::changeOrder(OrderBy reference, bool synchronize)
-{
-	QWriteLocker _s(&s.l);
-	s.order.synchronizing = synchronize;
-	if (s.order.reference == reference)
-		return; // nothing to do
-
-	s.order.reference = reference; // save preference for future changes
-	orderProteins(reference);
-
-	_s.unlock();
-	emit update(Touch::ORDER);
 }
 
 void Dataset::computeCentroids(Annotations &target)
@@ -349,28 +297,34 @@ void Dataset::computeCentroids(Annotations &target)
 	}
 }
 
-void Dataset::orderProteins(OrderBy reference)
+void Dataset::computeOrder(const ::Order &desc)
 {
 	/* Note: caller has locked s for us for writing */
-	auto& target = s.order;
 
-	/* initialize replacement with current configuration */
-	// note that our argument 'reference' might _not_ be the configured one
-	target = {s.order.reference, s.order.synchronizing, false, {}, {}};
-
-	/* use reasonable fallbacks */
-	if (reference == OrderBy::CLUSTERING && s.clustering.empty()) {
-		reference = OrderBy::HIERARCHY;
-		target.fallback = true;
+	/* initialize order object */
+	Order *target;
+	const Annotations *asource = nullptr;
+	const HrClustering *hsource = nullptr;
+	switch (desc.type) {
+	case Order::FILE:	target = &s.fileOrder; break;
+	case Order::NAME:	target = &s.nameOrder; break;
+	case Order::CLUSTERING:
+		asource = s.fetch(*std::get_if<Annotations::Meta>(&desc.source)); // Apple no std::get
+		if (!asource)
+			return;
+		target = &s.orders.emplace(asource->meta.id, Order{desc})->second;
+		break;
+	case Order::HIERARCHY:
+		hsource = s.fetch(*std::get_if<HrClustering::Meta>(&desc.source)); // Apple no std::get
+		if (!hsource)
+			return;
+		target = &s.orders.emplace(asource->meta.id, Order{desc})->second;
 	}
-	if (reference == OrderBy::HIERARCHY && s.hierarchy.clusters.empty()) {
-		reference = OrderBy::NAME;
-		target.fallback = true;
-	}
 
+	/* work on target */
 	auto d = peek<Base>();
 	auto p = peek<Proteins>();
-	auto &index = target.index;
+	auto &index = target->index;
 
 	auto byName = [&] (auto a, auto b) {
 		return d->lookup(p, a).name < d->lookup(p, b).name;
@@ -386,13 +340,13 @@ void Dataset::orderProteins(OrderBy reference)
 		std::sort(index.begin() + start, index.end(), byName);
 	};
 
-	switch (reference) {
+	switch (desc.type) {
 	/* order based on hierarchy */
-	case OrderBy::HIERARCHY: {
+	case Order::HIERARCHY: {
 		std::unordered_set<unsigned> seen;
 		std::function<void(unsigned)> collect;
 		collect = [&] (unsigned hIndex) {
-			auto &current = s.hierarchy.clusters[hIndex];
+			auto &current = hsource->clusters[hIndex];
 			if (current.protein) {
 				try {
 					auto i = d->protIndex.at(current.protein.value_or(0));
@@ -403,26 +357,26 @@ void Dataset::orderProteins(OrderBy reference)
 			for (auto c : current.children)
 				collect(c);
 		};
-		collect(s.hierarchy.clusters.size()-1);
+		collect(hsource->clusters.size()-1);
 
 		// add all proteins not covered yet
 		addUnseen(seen);
 		break;
 	}
 	/* order based on ordered clusters */
-	case OrderBy::CLUSTERING: {
-		auto &cl = s.clustering;
+	case Order::CLUSTERING: {
 		// ensure that each protein appears only once
 		std::unordered_set<unsigned> seen;
-		for (auto ci : cl.order) {
+		for (auto ci : asource->order) {
 			// assemble all affected proteins, and their spread from cluster core
 			std::vector<std::pair<unsigned, double>> members;
 			for (unsigned i = 0; i < d->protIds.size(); ++i) {
 				if (seen.count(i))
 					continue; // protein was part of bigger cluster
-				if (cl.memberships[i].count(ci)) {
+				if (asource->memberships[i].count(ci)) {
 					double dist = cv::norm(d->features[i],
-					                       cl.groups[ci].mode, cv::NORM_L2SQR);
+					                       asource->groups.at(ci).mode,
+					                       cv::NORM_L2SQR);
 					members.push_back({i, dist});
 					seen.insert(i);
 				}
@@ -446,14 +400,14 @@ void Dataset::orderProteins(OrderBy reference)
 		std::iota(index.begin(), index.end(), 0);
 
 		/* order based on name (some prots have common prefixes) */
-		if (reference == OrderBy::NAME)
+		if (desc.type == Order::NAME)
 			std::sort(index.begin(), index.end(), byName);
 	}
 
 	/* now fill the back-references */
-	target.rankOf.resize(index.size());
+	target->rankOf.resize(index.size());
 	for (size_t i = 0; i < index.size(); ++i)
-		target.rankOf[index[i]] = i;
+		target->rankOf[index[i]] = i;
 }
 
 Dataset::Annotations::Annotations(const ::Annotations &in, const Features &data)
@@ -467,4 +421,75 @@ Dataset::Annotations::Annotations(const ::Annotations &in, const Features &data)
 			} catch (std::out_of_range&) {}
 		}
 	}
+}
+
+const Dataset::Annotations *Dataset::Structure::fetch(const Annotations::Meta &desc) const
+{
+	if (desc.id > 0) {
+		auto it = annotations.find(desc.id);
+		return (it == annotations.end() ? nullptr : &it->second);
+	}
+
+	// now to the special cases
+	auto candidates = annotations.equal_range(0);
+	for (auto it = candidates.first; it != candidates.second; ++it) {
+		const auto &meta = it->second.meta;
+		if (meta.type != desc.type)
+			continue;
+		if (meta.type == Annotations::Meta::MEANSHIFT) {
+			if (meta.k == desc.k)
+				return &it->second;
+		}
+		if (meta.type == Annotations::Meta::HIERCUT) {
+			if (meta.hierarchy == desc.hierarchy && meta.granularity == desc.granularity)
+				return &it->second;
+		}
+	}
+	return nullptr;
+}
+
+const HrClustering *Dataset::Structure::fetch(const HrClustering::Meta &desc) const
+{
+	auto it = hierarchies.find(desc.id);
+	return (it == hierarchies.end() ? nullptr : &it->second);
+}
+
+const Dataset::Order& Dataset::Structure::fetch(::Order desc) const
+{
+	/* simple cases */
+	if (desc.type == Order::FILE)
+		return fileOrder;
+	if (desc.type == Order::NAME)
+		return nameOrder;
+
+	/* try to find by-annotation/hierarchy */
+	unsigned key = 0;
+	if (desc.type == Order::CLUSTERING)
+		key = std::get_if<Annotations::Meta>(&desc.source)->id; // Apple no std::get
+	if (desc.type == Order::HIERARCHY)
+		key = std::get_if<HrClustering::Meta>(&desc.source)->id; // Apple no std::get
+	if (key > 0) {
+		auto it = orders.find(key);
+		return (it == orders.end() ? nameOrder : it->second);
+	}
+
+	/* try to find for internal annotation */
+	auto candidates = orders.equal_range(0);
+	for (auto it = candidates.first; it != candidates.second; ++it) {
+		if (it->second.type != desc.type)
+			continue;
+		if (desc.type == Order::CLUSTERING) {
+			auto a = std::get_if<Annotations::Meta>(&desc.source); // Apple no std::get
+			auto b = std::get_if<Annotations::Meta>(&it->second.source); // Apple no std::get
+			if (a->type != b->type)
+				continue;
+			if (a->type == Annotations::Meta::MEANSHIFT && a->k != b->k)
+				continue;
+			if (a->type == Annotations::Meta::HIERCUT &&
+			    (a->hierarchy != b->hierarchy || a->granularity != b->granularity))
+				continue;
+		}
+		return it->second;
+	}
+	return nameOrder;
 }

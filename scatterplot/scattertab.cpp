@@ -66,10 +66,6 @@ void ScatterTab::setWindowState(std::shared_ptr<WindowState> s)
 
 	/* connect state change signals */
 	auto ws = s.get();
-	connect(ws, &WindowState::annotationsToggled, [this] () {
-		if (current)
-			current().scene->togglePartitions(windowState->showAnnotations);
-	});
 	connect(ws, &WindowState::openGlToggled, [this] () {
 		view->toggleOpenGL(windowState->useOpenGl);
 	});
@@ -92,11 +88,7 @@ void ScatterTab::selectDataset(unsigned id)
 		dimYSelect->setCurrentIndex(dimYSelect->findData(current().secondaryDimension));
 	}
 
-	// pass guiState onto chart
-	auto scene = current().scene.get();
-	scene->togglePartitions(windowState->showAnnotations);
-	scene->updateMarkers();
-	view->switchChart(scene);
+	view->switchChart(current().scene.get());
 }
 
 void ScatterTab::addDataset(Dataset::Ptr data)
@@ -110,6 +102,7 @@ void ScatterTab::addDataset(Dataset::Ptr data)
 	state.scene = std::make_unique<Chart>(data, view->getConfig());
 
 	auto scene = state.scene.get();
+	scene->setState(windowState);
 
 	/* connect outgoing signals */
 	connect(scene, &Chart::markerToggled, this, &Viewer::markerToggled);

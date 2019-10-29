@@ -506,7 +506,7 @@ QCborValue Storage::serializeStructure(const Structure &src)
 			clusters.append(packCluster(v));
 		return QCborMap{
 			{"type", "hierarchy"},
-			{"name", hr->name},
+			{"name", hr->meta.name}, // TODO incomplete
 			{"clusters", clusters}
 		};
 	}
@@ -533,8 +533,7 @@ QCborValue Storage::serializeStructure(const Structure &src)
 			groups.insert(k, packGroup(v));
 		return QCborMap{
 			{"type", "annotations"},
-			{"name", cl->name},
-			{"source", cl->source},
+			{"name", cl->meta.name}, // TODO incomplete
 			{"groups", groups}
 		};
 	}
@@ -576,7 +575,7 @@ void Storage::importAnnotations(const QString &filename)
 
 	QTextStream in(&f);
 	auto target = std::make_unique<Annotations>();
-	target->name = QFileInfo(filename).completeBaseName();
+	target->meta.name = QFileInfo(filename).completeBaseName();
 
 	// we use SkipEmptyParts for chomping at the end, but dangerous…
 	auto header = in.readLine().split("\t", QString::SkipEmptyParts);
@@ -651,7 +650,7 @@ void Storage::importHierarchy(const QString &filename)
 
 	QTextStream in(&f);
 	auto target = std::make_unique<HrClustering>();
-	target->name = QFileInfo(filename).completeBaseName();
+	target->meta.name = QFileInfo(filename).completeBaseName();
 
 	auto nodes = json.object()["data"].toObject()["nodes"].toObject();
 	for (auto it = nodes.constBegin(); it != nodes.constEnd(); ++it) {
@@ -719,7 +718,7 @@ void Storage::exportAnnotations(const QString &filename, Dataset::ConstPtr data)
 	auto b = data->peek<Dataset::Base>();
 	auto s = data->peek<Dataset::Structure>();
 	auto p = proteins.peek();
-
+/* TODO
 	// write header
 	out << "Protein Name";
 	for (auto& [i, g] : s->clustering.groups)
@@ -738,6 +737,7 @@ void Storage::exportAnnotations(const QString &filename, Dataset::ConstPtr data)
 		}
 		out << endl;
 	}
+	*/
 }
 
 void Storage::importMarkers(const QString &filename)

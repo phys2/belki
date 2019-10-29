@@ -9,6 +9,9 @@
 
 #include <opencv2/core.hpp>
 #include <unordered_map>
+#include <memory>
+
+class WindowState;
 
 class HeatmapScene : public QGraphicsScene
 {
@@ -57,6 +60,7 @@ public:
 	};
 
 	HeatmapScene(Dataset::Ptr data);
+	void setState(std::shared_ptr<WindowState> s) { state = s; }
 
 	void setScale(qreal scale);
 
@@ -71,11 +75,9 @@ public slots:
 
 	void updateMarkers();
 	void toggleMarkers(const std::vector<ProteinId> &ids, bool present);
-	void togglePartitions(bool showPartitions);
+	void updateAnnotations();
 
 protected:
-	Dataset::Ptr data;
-
 	struct {
 		QColor bg = Qt::white, fg = Qt::black;
 		QColor cursor = Qt::blue;
@@ -93,10 +95,12 @@ protected:
 
 	std::vector<Profile*> profiles;
 	std::unordered_map<ProteinId, Marker> markers;
-	bool showPartitions = true;
 
 	QSize viewport; // size of the viewport in _screen_ coordinates
 	qreal pixelScale; // size of a pixel in scene coordinates
+
+	Dataset::Ptr data;
+	std::shared_ptr<WindowState> state;
 };
 
 #endif // HEATMAPSCENE_H

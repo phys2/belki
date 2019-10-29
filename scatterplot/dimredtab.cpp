@@ -68,10 +68,6 @@ void DimredTab::setWindowState(std::shared_ptr<WindowState> s)
 
 	/* connect state change signals */
 	auto ws = s.get();
-	connect(ws, &WindowState::annotationsToggled, [this] () {
-		if (current)
-			current().scene->togglePartitions(windowState->showAnnotations);
-	});
 	connect(ws, &WindowState::openGlToggled, [this] () {
 		view->toggleOpenGL(windowState->useOpenGl);
 	});
@@ -88,11 +84,7 @@ void DimredTab::selectDataset(unsigned id)
 	bool enabled = updateEnabled();
 
 	if (enabled) {
-		// pass guiState onto chart
-		auto scene = current().scene.get();
-		scene->togglePartitions(windowState->showAnnotations);
-		scene->updateMarkers();
-		view->switchChart(scene);
+		view->switchChart(current().scene.get());
 
 		/* hook into dataset updates */
 		connect(current().data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
@@ -111,6 +103,7 @@ void DimredTab::addDataset(Dataset::Ptr data)
 	state.scene = std::make_unique<Chart>(data, view->getConfig());
 
 	auto scene = state.scene.get();
+	scene->setState(windowState);
 	scene->setTitles("dim 1", "dim 2");
 
 	/* connect outgoing signals */

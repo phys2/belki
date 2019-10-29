@@ -39,12 +39,25 @@ DistmatTab::DistmatTab(QWidget *parent) :
 void DistmatTab::setWindowState(std::shared_ptr<WindowState> s)
 {
 	Viewer::setWindowState(s);
+	orderSelect->setModel(&s->orderModel);
+	orderSelect->setCurrentIndex(orderSelect->findData(s->preferredOrder));
+	actionLockOrder->setChecked(!s->orderSynchronizing);
 
 	/* connect state change signals */
 	auto ws = s.get();
 	connect(ws, &WindowState::annotationsToggled, [this] () {
 		if (current)
-			current().scene->togglePartitions(windowState->showAnnotations);
+			current().scene->toggleAnnotations();
+	});
+	connect(ws, &WindowState::annotationsChanged, [this] () {
+		if (current)
+			current().scene->changeAnnotations();
+	});
+	connect(ws, &WindowState::orderChanged, [this] {
+		orderSelect->setCurrentIndex(orderSelect->findData(windowState->preferredOrder));
+	});
+	connect(ws, &WindowState::orderSynchronizingToggled, [this] {
+		actionLockOrder->setChecked(!windowState->orderSynchronizing);
 	});
 }
 
@@ -59,11 +72,9 @@ void DistmatTab::selectDataset(unsigned id)
 	// pass guiState onto chart
 	auto scene = current().scene.get();
 	scene->setDirection(tabState.direction);
-	scene->togglePartitions(windowState->showAnnotations);
+	scene->changeAnnotations(); // TODO doh! redundant redo
+	scene->toggleAnnotations();
 	scene->updateMarkers();
-	// todo hack
-	emit orderRequested(orderSelect->currentData().value<Dataset::OrderBy>(),
-	                 !actionLockOrder->isChecked());
 	view->setScene(scene);
 }
 
@@ -75,6 +86,7 @@ void DistmatTab::addDataset(Dataset::Ptr data)
 	state.scene = std::make_unique<DistmatScene>(data);
 
 	auto scene = state.scene.get();
+	scene->setState(windowState);
 
 	/* connect outgoing signals */
 	connect(scene, &DistmatScene::cursorChanged, this, &Viewer::cursorChanged);
@@ -89,24 +101,13 @@ void DistmatTab::setupOrderUI()
 	toolBar->insertWidget(anchor, orderLabel);
 	toolBar->insertWidget(anchor, orderSelect);
 
-	// fill-up order select
-	for (auto &[v, n] : Dataset::availableOrders())
-		orderSelect->addItem(n, QVariant::fromValue(v));
-	orderSelect->setCurrentText(Dataset::availableOrders().at(Dataset::OrderBy::HIERARCHY));
-
 	// signalling
-	auto cO = [this] {
-		emit orderRequested(orderSelect->currentData().value<Dataset::OrderBy>(),
-		                 !actionLockOrder->isChecked()); // lock → sync
-	};
-	connect(orderSelect, QOverload<int>::of(&QComboBox::activated), cO);
-	connect(actionLockOrder, &QAction::toggled, cO);
-	// TODO: do not sync order through gui! order is a part of dataset::structure state
-	// or enforce it on dataset? if we make it per-dataset we can disable unavailable options…
-	connect(this, &Viewer::changeOrder, [this] (auto order, bool sync) {
-		const QSignalBlocker a(orderSelect), b(actionLockOrder);
-		orderSelect->setCurrentText(Dataset::availableOrders().at(order));
-		actionLockOrder->setChecked(!sync); // sync → lock
+	connect(orderSelect, QOverload<int>::of(&QComboBox::activated), [this] {
+		windowState->setOrder(orderSelect->currentData().value<Order::Type>());
+	});
+	connect(actionLockOrder, &QAction::toggled, [this] {
+		windowState->orderSynchronizing = !actionLockOrder->isChecked();
+		emit windowState->orderSynchronizingToggled();
 	});
 
 	// remove container we picked from

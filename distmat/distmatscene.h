@@ -13,6 +13,8 @@
 #include <map>
 #include <unordered_map>
 
+class WindowState;
+
 class DistmatScene : public GraphicsScene
 {
 	Q_OBJECT
@@ -60,6 +62,7 @@ public:
 
 	DistmatScene(Dataset::Ptr data, bool dialogMode = false);
 
+	void setState(std::shared_ptr<WindowState> s) { state = s; }
 	void setViewport(const QRectF &rect, qreal scale) override;
 
 signals:
@@ -71,7 +74,8 @@ public slots:
 
 	void updateMarkers();
 	void toggleMarkers(const std::vector<ProteinId> &ids, bool present);
-	void togglePartitions(bool showPartitions);
+	void changeAnnotations();
+	void toggleAnnotations();
 
 protected:
 	void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
@@ -88,21 +92,21 @@ protected:
 	Direction currentDirection = Direction::PER_DIMENSION;
 	std::map<Direction, Distmat> matrices;
 
-	Dataset::Ptr data;
-
 	QGraphicsPixmapItem *display;
 
 	// we are used in a dialog
 	bool dialogMode;
-	// annotations used in PER_PROTEIN:
-	bool showPartitions = true;
-	Clusterbars clusterbars;
+	Clusterbars clusterbars = {this};
+	bool haveAnnotations = false; // are clusterbars filled with valid stuff?
 	std::unordered_map<ProteinId, Marker> markers;
 	// annotations used in PER_DIRECTION:
 	std::map<unsigned, LegendItem> dimensionLabels;
 
 	// dialog mode: selectable dimensions
 	std::vector<bool> dimensionSelected;
+
+	Dataset::Ptr data;
+	std::shared_ptr<WindowState> state;
 };
 
 #endif // DISTMATSCENE_H

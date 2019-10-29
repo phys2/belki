@@ -32,6 +32,7 @@ MainWindow::MainWindow(DataHub &hub) :
     io(new FileIO(this)) // cleanup by QObject
 {
 	setupUi(this);
+	profiles->setState(state);
 	setupModelViews(); // before setupTabs(), tabs may need models
 	setupToolbar();
 	setupTabs();
@@ -173,16 +174,10 @@ void MainWindow::setupSignals()
 		selectStructure(structureSelect->currentData().value<int>());
 	});
 	connect(granularitySlider, &QSlider::valueChanged, [this] (int v) {
-		// TODO guiState.structure.granularity = (unsigned)v;
-		runOnData([v=unsigned(v)] (auto d) { d->createPartition(v); });
+		switchHierarchyPartition((unsigned)v);
 	});
 	connect(famsKSlider, &QSlider::valueChanged, [this] (int v) {
-		runOnData([k=v*0.01f] (auto d) { d->computeFAMS(k); });
-	});
-
-	/* changing order settings */
-	connect(this, &MainWindow::orderChanged, [this] (Dataset::OrderBy ref, bool sync) {
-		runOnData([ref,sync] (auto d) { d->changeOrder(ref, sync); });
+		// TODO selectFams... runOnData([k=v*0.01f] (auto d) { d->computeFAMS(k); });
 	});
 }
 
@@ -232,16 +227,21 @@ void MainWindow::setupActions()
 
 		/* we do it straight away, we keep our own copy while letting the user
 		   edit the name, so nothing can happen to it in the meantime */
-		auto clustering = std::make_unique<Annotations>
-		        (data->peek<Dataset::Structure>()->clustering);
+		auto s = data->peek<Dataset::Structure>();
+		auto source = s->fetch(state->annotations);
+		if (!source)
+			return;
+		auto localCopy = std::make_unique<Annotations>(*source);
+		s.unlock();
+
 	    auto name = QInputDialog::getText(this, "Keep snapshot of current clustering",
 		                                  "Please provide a name:", QLineEdit::Normal,
-		                                  clustering->name);
+		                                  localCopy->meta.name);
 	    if (name.isEmpty())
 			return; // user cancelled
 
-		clustering->name = name;
-		hub.proteins.addAnnotations(std::move(clustering), false, true); // TODO: in bg?
+		localCopy->meta.name = name;
+		hub.proteins.addAnnotations(std::move(localCopy), false, true); // TODO: in bg?
 	});
 	connect(actionClearMarkers, &QAction::triggered, &hub.proteins, &ProteinDB::clearMarkers);
 
@@ -305,7 +305,6 @@ void MainWindow::addTab(MainWindow::Tab type)
 	/* use queued conn. to ensure the views get the newDataset signal _first_! */
 	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
 	connect(&hub.proteins, &ProteinDB::markersToggled, v, &Viewer::inToggleMarkers);
-	connect(this, &MainWindow::orderChanged, v, &Viewer::changeOrder);
 
 	// connect signalling out of view
 	connect(v, &Viewer::markerToggled, this, &MainWindow::markerToggled);
@@ -319,25 +318,6 @@ void MainWindow::addTab(MainWindow::Tab type)
 	};
 	connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
 	connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
-
-	connect(v, &Viewer::orderRequested, this, &MainWindow::orderChanged);
-
-	/* experimental: put to sleep when not visible
-	connect(tabWidget, &QTabWidget::currentChanged, [this] () {
-		auto current = qobject_cast<Viewer*>(tabWidget->currentWidget());
-		for (auto v : views) {
-			if (v == current)
-				v->selectDataset(data ? data->id() : 0);
-			else
-				v->selectDataset(0);
-		}
-	});
-	connect(this, &MainWindow::datasetSelected, [this] (unsigned id) {
-		auto current = qobject_cast<Viewer*>(tabWidget->currentWidget());
-		if (current)
-			current->selectDataset(id);
-	});
-	/// does not work right now with heatmap, distmap, feattab. why? */
 
 	for (auto &[_, d] : hub.datasets())
 		v->addDataset(d);
@@ -384,15 +364,16 @@ void MainWindow::updateState(Dataset::Touched affected)
 	auto d = data->peek<Dataset::Base>();
 	auto s = data->peek<Dataset::Structure>();
 	if (affected & Dataset::Touch::CLUSTERS) {
-		bool haveClustering = !s->clustering.empty();
+		bool haveClustering = s->fetch(state->annotations);
 		actionShowStructure->setEnabled(haveClustering);
 		actionExportAnnotations->setEnabled(haveClustering);
-		bool computedClustering = haveClustering && structureSelect->currentData() < 1;
+		bool computedClustering = haveClustering && state->annotations.id == 0;
 		actionPersistAnnotations->setEnabled(computedClustering);
 	}
 	if (affected & Dataset::Touch::HIERARCHY) {
-		if (!s->hierarchy.clusters.empty()) {
-			auto reasonable = std::min(d->protIds.size(), s->hierarchy.clusters.size()) / 4;
+		auto hierarchy = s->fetch(state->hierarchy);
+		if (hierarchy) {
+			auto reasonable = std::min(d->protIds.size(), hierarchy->clusters.size()) / 4;
 			granularitySlider->setMaximum(reasonable);
 		}
 	}
@@ -409,9 +390,17 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 
 	// swap
 	data = selected;
-	if (data)
-		// tell hub & views before our GUI might send more signals
+	if (data) {
+		// let views know before our GUI might send more signals
 		emit datasetSelected(data ? data->id() : 0);
+		// tell dataset what we need
+		runOnData([=] (auto d) {
+			// one thread as work can be redundant
+			d->prepareHierarchy(state->hierarchy, state->annotations);
+			d->prepareAnnotations(state->annotations);
+			d->prepareOrder(state->order);
+		});
+	}
 
 	// update own GUI state once
 	updateState(Dataset::Touch::ALL);
@@ -478,9 +467,10 @@ void MainWindow::selectStructure(int id)
 	toolbarActions.famsK->setVisible(false);
 
 	if (id == 0) { // "None"
-		runOnData([] (auto d) { d->applyAnnotations(0); });
+		selectAnnotations(0);
 		return;
 	} else if (id == -1) { // Mean shift
+		// TODO: select FAMS
 		runOnData([k=famsKSlider->value()*0.01f] (auto d) { d->computeFAMS(k); });
 		toolbarActions.famsK->setVisible(true);
 		return;
@@ -490,10 +480,10 @@ void MainWindow::selectStructure(int id)
 
 	// check between hierarchy and annotations
 	if (this->hub.proteins.peek()->isHierarchy((unsigned)id)) {
-		runOnData([id,v=granularitySlider->value()] (auto d) { d->applyHierarchy(id, v); });
+		selectHierarchy(id, granularitySlider->value());
 		toolbarActions.granularity->setVisible(true);
 	} else {
-		runOnData([id] (auto d) { d->applyAnnotations(id); });
+		selectAnnotations(id);
 	}
 }
 
@@ -556,23 +546,40 @@ void MainWindow::displayMessage(const QString &message, MessageType type)
 	}
 }
 
-void MainWindow::applyAnnotations(unsigned id)
+void MainWindow::selectAnnotations(unsigned id)
 {
-	// TODO guiState.structure.annotationsId = id;
-	runOnData([=] (auto d) { d->applyAnnotations(id); });
+	state->annotations = {Annotations::Meta::SIMPLE, id};
+	emit state->annotationsChanged();
+	if (state->orderSynchronizing && state->preferredOrder == Order::CLUSTERING) {
+		state->order = {Order::CLUSTERING, state->annotations};
+		emit state->orderChanged();
+	}
+	runOnData([=] (auto d) { d->prepareAnnotations(state->annotations); });
 }
 
-void MainWindow::applyHierarchy(unsigned id, unsigned granularity)
+void MainWindow::selectHierarchy(unsigned id, unsigned granularity)
 {
-	// TODO guiState.structure.hierarchyId = id;
-	// guiState.structure.annotationsId = 0;
-	runOnData([=] (auto d) { d->applyHierarchy(id, granularity); });
+	state->hierarchy = HrClustering::Meta{id};
+	state->annotations = {Annotations::Meta::HIERCUT};
+	state->annotations.hierarchy = id;
+	state->annotations.granularity = granularity;
+	emit state->hierarchyChanged();
+	emit state->annotationsChanged();
+	if (state->orderSynchronizing &&
+	    (state->preferredOrder == Order::HIERARCHY || state->preferredOrder == Order::CLUSTERING)) {
+		state->order = {Order::HIERARCHY, state->hierarchy};
+		emit state->orderChanged();
+	}
+	runOnData([=] (auto d) { d->prepareHierarchy(state->hierarchy, state->annotations); });
 }
 
-void MainWindow::createPartition(unsigned granularity)
+void MainWindow::switchHierarchyPartition(unsigned granularity)
 {
-	// TODO guiState.structure.granularity = granularity;
-	runOnData([=] (auto d) { d->createPartition(granularity); });
+	state->annotations = {Annotations::Meta::HIERCUT};
+	state->annotations.hierarchy = state->hierarchy.id;
+	state->annotations.granularity = granularity;
+	emit state->annotationsChanged();
+	runOnData([=] (auto d) { d->prepareAnnotations(state->annotations); });
 }
 
 void MainWindow::runInBackground(const std::function<void()> &work)

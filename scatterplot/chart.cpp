@@ -1,4 +1,5 @@
 #include "chart.h"
+#include "windowstate.h"
 
 #include <QAbstractAxis>
 #include <QScatterSeries>
@@ -17,7 +18,8 @@
 Chart::Chart(Dataset::ConstPtr data, const ChartConfig *config) :
     ax(new QtCharts::QValueAxis), ay(new QtCharts::QValueAxis),
     animReset(new QTimer(this)),
-    config(config), data(data)
+    config(config), data(data),
+	state(std::make_shared<WindowState>())
 {
 	/* set up general appearance */
 	// disable grid animations as a lot of distracting stuff happens there
@@ -68,12 +70,11 @@ Chart::Chart(Dataset::ConstPtr data, const ChartConfig *config) :
 		setAnimationDuration(1000);
 		setAnimationOptions(SeriesAnimations);
 	});
+}
 
-	/* setup updates from dataset */
-	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
-		if (touched & Dataset::Touch::CLUSTERS)
-			updatePartitions(true);
-	});
+void Chart::setState(std::shared_ptr<WindowState> s) {
+	hibernate();
+	state = s;
 }
 
 void Chart::setConfig(const ChartConfig *cfg)
@@ -81,6 +82,36 @@ void Chart::setConfig(const ChartConfig *cfg)
 	config = cfg;
 	emit proteinStyleUpdated();	// TODO this currently does not update colors
 	refreshCursor();
+}
+
+void Chart::hibernate()
+{
+	awake = false;
+	if (state)
+		state->disconnect(this);
+	data->disconnect(this);
+}
+
+void Chart::wakeup()
+{
+	if (awake)
+		return;
+
+	awake = true;
+	// note: this always rebuilds partitions, even if already good 😕
+	changeAnnotations(); // also calls toggleAnnotations()
+	updateMarkers();
+
+	/* get updates from state */
+	auto s = state.get();
+	connect(s, &WindowState::annotationsToggled, this, &Chart::toggleAnnotations);
+	connect(s, &WindowState::annotationsChanged, this, &Chart::changeAnnotations);
+
+	/* get updates from dataset */
+	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
+		if (touched & Dataset::Touch::CLUSTERS)
+			updatePartitions();
+	});
 }
 
 void Chart::setTitles(const QString &x, const QString &y)
@@ -117,24 +148,33 @@ void Chart::display(const QVector<QPointF> &coords)
 		updateTicks(axis);
 
 	/* update other sets */
-	updatePartitions(false);
+	updatePartitions();
 	updateMarkers(true);
 }
 
-void Chart::updatePartitions(bool fresh)
+void Chart::changeAnnotations()
+{
+	partitions.clear(); // invalidate old stuff
+	updatePartitions(); // in case new ones are already available
+}
+
+void Chart::updatePartitions()
 {
 	auto source = master->pointsVector();
 	if (source.empty())
 		return; // we're not displaying anything
 
-	auto d = data->peek<Dataset::Structure>();
+	auto d = data->peek<Dataset::Structure>(); // keep while we operate with Annot*!
+	auto annotations = d->fetch(state->annotations);
+	if (!annotations) {
+		toggleAnnotations();
+		return; // no clusters means nothing more to do!
+	}
+
+	bool fresh = partitions.empty();
 
 	/* set up partition series */
-	if (fresh || partitions.empty()) {
-		partitions.clear();
-		if (d->clustering.empty())
-			return; // no clusters means nothing more to do!
-
+	if (fresh) {
 		animate(0);
 
 		// series needed for soft clustering
@@ -142,8 +182,8 @@ void Chart::updatePartitions(bool fresh)
 		partitions[-1] = std::make_unique<Proteins>("Mixed", config->proteinStyle.color.mixed, this);
 
 		// go through clusters in their designated order
-		for (auto i : d->clustering.order) {
-			auto &g = d->clustering.groups.at(i);
+		for (auto i : annotations->order) {
+			auto &g = annotations->groups.at(i);
 			auto s = new Proteins(g.name, g.color, this);
 			partitions.try_emplace((int)i, s);
 			/* enable profile view updates on legend label hover */
@@ -162,11 +202,8 @@ void Chart::updatePartitions(bool fresh)
 	}
 
 	/* populate with proteins */
-	if (d->clustering.empty())
-		return; // no clusters means nothing more to do!
-
-	for (unsigned i = 0; i < d->clustering.memberships.size(); ++i) {
-		auto &m = d->clustering.memberships[i];
+	for (unsigned i = 0; i < annotations->memberships.size(); ++i) {
+		auto &m = annotations->memberships[i];
 		int target = -2; // first series, unlabeled
 		if (m.size() > 1)
 			target++; // second series, mixed
@@ -174,16 +211,17 @@ void Chart::updatePartitions(bool fresh)
 			target = (int)*m.begin();
 		partitions.at(target)->add(i, source[(int)i]);
 	}
-	// the partitions use deffered addition, which we need to trigger
+	// the partitions use deferred addition, need to finalize
 	for (auto &[_, p] : partitions)
 		p->apply();
 
+	/* hide empty series from legend (in case of hard clustering) */
 	if (fresh) {
-		/* hide empty series from legend (in case of hard clustering) */
 		for (auto s : {partitions[-2].get(), partitions[-1].get()})
 			if (s->pointsVector().empty())
 				removeSeries(s);
 	}
+	toggleAnnotations();
 }
 
 void Chart::moveCursor(const QPointF &pos)
@@ -240,12 +278,15 @@ void Chart::refreshCursor()
 	QVector<unsigned> list;
 	std::set<int> affectedPartitions;
 	auto d = data->peek<Dataset::Structure>();
+	auto annotations = d->fetch(state->annotations);
 	auto pv = master->pointsVector();
 	for (int i = 0; i < pv.size(); ++i) {
 		auto diffVec = pv[i] - center;
 		if (QPointF::dotProduct(diffVec, diffVec) < range) {
 			list << (unsigned)i;
-			for (auto m : d->clustering.memberships[(unsigned)i])
+			if (!annotations)
+				continue;
+			for (auto m : annotations->memberships[(unsigned)i])
 				affectedPartitions.insert((int)m);
 		}
 	}
@@ -275,11 +316,10 @@ void Chart::undoZoom(bool full)
 	zoom.history.pop();
 }
 
-void Chart::togglePartitions(bool showPartitions)
+void Chart::toggleAnnotations()
 {
-	if (master->isVisible() != showPartitions)
-		return;
-
+	bool showPartitions = state->showAnnotations && !partitions.empty();
+	// always apply, we may be inconsistent in master/partitions visibility
 	master->setVisible(!showPartitions);
 	for (auto &[_, p]: partitions)
 		p->setVisible(showPartitions);

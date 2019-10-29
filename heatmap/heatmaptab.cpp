@@ -39,12 +39,23 @@ HeatmapTab::HeatmapTab(QWidget *parent) :
 void HeatmapTab::setWindowState(std::shared_ptr<WindowState> s)
 {
 	Viewer::setWindowState(s);
+	orderSelect->setModel(&s->orderModel);
+	orderSelect->setCurrentIndex(orderSelect->findData(s->preferredOrder));
+	actionLockOrder->setChecked(!s->orderSynchronizing);
 
 	/* connect state change signals */
 	auto ws = s.get();
-	connect(ws, &WindowState::annotationsToggled, [this] () {
+	auto toggler = [this] () {
 		if (current)
-			current().scene->togglePartitions(windowState->showAnnotations);
+			current().scene->updateAnnotations();
+	};
+	connect(ws, &WindowState::annotationsToggled, toggler);
+	connect(ws, &WindowState::annotationsChanged, toggler);
+	connect(ws, &WindowState::orderChanged, [this] {
+		orderSelect->setCurrentIndex(orderSelect->findData(windowState->preferredOrder));
+	});
+	connect(ws, &WindowState::orderSynchronizingToggled, [this] {
+		actionLockOrder->setChecked(!windowState->orderSynchronizing);
 	});
 }
 
@@ -58,7 +69,7 @@ void HeatmapTab::selectDataset(unsigned id)
 
 	// pass guiState onto scene
 	auto scene = current().scene.get();
-	scene->togglePartitions(windowState->showAnnotations);
+	scene->updateAnnotations();
 	scene->updateMarkers();
 	view->setScene(scene);
 	view->setColumnMode(tabState.singleColumn);
@@ -72,6 +83,7 @@ void HeatmapTab::addDataset(Dataset::Ptr data)
 	state.scene = std::make_unique<HeatmapScene>(data);
 
 	auto scene = state.scene.get();
+	scene->setState(windowState);
 
 	/* connect outgoing signals */
 	connect(scene, &HeatmapScene::cursorChanged, this, &Viewer::cursorChanged);
@@ -86,22 +98,13 @@ void HeatmapTab::setupOrderUI()
 	toolBar->insertWidget(anchor, orderLabel);
 	toolBar->insertWidget(anchor, orderSelect);
 
-	// fill-up order select
-	for (auto &[v, n] : Dataset::availableOrders())
-		orderSelect->addItem(n, QVariant::fromValue(v));
-	orderSelect->setCurrentText(Dataset::availableOrders().at(Dataset::OrderBy::HIERARCHY));
-
 	// signalling
-	auto cO = [this] {
-		emit orderRequested(orderSelect->currentData().value<Dataset::OrderBy>(),
-		                 !actionLockOrder->isChecked()); // lock → sync
-	};
-	connect(orderSelect, QOverload<int>::of(&QComboBox::activated), cO);
-	connect(actionLockOrder, &QAction::toggled, cO);
-	connect(this, &Viewer::changeOrder, [this] (auto order, bool sync) {
-		const QSignalBlocker a(orderSelect), b(actionLockOrder);
-		orderSelect->setCurrentText(Dataset::availableOrders().at(order));
-		actionLockOrder->setChecked(!sync); // sync → lock
+	connect(orderSelect, QOverload<int>::of(&QComboBox::activated), [this] {
+		windowState->setOrder(orderSelect->currentData().value<Order::Type>());
+	});
+	connect(actionLockOrder, &QAction::toggled, [this] {
+		windowState->orderSynchronizing = !actionLockOrder->isChecked();
+		emit windowState->orderSynchronizingToggled();
 	});
 
 	// remove container we picked from

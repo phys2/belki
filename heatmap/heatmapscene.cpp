@@ -1,4 +1,5 @@
 #include "heatmapscene.h"
+#include "windowstate.h"
 #include "compute/colors.h"
 #include "compute/features.h"
 
@@ -6,7 +7,9 @@
 #include <QGraphicsItem>
 #include <QGraphicsSceneHoverEvent>
 
-HeatmapScene::HeatmapScene(Dataset::Ptr data) : data(data)
+HeatmapScene::HeatmapScene(Dataset::Ptr data)
+    : data(data),
+      state(std::make_shared<WindowState>())
 {
 	auto d = data->peek<Dataset::Base>();
 
@@ -75,14 +78,15 @@ void HeatmapScene::reorder()
 	if (!layout.rows) // view is not set-up yet
 		return;
 
-	auto d = data->peek<Dataset::Structure>();
+	auto d = data->peek<Dataset::Structure>(); // keep while we operate with Order*!
+	auto order = d->fetch(state->order);
 
 	/* optimization: disable slow stuff as we move everything around */
 	auto indexer = itemIndexMethod();
 	setItemIndexMethod(QGraphicsScene::ItemIndexMethod::NoIndex);
 
 	for (unsigned i = 0; i < profiles.size(); ++i) {
-		auto p = profiles[d->order.index[i]];
+		auto p = profiles[order.index[i]];
 		p->setPos((i / layout.rows) * layout.columnWidth, i % layout.rows);
 	}
 
@@ -120,27 +124,32 @@ void HeatmapScene::toggleMarkers(const std::vector<ProteinId> &ids, bool present
 	}
 }
 
-void HeatmapScene::togglePartitions(bool show)
+void HeatmapScene::updateAnnotations()
 {
-	showPartitions = show;
 	recolor();
 }
 
 void HeatmapScene::recolor()
 {
-	auto d = data->peek<Dataset::Structure>();
-	if (!showPartitions || d->clustering.empty()) {
+	auto clear = [&] () {
 		for (auto &p : profiles)
 			p->setBrush(Qt::transparent);
 		update();
-		return;
-	}
+	};
+
+	if (!state->showAnnotations)
+		return clear();
+
+	auto d = data->peek<Dataset::Structure>(); // keep while we operate with Annot*!
+	auto annotations = d->fetch(state->annotations);
+	if (!annotations)
+		return clear();
 
 	for (unsigned i = 0; i < profiles.size(); ++i) {
-		const auto &assoc = d->clustering.memberships[i];
+		const auto &assoc = annotations->memberships[i];
 		switch (assoc.size()) {
 		case 1:
-			profiles[i]->setBrush(d->clustering.groups.at(*assoc.begin()).color);
+			profiles[i]->setBrush(annotations->groups.at(*assoc.begin()).color);
 			break;
 		default: // TODO: maybe set to White on multiple memberships
 			profiles[i]->setBrush(Qt::transparent);

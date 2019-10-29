@@ -8,10 +8,16 @@ ChartView::ChartView(QWidget *parent)
 	setRubberBand(QtCharts::QChartView::RectangleRubberBand); // TODO: issue #5
 }
 
-void ChartView::switchChart(Chart *chart)
+void ChartView::switchChart(Chart *newChart)
 {
-	chart->setConfig(&config);
-	setChart(chart);
+	auto oldChart = chart();
+	if (oldChart)
+		oldChart->hibernate();
+
+	if (isVisible())
+		newChart->wakeup();
+	newChart->setConfig(&config);
+	setChart(newChart);
 }
 
 void ChartView::releaseChart()
@@ -69,6 +75,20 @@ void ChartView::scaleCursor(qreal factor)
 {
 	config.cursorRadius *= factor;
 	chart()->refreshCursor();
+}
+
+void ChartView::showEvent(QShowEvent *event)
+{
+	if (chart())
+		chart()->wakeup();
+	QChartView::showEvent(event);
+}
+
+void ChartView::hideEvent(QHideEvent *event)
+{
+	if (chart())
+		chart()->hibernate();
+	QChartView::hideEvent(event);
 }
 
 void ChartView::mouseMoveEvent(QMouseEvent *event)

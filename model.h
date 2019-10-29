@@ -1,6 +1,7 @@
 #ifndef MODEL_H
 #define MODEL_H
 
+#include <QMetaType>
 #include <QString>
 #include <QColor>
 #include <QStringList>
@@ -54,6 +55,27 @@ struct Features {
 };
 
 struct Annotations {
+	struct Meta {
+		enum Type {
+			SIMPLE,
+			MEANSHIFT,
+			HIERCUT
+		} type = SIMPLE;
+
+		unsigned id = 0;
+		QString name = {};
+		// source dataset (reference for mode/centroid)
+		unsigned dataset = 0; // 0 means none
+
+		// MEANSHIFT: k parameter used in computation
+		float k = 1.f;
+
+		// HIERCUT: source hierarchy
+		unsigned hierarchy = 0; // 0 means none
+		// HIERCUT: granularity of the cut (#clusters as split criteria)
+		unsigned granularity = 2;
+	};
+
 	struct Group {
 		QString name;
 		QColor color = {};
@@ -63,9 +85,7 @@ struct Annotations {
 		std::vector<double> mode = {};
 	};
 
-	QString name;
-	// source dataset
-	unsigned source = 0; // 0 means none
+	Meta meta;
 
 	// group definitions
 	std::unordered_map<unsigned, Group> groups;
@@ -74,6 +94,13 @@ struct Annotations {
 };
 
 struct HrClustering {
+	struct Meta {
+		unsigned id = 0;
+		QString name = {};
+		// source dataset
+		unsigned dataset = 0; // 0 means none
+	};
+
 	struct Cluster {
 		double distance;
 		unsigned parent;
@@ -81,11 +108,22 @@ struct HrClustering {
 		std::optional<ProteinId> protein;
 	};
 
-	QString name;
+	Meta meta;
 
 	std::vector<Cluster> clusters;
 };
 
 using Structure = std::variant<Annotations, HrClustering>;
+
+struct Order {
+	enum Type {
+		FILE,
+		NAME,
+		HIERARCHY,
+		CLUSTERING
+	} type = FILE;
+	std::variant<std::monostate, Annotations::Meta, HrClustering::Meta> source = std::monostate();
+};
+Q_DECLARE_METATYPE(Order::Type)
 
 #endif // MODEL_H

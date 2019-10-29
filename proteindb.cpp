@@ -143,10 +143,11 @@ void ProteinDB::addAnnotations(std::unique_ptr<Annotations> a, bool select, bool
 		annotations::color(*a, colorset);
 	}
 
-	auto name = a->name;
+	auto name = a->meta.name;
 
 	data.l.lockForWrite();
 	auto id = data.nextStructureId++; // pick an id that was not in use before
+	a->meta.id = id;
 	data.structures[id] = std::move(*a);
 	data.l.unlock();
 
@@ -155,10 +156,11 @@ void ProteinDB::addAnnotations(std::unique_ptr<Annotations> a, bool select, bool
 
 void ProteinDB::addHierarchy(std::unique_ptr<HrClustering> h, bool select)
 {
-	auto name = h->name;
+	auto name = h->meta.name;
 
 	data.l.lockForWrite();
 	auto id = data.nextStructureId++; // pick an id that was not in use before
+	h->meta.id = id;
 	data.structures[id] = std::move(*h);
 	data.l.unlock();
 

@@ -38,13 +38,8 @@ signals:
 	// signals emitted by us
 	void markerToggled(ProteinId id, bool present);
 	void cursorChanged(QVector<unsigned> samples, const QString &title = {});
-	void orderRequested(Dataset::OrderBy order, bool synchronize);
 	void exportRequested(QGraphicsView *source, QString description);
 	void exportRequested(QGraphicsScene *source, QString description);
-
-	// gui synchronization between views
-	// TODO: read from dataset directly on update()
-	void changeOrder(Dataset::OrderBy order, bool synchronize);
 
 protected:
 	struct DataState {

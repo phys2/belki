@@ -107,7 +107,11 @@ Annotations partition(const HrClustering &in, unsigned granularity)
 		flood(i, i);
 	}
 
-	ret.name = in.name + QString(" (granularity %1)").arg(granularity);
+	auto name = in.meta.name + QString(" (granularity %1)").arg(granularity);
+	ret.meta = {Annotations::Meta::HIERCUT, 0, name};
+	ret.meta.dataset = in.meta.dataset;
+	ret.meta.hierarchy = in.meta.id;
+	ret.meta.granularity = granularity;
 	return ret;
 }
 
