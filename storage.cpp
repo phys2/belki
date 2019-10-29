@@ -505,6 +505,7 @@ QCborValue Storage::serializeStructure(const Structure &src)
 		for (auto v : hr->clusters)
 			clusters.append(packCluster(v));
 		return QCborMap{
+			{"type", "hierarchy"},
 			{"name", hr->name},
 			{"clusters", clusters}
 		};
