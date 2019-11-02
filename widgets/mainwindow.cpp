@@ -212,28 +212,27 @@ void MainWindow::setupActions()
 		auto filename = io->chooseFile(FileIO::SaveMarkers);
 		if (filename.isEmpty())
 			return;
+
 		runInBackground([&s=hub.store,filename] { s.exportMarkers(filename); });
 	});
 	connect(actionExportAnnotations, &QAction::triggered, [this] {
+		/* we keep our own copy while letting the user choose a filename */
+		auto localCopy = currentAnnotations();
+		if (!localCopy)
+			return; // sorry! silent failure.
 		auto filename = io->chooseFile(FileIO::SaveAnnotations);
 		if (filename.isEmpty())
 			return;
 
-		runOnData([&s=hub.store,filename] (auto d) { s.exportAnnotations(filename, d); });
+		// TODO we cannot move unique_ptr to other thread. so no bg
+		hub.store.exportAnnotations(filename, *localCopy);
 	});
 	connect(actionPersistAnnotations, &QAction::triggered, [this] {
-		if (!data)
-			return;
-
-		/* we do it straight away, we keep our own copy while letting the user
+		/* we keep our own copy while letting the user
 		   edit the name, so nothing can happen to it in the meantime */
-		auto s = data->peek<Dataset::Structure>();
-		auto source = s->fetch(state->annotations);
-		if (!source)
-			return;
-		auto localCopy = std::make_unique<Annotations>(*source);
-		s.unlock();
-
+		auto localCopy = currentAnnotations();
+		if (!localCopy)
+			return; // sorry! silent failure.
 	    auto name = QInputDialog::getText(this, "Keep snapshot of current clustering",
 		                                  "Please provide a name:", QLineEdit::Normal,
 		                                  localCopy->meta.name);
@@ -241,7 +240,8 @@ void MainWindow::setupActions()
 			return; // user cancelled
 
 		localCopy->meta.name = name;
-		hub.proteins.addAnnotations(std::move(localCopy), false, true); // TODO: in bg?
+		// TODO we cannot move unique_ptr to other thread. so no bg
+		hub.proteins.addAnnotations(std::move(localCopy), false, true);
 	});
 	connect(actionClearMarkers, &QAction::triggered, &hub.proteins, &ProteinDB::clearMarkers);
 
@@ -582,9 +582,29 @@ void MainWindow::switchHierarchyPartition(unsigned granularity)
 	runOnData([=] (auto d) { d->prepareAnnotations(state->annotations); });
 }
 
+std::unique_ptr<Annotations> MainWindow::currentAnnotations()
+{
+	/* maybe proteindb has it? */
+	if (state->annotations.id > 0) {
+		auto p = hub.proteins.peek();
+		auto source = std::get_if<Annotations>(&p->structures.at(state->annotations.id));
+		return std::make_unique<Annotations>(*source);
+	}
+
+	/* ok, try to get it from data */
+	if (data) {
+		auto s = data->peek<Dataset::Structure>();
+		auto source = s->fetch(state->annotations);
+		if (source)
+			return std::make_unique<Annotations>(*source);
+	}
+
+	return {};
+}
+
 void MainWindow::runInBackground(const std::function<void()> &work)
 {
-	QtConcurrent::run([=] { work(); });
+	QtConcurrent::run(work);
 }
 
 void MainWindow::runOnData(const std::function<void(Dataset::Ptr)> &work)

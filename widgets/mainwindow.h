@@ -91,6 +91,8 @@ protected:
 	void selectHierarchy(unsigned id, unsigned granularity);
 	void switchHierarchyPartition(unsigned granularity);
 
+	std::unique_ptr<Annotations> currentAnnotations();
+
 	void runInBackground(const std::function<void()> &work);
 	void runOnData(const std::function<void(Dataset::Ptr)> &work);
 

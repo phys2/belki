@@ -707,37 +707,28 @@ void Storage::saveProjectAs(const QString &filename, std::vector<std::shared_ptr
 	f.commit();
 }
 
-void Storage::exportAnnotations(const QString &filename, Dataset::ConstPtr data)
+void Storage::exportAnnotations(const QString &filename, const Annotations& source)
 {
-	// TODO: export through ProteinDB!!!! NOT Dataset!!
 	QFile f(filename);
 	if (!f.open(QIODevice::WriteOnly))
 		return ioError(QString("Could not write file %1!").arg(filename));
 
 	QTextStream out(&f);
-	auto b = data->peek<Dataset::Base>();
-	auto s = data->peek<Dataset::Structure>();
-	auto p = proteins.peek();
-/* TODO
 	// write header
-	out << "Protein Name";
-	for (auto& [i, g] : s->clustering.groups)
-		out << "\t" << g.name;
-	out << endl;
+	out << "Name\tMembers" << endl;
 
-	// write associations
-	for (unsigned i = 0; i < b->protIds.size(); ++i) {
-		auto &protein = p->proteins[b->protIds[i]];
-		auto &m = s->clustering.memberships[i];
-		out << protein.name << "_" << protein.species;
-		for (auto& [i, g] : s->clustering.groups) {
+	// write clusters
+	auto p = proteins.peek();
+	for (auto groupIndex : source.order) {
+		auto group = source.groups.at(groupIndex);
+		out << group.name;
+		for (auto protId : group.members) {
+			auto protein = p->proteins[protId];
 			out << "\t";
-			if (m.count(i))
-				out << g.name;
+			out << protein.name << "_" << protein.species;
 		}
 		out << endl;
 	}
-	*/
 }
 
 void Storage::importMarkers(const QString &filename)

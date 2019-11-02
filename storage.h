@@ -41,7 +41,7 @@ public slots:
 	void importDescriptions(const QString &filename);
 	void importAnnotations(const QString &filename);
 	void importHierarchy(const QString &filename);
-	void exportAnnotations(const QString &filename, std::shared_ptr<const Dataset> data);
+	void exportAnnotations(const QString &filename, const Annotations &source);
 
 	void saveProjectAs(const QString &filename, std::vector<std::shared_ptr<const Dataset>> snapshot);
 
