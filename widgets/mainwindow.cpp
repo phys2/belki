@@ -407,7 +407,7 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 
 	// disconnect from old data
 	if (data)
-		disconnect(data.get());
+		data->disconnect();
 
 	// swap
 	data = selected;

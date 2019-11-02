@@ -37,7 +37,7 @@ void ProfileWidget::setData(std::shared_ptr<Dataset> dataset)
 		return;
 
 	if (data)
-		disconnect(data.get());
+		data->disconnect(this);
 
 	data = dataset;
 	proteinList->clear();
