@@ -252,20 +252,6 @@ Dataset::Touched Dataset::storeAnnotations(const ::Annotations &source, bool wit
 	return touched;
 }
 
-// TODO: move to storage
-QByteArray Dataset::exportDisplay(const QString &name) const
-{
-	QByteArray ret;
-	QTextStream out(&ret, QIODevice::WriteOnly);
-	auto in = peek<Representation>();
-	// TODO: check if display exists
-	auto &data = in->display.at(name);
-	for (auto it = data.constBegin(); it != data.constEnd(); ++it)
-		out << it->x() << "\t" << it->y() << endl;
-
-	return ret;
-}
-
 void Dataset::computeCentroids(Annotations &target)
 {
 	auto d = peek<Base>();

@@ -56,8 +56,15 @@ void Storage::storeDisplay(const Dataset& data, const QString &name)
 	if (d.container->has_file(entryname))
 		return; // do not save redundant copies
 
-	auto tsv = data.exportDisplay(name);
-	d.container->write(entryname, tsv);
+	QByteArray blob;
+	QTextStream out(&blob, QIODevice::WriteOnly);
+	auto in = data.peek<Dataset::Representation>();
+	// TODO: check if display exists
+	auto &disp = in->display.at(name);
+	for (auto it = disp.constBegin(); it != disp.constEnd(); ++it)
+		out << it->x() << "\t" << it->y() << endl;
+
+	d.container->write(entryname, blob);
 }
 
 Features::Ptr Storage::openDataset(const QString &filename, const QString &featureColName)

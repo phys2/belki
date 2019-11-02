@@ -102,8 +102,6 @@ public:
 	template<typename T>
 	View<T> peek() const; // see specializations in cpp
 
-	QByteArray exportDisplay(const QString &name) const;
-
 	void spawn(Features::Ptr data);
 	void spawn(ConstPtr source);
 
