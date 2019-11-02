@@ -9,6 +9,31 @@ GraphicsScene *GraphicsView::scene() const
 	return qobject_cast<GraphicsScene*>(QGraphicsView::scene());
 }
 
+void GraphicsView::switchScene(GraphicsScene *newScene)
+{
+	auto oldScene = scene();
+	if (oldScene)
+		oldScene->hibernate();
+
+	if (isVisible())
+		newScene->wakeup();
+	setScene(newScene);
+}
+
+void GraphicsView::showEvent(QShowEvent *event)
+{
+	if (scene())
+		scene()->wakeup();
+	QGraphicsView::showEvent(event);
+}
+
+void GraphicsView::hideEvent(QHideEvent *event)
+{
+	if (scene())
+		scene()->hibernate();
+	QGraphicsView::hideEvent(event);
+}
+
 void GraphicsView::wheelEvent(QWheelEvent *event)
 {
 	if (!scrollingEnabled)

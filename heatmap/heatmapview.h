@@ -10,6 +10,7 @@ class HeatmapView : public QGraphicsView
 {
 public:
 	using QGraphicsView::QGraphicsView;
+	void switchScene(HeatmapScene *scene);
 
 public slots:
 	void setColumnMode(bool single);
@@ -24,6 +25,8 @@ protected:
 	// override for internal use (does not work through pointer! scene() is non-virtual)
 	HeatmapScene *scene() const;
 
+	void showEvent(QShowEvent *event) override;
+	void hideEvent(QHideEvent *event) override;
 	void enterEvent(QEvent *event) override;
 	void wheelEvent(QWheelEvent *event) override;
 	void resizeEvent(QResizeEvent *event) override;

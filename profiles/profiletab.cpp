@@ -92,10 +92,6 @@ void ProfileTab::addDataset(Dataset::Ptr data)
 		state.logSpace = true;
 		state.scene->toggleLogSpace(true);
 	}
-
-	/* connect outgoing signals */
-	// auto scene = state.scene.get();
-	// none right now
 }
 
 bool ProfileTab::eventFilter(QObject *watched, QEvent *event)
@@ -124,13 +120,6 @@ void ProfileTab::rebuildPlot()
 			scene->addSample(e, false);
 	}
 	scene->finalize();
-}
-
-void ProfileTab::updateEnabled()
-{
-	bool on = current;
-	setEnabled(on);
-	view->setVisible(on);
 }
 
 void ProfileTab::setupProteinBox()
@@ -171,6 +160,13 @@ void ProfileTab::setupProteinBox()
 		if (cpl->currentCompletion() == protSearch->text()) // still relevant
 			toggler(cpl->currentIndex());
 	});*/
+}
+
+void ProfileTab::updateEnabled()
+{
+	bool on = current;
+	setEnabled(on);
+	view->setVisible(on);
 }
 
 QVariant ProfileTab::CustomCheckedProxyModel::data(const QModelIndex &index, int role) const

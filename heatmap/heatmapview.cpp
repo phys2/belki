@@ -10,6 +10,17 @@ HeatmapScene *HeatmapView::scene() const
 	return qobject_cast<HeatmapScene*>(QGraphicsView::scene());
 }
 
+void HeatmapView::switchScene(HeatmapScene *newScene)
+{
+	auto oldScene = scene();
+	if (oldScene)
+		oldScene->hibernate();
+
+	if (isVisible())
+		newScene->wakeup();
+	setScene(newScene);
+}
+
 void HeatmapView::setColumnMode(bool single)
 {
 	if (single == currentState().singleColumn)
@@ -17,6 +28,20 @@ void HeatmapView::setColumnMode(bool single)
 
 	state[scene()].singleColumn = single;
 	arrangeScene();
+}
+
+void HeatmapView::showEvent(QShowEvent *event)
+{
+	if (scene())
+		scene()->wakeup();
+	QGraphicsView::showEvent(event);
+}
+
+void HeatmapView::hideEvent(QHideEvent *event)
+{
+	if (scene())
+		scene()->hibernate();
+	QGraphicsView::hideEvent(event);
 }
 
 void HeatmapView::enterEvent(QEvent *)

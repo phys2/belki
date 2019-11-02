@@ -11,6 +11,12 @@
 
 /* A "dumb" QObject – whoever manipulates also emits the signals
  * Alternatively, we could work with Qt properties (and get/set/notify)
+ *
+ * TODO: WindowState could become more clever and also hold the Dataset::Ptr
+ * that is shared within a window. The select…() methods in MainWindow would
+ * become setters here and we would trigger data computation.
+ * We would then also not signal new/select dataset signals anymore, but merely
+ * a datasetChanged() signal would suffice.
  */
 struct WindowState : QObject
 {

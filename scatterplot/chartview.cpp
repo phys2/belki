@@ -8,6 +8,11 @@ ChartView::ChartView(QWidget *parent)
 	setRubberBand(QtCharts::QChartView::RectangleRubberBand); // TODO: issue #5
 }
 
+Chart *ChartView::chart()
+{
+	return qobject_cast<Chart*>(QChartView::chart());
+}
+
 void ChartView::switchChart(Chart *newChart)
 {
 	auto oldChart = chart();
@@ -36,11 +41,6 @@ void ChartView::toggleOpenGL(bool enabled)
 		setViewport({});
 		setViewportUpdateMode(QGraphicsView::MinimalViewportUpdate);
 	}
-}
-
-Chart *ChartView::chart()
-{
-	return qobject_cast<Chart*>(QChartView::chart());
 }
 
 void ChartView::toggleSingleMode()

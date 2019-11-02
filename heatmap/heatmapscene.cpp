@@ -29,14 +29,12 @@ HeatmapScene::HeatmapScene(Dataset::Ptr data)
 
 	// save for later
 	layout.columnWidth = profiles[0]->boundingRect().width();
+}
 
-	/* setup updates from dataset */
-	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
-		if (touched & Dataset::Touch::ORDER)
-			reorder();
-		if (touched & Dataset::Touch::CLUSTERS)
-			recolor();
-	});
+void HeatmapScene::setState(std::shared_ptr<WindowState> s)
+{
+	hibernate();
+	state = s;
 }
 
 void HeatmapScene::setScale(qreal scale)
@@ -45,6 +43,38 @@ void HeatmapScene::setScale(qreal scale)
 	// markers use pixelScale
 	for (auto& [_, m] : markers)
 		m.rearrange(profiles[m.sampleIndex]->pos());
+}
+
+void HeatmapScene::hibernate()
+{
+	awake = false;
+	if (state)
+		state->disconnect(this);
+	data->disconnect(this);
+}
+
+void HeatmapScene::wakeup()
+{
+	if (awake)
+		return;
+
+	awake = true;
+	updateAnnotations();
+	updateMarkers();
+
+	/* get updates from state (specify receiver so signal is cleaned up!) */
+	auto s = state.get();
+	connect(s, &WindowState::annotationsToggled, this, &HeatmapScene::updateAnnotations);
+	connect(s, &WindowState::annotationsChanged, this, &HeatmapScene::updateAnnotations);
+	connect(s, &WindowState::orderChanged, this, &HeatmapScene::reorder);
+
+	/* get updates from dataset (specify receiver so signal is cleaned up!) */
+	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
+		if (touched & Dataset::Touch::ORDER)
+			reorder();
+		if (touched & Dataset::Touch::CLUSTERS)
+			recolor();
+	});
 }
 
 void HeatmapScene::rearrange(QSize newViewport)

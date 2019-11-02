@@ -60,9 +60,12 @@ public:
 	};
 
 	HeatmapScene(Dataset::Ptr data);
-	void setState(std::shared_ptr<WindowState> s) { state = s; }
 
+	void setState(std::shared_ptr<WindowState> s);
 	void setScale(qreal scale);
+
+	void hibernate();
+	void wakeup();
 
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
@@ -78,6 +81,8 @@ public slots:
 	void updateAnnotations();
 
 protected:
+	bool awake = false;
+
 	struct {
 		QColor bg = Qt::white, fg = Qt::black;
 		QColor cursor = Qt::blue;

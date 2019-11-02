@@ -724,8 +724,7 @@ void Storage::exportAnnotations(const QString &filename, const Annotations& sour
 		out << group.name;
 		for (auto protId : group.members) {
 			auto protein = p->proteins[protId];
-			out << "\t";
-			out << protein.name << "_" << protein.species;
+			out << "\t" << protein.name << "_" << protein.species;
 		}
 		out << endl;
 	}

@@ -8,9 +8,10 @@ class GraphicsScene : public QGraphicsScene
 	Q_OBJECT
 
 public:
-	GraphicsScene();
-
 	virtual void setViewport(const QRectF &rect, qreal scale);
+
+	virtual void hibernate() {}
+	virtual void wakeup() {}
 
 protected:
 

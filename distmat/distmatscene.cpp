@@ -37,14 +37,13 @@ DistmatScene::DistmatScene(Dataset::Ptr data, bool dialogMode)
 	/* trigger computation (also set dimension label visibility) */
 	// TODO: better do this on first draw event
 	setDirection(currentDirection);
+}
 
-	/* setup updates from dataset */
-	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
-		if (touched & Dataset::Touch::ORDER)
-			reorder(); // calls recolor()
-		else if (touched & Dataset::Touch::CLUSTERS && !haveAnnotations)
-			recolor();
-	});
+void DistmatScene::setState(std::shared_ptr<WindowState> s) {
+	hibernate();
+	state = s;
+	if (dialogMode)
+		wakeup();
 }
 
 void DistmatScene::setViewport(const QRectF &rect, qreal scale)
@@ -53,6 +52,38 @@ void DistmatScene::setViewport(const QRectF &rect, qreal scale)
 
 	rearrange();
 	updateRenderQuality();
+}
+
+void DistmatScene::hibernate()
+{
+	awake = false;
+	if (state)
+		state->disconnect(this);
+	data->disconnect(this);
+}
+
+void DistmatScene::wakeup()
+{
+	if (awake)
+		return;
+
+	awake = true;
+	changeAnnotations(); // eventually also does what toggleAnnotations() does
+	updateMarkers();
+
+	/* get updates from state (specify receiver so signal is cleaned up!) */
+	auto s = state.get();
+	connect(s, &WindowState::annotationsToggled, this, &DistmatScene::toggleAnnotations);
+	connect(s, &WindowState::annotationsChanged, this, &DistmatScene::changeAnnotations);
+	connect(s, &WindowState::orderChanged, this, &DistmatScene::reorder);
+
+	/* get updates from dataset (specify receiver so signal is cleaned up!) */
+	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
+		if (touched & Dataset::Touch::ORDER)
+			reorder(); // calls recolor()
+		else if (touched & Dataset::Touch::CLUSTERS && !haveAnnotations)
+			recolor();
+	});
 }
 
 void DistmatScene::setDisplay()

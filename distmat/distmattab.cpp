@@ -1,6 +1,8 @@
 #include "distmattab.h"
 #include "distmatscene.h"
 
+#include <QtConcurrent>
+
 DistmatTab::DistmatTab(QWidget *parent) :
     Viewer(parent)
 {
@@ -43,20 +45,12 @@ void DistmatTab::setWindowState(std::shared_ptr<WindowState> s)
 	orderSelect->setCurrentIndex(orderSelect->findData(s->preferredOrder));
 	actionLockOrder->setChecked(!s->orderSynchronizing);
 
-	/* connect state change signals */
+	/* connect state change signals (specify receiver so signal is cleaned up!) */
 	auto ws = s.get();
-	connect(ws, &WindowState::annotationsToggled, [this] () {
-		if (current)
-			current().scene->toggleAnnotations();
-	});
-	connect(ws, &WindowState::annotationsChanged, [this] () {
-		if (current)
-			current().scene->changeAnnotations();
-	});
-	connect(ws, &WindowState::orderChanged, [this] {
+	connect(ws, &WindowState::orderChanged, this, [this] {
 		orderSelect->setCurrentIndex(orderSelect->findData(windowState->preferredOrder));
 	});
-	connect(ws, &WindowState::orderSynchronizingToggled, [this] {
+	connect(ws, &WindowState::orderSynchronizingToggled, this, [this] {
 		actionLockOrder->setChecked(!windowState->orderSynchronizing);
 	});
 }
@@ -69,13 +63,9 @@ void DistmatTab::selectDataset(unsigned id)
 	if (!current)
 		return;
 
-	// pass guiState onto chart
 	auto scene = current().scene.get();
 	scene->setDirection(tabState.direction);
-	scene->changeAnnotations(); // TODO doh! redundant redo
-	scene->toggleAnnotations();
-	scene->updateMarkers();
-	view->setScene(scene);
+	view->switchScene(scene);
 }
 
 void DistmatTab::addDataset(Dataset::Ptr data)
@@ -104,6 +94,10 @@ void DistmatTab::setupOrderUI()
 	// signalling
 	connect(orderSelect, QOverload<int>::of(&QComboBox::activated), [this] {
 		windowState->setOrder(orderSelect->currentData().value<Order::Type>());
+		if (current)
+			QtConcurrent::run([d=current().data,o=windowState->order] {
+				d->prepareOrder(o);
+			});
 	});
 	connect(actionLockOrder, &QAction::toggled, [this] {
 		windowState->orderSynchronizing = !actionLockOrder->isChecked();

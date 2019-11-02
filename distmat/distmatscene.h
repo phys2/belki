@@ -62,8 +62,11 @@ public:
 
 	DistmatScene(Dataset::Ptr data, bool dialogMode = false);
 
-	void setState(std::shared_ptr<WindowState> s) { state = s; }
+	void setState(std::shared_ptr<WindowState> s);
 	void setViewport(const QRectF &rect, qreal scale) override;
+
+	void hibernate() override;
+	void wakeup() override;
 
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
@@ -96,6 +99,8 @@ protected:
 
 	// we are used in a dialog
 	bool dialogMode;
+	bool awake = false;
+
 	Clusterbars clusterbars = {this};
 	bool haveAnnotations = false; // are clusterbars filled with valid stuff?
 	std::unordered_map<ProteinId, Marker> markers;

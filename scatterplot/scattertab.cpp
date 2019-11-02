@@ -64,9 +64,9 @@ void ScatterTab::setWindowState(std::shared_ptr<WindowState> s)
 	Viewer::setWindowState(s);
 	view->toggleOpenGL(s->useOpenGl);
 
-	/* connect state change signals */
+	/* connect state change signals (specify receiver so signal is cleaned up!) */
 	auto ws = s.get();
-	connect(ws, &WindowState::openGlToggled, [this] () {
+	connect(ws, &WindowState::openGlToggled, this, [this] () {
 		view->toggleOpenGL(windowState->useOpenGl);
 	});
 }

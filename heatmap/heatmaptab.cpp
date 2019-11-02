@@ -1,6 +1,8 @@
 #include "heatmaptab.h"
 #include "heatmapscene.h"
 
+#include <QtConcurrent>
+
 HeatmapTab::HeatmapTab(QWidget *parent) :
     Viewer(parent)
 {
@@ -43,18 +45,12 @@ void HeatmapTab::setWindowState(std::shared_ptr<WindowState> s)
 	orderSelect->setCurrentIndex(orderSelect->findData(s->preferredOrder));
 	actionLockOrder->setChecked(!s->orderSynchronizing);
 
-	/* connect state change signals */
+	/* connect state change signals (specify receiver so signal is cleaned up!) */
 	auto ws = s.get();
-	auto toggler = [this] () {
-		if (current)
-			current().scene->updateAnnotations();
-	};
-	connect(ws, &WindowState::annotationsToggled, toggler);
-	connect(ws, &WindowState::annotationsChanged, toggler);
-	connect(ws, &WindowState::orderChanged, [this] {
+	connect(ws, &WindowState::orderChanged, this, [this] {
 		orderSelect->setCurrentIndex(orderSelect->findData(windowState->preferredOrder));
 	});
-	connect(ws, &WindowState::orderSynchronizingToggled, [this] {
+	connect(ws, &WindowState::orderSynchronizingToggled, this, [this] {
 		actionLockOrder->setChecked(!windowState->orderSynchronizing);
 	});
 }
@@ -67,11 +63,7 @@ void HeatmapTab::selectDataset(unsigned id)
 	if (!current)
 		return;
 
-	// pass guiState onto scene
-	auto scene = current().scene.get();
-	scene->updateAnnotations();
-	scene->updateMarkers();
-	view->setScene(scene);
+	view->switchScene(current().scene.get());
 	view->setColumnMode(tabState.singleColumn);
 }
 
@@ -101,6 +93,10 @@ void HeatmapTab::setupOrderUI()
 	// signalling
 	connect(orderSelect, QOverload<int>::of(&QComboBox::activated), [this] {
 		windowState->setOrder(orderSelect->currentData().value<Order::Type>());
+		if (current)
+			QtConcurrent::run([d=current().data,o=windowState->order] {
+				d->prepareOrder(o);
+			});
 	});
 	connect(actionLockOrder, &QAction::toggled, [this] {
 		windowState->orderSynchronizing = !actionLockOrder->isChecked();

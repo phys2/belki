@@ -66,9 +66,9 @@ void DimredTab::setWindowState(std::shared_ptr<WindowState> s)
 	Viewer::setWindowState(s);
 	view->toggleOpenGL(s->useOpenGl);
 
-	/* connect state change signals */
+	/* connect state change signals (specify receiver so signal is cleaned up!) */
 	auto ws = s.get();
-	connect(ws, &WindowState::openGlToggled, [this] () {
+	connect(ws, &WindowState::openGlToggled, this, [this] () {
 		view->toggleOpenGL(windowState->useOpenGl);
 	});
 }
@@ -86,7 +86,7 @@ void DimredTab::selectDataset(unsigned id)
 	if (enabled) {
 		view->switchChart(current().scene.get());
 
-		/* hook into dataset updates */
+		/* hook into dataset updates (specify receiver so signal is cleaned up!) */
 		connect(current().data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
 			if (!(touched & Dataset::Touch::DISPLAY))
 				return;

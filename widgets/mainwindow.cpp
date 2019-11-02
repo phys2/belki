@@ -157,7 +157,6 @@ void MainWindow::setupSignals()
 	});
 	connect(this, &MainWindow::datasetSelected, [this] { profiles->setData(data); });
 	connect(this, &MainWindow::datasetSelected, this, &MainWindow::setSelectedDataset);
-	// TODO: sync new dataset with guiState (annotation/hierarchy,ordering…)
 
 	/* changing window settings */
 	connect(actionShowStructure, &QAction::toggled, [this] (bool on) {
@@ -174,10 +173,13 @@ void MainWindow::setupSignals()
 		selectStructure(structureSelect->currentData().value<int>());
 	});
 	connect(granularitySlider, &QSlider::valueChanged, [this] (int v) {
+		granularitySlider->setToolTip(QString("Granularity: %1").arg(v));
 		switchHierarchyPartition((unsigned)v);
 	});
 	connect(famsKSlider, &QSlider::valueChanged, [this] (int v) {
-		// TODO selectFams... runOnData([k=v*0.01f] (auto d) { d->computeFAMS(k); });
+		float k = v*0.01f;
+		famsKSlider->setToolTip(QString("Parameter k: %1").arg(k));
+		selectFAMS(k);
 	});
 }
 
@@ -216,10 +218,10 @@ void MainWindow::setupActions()
 		runInBackground([&s=hub.store,filename] { s.exportMarkers(filename); });
 	});
 	connect(actionExportAnnotations, &QAction::triggered, [this] {
-		/* we keep our own copy while letting the user choose a filename */
+		/* keep own copy while user chooses filename */
 		auto localCopy = currentAnnotations();
 		if (!localCopy)
-			return; // sorry! silent failure.
+			return displayMessage("Cannot export:<br>Annotations are still under computation.");
 		auto filename = io->chooseFile(FileIO::SaveAnnotations);
 		if (filename.isEmpty())
 			return;
@@ -228,11 +230,10 @@ void MainWindow::setupActions()
 		hub.store.exportAnnotations(filename, *localCopy);
 	});
 	connect(actionPersistAnnotations, &QAction::triggered, [this] {
-		/* we keep our own copy while letting the user
-		   edit the name, so nothing can happen to it in the meantime */
+		/* keep own copy while user edits the name */
 		auto localCopy = currentAnnotations();
 		if (!localCopy)
-			return; // sorry! silent failure.
+			return displayMessage("Cannot snapshot:<br>Annotations are still under computation.");
 	    auto name = QInputDialog::getText(this, "Keep snapshot of current clustering",
 		                                  "Please provide a name:", QLineEdit::Normal,
 		                                  localCopy->meta.name);
@@ -265,12 +266,13 @@ void MainWindow::setupActions()
 }
 void MainWindow::setDatasetControlModel(QStandardItemModel *m)
 {
+	datasetTree->model()->disconnect(this);
+
 	datasetTree->setModel(m);
 	datasetTree->expandAll(); // model can already have data
 	datasetSelect->setModel(datasetTree->model());
 
-	// note: this never happens, but on a switch we might need to disconnect old model
-	connect(m, &QStandardItemModel::rowsInserted, [this] {
+	connect(m, &QStandardItemModel::rowsInserted, this, [this] {
 		datasetTree->expandAll(); // ensure derived datasets are always visible
 	});
 }
@@ -311,9 +313,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 	connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateDisplay);
 
 	auto renderSlot = [this] (auto r, auto d) {
-		auto title = windowTitle();
-		if (data)
-			title = data->config().name;
+		auto title = (data ? data->config().name : windowTitle());
 		io->renderToFile(r, {title, d});
 	};
 	connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
@@ -359,24 +359,6 @@ void MainWindow::updateState(Dataset::Touched affected)
 
 	/* re-enable actions that depend only on data */
 	actionSplice->setEnabled(true);
-
-	/* structure */
-	auto d = data->peek<Dataset::Base>();
-	auto s = data->peek<Dataset::Structure>();
-	if (affected & Dataset::Touch::CLUSTERS) {
-		bool haveClustering = s->fetch(state->annotations);
-		actionShowStructure->setEnabled(haveClustering);
-		actionExportAnnotations->setEnabled(haveClustering);
-		bool computedClustering = haveClustering && state->annotations.id == 0;
-		actionPersistAnnotations->setEnabled(computedClustering);
-	}
-	if (affected & Dataset::Touch::HIERARCHY) {
-		auto hierarchy = s->fetch(state->hierarchy);
-		if (hierarchy) {
-			auto reasonable = std::min(d->protIds.size(), hierarchy->clusters.size()) / 4;
-			granularitySlider->setMaximum(reasonable);
-		}
-	}
 }
 
 void MainWindow::setDataset(Dataset::Ptr selected)
@@ -395,19 +377,17 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 		emit datasetSelected(data ? data->id() : 0);
 		// tell dataset what we need
 		runOnData([=] (auto d) {
-			// one thread as work can be redundant
-			d->prepareHierarchy(state->hierarchy, state->annotations);
+			// one thread as work might be redundant
 			d->prepareAnnotations(state->annotations);
 			d->prepareOrder(state->order);
 		});
+		// wire updates
+		if (data)
+			connect(data.get(), &Dataset::update, this, &MainWindow::updateState);
 	}
 
 	// update own GUI state once
 	updateState(Dataset::Touch::ALL);
-
-	// wire further updates
-	if (data)
-		connect(data.get(), &Dataset::update, this, &MainWindow::updateState);
 
 	// TODO wronge place to do this in new storage concept
 	setFilename(data ? hub.store.name() : "");
@@ -422,12 +402,14 @@ void MainWindow::setFilename(QString name)
 	}
 
 	setWindowTitle(QString("%1 – Belki").arg(name));
-	// TODO: right now the name is mangled. need to keep both
+	// TODO: right now the name is mangled. need to keep both path+name
 	setWindowFilePath(name);
 }
 
 void MainWindow::setSelectedDataset(unsigned id)
 {
+	/* the whole purpose of this method is to update datasetSelect selection */
+
 	auto model = qobject_cast<QStandardItemModel*>(datasetTree->model());
 
 	/* we need to traverse model, no applicable finder provided by Qt */
@@ -462,28 +444,36 @@ void MainWindow::selectStructure(int id)
 {
 	structureSelect->setCurrentIndex(structureSelect->findData(id));
 
-	// clear type-dependant state
+	/* clear type-dependant state */
+	actionShowStructure->setEnabled(id != 0);
+	actionExportAnnotations->setEnabled(id != 0);
+	actionPersistAnnotations->setEnabled(false);
 	toolbarActions.granularity->setVisible(false);
 	toolbarActions.famsK->setVisible(false);
 
+	/* special items */
 	if (id == 0) { // "None"
-		selectAnnotations(0);
+		selectAnnotations({});
 		return;
 	} else if (id == -1) { // Mean shift
-		// TODO: select FAMS
-		runOnData([k=famsKSlider->value()*0.01f] (auto d) { d->computeFAMS(k); });
+		selectFAMS(famsKSlider->value()*0.01f);
 		toolbarActions.famsK->setVisible(true);
+		actionPersistAnnotations->setEnabled(true);
 		return;
 	}
 
 	/* regular items */
-
-	// check between hierarchy and annotations
-	if (this->hub.proteins.peek()->isHierarchy((unsigned)id)) {
-		selectHierarchy(id, granularitySlider->value());
+	auto p = hub.proteins.peek();
+	if (p->isHierarchy((unsigned)id)) {
+		auto source = std::get_if<HrClustering>(&p->structures.at(id));
+		auto reasonable = source->clusters.size() / 4;
+		granularitySlider->setMaximum(reasonable);
+		granularitySlider->setTickInterval(reasonable / 20);
 		toolbarActions.granularity->setVisible(true);
+		actionPersistAnnotations->setEnabled(true);
+		selectHierarchy(id, granularitySlider->value());
 	} else {
-		selectAnnotations(id);
+		selectAnnotations({Annotations::Meta::SIMPLE, (unsigned)id});
 	}
 }
 
@@ -546,31 +536,40 @@ void MainWindow::displayMessage(const QString &message, MessageType type)
 	}
 }
 
-void MainWindow::selectAnnotations(unsigned id)
+void MainWindow::selectAnnotations(const Annotations::Meta &desc)
 {
-	state->annotations = {Annotations::Meta::SIMPLE, id};
+	state->annotations = desc;
 	emit state->annotationsChanged();
-	if (state->orderSynchronizing && state->preferredOrder == Order::CLUSTERING) {
-		state->order = {Order::CLUSTERING, state->annotations};
-		emit state->orderChanged();
-	}
 	runOnData([=] (auto d) { d->prepareAnnotations(state->annotations); });
+
+	if (!state->orderSynchronizing || state->preferredOrder != Order::CLUSTERING)
+		return;
+
+	state->order = {Order::CLUSTERING, state->annotations};
+	emit state->orderChanged();
+	runOnData([=] (auto d) { d->prepareOrder(state->order); });
+}
+
+void MainWindow::selectFAMS(float k)
+{
+	Annotations::Meta desc{Annotations::Meta::MEANSHIFT};
+	desc.k = k;
+	selectAnnotations(desc);
 }
 
 void MainWindow::selectHierarchy(unsigned id, unsigned granularity)
 {
 	state->hierarchy = HrClustering::Meta{id};
-	state->annotations = {Annotations::Meta::HIERCUT};
-	state->annotations.hierarchy = id;
-	state->annotations.granularity = granularity;
 	emit state->hierarchyChanged();
-	emit state->annotationsChanged();
-	if (state->orderSynchronizing &&
-	    (state->preferredOrder == Order::HIERARCHY || state->preferredOrder == Order::CLUSTERING)) {
-		state->order = {Order::HIERARCHY, state->hierarchy};
-		emit state->orderChanged();
-	}
-	runOnData([=] (auto d) { d->prepareHierarchy(state->hierarchy, state->annotations); });
+	switchHierarchyPartition(granularity);
+
+	if (!state->orderSynchronizing ||
+	    (state->preferredOrder != Order::HIERARCHY && state->preferredOrder != Order::CLUSTERING))
+		return;
+
+	state->order = {Order::HIERARCHY, state->hierarchy};
+	emit state->orderChanged();
+	runOnData([=] (auto d) { d->prepareOrder(state->order); });
 }
 
 void MainWindow::switchHierarchyPartition(unsigned granularity)
@@ -588,14 +587,15 @@ std::unique_ptr<Annotations> MainWindow::currentAnnotations()
 	if (state->annotations.id > 0) {
 		auto p = hub.proteins.peek();
 		auto source = std::get_if<Annotations>(&p->structures.at(state->annotations.id));
-		return std::make_unique<Annotations>(*source);
+		if (source)
+			return std::make_unique<Annotations>(*source);
 	}
 
 	/* ok, try to get it from data */
 	if (data) {
 		auto s = data->peek<Dataset::Structure>();
 		auto source = s->fetch(state->annotations);
-		if (source)
+		if (source) // always return a copy, the pointer is guarded by RAII!
 			return std::make_unique<Annotations>(*source);
 	}
 

@@ -87,7 +87,8 @@ protected:
 	void setFilename(QString name);
 	void setSelectedDataset(unsigned id);
 
-	void selectAnnotations(unsigned id);
+	void selectAnnotations(const Annotations::Meta &desc);
+	void selectFAMS(float k);
 	void selectHierarchy(unsigned id, unsigned granularity);
 	void switchHierarchyPartition(unsigned granularity);
 

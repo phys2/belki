@@ -102,12 +102,12 @@ void Chart::wakeup()
 	changeAnnotations(); // also calls toggleAnnotations()
 	updateMarkers();
 
-	/* get updates from state */
+	/* get updates from state (specify receiver so signal is cleaned up!) */
 	auto s = state.get();
 	connect(s, &WindowState::annotationsToggled, this, &Chart::toggleAnnotations);
 	connect(s, &WindowState::annotationsChanged, this, &Chart::changeAnnotations);
 
-	/* get updates from dataset */
+	/* get updates from dataset (specify receiver so signal is cleaned up!) */
 	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
 		if (touched & Dataset::Touch::CLUSTERS)
 			updatePartitions();

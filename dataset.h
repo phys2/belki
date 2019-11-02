@@ -72,16 +72,11 @@ public:
 	struct Structure : RWLockable {
 		// picks from annotations if available
 		const Annotations* fetch(const Annotations::Meta &desc) const;
-		// picks from hierarchies if available
-		const HrClustering* fetch(const HrClustering::Meta &desc) const;
 		// picks from orders or picks fallback
 		const Order& fetch(::Order desc) const;
 
 		// available annotations by global id, 0 means internal
 		std::multimap<unsigned, Annotations> annotations;
-
-		// available hierarchies by global id
-		std::map<unsigned, HrClustering> hierarchies;
 
 		// available protein orderings (in dataset scope) by global id,
 		// 0 means based on internal annot.
@@ -93,7 +88,7 @@ public:
 	enum class Touch {
 		BASE = 0x1,
 		DISPLAY = 0x2,
-		HIERARCHY = 0x4,
+		// unused HIERARCHY = 0x4,
 		CLUSTERS = 0x8,
 		ORDER = 0x10,
 		ALL = 0xFF
@@ -115,23 +110,18 @@ public:
 	void computeDisplay(const QString &name);
 	void computeDisplays();
 	bool readDisplay(const QString &name, QTextStream &tsv);
-	void computeFAMS(float k);
 
-	void applyClustering(const QString &name, const Features::Vec &modes, const std::vector<int>& index);
 	void prepareAnnotations(const Annotations::Meta &desc);
-	void prepareHierarchy(const HrClustering::Meta &desc, const Annotations::Meta &cutdesc);
 	void prepareOrder(const ::Order &desc);
-	void cancelFAMS();
 
 signals:
 	void update(Touched);
 
 protected:
-	/* note: our protected helpers typically assume write locks in place and
-	 * do not emit updates. */
-	Touched storeAnnotations(const ::Annotations &source, bool withOrder = true);
+	Touched storeAnnotations(const ::Annotations &source, bool withOrder);
+	::Annotations computeFAMS(float k);
+	::Annotations createPartition(unsigned id, unsigned granularity);
 	void computeOrder(const ::Order &desc);
-
 	void computeCentroids(Annotations &target);
 
 	// meta information for this dataset
