@@ -369,7 +369,6 @@ void MainWindow::updateState(Dataset::Touched affected)
 	if (!data) {
 		/* hide and disable widgets that need data or even more */
 		actionSplice->setEnabled(false);
-		actionShowStructure->setChecked(false);
 		actionShowStructure->setEnabled(false);
 		toolbarActions.granularity->setVisible(false);
 		toolbarActions.famsK->setVisible(false);
@@ -387,7 +386,6 @@ void MainWindow::updateState(Dataset::Touched affected)
 	if (affected & Dataset::Touch::CLUSTERS) {
 		bool haveClustering = !s->clustering.empty();
 		actionShowStructure->setEnabled(haveClustering);
-		actionShowStructure->setChecked(haveClustering);
 		actionExportAnnotations->setEnabled(haveClustering);
 		bool computedClustering = haveClustering && structureSelect->currentData() < 1;
 		actionPersistAnnotations->setEnabled(computedClustering);
