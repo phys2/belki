@@ -508,12 +508,15 @@ QCborValue Storage::serializeStructure(const Structure &src)
 
 	auto hr = std::get_if<HrClustering>(&src);
 	if (hr) {
+		QCborMap meta{{"name", hr->meta.name}};
+		if (hr->meta.dataset)
+			meta.insert({"dataset", hr->meta.dataset});
 		QCborArray clusters;
 		for (auto v : hr->clusters)
 			clusters.append(packCluster(v));
 		return QCborMap{
 			{"type", "hierarchy"},
-			{"name", hr->meta.name}, // TODO incomplete
+			{"meta", meta},
 			{"clusters", clusters}
 		};
 	}
@@ -535,12 +538,27 @@ QCborValue Storage::serializeStructure(const Structure &src)
 
 	auto cl = std::get_if<Annotations>(&src);
 	if (cl) {
+		QCborMap meta{{"name", cl->meta.name}};
+		switch (cl->meta.type) {
+		case Annotations::Meta::SIMPLE: meta.insert({"type", "simple"}); break;
+		case Annotations::Meta::MEANSHIFT:
+			meta.insert({"type", "meanshift"});
+			meta.insert({"k", cl->meta.k});
+			break;
+		case Annotations::Meta::HIERCUT:
+			meta.insert({"type", "hiercut"});
+			meta.insert({"hierarchy", cl->meta.hierarchy});
+			meta.insert({"granularity", cl->meta.granularity});
+			break;
+		}
+		if (cl->meta.dataset)
+			meta.insert({"dataset", cl->meta.dataset});
 		QCborMap groups;
 		for (const auto &[k, v] : cl->groups)
 			groups.insert(k, packGroup(v));
 		return QCborMap{
 			{"type", "annotations"},
-			{"name", cl->meta.name}, // TODO incomplete
+			{"meta", meta},
 			{"groups", groups}
 		};
 	}
