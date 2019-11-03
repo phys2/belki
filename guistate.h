@@ -17,6 +17,8 @@ class GuiState : public QObject
 public:
 	explicit GuiState(DataHub &hub);
 
+	bool eventFilter(QObject *watched, QEvent *event) override;
+
 public slots:
 	unsigned addWindow();
 	void removeWindow(unsigned id);
@@ -28,12 +30,15 @@ public slots:
 
 	void handleMarkerChange(QStandardItem *item);
 
+	void displayMessage(const QString &message, MessageType type = MessageType::CRITICAL);
+
 protected:
 	void sortMarkerModel();
 
 	MainWindow *focused();
 
 	std::map<unsigned, MainWindow*> windows;
+	MainWindow *lastFocused = nullptr;
 	unsigned nextId = 1;
 
 	struct {

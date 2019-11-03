@@ -3,6 +3,7 @@
 
 #include <QAbstractProxyModel>
 #include <QTimer>
+#include <QEvent>
 
 GuiState::GuiState(DataHub &hub) : hub(hub)
 {
@@ -23,6 +24,7 @@ GuiState::GuiState(DataHub &hub) : hub(hub)
 	        this, &GuiState::handleMarkerChange);
 
 	/* notifications from Protein db */
+	connect(&hub, &DataHub::ioError, this, &GuiState::displayMessage);
 	connect(&hub.proteins, &ProteinDB::proteinAdded, this, &GuiState::addProtein);
 	connect(&hub.proteins, &ProteinDB::markersToggled,
 	        this, [this] (auto ids, bool present) {
@@ -47,6 +49,7 @@ unsigned GuiState::addWindow()
 {
 	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(hub));
 	auto target = it->second;
+	target->installEventFilter(this); // for focus tracking
 	target->setDatasetControlModel(&datasetControl.model);
 	target->setMarkerControlModel(&markerControl.model);
 	target->setStructureControlModel(&structureModel);
@@ -142,6 +145,13 @@ void GuiState::handleMarkerChange(QStandardItem *item)
 		hub.proteins.removeMarker(id);
 }
 
+void GuiState::displayMessage(const QString &message, MessageType type)
+{
+	auto target = focused();
+	if (target)
+		target->displayMessage(message, type);
+}
+
 void GuiState::sortMarkerModel()
 {
 	if (!markerControl.dirty) // already in good state
@@ -158,6 +168,17 @@ MainWindow *GuiState::focused()
 		if (v->hasFocus())
 			return v;
 	}
+	if (lastFocused)
+		return lastFocused;
 	return windows.rbegin()->second; // default to latest
 }
 
+bool GuiState::eventFilter(QObject *watched, QEvent *event)
+{
+	if (event->type() == QEvent::Enter) {
+		auto cand = qobject_cast<MainWindow*>(watched);
+		if (cand)
+			lastFocused = cand;
+	}
+	return false; // not filtered, pass through
+}

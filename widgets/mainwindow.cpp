@@ -148,7 +148,6 @@ void MainWindow::setupTabs()
 void MainWindow::setupSignals()
 {
 	/* error dialogs */
-	connect(&hub, &DataHub::ioError, this, &MainWindow::displayMessage);
 	connect(io, &FileIO::ioError, this, &MainWindow::displayMessage);
 
 	/* selecting dataset */
