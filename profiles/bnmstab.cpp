@@ -10,7 +10,6 @@ BnmsTab::BnmsTab(QWidget *parent) :
     Viewer(parent)
 {
 	setupUi(this);
-	setupProteinBox();
 	auto anchor = actionShowLabels;
 	toolBar->insertWidget(anchor, proteinBox);
 	toolBar->insertSeparator(anchor);
@@ -45,13 +44,18 @@ BnmsTab::BnmsTab(QWidget *parent) :
 			current().scene->toggleLogSpace(on);
 		}
 	});
+	connect(referenceSelect, qOverload<int>(&QComboBox::activated), [this] {
+		tabState.reference = referenceSelect->currentData(Qt::UserRole + 1).value<int>();
+		if (current)
+			rebuildPlot();
+	});
 
 	updateEnabled();
 }
 
 void BnmsTab::setProteinModel(QAbstractItemModel *m)
 {
-	proteinModel.setSourceModel(m);
+	referenceSelect->setModel(m);
 }
 
 void BnmsTab::selectDataset(unsigned id)
@@ -87,48 +91,85 @@ void BnmsTab::addDataset(Dataset::Ptr data)
 	}
 }
 
-bool BnmsTab::eventFilter(QObject *watched, QEvent *event)
-{
-	auto ret = Viewer::eventFilter(watched, event);
+#include <opencv2/imgproc/imgproc.hpp>
+#include <tbb/parallel_for.h>
 
-	/* open completer popup when clicking on protsearch line edit */
-	if (watched == protSearch && event->type() == QEvent::MouseButtonPress) {
-		if (static_cast<QMouseEvent*>(event)->button() == Qt::LeftButton)
-			protSearch->completer()->complete();
+struct DistIndexPair {
+	DistIndexPair()
+		: dist(std::numeric_limits<double>::infinity()), index(0)
+	{}
+	DistIndexPair(double dist, size_t index)
+		: dist(dist), index(index)
+	{}
+
+	/** Compare function to sort by distance. */
+	static inline bool cmpDist(const DistIndexPair& a, const DistIndexPair& b)
+	{
+		return (a.dist < b.dist);
 	}
 
-	return ret;
-}
+	double dist;
+	size_t index;
+};
 
 void BnmsTab::rebuildPlot()
 {
 	auto scene = current().scene.get();
 
 	scene->clear();
-	auto markers = current().data->peek<Dataset::Proteins>()->markers; // copy
-	for (auto m : markers)
-		scene->addSample(m, true);
-	for (auto e : tabState.extras) {
-		if (!markers.count(e))
-			scene->addSample(e, false);
+	scene->addSample(tabState.reference, true);
+	/* fun with knives */
+	auto b = current().data->peek<Dataset::Base>();
+	auto r = b->protIndex.find(tabState.reference);
+	auto numProts = 10;
+
+	auto distCrossCorr = [] (const auto &a, const auto &b) {
+		double corr1 = 0., corr2 = 0., crosscorr = 0.;
+		for (unsigned i = 0; i < a.size(); ++i) {
+			auto v1 = a[i], v2 = b[i];
+			corr1 += v1*v1;
+			corr2 += v2*v2;
+			crosscorr += v1*v2;
+		}
+		return crosscorr / (sqrt(corr1) * sqrt(corr2));
+	};
+
+	auto heapsOfFun = [&] {
+		std::vector<DistIndexPair> ret(numProts);
+		auto dfirst = ret.begin(), dlast = ret.end();
+		// initialize heap with infinity distances
+		std::fill(dfirst,
+				  dlast,
+				  DistIndexPair());
+
+		for (size_t i = 0; i < b->features.size(); ++i) {
+			if (i == r->second)
+				continue;
+
+			// TODO should use cosine, eh?
+			//auto dist = -distCrossCorr(b->features[i], b->features[r->second]);
+			auto dist = cv::norm(b->features[i], b->features[r->second]);
+			if (dist < dfirst->dist) {
+				// remove max. value in heap
+				std::pop_heap(dfirst, dlast, DistIndexPair::cmpDist);
+
+				// max element is now on position "back" and should be popped
+				// instead we overwrite it directly with the new element
+				DistIndexPair &back = *(dlast-1);
+				back = DistIndexPair(dist, i);
+				std::push_heap(dfirst, dlast, DistIndexPair::cmpDist);
+			}
+		}
+		std::sort_heap(dfirst, dlast, DistIndexPair::cmpDist); // sort ascending
+		return ret;
+	};
+
+	if (r != b->protIndex.end()) {
+		auto candidates = heapsOfFun();
+		for (auto c : candidates)
+			scene->addSample(c.index, false);
 	}
 	scene->finalize();
-}
-
-void BnmsTab::setupProteinBox()
-{
-	/* setup completer with empty model */
-	auto m = &proteinModel;
-	auto cpl = new QCompleter(m, this);
-	cpl->setCaseSensitivity(Qt::CaseInsensitive);
-	// we expect model entries to be sorted
-	cpl->setModelSorting(QCompleter::CaseInsensitivelySortedModel);
-	cpl->setCompletionMode(QCompleter::UnfilteredPopupCompletion);
-	cpl->setMaxVisibleItems(10);
-	protSearch->setCompleter(cpl);
-
-	// let us watch out for clicks
-	protSearch->installEventFilter(this);
 }
 
 void BnmsTab::updateEnabled()
@@ -136,11 +177,4 @@ void BnmsTab::updateEnabled()
 	bool on = current;
 	setEnabled(on);
 	view->setVisible(on);
-}
-
-Qt::ItemFlags BnmsTab::RemoveCheckstateProxyModel::flags(const QModelIndex &index) const
-{
-	auto flags = sourceModel()->flags(mapToSource(index));
-	flags.setFlag(Qt::ItemFlag::ItemIsUserCheckable, false);
-	return flags;
 }

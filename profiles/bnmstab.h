@@ -24,27 +24,18 @@ public:
 	void selectDataset(unsigned id) override;
 	void addDataset(Dataset::Ptr data) override;
 
-	bool eventFilter(QObject *watched, QEvent *event) override;
-
 protected:
 	struct DataState : public Viewer::DataState {
 		std::unique_ptr<ProfileChart> scene;
 		bool logSpace = false;
 	};
 
-	/* our proxy that reflects extra proteins in plot (transforms check state) */
-	struct RemoveCheckstateProxyModel : QIdentityProxyModel {
-		Qt::ItemFlags flags(const QModelIndex &index) const override;
-	};
-
 	void rebuildPlot(); // TODO temporary hack
 	void updateEnabled();
 	void setupProteinBox();
 
-	RemoveCheckstateProxyModel proteinModel;
-
 	struct {
-		std::set<ProteinId> extras;
+		ProteinId reference = 0; // first protein
 		bool showLabels = false;
 		bool showAverage = false;
 		bool showQuantiles = false;
