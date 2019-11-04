@@ -6,6 +6,7 @@
 #include <QStringList>
 #include <QChart>
 #include <QTimer>
+#include <QDeadlineTimer>
 
 #include <memory>
 #include <set>
@@ -54,6 +55,7 @@ protected:
 	};
 
 	void setupSeries();
+	void animHighlight(int index, qreal step);
 	void toggleHighlight(int index = -1);
 	// helpers to constructors
 	void setupSignals();
@@ -88,6 +90,7 @@ protected:
 	bool logSpace = false;
 	bool globalStats = false;
 	QTimer highlightAnim;
+	QDeadlineTimer highlightAnimDeadline;
 };
 
 #endif // PROFILECHART_H

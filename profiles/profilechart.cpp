@@ -341,31 +341,43 @@ void ProfileChart::setupSeries()
 	}
 }
 
+void ProfileChart::animHighlight(int index, qreal step)
+{
+	bool decrease = (index < 0);
+	bool done = true;
+	for (auto &[i, s] : series) {
+		auto c = s->color();
+		if ((int)i == index || decrease) {
+			if (c.alphaF() < 1.) {
+				c.setAlphaF(std::min(1., c.alphaF() + step));
+				done = false;
+			}
+		} else {
+			if (c.alphaF() > .2) {
+				c.setAlphaF(std::max(.2, c.alphaF() - step));
+				done = false;
+			}
+		}
+		s->setColor(c);
+	}
+	if (done)
+		highlightAnim.stop();
+}
+
 void ProfileChart::toggleHighlight(int index)
 {
 	highlightAnim.disconnect();
-	highlightAnim.callOnTimeout([this, index] {
-		bool decrease = (index < 0);
-		bool done = true;
-		for (auto &[i, s] : series) {
-			auto c = s->color();
-			if ((int)i == index || decrease) {
-				if (c.alphaF() < 1.) {
-					c.setAlphaF(std::min(1., c.alphaF() + .15));
-					done = false;
-				}
-			} else {
-				if (c.alphaF() > .2) {
-					c.setAlphaF(std::max(.2, c.alphaF() - .15));
-					done = false;
-				}
-			}
-			s->setColor(c);
-		}
-		if (done)
-			highlightAnim.stop();
+	highlightAnim.callOnTimeout([this,index] { animHighlight(index, .15); });
+	highlightAnimDeadline.setRemainingTime(50, Qt::PreciseTimer);
+	animHighlight(index, .15);
+	/* continue after first drawing update */
+	QTimer::singleShot(0, [this,index] {
+		/* finish animation early if drawing was too slow */
+		if (highlightAnimDeadline.hasExpired())
+			animHighlight(index, 1.);
+		else
+			highlightAnim.start(25);
 	});
-	highlightAnim.start(25);
 }
 
 void ProfileChart::toggleLabels(bool on) {
