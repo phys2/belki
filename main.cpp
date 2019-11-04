@@ -18,7 +18,8 @@ Q_IMPORT_PLUGIN(QSvgIconPlugin)
 
 int main(int argc, char *argv[])
 {
-	std::cout << "Running Belki " PROJECT_VERSION << std::endl;
+	std::cout << "Running Belki " PROJECT_VERSION;
+	std::cout << " built " << PROJECT_DATE << std::endl;
 
 	// register additional types needed in queued connections
 	qRegisterMetaType<QVector<QColor>>();

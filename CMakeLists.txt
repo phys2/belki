@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.9...3.13)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X deployment version")
 
 project(Belki
-	VERSION 1.0
+	VERSION 1.9
 	DESCRIPTION "Interactive Protein Profile Visualization")
 
 # use our cmake dir for include(…) statements
@@ -90,6 +90,8 @@ add_subdirectory(scatterplot)
 add_subdirectory(heatmap)
 add_subdirectory(distmat)
 add_subdirectory(featweights)
+
+export_version(widgets/mainwindow.cpp) # for About box
 
 ## link to modules
 target_include_directories(${APP_NAME} SYSTEM PUBLIC ${DEP_INCLUDES})

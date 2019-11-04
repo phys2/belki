@@ -347,6 +347,7 @@
      <string>&amp;Help</string>
     </property>
     <addaction name="actionHelp"/>
+    <addaction name="actionAbout"/>
    </widget>
    <widget class="QMenu" name="menuStructure">
     <property name="title">
@@ -390,7 +391,7 @@
   </action>
   <action name="actionHelp">
    <property name="icon">
-    <iconset theme="help-about">
+    <iconset theme="help-contents">
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
@@ -611,6 +612,18 @@
    </property>
    <property name="text">
     <string>Add &amp;Tab</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="icon">
+    <iconset theme="help-about">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;About Belki</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::AboutRole</enum>
    </property>
   </action>
  </widget>

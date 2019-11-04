@@ -26,6 +26,7 @@
 #include <QWidgetAction>
 #include <QShortcut>
 #include <QtConcurrent>
+#include <QDateTime>
 
 MainWindow::MainWindow(DataHub &hub) :
     hub(hub),
@@ -196,6 +197,11 @@ void MainWindow::setupActions()
 
 	connect(actionQuit, &QAction::triggered, [] { QApplication::exit(); });
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
+	connect(actionAbout, &QAction::triggered, [this] {
+		auto date = QDateTime::fromString(PROJECT_DATE, "yyyyMMdd").toString("MMMM d, yyyy");
+		auto message = QString("<b>Belki " PROJECT_VERSION "</b><br><br>Built on %1.").arg(date);
+		QMessageBox::about(this, "About Belki", message);
+	});
 	connect(actionNewWindow, &QAction::triggered, this, &MainWindow::newWindowRequested);
 	connect(actionCloseAllTabs, &QAction::triggered, [this] {
 		for (int i = tabWidget->count() - 1; i >= 0; --i)
