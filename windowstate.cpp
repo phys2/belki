@@ -2,19 +2,19 @@
 
 WindowState::WindowState()
 {
-	auto addOrderItem = [this] (QString name, QString icon, int id) {
+	auto addOrderItem = [this] (QString name, QIcon icon, int id) {
 		auto item = new QStandardItem(name);
-		if (!icon.isEmpty())
+		if (!icon.isNull())
 			item->setIcon(QIcon(icon));
 		item->setData(id, Qt::UserRole);
 		orderModel.appendRow(item);
 	};
 
-	/* prepare default structure items */
-	addOrderItem("Position in file", {}, Order::FILE);
-	addOrderItem("Protein name", {}, Order::NAME);
-	addOrderItem("Hierarchy", {}, Order::HIERARCHY);
-	addOrderItem("Clustering/Annotations", {}, Order::CLUSTERING);
+	/* prepare order items */
+	addOrderItem("Position in file", QIcon::fromTheme("sort_incr"), Order::FILE);
+	addOrderItem("Protein name", QIcon::fromTheme("sort-name"), Order::NAME);
+	addOrderItem("Hierarchy", QIcon{":/icons/type-hierarchy.svg"}, Order::HIERARCHY);
+	addOrderItem("Clustering/Annotations", QIcon{":/icons/type-annotations.svg"}, Order::CLUSTERING);
 }
 
 void WindowState::setOrder(Order::Type type)
