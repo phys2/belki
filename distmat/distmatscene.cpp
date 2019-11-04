@@ -68,7 +68,9 @@ void DistmatScene::wakeup()
 		return;
 
 	awake = true;
-	changeAnnotations(); // eventually also does what toggleAnnotations() does
+	// next two lines is reorder,changeAnnot.,toggleAnnot. combined
+	haveAnnotations = false;
+	reorder();
 	updateMarkers();
 
 	/* get updates from state (specify receiver so signal is cleaned up!) */

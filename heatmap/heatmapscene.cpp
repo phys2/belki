@@ -59,6 +59,7 @@ void HeatmapScene::wakeup()
 		return;
 
 	awake = true;
+	reorder();
 	updateAnnotations();
 	updateMarkers();
 
