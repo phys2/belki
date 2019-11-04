@@ -124,6 +124,7 @@ void MainWindow::setupTabs()
 	btn->setDefaultAction(actionAddTab);
 	btn->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);
 	btn->setMinimumSize(btn->sizeHint()); // ensure button keeps showing when zero tabs
+	btn->setShortcut(QKeySequence::StandardKey::AddTab);
 	tabWidget->setCornerWidget(btn);
 
 	// setup tab closing
@@ -187,6 +188,7 @@ void MainWindow::setupActions()
 {
 	/* Shortcuts (standard keys not available in UI Designer) */
 	actionLoadDataset->setShortcut(QKeySequence::StandardKey::Open);
+	actionSaveAs->setShortcut(QKeySequence::StandardKey::SaveAs);
 	actionHelp->setShortcut(QKeySequence::StandardKey::HelpContents);
 	actionQuit->setShortcut(QKeySequence::StandardKey::Quit);
 
