@@ -10,6 +10,7 @@
 #include "heatmap/heatmaptab.h"
 #include "distmat/distmattab.h"
 #include "profiles/profiletab.h"
+#include "profiles/bnmstab.h"
 #include "featweights/featweightstab.h"
 
 #include <QTreeView>
@@ -141,6 +142,7 @@ void MainWindow::setupTabs()
 	}
 
 	// initial tabs
+	addTab(Tab::BNMS);
 	addTab(Tab::DIMRED);
 	addTab(Tab::SCATTER);
 	addTab(Tab::PROFILES);
@@ -304,6 +306,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 	case Tab::DISTMAT: v = new DistmatTab; break;
 	case Tab::PROFILES: v = new ProfileTab; break;
 	case Tab::FEATWEIGHTS: v = new FeatweightsTab; break;
+	case Tab::BNMS: v = new BnmsTab; break;
 	}
 
 	v->setWindowState(state);
