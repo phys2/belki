@@ -293,7 +293,6 @@ void ProfileChart::setupSeries()
 			auto s = new QtCharts::QLineSeries;
 			series[index] = s;
 			add(s, SeriesCategory::INDIVIDUAL, isMarker);
-			QString title = (isMarker ? "<small>★</small>" : "") + d->lookup(p, index).name;
 			// color only markers in small view
 			QColor color = (isMarker || !small ? d->lookup(p, index).color : Qt::black);
 			if (isMarker && !small) { // acentuate markers in big view
@@ -302,7 +301,7 @@ void ProfileChart::setupSeries()
 				s->setPen(pen);
 			}
 			s->setColor(color);
-			s->setName(title);
+			s->setName(titleOf(index, d->lookup(p, index).name, isMarker));
 
 			if (d->hasScores()) { // visualize scores through points along polyline
 				s->setPointsVisible(true);
@@ -340,6 +339,11 @@ void ProfileChart::setupSeries()
 		addIndividuals(false);
 		addMean();
 	}
+}
+
+QString ProfileChart::titleOf(unsigned, const QString &name, bool isMarker) const
+{
+	return (isMarker ? "<small>★</small>" : "") + name;
 }
 
 void ProfileChart::animHighlight(int index, qreal step)

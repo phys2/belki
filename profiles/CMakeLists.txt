@@ -5,4 +5,5 @@ target_sources(belki PRIVATE
 	profilewindow.h profilewindow.cpp profilewindow.ui
 	bnmstab.h	bnmstab.cpp	bnmstab.ui
 	bnmschart.h	bnmschart.cpp
+	rangeselectitem.h	rangeselectitem.cpp
 	)

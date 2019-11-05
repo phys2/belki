@@ -1,8 +1,11 @@
 #include "bnmschart.h"
+#include "rangeselectitem.h"
 #include "dataset.h"
 #include "compute/features.h"
+#include "compute/colors.h"
 
 #include <QtCharts/QLineSeries>
+#include <QtCharts/QValueAxis>
 
 /* small, inset plot constructor */
 BnmsChart::BnmsChart(Dataset::ConstPtr dataset)
@@ -10,6 +13,22 @@ BnmsChart::BnmsChart(Dataset::ConstPtr dataset)
 {
 	// we provide sorted by distance
 	sort = Sorting::NONE;
+
+	auto ndim = dataset->peek<Dataset::Base>()->dimensions.size();
+	range = {0, ndim};
+	rangeItem = std::make_unique<RangeSelectItem>(this);
+	rangeItem->setLimits(0, ndim);
+	rangeItem->setRange(0, ndim);
+	connect(this, &BnmsChart::plotAreaChanged,
+	        rangeItem.get(), &RangeSelectItem::setRect);
+	connect(rangeItem.get(), &RangeSelectItem::borderChanged, this,
+	        [this] (RangeSelectItem::Border border, qreal value) {
+		if (border == RangeSelectItem::LEFT)
+			range.first = value;
+		else
+			range.second = value;
+		repopulate();
+	});
 }
 
 struct DistIndexPair {
@@ -30,6 +49,17 @@ struct DistIndexPair {
 	size_t index;
 };
 
+BnmsChart::~BnmsChart()
+{
+	// needed to delete unique_ptr
+}
+
+void BnmsChart::clear()
+{
+	scores.clear();
+	ProfileChart::clear();
+}
+
 void BnmsChart::setReference(ProteinId ref)
 {
 	auto b = data->peek<Dataset::Base>();
@@ -42,43 +72,63 @@ void BnmsChart::setReference(ProteinId ref)
 		return;
 
 	reference = r->second;
+	repopulate();
+};
 
-	/* fun with knives */
+void BnmsChart::repopulate()
+{
 	const unsigned numProts = 10; // TODO: dynamic based on relative offset?
-
 	auto distance = features::distfun(features::Distance::COSINE);
-	auto heapsOfFun = [&] {
-		std::vector<DistIndexPair> ret(numProts);
-		auto dfirst = ret.begin(), dlast = ret.end();
-		// initialize heap with infinity distances
-		std::fill(dfirst, dlast, DistIndexPair());
 
-		for (size_t i = 0; i < b->features.size(); ++i) {
-			if (i == r->second)
-				continue;
+	auto b = data->peek<Dataset::Base>();
+	meanScore = 0.;
+	std::vector<DistIndexPair> candidates(numProts);
+	auto dfirst = candidates.begin(), dlast = candidates.end();
+	// initialize heap with infinity distances
+	std::fill(dfirst, dlast, DistIndexPair());
 
-			auto dist = distance(b->features[i], b->features[r->second]);
-			if (dist < dfirst->dist) {
-				// remove max. value in heap
-				std::pop_heap(dfirst, dlast, DistIndexPair::cmpDist);
+	std::vector<double> r(b->features[reference].begin() + (int)range.first,
+	                      b->features[reference].begin() + (int)range.second);
+	for (size_t i = 0; i < b->features.size(); ++i) {
+		if (i == reference)
+			continue;
 
-				// max element is now on position "back" and should be popped
-				// instead we overwrite it directly with the new element
-				DistIndexPair &back = *(dlast-1);
-				back = DistIndexPair(dist, i);
-				std::push_heap(dfirst, dlast, DistIndexPair::cmpDist);
-			}
+		std::vector<double> f(b->features[i].begin() + (int)range.first,
+		                      b->features[i].begin() + (int)range.second);
+		auto dist = distance(f, r);
+		if (dist < dfirst->dist) {
+			// remove max. value in heap
+			std::pop_heap(dfirst, dlast, DistIndexPair::cmpDist);
+
+			// max element is now on position "back" and should be popped
+			// instead we overwrite it directly with the new element
+			DistIndexPair &back = *(dlast-1);
+			back = DistIndexPair(dist, i);
+			std::push_heap(dfirst, dlast, DistIndexPair::cmpDist);
 		}
-		std::sort_heap(dfirst, dlast, DistIndexPair::cmpDist); // sort ascending
-		return ret;
-	};
+		meanScore += dist;
+	}
+	std::sort_heap(dfirst, dlast, DistIndexPair::cmpDist); // sort ascending
+	meanScore /= b->features.size();
 
 	clear();
 	addSampleByIndex(reference, true);
-	auto candidates = heapsOfFun();
-	for (auto c : candidates)
+	for (auto c : candidates) {
+		scores[c.index] = c.dist;
 		addSampleByIndex(c.index, false);
+	}
 	finalize();
+}
+
+QString BnmsChart::titleOf(unsigned int index, const QString &name, bool isMarker) const
+{
+	if (index == reference)
+		return QString("<b>%1</b>").arg(name);
+
+	auto score = scores.at(index);
+	auto color = Colormap::qcolor(Colormap::stoplight.apply(-score, -1., 0.));
+	return QString("%1 <small style='background-color: %3; color: black;'>%2</small>")
+	        .arg(name).arg(score, 4, 'f', 3).arg(color.name());
 }
 
 void BnmsChart::animHighlight(int index, qreal step)
