@@ -125,4 +125,49 @@ QVector<QPointF> scatter(const vec &x, size_t xi, const vec &y, size_t yi)
 	return ret;
 }
 
+template<>
+double distance<Distance::EUCLIDEAN>(const std::vector<double> &a, const std::vector<double> &b)
+{
+	return cv::norm(a, b, cv::NORM_L2);
+}
+
+template<>
+double distance<Distance::CROSSCORREL>(const std::vector<double> &a, const std::vector<double> &b)
+{
+	double corr1 = 0., corr2 = 0., crosscorr = 0.;
+	for (unsigned i = 0; i < a.size(); ++i) {
+		auto v1 = a[i], v2 = b[i];
+		corr1 += v1*v1;
+		corr2 += v2*v2;
+		crosscorr += v1*v2;
+	}
+	return crosscorr / std::sqrt(corr1*corr2);
+}
+
+template<>
+double distance<Distance::COSINE>(const std::vector<double> &a, const std::vector<double> &b)
+{
+	return std::acos(distance<Distance::CROSSCORREL>(a, b));
+}
+
+template<>
+double distance<Distance::PEARSON>(const std::vector<double> &a, const std::vector<double> &b)
+{
+	std::vector<double> aa, bb;
+	cv::subtract(a, cv::mean(a), aa);
+	cv::subtract(b, cv::mean(b), bb);
+	return distance<Distance::CROSSCORREL>(aa, bb);
+}
+
+std::function<double(const std::vector<double> &a, const std::vector<double> &b)>
+distfun(Distance measure)
+{
+	switch (measure) {
+	case Distance::EUCLIDEAN: return distance<Distance::EUCLIDEAN>;
+	case Distance::COSINE: return distance<Distance::COSINE>;
+	case Distance::CROSSCORREL: return distance<Distance::CROSSCORREL>;
+	case Distance::PEARSON: return distance<Distance::PEARSON>;
+	}
+}
+
 }

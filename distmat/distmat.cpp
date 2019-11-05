@@ -1,37 +1,7 @@
 #include "distmat.h"
 #include "compute/colors.h"
 
-#include <opencv2/imgproc/imgproc.hpp>
 #include <tbb/parallel_for.h>
-
-std::map<Distmat::Measure, Distmat::MeasureFun> Distmat::measures()
-{
-	auto distL2 = [] (const auto &a, const auto &b) {
-		return cv::norm(a, b, cv::NORM_L2);
-	};
-	auto distCrossCorr = [] (const auto &a, const auto &b) {
-		double corr1 = 0., corr2 = 0., crosscorr = 0.;
-		for (unsigned i = 0; i < a.size(); ++i) {
-			auto v1 = a[i], v2 = b[i];
-			corr1 += v1*v1;
-			corr2 += v2*v2;
-			crosscorr += v1*v2;
-		}
-		return crosscorr / (sqrt(corr1) * sqrt(corr2));
-	};
-	auto distPearson = [&] (const auto &a, const auto &b) {
-		std::vector<double> aa, bb;
-		cv::subtract(a, cv::mean(a), aa);
-		cv::subtract(b, cv::mean(b), bb);
-		return distCrossCorr(aa, bb);
-	};
-
-	return {
-		{Measure::NORM_L2, distL2},
-		{Measure::CROSSCORREL, distCrossCorr},
-		{Measure::PEARSON, distPearson},
-	};
-}
 
 void Distmat::computeMatrix(const std::vector<std::vector<double>> &features)
 {
@@ -46,11 +16,11 @@ void Distmat::computeMatrix(const std::vector<std::vector<double>> &features)
 	}
 
 	/* get the work done in parallel */
-	auto m = measures()[measure];
+	auto dist = features::distfun(measure);
 	tbb::parallel_for((size_t)0, coords.size(), [&] (size_t i) {
 		auto c = coords[i];
 		const auto &a = features[(size_t)c.x], &b = features[(size_t)c.y];
-		matrix(c) = matrix(c.x, c.y) = (float)m(a, b);
+		matrix(c) = matrix(c.x, c.y) = (float)dist(a, b);
 	});
 }
 
@@ -59,11 +29,11 @@ void Distmat::computeImage(const TranslateFun &translate)
 	/* determine shift & scale to fit into uchar */
 	double minVal, maxVal;
 	switch (measure) {
-	case Measure::PEARSON:
+	case features::Distance::PEARSON:
 		minVal = -1.;
 		maxVal = 1.;
 		break;
-	case Measure::CROSSCORREL:
+	case features::Distance::CROSSCORREL:
 		minVal = 0.;
 		maxVal = 1.;
 		break;
