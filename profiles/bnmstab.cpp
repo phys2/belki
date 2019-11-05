@@ -1,5 +1,6 @@
 #include "bnmstab.h"
 #include "profilechart.h"
+#include "compute/features.h"
 
 #include <QStandardItemModel>
 #include <QAbstractProxyModel>
@@ -91,9 +92,6 @@ void BnmsTab::addDataset(Dataset::Ptr data)
 	}
 }
 
-#include <opencv2/imgproc/imgproc.hpp>
-#include <tbb/parallel_for.h>
-
 struct DistIndexPair {
 	DistIndexPair()
 		: dist(std::numeric_limits<double>::infinity()), index(0)
@@ -121,34 +119,20 @@ void BnmsTab::rebuildPlot()
 	/* fun with knives */
 	auto b = current().data->peek<Dataset::Base>();
 	auto r = b->protIndex.find(tabState.reference);
-	auto numProts = 10;
+	const unsigned numProts = 10; // TODO: dynamic based on relative offset?
 
-	auto distCrossCorr = [] (const auto &a, const auto &b) {
-		double corr1 = 0., corr2 = 0., crosscorr = 0.;
-		for (unsigned i = 0; i < a.size(); ++i) {
-			auto v1 = a[i], v2 = b[i];
-			corr1 += v1*v1;
-			corr2 += v2*v2;
-			crosscorr += v1*v2;
-		}
-		return crosscorr / (sqrt(corr1) * sqrt(corr2));
-	};
-
+	auto distance = features::distfun(features::Distance::COSINE);
 	auto heapsOfFun = [&] {
 		std::vector<DistIndexPair> ret(numProts);
 		auto dfirst = ret.begin(), dlast = ret.end();
 		// initialize heap with infinity distances
-		std::fill(dfirst,
-				  dlast,
-				  DistIndexPair());
+		std::fill(dfirst, dlast, DistIndexPair());
 
 		for (size_t i = 0; i < b->features.size(); ++i) {
 			if (i == r->second)
 				continue;
 
-			// TODO should use cosine, eh?
-			//auto dist = -distCrossCorr(b->features[i], b->features[r->second]);
-			auto dist = cv::norm(b->features[i], b->features[r->second]);
+			auto dist = distance(b->features[i], b->features[r->second]);
 			if (dist < dfirst->dist) {
 				// remove max. value in heap
 				std::pop_heap(dfirst, dlast, DistIndexPair::cmpDist);
