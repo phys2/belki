@@ -367,16 +367,16 @@ void ProfileChart::animHighlight(int index, qreal step)
 void ProfileChart::toggleHighlight(int index)
 {
 	highlightAnim.disconnect();
-	highlightAnim.callOnTimeout([this,index] { animHighlight(index, .15); });
-	highlightAnimDeadline.setRemainingTime(50, Qt::PreciseTimer);
-	animHighlight(index, .15);
+	highlightAnim.callOnTimeout([this,index] { animHighlight(index, .2); });
+	highlightAnimDeadline.setRemainingTime(100, Qt::PreciseTimer);
+	animHighlight(index, .2);
 	/* continue after first drawing update */
 	QTimer::singleShot(0, [this,index] {
 		/* finish animation early if drawing was too slow */
 		if (highlightAnimDeadline.hasExpired())
 			animHighlight(index, 1.);
 		else
-			highlightAnim.start(25);
+			highlightAnim.start(50);
 	});
 }
 
