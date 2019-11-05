@@ -10,7 +10,7 @@
 #include <set>
 #include <unordered_map>
 
-class ProfileChart;
+class BnmsChart;
 
 class BnmsTab : public Viewer, private Ui::BnmsTab
 {
@@ -26,13 +26,11 @@ public:
 
 protected:
 	struct DataState : public Viewer::DataState {
-		std::unique_ptr<ProfileChart> scene;
+		std::unique_ptr<BnmsChart> scene;
 		bool logSpace = false;
 	};
 
-	void rebuildPlot(); // TODO temporary hack
 	void updateEnabled();
-	void setupProteinBox();
 
 	struct {
 		ProteinId reference = 0; // first protein

@@ -24,6 +24,7 @@ ProfileChart::ProfileChart(Dataset::ConstPtr data, bool small, bool global)
 	if (small) {
 		setMargins({0, 10, 0, 0});
 		legend()->hide();
+		sort = Sorting::MARKEDTHENNAME; // put marked last (for z-index)
 	} else {
 		legend()->setAlignment(Qt::AlignLeft);
 	}
@@ -147,17 +148,17 @@ void ProfileChart::setupSeries()
 	auto d = data->peek<Dataset::Base>();
 	auto p = data->peek<Dataset::Proteins>();
 
-	std::function<bool(const std::pair<unsigned,bool> &a, const std::pair<unsigned,bool> & b)>
-	byName = [&d,&p] (auto a, auto b) {
+	std::map<Sorting,std::function<bool(const std::pair<unsigned,bool> &a, const std::pair<unsigned,bool> &b)>> sorters;
+	sorters[Sorting::NAME] = [&d,&p] (auto a, auto b) {
 		return d->lookup(p, a.first).name < d->lookup(p, b.first).name;
 	};
-	auto byMarkedThenName = [byName] (auto a, auto b) {
+	sorters[Sorting::MARKEDTHENNAME] = [super=sorters.at(Sorting::NAME)] (auto a, auto b) {
 		if (a.second != b.second)
 			return b.second;
-		return byName(a, b);
+		return super(a, b);
 	};
-	// sort by name, but in small view, put marked last (for z-index)
-	std::sort(content.begin(), content.end(), small ? byMarkedThenName : byName);
+	if (sort != Sorting::NONE)
+		std::sort(content.begin(), content.end(), sorters.at(sort));
 
 	std::function<double(double)> adjusted;
 	if (logSpace)

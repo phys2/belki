@@ -1,5 +1,5 @@
 #include "bnmstab.h"
-#include "profilechart.h"
+#include "bnmschart.h"
 #include "compute/features.h"
 
 #include <QStandardItemModel>
@@ -46,9 +46,10 @@ BnmsTab::BnmsTab(QWidget *parent) :
 		}
 	});
 	connect(referenceSelect, qOverload<int>(&QComboBox::activated), [this] {
-		tabState.reference = referenceSelect->currentData(Qt::UserRole + 1).value<int>();
+		auto value = referenceSelect->currentData(Qt::UserRole + 1).value<int>();
+		tabState.reference = (unsigned)value;
 		if (current)
-			rebuildPlot();
+			current().scene->setReference(tabState.reference);
 	});
 
 	updateEnabled();
@@ -69,7 +70,7 @@ void BnmsTab::selectDataset(unsigned id)
 
 	// pass guiState onto chart
 	auto scene = current().scene.get();
-	rebuildPlot();  // TODO temporary hack
+	scene->setReference(tabState.reference);
 	scene->toggleLabels(tabState.showLabels);
 	scene->toggleAverage(tabState.showAverage);
 	scene->toggleQuantiles(tabState.showQuantiles);
@@ -85,75 +86,11 @@ void BnmsTab::addDataset(Dataset::Ptr data)
 	auto id = data->id();
 	auto &state = content[id]; // emplace (note: ids are never recycled)
 	state.data = data;
-	state.scene = std::make_unique<ProfileChart>(data, false, true);
+	state.scene = std::make_unique<BnmsChart>(data);
 	if (data->peek<Dataset::Base>()->logSpace) {
 		state.logSpace = true;
 		state.scene->toggleLogSpace(true);
 	}
-}
-
-struct DistIndexPair {
-	DistIndexPair()
-		: dist(std::numeric_limits<double>::infinity()), index(0)
-	{}
-	DistIndexPair(double dist, size_t index)
-		: dist(dist), index(index)
-	{}
-
-	/** Compare function to sort by distance. */
-	static inline bool cmpDist(const DistIndexPair& a, const DistIndexPair& b)
-	{
-		return (a.dist < b.dist);
-	}
-
-	double dist;
-	size_t index;
-};
-
-void BnmsTab::rebuildPlot()
-{
-	auto scene = current().scene.get();
-
-	scene->clear();
-	scene->addSample(tabState.reference, true);
-	/* fun with knives */
-	auto b = current().data->peek<Dataset::Base>();
-	auto r = b->protIndex.find(tabState.reference);
-	const unsigned numProts = 10; // TODO: dynamic based on relative offset?
-
-	auto distance = features::distfun(features::Distance::COSINE);
-	auto heapsOfFun = [&] {
-		std::vector<DistIndexPair> ret(numProts);
-		auto dfirst = ret.begin(), dlast = ret.end();
-		// initialize heap with infinity distances
-		std::fill(dfirst, dlast, DistIndexPair());
-
-		for (size_t i = 0; i < b->features.size(); ++i) {
-			if (i == r->second)
-				continue;
-
-			auto dist = distance(b->features[i], b->features[r->second]);
-			if (dist < dfirst->dist) {
-				// remove max. value in heap
-				std::pop_heap(dfirst, dlast, DistIndexPair::cmpDist);
-
-				// max element is now on position "back" and should be popped
-				// instead we overwrite it directly with the new element
-				DistIndexPair &back = *(dlast-1);
-				back = DistIndexPair(dist, i);
-				std::push_heap(dfirst, dlast, DistIndexPair::cmpDist);
-			}
-		}
-		std::sort_heap(dfirst, dlast, DistIndexPair::cmpDist); // sort ascending
-		return ret;
-	};
-
-	if (r != b->protIndex.end()) {
-		auto candidates = heapsOfFun();
-		for (auto c : candidates)
-			scene->addSample(c.index, false);
-	}
-	scene->finalize();
 }
 
 void BnmsTab::updateEnabled()

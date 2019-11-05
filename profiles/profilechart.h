@@ -48,6 +48,12 @@ signals:
 	void toggleQuantiles(bool on);
 
 protected:
+	enum class Sorting {
+		NONE,
+		NAME,
+		MARKEDTHENNAME
+	} sort = Sorting::NAME;
+
 	enum class SeriesCategory { // see showCategories
 		INDIVIDUAL,
 		AVERAGE,
@@ -55,7 +61,7 @@ protected:
 	};
 
 	void setupSeries();
-	void animHighlight(int index, qreal step);
+	virtual void animHighlight(int index, qreal step);
 	void toggleHighlight(int index = -1);
 	// helpers to constructors
 	void setupSignals();

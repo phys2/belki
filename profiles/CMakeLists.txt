@@ -4,4 +4,5 @@ target_sources(belki PRIVATE
 	profilewidget.h profilewidget.cpp profilewidget.ui
 	profilewindow.h profilewindow.cpp profilewindow.ui
 	bnmstab.h	bnmstab.cpp	bnmstab.ui
+	bnmschart.h	bnmschart.cpp
 	)
