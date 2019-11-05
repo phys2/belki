@@ -1,6 +1,8 @@
 #ifndef DISTMAT_H
 #define DISTMAT_H
 
+#include "compute/features.h"
+
 #include <QVector>
 #include <QPixmap>
 
@@ -10,21 +12,12 @@
 
 struct Distmat
 {
-	enum class Measure {
-		NORM_L2,
-		CROSSCORREL,
-		PEARSON
-	};
-
-	using MeasureFun = std::function<double(const std::vector<double> &, const std::vector<double> &)>;
 	using TranslateFun = std::function<cv::Point(int,int)>;
-
-	static std::map<Measure, MeasureFun> measures();
 
 	void computeMatrix(const std::vector<std::vector<double>> &features);
 	void computeImage(const TranslateFun &translate);
 
-	Measure measure = Measure::CROSSCORREL;
+	features::Distance measure = features::Distance::CROSSCORREL;
 	cv::Mat1f matrix;
 	QPixmap image;
 };

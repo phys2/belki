@@ -17,6 +17,19 @@ void apply_cutoff(vec& feats, const vec &scores, double threshold);
 std::vector<QVector<QPointF>> pointify(const vec &source);
 QVector<QPointF> scatter(const vec &x, size_t xi, const vec &y, size_t yi);
 
+enum class Distance {
+	EUCLIDEAN,
+	COSINE,
+	CROSSCORREL, // note: higher is better
+	PEARSON, // note: higher is better
+};
+
+template<Distance D>
+double distance(const std::vector<double> &a, const std::vector<double> &b);
+
+std::function<double(const std::vector<double> &a, const std::vector<double> &b)>
+distfun(Distance measure);
+
 }
 
 #endif
