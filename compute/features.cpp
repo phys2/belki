@@ -141,6 +141,8 @@ double distance<Distance::CROSSCORREL>(const std::vector<double> &a, const std::
 		corr2 += v2*v2;
 		crosscorr += v1*v2;
 	}
+	if (corr1 == 0. && corr2 == 0.)
+		return 0.;
 	return crosscorr / std::sqrt(corr1*corr2);
 }
 
