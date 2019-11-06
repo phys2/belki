@@ -19,7 +19,7 @@ public:
 
 	RangeSelectItem(QtCharts::QChart *parent = nullptr);
 	virtual QRectF boundingRect() const;
-	virtual void paint(QPainter*, const QStyleOptionGraphicsItem*, QWidget*) {}
+	virtual void paint(QPainter*, const QStyleOptionGraphicsItem*, QWidget*);
 	void setBorder(Border border, qreal x);
 
 public slots:

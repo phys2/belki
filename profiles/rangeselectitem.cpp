@@ -4,6 +4,7 @@
 #include <QBrush>
 #include <QPen>
 #include <QCursor>
+#include <QPainter>
 
 RangeSelectItem::RangeSelectItem(QtCharts::QChart *parent)
     : QGraphicsObject(parent)
@@ -17,7 +18,19 @@ RangeSelectItem::RangeSelectItem(QtCharts::QChart *parent)
 
 QRectF RangeSelectItem::boundingRect() const
 {
-	return {handles.at(LEFT)->rect().topLeft(), handles.at(RIGHT)->rect().bottomRight()};
+	return area;
+}
+
+void RangeSelectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
+{
+	QBrush fill({255, 195, 195, 127});
+	fill.setStyle(Qt::BrushStyle::Dense4Pattern);
+	std::array<QRectF, 2> areas = {
+	    QRectF{area.topLeft(), QPointF{valueToPos(handles[LEFT]->value), area.bottom()}},
+	    {QPointF{valueToPos(handles[RIGHT]->value), area.top()}, area.bottomRight()}
+	};
+	for (auto &a : areas)
+		painter->fillRect(a, fill);
 }
 
 void RangeSelectItem::setRect(const QRectF &newArea)
@@ -76,12 +89,15 @@ void RangeSelectItem::updatePositions()
 
 
 RangeSelectItem::HandleItem::HandleItem(Border border, RangeSelectItem* parent)
-    : QGraphicsRectItem(-5, 0, 10, 10, parent),
+    : QGraphicsRectItem((border == LEFT ? -15 : 0), 0, 15, 10, parent),
       border(border),
       parent(parent)
 {
 	setPen(Qt::NoPen);
-	setBrush(QColor(255, 0, 0, 127));
+	QLinearGradient grad((border == LEFT ? -15 : 0), 0, (border == LEFT ? 0 : 15), 0);
+	grad.setColorAt((border == LEFT ? 0 : 1), {255, 255, 255, 0});
+	grad.setColorAt((border == LEFT ? 1 : 0), {255, 0, 0, 127});
+	setBrush(grad);
 	setFlag(ItemIsMovable);
 	setFlag(ItemSendsGeometryChanges);
 	setFlag(ItemIgnoresTransformations);
