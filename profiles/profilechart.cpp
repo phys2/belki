@@ -70,12 +70,19 @@ void ProfileChart::setupAxes(const Features::Range &range)
 		/* prepare a secondary axis that will show labels when requested.
 		 * smoother than show/hiding the primary axis w/ labels */
 		axC = new QtCharts::QCategoryAxis;
-		axC->setLabelsAngle(-90);
+
+		bool sparse = labels.size() > 50;
+		int step = labels.size() / 10;
+		if (!sparse)
+			axC->setLabelsAngle(-90);
 		axC->setLabelsPosition(QtCharts::QCategoryAxis::AxisLabelsPositionOnValue);
 		axC->setRange(ax->min(), ax->max());
 		auto i = 0;
-		for (auto &l : qAsConst(labels))
-			axC->append(l, i++);
+		for (auto &l : qAsConst(labels)) {
+			if (!sparse || i % step == 0 || i == labels.size() - 1)
+				axC->append(l, i);
+			i++;
+		}
 	}
 
 	ay = new QtCharts::QValueAxis;
