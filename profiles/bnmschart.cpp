@@ -113,9 +113,10 @@ void BnmsChart::repopulate()
 
 	clear();
 	addSampleByIndex(reference, true);
+	auto p = data->peek<Dataset::Proteins>();
 	for (auto c : candidates) {
 		scores[c.index] = c.dist;
-		addSampleByIndex(c.index, false);
+		addSampleByIndex(c.index, p->markers.count(b->protIds[c.index]));
 	}
 	finalize();
 }
@@ -125,10 +126,14 @@ QString BnmsChart::titleOf(unsigned int index, const QString &name, bool isMarke
 	if (index == reference)
 		return QString("<b>%1</b>").arg(name);
 
+	auto plain = ProfileChart::titleOf(index, name, isMarker);
 	auto score = scores.at(index);
-	auto color = Colormap::qcolor(Colormap::stoplight.apply(-score, -1., 0.));
+	auto limit = 1.0; // TODO supposed to go to π though
+	if (score > limit) // not a meaningful value, omit
+		return plain;
+	auto color = Colormap::qcolor(Colormap::stoplight.apply(-score, -limit, 0.));
 	return QString("%1 <small style='background-color: %3; color: black;'>%2</small>")
-	        .arg(name).arg(score, 4, 'f', 3).arg(color.name());
+	        .arg(plain).arg(score, 4, 'f', 3).arg(color.name());
 }
 
 void BnmsChart::animHighlight(int index, qreal step)

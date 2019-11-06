@@ -34,7 +34,7 @@ protected:
 
 	struct {
 		ProteinId reference = 0; // first protein
-		bool showLabels = false;
+		bool showLabels = true;
 		bool showAverage = false;
 		bool showQuantiles = false;
 	} tabState;

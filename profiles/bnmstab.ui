@@ -97,7 +97,8 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionShowLabels"/>
+   <addaction name="actionMarkerMenu"/>
+   <addaction name="separator"/>
    <addaction name="actionShowAverage"/>
    <addaction name="actionShowQuantiles"/>
    <addaction name="separator"/>
@@ -155,24 +156,6 @@
     <string>I</string>
    </property>
   </action>
-  <action name="actionShowLabels">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="../resources/icons-custom/index.qrc">
-     <normaloff>:/icons/show-labels.svg</normaloff>:/icons/show-labels.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Labels</string>
-   </property>
-   <property name="toolTip">
-    <string>Show sample labels</string>
-   </property>
-   <property name="shortcut">
-    <string>L</string>
-   </property>
-  </action>
   <action name="actionLogarithmic">
    <property name="checkable">
     <bool>true</bool>
@@ -208,6 +191,17 @@
    </property>
    <property name="shortcut">
     <string>Q</string>
+   </property>
+  </action>
+  <action name="actionMarkerMenu">
+   <property name="icon">
+    <iconset theme="draw-star"/>
+   </property>
+   <property name="text">
+    <string>Markers</string>
+   </property>
+   <property name="toolTip">
+    <string>Quick selection of markers</string>
    </property>
   </action>
  </widget>

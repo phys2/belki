@@ -11,7 +11,7 @@ BnmsTab::BnmsTab(QWidget *parent) :
     Viewer(parent)
 {
 	setupUi(this);
-	auto anchor = actionShowLabels;
+	auto anchor = actionMarkerMenu;
 	toolBar->insertWidget(anchor, proteinBox);
 	toolBar->insertSeparator(anchor);
 
@@ -23,10 +23,6 @@ BnmsTab::BnmsTab(QWidget *parent) :
 	/* connect toolbar actions */
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, "Selected Profiles");
-	});
-	connect(actionShowLabels, &QAction::toggled, [this] (bool on) {
-		tabState.showLabels = on;
-		if (current) current().scene->toggleLabels(on);
 	});
 	connect(actionShowAverage, &QAction::toggled, [this] (bool on) {
 		tabState.showAverage = on;
