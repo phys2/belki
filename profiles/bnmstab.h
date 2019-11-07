@@ -5,6 +5,7 @@
 #include "viewer.h"
 
 #include <QIdentityProxyModel>
+#include <QMenu>
 
 #include <memory>
 #include <set>
@@ -31,6 +32,7 @@ protected:
 	};
 
 	void updateEnabled();
+	void setupMarkerMenu();
 
 	struct {
 		ProteinId reference = 0; // first protein
@@ -38,6 +40,8 @@ protected:
 		bool showAverage = false;
 		bool showQuantiles = false;
 	} tabState;
+
+	QMenu markerMenu;
 
 	ContentMap<DataState> content;
 	Current<DataState> current;

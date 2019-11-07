@@ -47,7 +47,7 @@ ProfileTab::ProfileTab(QWidget *parent) :
 	});
 
 	/* connect incoming signals */
-	connect(this, &Viewer::inToggleMarkers, [this] (auto ids, bool present) {
+	connect(this, &Viewer::inToggleMarkers, [this] (auto, bool) {
 		// we do not keep track of markers for inactive scenes
 		if (current)
 			rebuildPlot(); // TODO temporary hack
