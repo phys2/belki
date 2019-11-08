@@ -1,6 +1,7 @@
 #include "windowstate.h"
 
-WindowState::WindowState()
+WindowState::WindowState(GuiState &global)
+    : global(global)
 {
 	auto addOrderItem = [this] (QString name, QIcon icon, int id) {
 		auto item = new QStandardItem(name);

@@ -8,8 +8,7 @@
 #include <QGraphicsSceneHoverEvent>
 
 HeatmapScene::HeatmapScene(Dataset::Ptr data)
-    : data(data),
-      state(std::make_shared<WindowState>())
+    : data(data)
 {
 	auto d = data->peek<Dataset::Base>();
 
@@ -26,6 +25,7 @@ HeatmapScene::HeatmapScene(Dataset::Ptr data)
 	}
 	// note: order will be done in first rearrange() (when view is available)
 	// note: colors will be done in first recolor() by updateColorset()
+	// TODO which was removed though?
 
 	// save for later
 	layout.columnWidth = profiles[0]->boundingRect().width();

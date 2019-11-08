@@ -9,6 +9,8 @@
 #include <QVector>
 #include <QStandardItemModel>
 
+class GuiState;
+
 /* A "dumb" QObject – whoever manipulates also emits the signals
  * Alternatively, we could work with Qt properties (and get/set/notify)
  *
@@ -20,7 +22,7 @@
  */
 struct WindowState : QObject
 {
-	WindowState();
+	WindowState(GuiState &global);
 
 	void setOrder(Order::Type type);
 
@@ -36,6 +38,8 @@ struct WindowState : QObject
 	bool orderSynchronizing = true; // order follows annot./hier. selection
 
 	QStandardItemModel orderModel;
+
+	GuiState &global;
 
 	Q_OBJECT
 

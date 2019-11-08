@@ -10,8 +10,7 @@
 
 DistmatScene::DistmatScene(Dataset::Ptr data, bool dialogMode)
     : dialogMode(dialogMode),
-      data(data),
-      state(std::make_shared<WindowState>())
+      data(data)
 {
 	/* set scene rectangle */
 	qreal offset = (dialogMode ? .01 : .1); // some "feel good" borders
@@ -33,10 +32,6 @@ DistmatScene::DistmatScene(Dataset::Ptr data, bool dialogMode)
 	dimensionSelected.resize((size_t)dim.size(), true); // all dims selected by default
 	for (int i = 0; i < dim.size(); ++i)
 		dimensionLabels.try_emplace((size_t)i, this, (qreal)(i+0.5)/dim.size(), dim.at(i));
-
-	/* trigger computation (also set dimension label visibility) */
-	// TODO: better do this on first draw event
-	setDirection(currentDirection);
 }
 
 void DistmatScene::setState(std::shared_ptr<WindowState> s) {
@@ -68,6 +63,9 @@ void DistmatScene::wakeup()
 		return;
 
 	awake = true;
+	// trigger initial computation (also set dimension label visibility)
+	setDirection(currentDirection);
+
 	// next two lines is reorder,changeAnnot.,toggleAnnot. combined
 	haveAnnotations = false;
 	reorder();

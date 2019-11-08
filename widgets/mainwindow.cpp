@@ -1,4 +1,6 @@
 #include "mainwindow.h"
+#include "guistate.h"
+#include "windowstate.h"
 #include "datahub.h"
 #include "storage.h"
 #include "fileio.h"
@@ -28,8 +30,8 @@
 #include <QtConcurrent>
 #include <QDateTime>
 
-MainWindow::MainWindow(DataHub &hub) :
-    hub(hub),
+MainWindow::MainWindow(std::shared_ptr<WindowState> state) :
+    state(state),
     io(new FileIO(this)) // cleanup by QObject
 {
 	setupUi(this);
@@ -222,7 +224,7 @@ void MainWindow::setupActions()
 		if (filename.isEmpty())
 			return;
 
-		runInBackground([&s=hub.store,filename] { s.exportMarkers(filename); });
+		runInBackground([&s=state->global.store,filename] { s.exportMarkers(filename); });
 	});
 	connect(actionExportAnnotations, &QAction::triggered, [this] {
 		/* keep own copy while user chooses filename */
@@ -234,7 +236,7 @@ void MainWindow::setupActions()
 			return;
 
 		// TODO we cannot move unique_ptr to other thread. so no bg
-		hub.store.exportAnnotations(filename, *localCopy);
+		state->global.store.exportAnnotations(filename, *localCopy);
 	});
 	connect(actionPersistAnnotations, &QAction::triggered, [this] {
 		/* keep own copy while user edits the name */
@@ -249,9 +251,9 @@ void MainWindow::setupActions()
 
 		localCopy->meta.name = name;
 		// TODO we cannot move unique_ptr to other thread. so no bg
-		hub.proteins.addAnnotations(std::move(localCopy), false, true);
+		state->global.proteins.addAnnotations(std::move(localCopy), false, true);
 	});
-	connect(actionClearMarkers, &QAction::triggered, &hub.proteins, &ProteinDB::clearMarkers);
+	connect(actionClearMarkers, &QAction::triggered, &state->global.proteins, &ProteinDB::clearMarkers);
 
 	connect(actionSplice, &QAction::triggered, [this] {
 		if (!data)
@@ -259,7 +261,7 @@ void MainWindow::setupActions()
 		auto s = new SpawnDialog(data, this);
 		// spawn dialog deletes itself, should also kill connection+lambda, right?
 		connect(s, &SpawnDialog::spawn, [this] (auto data, auto& config) {
-			emit hub.spawn(data, config); // TODO change mechanic, dimredTab->currentMethod());
+			emit state->global.hub.spawn(data, config); // TODO change mechanic, dimredTab->currentMethod());
 		});
 	});
 
@@ -267,7 +269,7 @@ void MainWindow::setupActions()
 		auto filename = io->chooseFile(FileIO::SaveProject);
 		if (filename.isEmpty())
 			return;
-		hub.saveProjectAs(filename);
+		state->global.hub.saveProjectAs(filename);
 		// TODO: change our project filename to this one
 	});
 }
@@ -309,11 +311,13 @@ void MainWindow::addTab(MainWindow::Tab type)
 	v->setWindowState(state);
 	v->setProteinModel(&markerModel);
 
-	// connect singnalling into view
-	connect(&hub, &DataHub::newDataset, v, &Viewer::addDataset);
+	// connect singnalling into view (TODO: they should connect themselves)
+	auto hub = &state->global.hub;
+	auto proteins = &state->global.proteins;
+	connect(hub, &DataHub::newDataset, v, &Viewer::addDataset);
 	/* use queued conn. to ensure the views get the newDataset signal _first_! */
 	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
-	connect(&hub.proteins, &ProteinDB::markersToggled, v, &Viewer::inToggleMarkers);
+	connect(proteins, &ProteinDB::markersToggled, v, &Viewer::inToggleMarkers);
 
 	// connect signalling out of view
 	connect(v, &Viewer::markerToggled, this, &MainWindow::markerToggled);
@@ -326,7 +330,8 @@ void MainWindow::addTab(MainWindow::Tab type)
 	connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
 	connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
 
-	for (auto &[_, d] : hub.datasets())
+	// TODO: they could do that themselves, too
+	for (auto &[_, d] : hub->datasets())
 		v->addDataset(d);
 	if (data)
 		v->selectDataset(data->id());
@@ -397,7 +402,7 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 	updateState(Dataset::Touch::ALL);
 
 	// TODO wronge place to do this in new storage concept
-	setFilename(data ? hub.store.name() : "");
+	setFilename(data ? state->global.hub.store.name() : "");
 }
 
 void MainWindow::setFilename(QString name)
@@ -470,7 +475,7 @@ void MainWindow::selectStructure(int id)
 	}
 
 	/* regular items */
-	auto p = hub.proteins.peek();
+	auto p = state->global.proteins.peek();
 	if (p->isHierarchy((unsigned)id)) {
 		auto source = std::get_if<HrClustering>(&p->structures.at(id));
 		auto reasonable = source->clusters.size() / 4;
@@ -500,6 +505,7 @@ void MainWindow::openFile(Input type, QString fn)
 			return; // nothing selected
 	}
 
+	auto &hub = state->global.hub;
 	switch (type) {
 	case Input::DATASET:      hub.importDataset(fn, "Dist"); break;
 	case Input::DATASET_RAW:  hub.importDataset(fn, "AbundanceLeft"); break;
@@ -592,7 +598,7 @@ std::unique_ptr<Annotations> MainWindow::currentAnnotations()
 {
 	/* maybe proteindb has it? */
 	if (state->annotations.id > 0) {
-		auto p = hub.proteins.peek();
+		auto p = state->global.proteins.peek();
 		auto source = std::get_if<Annotations>(&p->structures.at(state->annotations.id));
 		if (source)
 			return std::make_unique<Annotations>(*source);

@@ -1,7 +1,7 @@
 #ifndef DATAHUB_H
 #define DATAHUB_H
 
-#include "dataset.h" // for Dataset::OrderBy
+#include "dataset.h" // for DatasetConfiguration
 #include "proteindb.h"
 #include "storage.h"
 #include "utils.h"
