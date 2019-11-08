@@ -18,8 +18,7 @@
 Chart::Chart(Dataset::ConstPtr data, const ChartConfig *config) :
     ax(new QtCharts::QValueAxis), ay(new QtCharts::QValueAxis),
     animReset(new QTimer(this)),
-    config(config), data(data),
-	state(std::make_shared<WindowState>())
+    config(config), data(data)
 {
 	/* set up general appearance */
 	// disable grid animations as a lot of distracting stuff happens there

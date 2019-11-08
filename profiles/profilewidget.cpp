@@ -7,8 +7,7 @@
 #include <random>
 
 ProfileWidget::ProfileWidget(QWidget *parent) :
-    QWidget(parent),
-    state(std::make_shared<WindowState>())
+    QWidget(parent)
 {
 	setupUi(this);
 

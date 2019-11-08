@@ -56,7 +56,7 @@ protected:
 		State *p = nullptr;
 	};
 
-	std::shared_ptr<WindowState> windowState = std::make_shared<WindowState>();
+	std::shared_ptr<WindowState> windowState;
 };
 
 #endif // VIEWER_H
