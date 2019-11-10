@@ -15,6 +15,7 @@ class Storage;
 class Dataset;
 class QStandardItem;
 class QStandardItemModel;
+class QMenu;
 
 class GuiState : public QObject
 {
@@ -22,6 +23,8 @@ class GuiState : public QObject
 
 public:
 	explicit GuiState(DataHub &hub);
+
+	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
 
 	bool eventFilter(QObject *watched, QEvent *event) override;
 

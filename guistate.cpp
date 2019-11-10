@@ -6,6 +6,9 @@
 #include <QAbstractProxyModel>
 #include <QTimer>
 #include <QEvent>
+#include <QMenu>
+#include <QWidgetAction>
+#include <QDesktopServices>
 
 GuiState::GuiState(DataHub &hub)
     : hub(hub), proteins(hub.proteins), store(hub.store)
@@ -46,6 +49,39 @@ GuiState::GuiState(DataHub &hub)
 		}
 	});
 	connect(&hub, &DataHub::newDataset, this, &GuiState::addDataset);
+}
+
+std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
+{
+	auto p = proteins.peek();
+	auto title = p->proteins[id].name;
+	auto ret = std::make_unique<QMenu>(title);
+	// TODO icon based on color
+	auto label = new QLabel(title);
+	QString style{"QLabel {background-color: %2; color: white; font-weight: bold}"};
+	label->setStyleSheet(style.arg(p->proteins[id].color.name()));
+	label->setAlignment(Qt::AlignCenter);
+	label->setMargin(2);
+	auto t = new QWidgetAction(ret.get());
+	t->setDefaultWidget(label);
+	ret->addAction(t);
+
+	if (p->markers.count(id)) {
+		ret->addAction("Remove from markers", [this,id] {
+			proteins.removeMarker(id);
+		});
+	} else {
+		ret->addAction("Add to markers", [this,id] {
+			proteins.addMarker(id);
+		});
+	}
+	ret->addSeparator();
+	auto url = QString{"https://uniprot.org/uniprot/%1_%2"}
+	           .arg(p->proteins[id].name, p->proteins[id].species);
+	ret->addAction("Lookup in Uniprot", [url] {
+		QDesktopServices::openUrl(url);
+	});
+	return ret;
 }
 
 unsigned GuiState::addWindow()

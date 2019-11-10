@@ -1,5 +1,6 @@
 #include "chart.h"
 #include "windowstate.h"
+#include "guistate.h"
 
 #include <QAbstractAxis>
 #include <QScatterSeries>
@@ -11,6 +12,8 @@
 #include <QPolygonF>
 #include <QHash>
 #include <QTimer>
+#include <QCursor>
+#include <QMenu>
 
 #include <map>
 #include <cmath>
@@ -501,7 +504,9 @@ Chart::Marker::Marker(Chart *chart, unsigned sampleIndex, ProteinId id)
 	/* allow to remove marker by clicking its legend entry */
 	auto lm = chart->legend()->markers(s).first();
 	connect(lm, &QtCharts::QLegendMarker::clicked, [chart, this] {
-		emit chart->markerToggled(sampleId, false);
+		//emit chart->markerToggled(sampleId, false);
+		auto menu = chart->state->global.proteinMenu(sampleId);
+		menu->exec(QCursor::pos() + QPoint{1,1});
 	});
 
 	// follow style changes (note: receiver specified for cleanup on delete!)
