@@ -127,6 +127,7 @@ void ProfileWidget::update()
 
 	// compose list
 	QString content;
+	// TODO: custom URL with URL handler that leads to protein menu
 	QString tpl("<b><a href='https://uniprot.org/uniprot/%1_%2'>%1</a></b> <small>%3 <i>%4</i></small><br>");
 	for (auto i : qAsConst(samples)) {
 		 // highlight marker proteins
