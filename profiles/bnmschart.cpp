@@ -73,7 +73,7 @@ void BnmsChart::setReference(ProteinId ref)
 
 	reference = r->second;
 	repopulate();
-};
+}
 
 void BnmsChart::repopulate()
 {
