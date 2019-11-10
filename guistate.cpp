@@ -1,11 +1,17 @@
 #include "guistate.h"
+#include "windowstate.h"
+#include "datahub.h"
 #include "widgets/mainwindow.h"
 
 #include <QAbstractProxyModel>
 #include <QTimer>
 #include <QEvent>
+#include <QMenu>
+#include <QWidgetAction>
+#include <QDesktopServices>
 
-GuiState::GuiState(DataHub &hub) : hub(hub)
+GuiState::GuiState(DataHub &hub)
+    : hub(hub), proteins(hub.proteins), store(hub.store)
 {
 	auto addStructureItem = [this] (QString name, QString icon, int id) {
 		auto item = new QStandardItem(name);
@@ -25,16 +31,16 @@ GuiState::GuiState(DataHub &hub) : hub(hub)
 
 	/* notifications from Protein db */
 	connect(&hub, &DataHub::ioError, this, &GuiState::displayMessage);
-	connect(&hub.proteins, &ProteinDB::proteinAdded, this, &GuiState::addProtein);
-	connect(&hub.proteins, &ProteinDB::markersToggled,
+	connect(&proteins, &ProteinDB::proteinAdded, this, &GuiState::addProtein);
+	connect(&proteins, &ProteinDB::markersToggled,
 	        this, [this] (auto ids, bool present) {
 		auto state = present ? Qt::Checked : Qt::Unchecked;
 		for (auto id : ids)
 			this->markerControl.items.at(id)->setCheckState(state);
 	});
-	connect(&hub.proteins, &ProteinDB::structureAvailable, this,
+	connect(&proteins, &ProteinDB::structureAvailable, this,
 	        [this,addStructureItem] (unsigned id, QString name, bool select) {
-		auto icon = (this->hub.proteins.peek()->isHierarchy(id) ? "hierarchy" : "annotations");
+		auto icon = (proteins.peek()->isHierarchy(id) ? "hierarchy" : "annotations");
 		addStructureItem(name, QString(":/icons/type-%1.svg").arg(icon), (int)id);
 		if (select) {
 			auto target = focused();
@@ -45,9 +51,43 @@ GuiState::GuiState(DataHub &hub) : hub(hub)
 	connect(&hub, &DataHub::newDataset, this, &GuiState::addDataset);
 }
 
+std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
+{
+	auto p = proteins.peek();
+	auto title = p->proteins[id].name;
+	auto ret = std::make_unique<QMenu>(title);
+	// TODO icon based on color
+	auto label = new QLabel(title);
+	QString style{"QLabel {background-color: %2; color: white; font-weight: bold}"};
+	label->setStyleSheet(style.arg(p->proteins[id].color.name()));
+	label->setAlignment(Qt::AlignCenter);
+	label->setMargin(2);
+	auto t = new QWidgetAction(ret.get());
+	t->setDefaultWidget(label);
+	ret->addAction(t);
+
+	if (p->markers.count(id)) {
+		ret->addAction("Remove from markers", [this,id] {
+			proteins.removeMarker(id);
+		});
+	} else {
+		ret->addAction("Add to markers", [this,id] {
+			proteins.addMarker(id);
+		});
+	}
+	ret->addSeparator();
+	auto url = QString{"https://uniprot.org/uniprot/%1_%2"}
+	           .arg(p->proteins[id].name, p->proteins[id].species);
+	ret->addAction("Lookup in Uniprot", [url] {
+		QDesktopServices::openUrl(url);
+	});
+	return ret;
+}
+
 unsigned GuiState::addWindow()
 {
-	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(hub));
+	auto state = std::make_shared<WindowState>(*this);
+	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(state));
 	auto target = it->second;
 	target->installEventFilter(this); // for focus tracking
 	target->setDatasetControlModel(&datasetControl.model);
@@ -137,12 +177,12 @@ void GuiState::handleMarkerChange(QStandardItem *item)
 	bool wanted = item->checkState() == Qt::Checked;
 	/* We are called on check state change, but also other item changes,
 	   e.g. quite many items get enabled/disabled regularly. */
-	if (hub.proteins.peek()->markers.count(id) == wanted)
+	if (proteins.peek()->markers.count(id) == wanted)
 		return;
 	if (wanted)
-		hub.proteins.addMarker(id);
+		proteins.addMarker(id);
 	else
-		hub.proteins.removeMarker(id);
+		proteins.removeMarker(id);
 }
 
 void GuiState::displayMessage(const QString &message, MessageType type)

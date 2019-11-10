@@ -328,6 +328,11 @@ void ProfileChart::setupSeries()
 			connect(s, &QtCharts::QLineSeries::hovered, [this,i=index] (auto, bool on) {
 				toggleHighlight(on ? (int)i : -1);
 			});
+
+			/* protein menu on legend item click */
+			//connect(lm, &QtCharts::QLegendMarker::clicked, [this] {
+			//
+			//});
 		}
 	};
 

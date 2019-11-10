@@ -1,14 +1,21 @@
 #ifndef GUISTATE_H
 #define GUISTATE_H
 
-#include "datahub.h"
+#include "model.h"
+#include "utils.h"
 
 #include <QObject>
 #include <QStandardItemModel>
+#include <memory>
 
+class MainWindow;
+class DataHub;
+class ProteinDB;
+class Storage;
+class Dataset;
 class QStandardItem;
 class QStandardItemModel;
-class MainWindow;
+class QMenu;
 
 class GuiState : public QObject
 {
@@ -17,13 +24,15 @@ class GuiState : public QObject
 public:
 	explicit GuiState(DataHub &hub);
 
+	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
+
 	bool eventFilter(QObject *watched, QEvent *event) override;
 
 public slots:
 	unsigned addWindow();
 	void removeWindow(unsigned id);
 
-	void addDataset(Dataset::Ptr dataset);
+	void addDataset(std::shared_ptr<Dataset> dataset);
 	void addProtein(ProteinId id, const Protein &protein);
 	void flipMarker(QModelIndex i);
 	void toggleMarker(ProteinId id, bool present);
@@ -31,6 +40,11 @@ public slots:
 	void handleMarkerChange(QStandardItem *item);
 
 	void displayMessage(const QString &message, MessageType type = MessageType::CRITICAL);
+
+public:
+	DataHub &hub;
+	ProteinDB &proteins;
+	Storage &store;
 
 protected:
 	void sortMarkerModel();
@@ -53,8 +67,6 @@ protected:
 	} markerControl;
 
 	QStandardItemModel structureModel;
-
-	DataHub &hub;
 };
 
 #endif

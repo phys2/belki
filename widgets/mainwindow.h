@@ -4,7 +4,6 @@
 #include "ui_mainwindow.h"
 #include "dataset.h"
 #include "utils.h"
-#include "windowstate.h"
 
 #include <QMainWindow>
 #include <QIdentityProxyModel>
@@ -14,6 +13,7 @@
 #include <unordered_set>
 
 class DataHub;
+class WindowState;
 class FileIO;
 class QLabel;
 class QTreeView;
@@ -25,7 +25,7 @@ class MainWindow : public QMainWindow, private Ui::MainWindow
 	Q_OBJECT
 
 public:
-	explicit MainWindow(DataHub &hub);
+	explicit MainWindow(std::shared_ptr<WindowState> state);
 
 	FileIO *getIo() { return io; }
 
@@ -97,9 +97,8 @@ protected:
 	void runInBackground(const std::function<void()> &work);
 	void runOnData(const std::function<void(Dataset::Ptr)> &work);
 
-	DataHub &hub;
 	Dataset::Ptr data;
-	std::shared_ptr<WindowState> state = std::make_shared<WindowState>();
+	std::shared_ptr<WindowState> state;
 
 	CustomEnableProxyModel markerModel;
 	QTreeView *datasetTree;
