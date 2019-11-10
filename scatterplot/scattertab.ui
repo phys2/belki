@@ -141,7 +141,7 @@
   </action>
   <action name="actionCycleForward">
    <property name="icon">
-    <iconset theme="arrow-right">
+    <iconset theme="go-next">
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
@@ -156,7 +156,7 @@
   </action>
   <action name="actionCycleBackward">
    <property name="icon">
-    <iconset theme="arrow-left">
+    <iconset theme="go-previous">
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
