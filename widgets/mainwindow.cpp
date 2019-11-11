@@ -251,9 +251,9 @@ void MainWindow::setupActions()
 
 		localCopy->meta.name = name;
 		// TODO we cannot move unique_ptr to other thread. so no bg
-		state->global.proteins.addAnnotations(std::move(localCopy), false, true);
+		state->proteins().addAnnotations(std::move(localCopy), false, true);
 	});
-	connect(actionClearMarkers, &QAction::triggered, &state->global.proteins, &ProteinDB::clearMarkers);
+	connect(actionClearMarkers, &QAction::triggered, &state->proteins(), &ProteinDB::clearMarkers);
 
 	connect(actionSplice, &QAction::triggered, [this] {
 		if (!data)
@@ -313,7 +313,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 
 	// connect singnalling into view (TODO: they should connect themselves)
 	auto hub = &state->global.hub;
-	auto proteins = &state->global.proteins;
+	auto proteins = &state->proteins();
 	connect(hub, &DataHub::newDataset, v, &Viewer::addDataset);
 	/* use queued conn. to ensure the views get the newDataset signal _first_! */
 	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
@@ -474,7 +474,7 @@ void MainWindow::selectStructure(int id)
 	}
 
 	/* regular items */
-	auto p = state->global.proteins.peek();
+	auto p = state->proteins().peek();
 	if (p->isHierarchy((unsigned)id)) {
 		auto source = std::get_if<HrClustering>(&p->structures.at(id));
 		auto reasonable = source->clusters.size() / 4;
@@ -597,7 +597,7 @@ std::unique_ptr<Annotations> MainWindow::currentAnnotations()
 {
 	/* maybe proteindb has it? */
 	if (state->annotations.id > 0) {
-		auto p = state->global.proteins.peek();
+		auto p = state->proteins().peek();
 		auto source = std::get_if<Annotations>(&p->structures.at(state->annotations.id));
 		if (source)
 			return std::make_unique<Annotations>(*source);
