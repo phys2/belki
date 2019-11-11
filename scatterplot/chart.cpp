@@ -1,6 +1,5 @@
 #include "chart.h"
 #include "windowstate.h"
-#include "guistate.h"
 
 #include <QAbstractAxis>
 #include <QScatterSeries>
@@ -236,6 +235,7 @@ void Chart::moveCursor(const QPointF &pos)
 
 	cursorCenter = pos;
 	if (pos.isNull() || !plotArea().contains(pos)) {
+		nearestProtein = -1;
 		tracker->hide();
 
 		// do not interfer with cluster profile view
@@ -256,6 +256,12 @@ void Chart::resetCursor()
 void Chart::toggleCursorLock()
 {
 	cursorLocked = !cursorLocked;
+}
+
+void Chart::openProteinMenu()
+{
+	if (nearestProtein > -1)
+		state->proteinMenu((ProteinId)nearestProtein)->exec(QCursor::pos());
 }
 
 void Chart::refreshCursor()
@@ -285,9 +291,16 @@ void Chart::refreshCursor()
 	auto d = data->peek<Dataset::Structure>();
 	auto annotations = d->fetch(state->annotations);
 	auto pv = master->pointsVector();
+
+	nearestProtein = -1;
+	auto nearest = std::numeric_limits<double>::max();
 	for (int i = 0; i < pv.size(); ++i) {
 		auto diffVec = pv[i] - center;
-		if (QPointF::dotProduct(diffVec, diffVec) < range) {
+		auto dist = QPointF::dotProduct(diffVec, diffVec);
+		if (dist < range) {
+			if (dist < nearest)
+				nearestProtein = i;
+
 			list << (unsigned)i;
 			if (!annotations)
 				continue;
@@ -504,13 +517,11 @@ Chart::Marker::Marker(Chart *chart, unsigned sampleIndex, ProteinId id)
 	s->setPointLabelsFont(f);
 	s->setPointLabelsVisible(true);
 
-	/* allow to remove marker by clicking its legend entry */
+	/* install protein menu */
+	auto openMenu = [chart,id] { chart->state->proteinMenu(id)->exec(QCursor::pos()); };
+	connect(s, &QtCharts::QScatterSeries::clicked, openMenu);
 	auto lm = chart->legend()->markers(s).first();
-	connect(lm, &QtCharts::QLegendMarker::clicked, [chart, this] {
-		//emit chart->markerToggled(sampleId, false);
-		auto menu = chart->state->global.proteinMenu(sampleId);
-		menu->exec(QCursor::pos() + QPoint{1,1});
-	});
+	connect(lm, &QtCharts::QLegendMarker::clicked, openMenu);
 
 	// follow style changes (note: receiver specified for cleanup on delete!)
 	s->connect(chart, &Chart::proteinStyleUpdated, s, [config, s] {

@@ -8,9 +8,11 @@
 #include <QColor>
 #include <QVector>
 #include <QStandardItemModel>
+#include <memory>
 
 class GuiState;
 class ProteinDB;
+class QMenu;
 
 /* A "dumb" QObject – whoever manipulates also emits the signals
  * Alternatively, we could work with Qt properties (and get/set/notify)
@@ -26,6 +28,7 @@ struct WindowState : QObject
 	WindowState(GuiState &global);
 
 	ProteinDB& proteins();
+	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
 
 	void setOrder(Order::Type type);
 

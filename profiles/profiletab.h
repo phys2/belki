@@ -11,6 +11,7 @@
 #include <unordered_map>
 
 class ProfileChart;
+class QMenu;
 
 class ProfileTab : public Viewer, private Ui::ProfileTab
 {
@@ -42,7 +43,9 @@ protected:
 		std::set<ProteinId> &marked;
 	};
 
+	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
 	void rebuildPlot(); // TODO temporary hack
+	void toggleExtra(ProteinId id);
 	void updateEnabled();
 	void setupProteinBox();
 

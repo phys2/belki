@@ -77,6 +77,7 @@ public slots:
 	void resetCursor();
 	void moveCursor(const QPointF &pos = {});
 	void toggleCursorLock();
+	void openProteinMenu();
 
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
@@ -112,6 +113,7 @@ protected:
 	} zoom;
 	bool cursorLocked = false;
 	QPointF cursorCenter;
+	int nearestProtein = -1; // protein under mouse cursor, if any
 
 	// data source
 	Dataset::ConstPtr data;

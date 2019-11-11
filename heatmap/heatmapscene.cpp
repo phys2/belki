@@ -6,6 +6,7 @@
 #include <QPainter>
 #include <QGraphicsItem>
 #include <QGraphicsSceneHoverEvent>
+#include <QMenu>
 
 HeatmapScene::HeatmapScene(Dataset::Ptr data)
     : data(data)
@@ -274,6 +275,12 @@ void HeatmapScene::Profile::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
 		return;
 	}
 	setToolTip(scene()->data->peek<Dataset::Base>()->dimensions.at(index));
+}
+
+void HeatmapScene::Profile::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
+{
+	auto id = scene()->data->peek<Dataset::Base>()->protIds[index];
+	scene()->state->proteinMenu(id)->exec(event->screenPos());
 }
 
 HeatmapScene::Marker::Marker(HeatmapScene *scene, unsigned sampleIndex, const QPointF &pos)

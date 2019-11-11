@@ -4,6 +4,8 @@
 #include "dataset.h"
 #include "windowstate.h"
 
+#include <QMenu>
+#include <QCursor>
 #include <random>
 
 ProfileWidget::ProfileWidget(QWidget *parent) :
@@ -22,6 +24,12 @@ ProfileWidget::ProfileWidget(QWidget *parent) :
 	connect(actionProfileView, &QAction::triggered, [this] {
 		if (chart)
 			new ProfileWindow(chart, this->window());
+	});
+
+	// setup protein menu
+	connect(proteinList, &QTextBrowser::anchorClicked, [this] (const QUrl& link) {
+		if (state && link.scheme() == "protein")
+			state->proteinMenu(link.path().toUInt())->exec(QCursor::pos());
 	});
 
 	// move button into chart (evil :D)
@@ -82,18 +90,14 @@ void ProfileWidget::update()
 	/* determine marker proteins contained in samples */
 	auto d = data->peek<Dataset::Base>();
 	auto p = data->peek<Dataset::Proteins>();
-	std::set<unsigned> markers;
-	for (auto i : qAsConst(samples)) {
-		if (p->markers.count(d->protIds[i]))
-			markers.insert(i);
-	}
+	auto idOf = [&] (auto index) { return d->protIds[index]; };
 
 	/* set up plot */
 	bool reduced = samples.size() >= 25;
 	chart->toggleAverage(reduced);
 	chart->toggleIndividual(!reduced);
 	for (auto i : qAsConst(samples))
-		chart->addSampleByIndex(i, markers.count(i));
+		chart->addSampleByIndex(i, p->markers.count(idOf(i)));
 	chart->finalize();
 
 	/* set up list */
@@ -128,12 +132,12 @@ void ProfileWidget::update()
 	// compose list
 	QString content;
 	// TODO: custom URL with URL handler that leads to protein menu
-	QString tpl("<b><a href='https://uniprot.org/uniprot/%1_%2'>%1</a></b> <small>%3 <i>%4</i></small><br>");
+	QString tpl("<b><a href='protein:%1'>%2</a></b> <small>%3 <i>%4</i></small><br>");
 	for (auto i : qAsConst(samples)) {
 		 // highlight marker proteins
-		if (markers.count(i))
+		if (p->markers.count(idOf(i)))
 			content.append("<small>★</small>");
-		auto &prot = d->lookup(p, i);
+		auto &prot = p->proteins[idOf(i)];
 		QStringList clusters;
 		if (annotations) {
 			auto &m = annotations->memberships[i];
@@ -141,7 +145,7 @@ void ProfileWidget::update()
 			                           [&annotations] (QStringList a, unsigned b) {
 			                            return a << annotations->groups.at(b).name; });
 		}
-		content.append(tpl.arg(prot.name, prot.species, clusters.join(", "), prot.description));
+		content.append(tpl.arg(idOf(i)).arg(prot.name, clusters.join(", "), prot.description));
 	}
 	proteinList->setText(text.arg(content));
 

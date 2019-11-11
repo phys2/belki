@@ -98,7 +98,6 @@ void ScatterTab::addDataset(Dataset::Ptr data)
 	scene->setState(windowState);
 
 	/* connect outgoing signals */
-	connect(scene, &Chart::markerToggled, this, &Viewer::markerToggled);
 	connect(scene, &Chart::cursorChanged, this, &Viewer::cursorChanged);
 }
 

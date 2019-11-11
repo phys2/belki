@@ -1,6 +1,8 @@
 #include "windowstate.h"
 #include "guistate.h"
 
+#include <QMenu>
+
 WindowState::WindowState(GuiState &global)
     : global(global)
 {
@@ -22,6 +24,11 @@ WindowState::WindowState(GuiState &global)
 ProteinDB& WindowState::proteins()
 {
 	return global.proteins;
+}
+
+std::unique_ptr<QMenu> WindowState::proteinMenu(ProteinId id)
+{
+	return global.proteinMenu(id);
 }
 
 void WindowState::setOrder(Order::Type type)

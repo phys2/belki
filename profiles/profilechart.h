@@ -46,6 +46,7 @@ signals:
 	void toggleIndividual(bool on);
 	void toggleAverage(bool on);
 	void toggleQuantiles(bool on);
+	void menuRequested(ProteinId id);
 
 protected:
 	enum class SeriesCategory { // see showCategories
