@@ -10,9 +10,6 @@
 #include <map>
 #include <memory>
 
-class ProteinDB;
-class Storage;
-
 class DataHub : public QObject
 {
 	Q_OBJECT
@@ -49,16 +46,6 @@ protected:
 		std::map<unsigned, DataPtr> sets;
 		unsigned nextId = 1;
 	} data;
-
-	// configuration to apply when switching datasets // TODO THIS GOES TO MAINWINDOW
-	struct {
-		struct {
-			// last-selected structure (annotations/hierarchy) id (used when dataset changes)
-			unsigned annotationsId = 0; // 0 means none
-			unsigned hierarchyId = 0; // 0 means none
-			unsigned granularity = 0; // hierarchy parameter
-		} structure;
-	} guiState;
 };
 
 #endif
