@@ -45,8 +45,6 @@ struct WindowState : QObject
 
 	QStandardItemModel orderModel;
 
-	GuiState &global;
-
 	Q_OBJECT
 
 signals:
@@ -57,6 +55,10 @@ signals:
 	void orderChanged();
 	void orderSynchronizingToggled();
 	void openGlToggled();
+
+protected:
+	GuiState &global;
+	friend class MainWindow; // for access to global->hub/store. temporary
 };
 
 #endif
