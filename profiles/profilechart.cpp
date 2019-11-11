@@ -326,11 +326,11 @@ void ProfileChart::setupSeries()
 			auto lm = legend()->markers(s).first();
 
 			/* allow highlight through series/marker hover */
-			connect(s, &QtCharts::QLineSeries::hovered, [this,index] (auto, bool on) {
-				toggleHighlight(on ? (int)index : -1);
+			connect(s, &QtCharts::QLineSeries::hovered, [this,i=index] (auto, bool on) {
+				toggleHighlight(on ? (int)i : -1);
 			});
-			connect(lm, &QtCharts::QLegendMarker::hovered, [this,index] (bool on) {
-				toggleHighlight(on ? (int)index : -1);
+			connect(lm, &QtCharts::QLegendMarker::hovered, [this,i=index] (bool on) {
+				toggleHighlight(on ? (int)i : -1);
 			});
 
 			/* install protein menu  */
