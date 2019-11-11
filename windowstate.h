@@ -10,6 +10,7 @@
 #include <QStandardItemModel>
 
 class GuiState;
+class ProteinDB;
 
 /* A "dumb" QObject – whoever manipulates also emits the signals
  * Alternatively, we could work with Qt properties (and get/set/notify)
@@ -23,6 +24,8 @@ class GuiState;
 struct WindowState : QObject
 {
 	WindowState(GuiState &global);
+
+	ProteinDB& proteins();
 
 	void setOrder(Order::Type type);
 
