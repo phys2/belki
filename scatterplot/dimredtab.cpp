@@ -100,7 +100,6 @@ void DimredTab::addDataset(Dataset::Ptr data)
 	scene->setTitles("dim 1", "dim 2");
 
 	/* connect outgoing signals */
-	connect(scene, &Chart::markerToggled, this, &Viewer::markerToggled);
 	connect(scene, &Chart::cursorChanged, this, &Viewer::cursorChanged);
 }
 

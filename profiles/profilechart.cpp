@@ -297,18 +297,21 @@ void ProfileChart::setupSeries()
 			if (onlyMarkers && !isMarker)
 				continue;
 
+			auto id = d->protIds[index];
+			auto &prot = p->proteins[id];
+
 			auto s = new QtCharts::QLineSeries;
 			series[index] = s;
 			add(s, SeriesCategory::INDIVIDUAL, isMarker);
 			// color only markers in small view
-			QColor color = (isMarker || !small ? d->lookup(p, index).color : Qt::black);
+			QColor color = (isMarker || !small ? prot.color : Qt::black);
 			if (isMarker && !small) { // acentuate markers in big view
 				auto pen = s->pen();
 				pen.setWidthF(3. * pen.widthF());
 				s->setPen(pen);
 			}
 			s->setColor(color);
-			s->setName(titleOf(index, d->lookup(p, index).name, isMarker));
+			s->setName(titleOf(index, prot.name, isMarker));
 
 			if (d->hasScores()) { // visualize scores through points along polyline
 				s->setPointsVisible(true);
@@ -320,19 +323,20 @@ void ProfileChart::setupSeries()
 
 			s->replace(logSpace ? featurePoints[index] : d->featurePoints[index]);
 
-			/* allow highlight through series/marker hover */
 			auto lm = legend()->markers(s).first();
-			connect(lm, &QtCharts::QLegendMarker::hovered, [this,i=index] (bool on) {
-				toggleHighlight(on ? (int)i : -1);
+
+			/* allow highlight through series/marker hover */
+			connect(s, &QtCharts::QLineSeries::hovered, [this,index] (auto, bool on) {
+				toggleHighlight(on ? (int)index : -1);
 			});
-			connect(s, &QtCharts::QLineSeries::hovered, [this,i=index] (auto, bool on) {
-				toggleHighlight(on ? (int)i : -1);
+			connect(lm, &QtCharts::QLegendMarker::hovered, [this,index] (bool on) {
+				toggleHighlight(on ? (int)index : -1);
 			});
 
-			/* protein menu on legend item click */
-			//connect(lm, &QtCharts::QLegendMarker::clicked, [this] {
-			//
-			//});
+			/* install protein menu  */
+			auto openMenu = [this,id] { emit menuRequested(id); };
+			connect(s, &QtCharts::QLineSeries::clicked, openMenu);
+			connect(lm, &QtCharts::QLegendMarker::clicked, openMenu);
 		}
 	};
 

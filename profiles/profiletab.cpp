@@ -5,6 +5,8 @@
 #include <QAbstractProxyModel>
 #include <QCompleter>
 #include <QListWidget>
+#include <QMenu>
+#include <QCursor>
 
 ProfileTab::ProfileTab(QWidget *parent) :
     Viewer(parent), proteinModel(tabState.extras)
@@ -94,6 +96,11 @@ void ProfileTab::addDataset(Dataset::Ptr data)
 		state.logSpace = true;
 		state.scene->toggleLogSpace(true);
 	}
+
+	/* connect outgoing signals */
+	connect(state.scene.get(), &ProfileChart::menuRequested, [this] (ProteinId id) {
+		proteinMenu(id)->exec(QCursor::pos());
+	});
 }
 
 bool ProfileTab::eventFilter(QObject *watched, QEvent *event)
@@ -106,6 +113,21 @@ bool ProfileTab::eventFilter(QObject *watched, QEvent *event)
 			protSearch->completer()->complete();
 	}
 
+	return ret;
+}
+
+std::unique_ptr<QMenu> ProfileTab::proteinMenu(ProteinId id)
+{
+	auto ret = windowState->proteinMenu(id);
+	if (ret->actions().count() < 2)
+		return ret;
+	if (windowState->proteins().peek()->markers.count(id))
+		return ret; // don't confuse user with markers shadowing extra proteins
+	auto anchor = ret->actions().at(1);
+	auto text = (tabState.extras.count(id) ? "Remove from plot" : "Add to plot");
+	auto action = new QAction(text, ret.get());
+	connect(action, &QAction::triggered, [this,id] { toggleExtra(id); });
+	ret->insertAction(anchor, action);
 	return ret;
 }
 
@@ -122,6 +144,15 @@ void ProfileTab::rebuildPlot()
 			scene->addSample(e, false);
 	}
 	scene->finalize();
+}
+
+void ProfileTab::toggleExtra(ProteinId id)
+{
+	if (tabState.extras.count(id))
+		tabState.extras.erase(id);
+	else
+		tabState.extras.insert(id);
+	rebuildPlot();
 }
 
 void ProfileTab::setupProteinBox()
@@ -146,11 +177,7 @@ void ProfileTab::setupProteinBox()
 		if (!proxy)
 			return; // sorry, can't do this!
 		auto id = unsigned(proteinModel.data(proxy->mapToSource(i), Qt::UserRole + 1).toInt());
-		if (tabState.extras.count(id))
-			tabState.extras.erase(id);
-		else
-			tabState.extras.insert(id);
-		rebuildPlot();
+		toggleExtra(id);
 	};
 
 	/* Allow to toggle check state by click */

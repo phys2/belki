@@ -129,7 +129,7 @@ void ChartView::mouseReleaseEvent(QMouseEvent *event)
 		return;
 
 	if (event->button() == Qt::LeftButton) {
-		chart()->toggleCursorLock();
+		chart()->openProteinMenu();
 	}
 }
 

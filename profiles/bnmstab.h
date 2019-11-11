@@ -32,6 +32,8 @@ protected:
 		bool logSpace = false;
 	};
 
+	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
+	void setReference(ProteinId id);
 	void updateEnabled();
 	void setupMarkerMenu();
 

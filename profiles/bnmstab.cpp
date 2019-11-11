@@ -51,16 +51,8 @@ BnmsTab::BnmsTab(QWidget *parent) :
 	connect(referenceSelect, qOverload<int>(&QComboBox::currentIndexChanged), [this] {
 		if (referenceSelect->currentIndex() < 0)
 			return; // nothing selected
-		auto value = referenceSelect->currentData(Qt::UserRole + 1).value<int>();
-		tabState.reference = (unsigned)value;
-		if (current)
-			current().scene->setReference(tabState.reference);
+		setReference((unsigned)referenceSelect->currentData(Qt::UserRole + 1).value<int>());
 	});
-
-	/* connect incoming signals */
-//	connect(this, &Viewer::inToggleMarkers, [this] (auto, bool) {
-//		setupMarkerMenu();
-//	});
 
 	updateEnabled();
 }
@@ -114,6 +106,32 @@ void BnmsTab::addDataset(Dataset::Ptr data)
 		state.logSpace = true;
 		state.scene->toggleLogSpace(true);
 	}
+
+	/* connect outgoing signals */
+	connect(state.scene.get(), &ProfileChart::menuRequested, [this] (ProteinId id) {
+		proteinMenu(id)->exec(QCursor::pos());
+	});
+}
+
+std::unique_ptr<QMenu> BnmsTab::proteinMenu(ProteinId id)
+{
+	auto ret = windowState->proteinMenu(id);
+	if (ret->actions().count() < 2)
+		return ret;
+	if (id == tabState.reference)
+		return ret;
+	auto anchor = ret->actions().at(1);
+	auto action = new QAction("Switch to", ret.get());
+	connect(action, &QAction::triggered, [this,id] { setReference(id); });
+	ret->insertAction(anchor, action);
+	return ret;
+}
+
+void BnmsTab::setReference(ProteinId id)
+{
+	tabState.reference = id;
+	if (current)
+		current().scene->setReference(tabState.reference);
 }
 
 void BnmsTab::updateEnabled()
