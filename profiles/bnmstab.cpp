@@ -13,14 +13,18 @@ BnmsTab::BnmsTab(QWidget *parent) :
     Viewer(parent)
 {
 	setupUi(this);
-	auto anchor = actionMarkerMenu;
+	auto anchor = actionHistoryMenu;
 	toolBar->insertWidget(anchor, proteinBox);
 	toolBar->insertSeparator(anchor);
 
+	actionHistoryMenu->setMenu(&historyMenu);
+	actionHistoryMenu->setEnabled(false); // no history yet
 	actionMarkerMenu->setMenu(&markerMenu);
-	// let marker button display menu without holding mouse
-	auto btn = qobject_cast<QToolButton*>(toolBar->widgetForAction(actionMarkerMenu));
-	btn->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);
+	// buttons display menu without holding mouse
+	for (auto i : {actionHistoryMenu, actionMarkerMenu}) {
+		auto btn = qobject_cast<QToolButton*>(toolBar->widgetForAction(i));
+		btn->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);
+	}
 
 	// right-align screenshot button
 	auto* spacer = new QWidget();
@@ -129,18 +133,33 @@ std::unique_ptr<QMenu> BnmsTab::proteinMenu(ProteinId id)
 
 void BnmsTab::setReference(ProteinId id)
 {
-	QSignalBlocker _(referenceSelect);
-	referenceSelect->setCurrentIndex(referenceSelect->findData(id, Qt::UserRole + 1));
+	if (tabState.reference == id)
+		return;
+
+	addToHistory(tabState.reference);
 	tabState.reference = id;
 	if (current)
 		current().scene->setReference(tabState.reference);
+
+	QSignalBlocker _(referenceSelect);
+	referenceSelect->setCurrentIndex(referenceSelect->findData(id, Qt::UserRole + 1));
 }
 
-void BnmsTab::updateEnabled()
+void BnmsTab::addToHistory(ProteinId id)
 {
-	bool on = current;
-	setEnabled(on);
-	view->setVisible(on);
+	actionHistoryMenu->setEnabled(true);
+	auto name = windowState->proteins().peek()->proteins[id].name;
+	auto action = new QAction(name, &historyMenu);
+	connect(action, &QAction::triggered, [this,id] { setReference(id); });
+	if (historyMenu.isEmpty()) {
+		historyMenu.addAction(action);
+		return;
+	}
+
+	const auto &entries = historyMenu.actions();
+	historyMenu.insertAction(entries.first(), action);
+	if (entries.count() > 20)
+		historyMenu.removeAction(entries.last());
 }
 
 void BnmsTab::setupMarkerMenu()
@@ -158,18 +177,20 @@ void BnmsTab::setupMarkerMenu()
 		return p->proteins[a].name < p->proteins[b].name;
 	});
 
-	auto selector = [this] (ProteinId id) {
-		auto index = referenceSelect->findData(id, Qt::UserRole + 1);
-		referenceSelect->setCurrentIndex(index);
-	};
-
 	auto b = current().data->peek<Dataset::Base>();
 	for (auto protId : markers) {
 		if (!b->protIndex.count(protId))
 			continue;
 		markerMenu.addAction(p->proteins[protId].name,
-		                     [selector,protId] { selector(protId); });
+		                     [this,protId] { setReference(protId); });
 	}
 
 	actionMarkerMenu->setEnabled(!markerMenu.isEmpty());
+}
+
+void BnmsTab::updateEnabled()
+{
+	bool on = current;
+	setEnabled(on);
+	view->setVisible(on);
 }

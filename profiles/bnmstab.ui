@@ -90,6 +90,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionHistoryMenu"/>
    <addaction name="actionMarkerMenu"/>
    <addaction name="separator"/>
    <addaction name="actionShowAverage"/>
@@ -195,6 +196,18 @@
    </property>
    <property name="toolTip">
     <string>Quick selection of markers</string>
+   </property>
+  </action>
+  <action name="actionHistoryMenu">
+   <property name="icon">
+    <iconset theme="edit-undo-history">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>History</string>
+   </property>
+   <property name="toolTip">
+    <string>Latest reference profiles</string>
    </property>
   </action>
  </widget>

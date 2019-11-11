@@ -34,8 +34,9 @@ protected:
 
 	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
 	void setReference(ProteinId id);
-	void updateEnabled();
+	void addToHistory(ProteinId id);
 	void setupMarkerMenu();
+	void updateEnabled();
 
 	struct {
 		ProteinId reference = 0; // first protein
@@ -44,7 +45,7 @@ protected:
 		bool showQuantiles = false;
 	} tabState;
 
-	QMenu markerMenu;
+	QMenu historyMenu, markerMenu;
 
 	ContentMap<DataState> content;
 	Current<DataState> current;
