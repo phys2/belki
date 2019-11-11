@@ -1,7 +1,8 @@
 #include "features.h"
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp> // for calchist
-#include <tbb/tbb.h>
+#include <tbb/parallel_for.h>
+#include <tbb/parallel_reduce.h>
 
 namespace features {
 
@@ -165,10 +166,10 @@ std::function<double(const std::vector<double> &a, const std::vector<double> &b)
 distfun(Distance measure)
 {
 	switch (measure) {
-	case Distance::EUCLIDEAN: return distance<Distance::EUCLIDEAN>;
 	case Distance::COSINE: return distance<Distance::COSINE>;
 	case Distance::CROSSCORREL: return distance<Distance::CROSSCORREL>;
 	case Distance::PEARSON: return distance<Distance::PEARSON>;
+	default: return distance<Distance::EUCLIDEAN>;
 	}
 }
 
