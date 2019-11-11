@@ -121,7 +121,7 @@ std::unique_ptr<QMenu> BnmsTab::proteinMenu(ProteinId id)
 	if (id == tabState.reference)
 		return ret;
 	auto anchor = ret->actions().at(1);
-	auto action = new QAction("Switch to", ret.get());
+	auto action = new QAction("Set as reference", ret.get());
 	connect(action, &QAction::triggered, [this,id] { setReference(id); });
 	ret->insertAction(anchor, action);
 	return ret;
@@ -129,6 +129,8 @@ std::unique_ptr<QMenu> BnmsTab::proteinMenu(ProteinId id)
 
 void BnmsTab::setReference(ProteinId id)
 {
+	QSignalBlocker _(referenceSelect);
+	referenceSelect->setCurrentIndex(referenceSelect->findData(id, Qt::UserRole + 1));
 	tabState.reference = id;
 	if (current)
 		current().scene->setReference(tabState.reference);
