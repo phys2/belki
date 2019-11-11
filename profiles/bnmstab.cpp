@@ -121,7 +121,7 @@ std::unique_ptr<QMenu> BnmsTab::proteinMenu(ProteinId id)
 	if (id == tabState.reference)
 		return ret;
 	auto anchor = ret->actions().at(1);
-	auto action = new QAction("Set as reference", ret.get());
+	auto action = new QAction(QIcon::fromTheme("go-next"), "Set as reference", ret.get());
 	connect(action, &QAction::triggered, [this,id] { setReference(id); });
 	ret->insertAction(anchor, action);
 	return ret;

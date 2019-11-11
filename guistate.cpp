@@ -67,18 +67,18 @@ std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
 	ret->addAction(t);
 
 	if (p->markers.count(id)) {
-		ret->addAction("Remove from markers", [this,id] {
+		ret->addAction(QIcon::fromTheme("list-remove"), "Remove from markers", [this,id] {
 			proteins.removeMarker(id);
 		});
 	} else {
-		ret->addAction("Add to markers", [this,id] {
+		ret->addAction(QIcon::fromTheme("list-add"), "Add to markers", [this,id] {
 			proteins.addMarker(id);
 		});
 	}
 	ret->addSeparator();
 	auto url = QString{"https://uniprot.org/uniprot/%1_%2"}
 	           .arg(p->proteins[id].name, p->proteins[id].species);
-	ret->addAction("Lookup in Uniprot", [url] {
+	ret->addAction(QIcon::fromTheme("globe"), "Lookup in Uniprot", [url] {
 		QDesktopServices::openUrl(url);
 	});
 	return ret;
