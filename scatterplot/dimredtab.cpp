@@ -46,13 +46,6 @@ DimredTab::DimredTab(QWidget *parent) :
 		tabState.preferredDisplay = name;
 	});
 
-	/* connect incoming signals */
-	connect(this, &Viewer::inToggleMarkers, [this] (auto ids, bool present) {
-		// we do not keep track of markers for inactive scenes
-		if (current)
-			current().scene->toggleMarkers(ids, present);
-	});
-
 	updateEnabled();
 }
 

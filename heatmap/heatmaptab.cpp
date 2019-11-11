@@ -25,13 +25,6 @@ HeatmapTab::HeatmapTab(QWidget *parent) :
 			emit exportRequested(current().scene.get(), "Heatmap");
 	});
 
-	/* connect incoming signals */
-	connect(this, &Viewer::inToggleMarkers, [this] (auto ids, bool present) {
-		// we do not keep track of markers for inactive scenes
-		if (current)
-			current().scene->toggleMarkers(ids, present);
-	});
-
 	/* propagate initial state */
 	actionToggleSingleCol->setChecked(tabState.singleColumn);
 
@@ -52,6 +45,11 @@ void HeatmapTab::setWindowState(std::shared_ptr<WindowState> s)
 	});
 	connect(ws, &WindowState::orderSynchronizingToggled, this, [this] {
 		actionLockOrder->setChecked(!windowState->orderSynchronizing);
+	});
+	connect(&s->proteins(), &ProteinDB::markersToggled, [this] (auto ids, bool present) {
+		// we do not keep track of markers for inactive scenes
+		if (current)
+			current().scene->toggleMarkers(ids, present);
 	});
 }
 

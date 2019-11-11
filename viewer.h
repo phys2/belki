@@ -35,10 +35,6 @@ public slots:
 	virtual void addDataset(Dataset::Ptr data)=0;
 
 signals:
-	// signals from outside that we might react to
-	void inToggleMarkers(const ProteinVec &ids, bool present);
-
-	// signals emitted by us
 	void markerToggled(ProteinId id, bool present);
 	void cursorChanged(QVector<unsigned> samples, const QString &title = {});
 	void exportRequested(QGraphicsView *source, QString description);

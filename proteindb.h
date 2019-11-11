@@ -58,7 +58,7 @@ signals:
 	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
 	void proteinAdded(ProteinId id, const Protein &protein);
 	void proteinChanged(ProteinId id);
-	void markersToggled(const ProteinVec &id, bool present);
+	void markersToggled(const std::vector<ProteinId> &id, bool present);
 	void structureAvailable(unsigned id, QString name, bool select);
 
 protected:
