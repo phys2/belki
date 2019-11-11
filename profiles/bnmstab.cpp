@@ -58,11 +58,21 @@ BnmsTab::BnmsTab(QWidget *parent) :
 	});
 
 	/* connect incoming signals */
-	connect(this, &Viewer::inToggleMarkers, [this] (auto, bool) {
-		setupMarkerMenu();
-	});
+//	connect(this, &Viewer::inToggleMarkers, [this] (auto, bool) {
+//		setupMarkerMenu();
+//	});
 
 	updateEnabled();
+}
+
+void BnmsTab::setWindowState(std::shared_ptr<WindowState> s)
+{
+	Viewer::setWindowState(s);
+	connect(&s->proteins(), &ProteinDB::markersToggled, [this] {
+		setupMarkerMenu();
+		if (current) // rebuild plot to reflect marker state change (TODO: awkward)
+			current().scene->repopulate();
+	});
 }
 
 void BnmsTab::setProteinModel(QAbstractItemModel *m)

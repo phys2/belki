@@ -20,6 +20,7 @@ class BnmsTab : public Viewer, private Ui::BnmsTab
 public:
 	explicit BnmsTab(QWidget *parent = nullptr);
 
+	void setWindowState(std::shared_ptr<WindowState> s) override;
 	void setProteinModel(QAbstractItemModel *) override;
 
 	void selectDataset(unsigned id) override;

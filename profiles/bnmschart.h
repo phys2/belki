@@ -17,9 +17,9 @@ public:
 
 public slots:
 	void setReference(ProteinId ref);
+	void repopulate();
 
 protected:
-	void repopulate();
 	QString titleOf(unsigned int index, const QString &name, bool isMarker) const override;
 	void animHighlight(int index, qreal step) override;
 

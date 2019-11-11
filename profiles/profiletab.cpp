@@ -46,14 +46,16 @@ ProfileTab::ProfileTab(QWidget *parent) :
 		}
 	});
 
-	/* connect incoming signals */
-	connect(this, &Viewer::inToggleMarkers, [this] (auto, bool) {
-		// we do not keep track of markers for inactive scenes
-		if (current)
-			rebuildPlot(); // TODO temporary hack
-	});
-
 	updateEnabled();
+}
+
+void ProfileTab::setWindowState(std::shared_ptr<WindowState> s)
+{
+	Viewer::setWindowState(s);
+	connect(&s->proteins(), &ProteinDB::markersToggled, [this] {
+		if (current)
+			rebuildPlot();
+	});
 }
 
 void ProfileTab::setProteinModel(QAbstractItemModel *m)

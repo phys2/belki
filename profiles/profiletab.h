@@ -19,6 +19,7 @@ class ProfileTab : public Viewer, private Ui::ProfileTab
 public:
 	explicit ProfileTab(QWidget *parent = nullptr);
 
+	void setWindowState(std::shared_ptr<WindowState> s) override;
 	void setProteinModel(QAbstractItemModel *) override;
 
 	void selectDataset(unsigned id) override;

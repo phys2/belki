@@ -25,13 +25,6 @@ DistmatTab::DistmatTab(QWidget *parent) :
 		emit exportRequested(view, "Distance Matrix");
 	});
 
-	/* connect incoming signals */
-	connect(this, &Viewer::inToggleMarkers, [this] (auto ids, bool present) {
-		// we do not keep track of markers for inactive scenes
-		if (current)
-			current().scene->toggleMarkers(ids, present);
-	});
-
 	/* propagate initial state */
 	actionToggleDistdir->setChecked(tabState.direction == Dataset::Direction::PER_DIMENSION);
 
@@ -52,6 +45,11 @@ void DistmatTab::setWindowState(std::shared_ptr<WindowState> s)
 	});
 	connect(ws, &WindowState::orderSynchronizingToggled, this, [this] {
 		actionLockOrder->setChecked(!windowState->orderSynchronizing);
+	});
+	connect(&s->proteins(), &ProteinDB::markersToggled, [this] (auto ids, bool present) {
+		// we do not keep track of markers for inactive scenes
+		if (current)
+			current().scene->toggleMarkers(ids, present);
 	});
 }
 

@@ -80,7 +80,6 @@ public slots:
 
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
-	void markerToggled(ProteinId id, bool present);
 	void areaChanged();
 	void proteinStyleUpdated();
 

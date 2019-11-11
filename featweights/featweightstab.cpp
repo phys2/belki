@@ -49,13 +49,6 @@ FeatweightsTab::FeatweightsTab(QWidget *parent) :
 		emit exportRequested(view, "Distance Matrix");
 	});
 
-	/* connect incoming signals */
-	connect(this, &Viewer::inToggleMarkers, [this] (auto ids, bool present) {
-		// we do not keep track of markers for inactive scenes
-		if (current)
-			current().scene->toggleMarkers(ids, present);
-	});
-
 	/* propagate initial state */
 	actionToggleChart->setChecked(tabState.useAlternate);
 	weightingSelect->setCurrentIndex(weightingSelect->findData(
@@ -73,6 +66,11 @@ void FeatweightsTab::setWindowState(std::shared_ptr<WindowState> s)
 	connect(ws, &WindowState::colorsetUpdated, [this] () {
 		if (current)
 			current().scene->updateColorset(windowState->standardColors);
+	});
+	connect(&s->proteins(), &ProteinDB::markersToggled, [this] (auto ids, bool present) {
+		// we do not keep track of markers for inactive scenes
+		if (current)
+			current().scene->toggleMarkers(ids, present);
 	});
 }
 

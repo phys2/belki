@@ -112,8 +112,8 @@ void BnmsChart::repopulate()
 	meanScore /= b->features.size();
 
 	clear();
-	addSampleByIndex(reference, true);
 	auto p = data->peek<Dataset::Proteins>();
+	addSampleByIndex(reference, p->markers.count(reference));
 	for (auto c : candidates) {
 		scores[c.index] = c.dist;
 		addSampleByIndex(c.index, p->markers.count(b->protIds[c.index]));
@@ -123,10 +123,10 @@ void BnmsChart::repopulate()
 
 QString BnmsChart::titleOf(unsigned int index, const QString &name, bool isMarker) const
 {
-	if (index == reference)
-		return QString("<b>%1</b>").arg(name);
-
 	auto plain = ProfileChart::titleOf(index, name, isMarker);
+	if (index == reference)
+		return QString("<b>%1</b>").arg(plain);
+
 	auto score = scores.at(index);
 	auto limit = 1.0; // TODO supposed to go to π though
 	if (score > limit) // not a meaningful value, omit
