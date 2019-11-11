@@ -389,7 +389,7 @@ void ProfileChart::toggleHighlight(int index)
 {
 	highlightAnim.disconnect();
 	highlightAnim.callOnTimeout([this,index] { animHighlight(index, .2); });
-	highlightAnimDeadline.setRemainingTime(100, Qt::PreciseTimer);
+	highlightAnimDeadline.setRemainingTime(150, Qt::PreciseTimer);
 	animHighlight(index, .2);
 	/* continue after first drawing update */
 	QTimer::singleShot(0, [this,index] {
