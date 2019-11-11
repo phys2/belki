@@ -23,7 +23,10 @@ public:
 	virtual void setProteinModel(QAbstractItemModel*) {}
 	virtual void setWindowState(std::shared_ptr<WindowState> s)
 	{
-		disconnect(windowState.get());
+		if (windowState) {
+			windowState->disconnect(this);
+			windowState->proteins().disconnect(this);
+		}
 		windowState = s;
 	}
 
