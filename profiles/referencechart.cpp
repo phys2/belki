@@ -3,9 +3,10 @@
 #include "compute/features.h"
 #include "compute/colors.h"
 
-#include <QtCharts/QLegendMarker>
-#include <QtCharts/QLineSeries>
+#include <QLegendMarker>
+#include <QLineSeries>
 #include <QAreaSeries>
+#include <QLogValueAxis>
 
 /* small, inset plot constructor */
 ReferenceChart::ReferenceChart(Dataset::ConstPtr dataset)
@@ -42,23 +43,24 @@ void ReferenceChart::finalize()
 	auto createComponent = [&] (unsigned index, const Component &source) {
 		auto upper = new QtCharts::QLineSeries, lower = new QtCharts::QLineSeries;
 		auto gauss = features::generate_gauss(ndim, source.mean, source.sigma);
+		auto minVal = (logSpace ? ayL->min() : 0.);
 		for (size_t i = 0; i < ndim; ++i) {
 			upper->append(i, gauss[i]);
-			lower->append(i, 0.); // TODO does not work in logSpace case
+			lower->append(i, minVal);
 		}
 		auto s = new QtCharts::QAreaSeries(upper, lower);
 		s->setName(QString("Comp. %1").arg(index + 1));
 		addSeries(s, SeriesCategory::CUSTOM);
 
-		auto c = colors.at(index % colors.size());
-		auto border = s->pen(); // border
+		auto c = colors.at((int)index % colors.size());
+		auto border = s->pen();
 		border.setWidthF(border.widthF() * 0.5);
 		s->setPen(border);
 		s->setBorderColor(c);
 		c.setAlphaF(.8);
 		auto fill = s->brush();
 		if (!source.active)
-			fill.setStyle(Qt::BrushStyle::Dense6Pattern);
+			fill.setStyle(Qt::BrushStyle::BDiagPattern);
 		fill.setColor(c);
 		s->setBrush(fill);
 
