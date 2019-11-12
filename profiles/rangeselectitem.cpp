@@ -6,6 +6,9 @@
 #include <QCursor>
 #include <QPainter>
 
+const auto LEFT = Qt::Edge::LeftEdge;
+const auto RIGHT = Qt::Edge::RightEdge;
+
 RangeSelectItem::RangeSelectItem(QtCharts::QChart *parent)
     : QGraphicsObject(parent)
 {
@@ -88,6 +91,7 @@ void RangeSelectItem::updatePositions()
 		item->setPos(valueToPos(item->value), item->pos().y());
 		item->setFlag(ItemSendsGeometryChanges, true);
 	}
+	update();
 }
 
 

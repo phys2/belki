@@ -13,9 +13,7 @@ class RangeSelectItem : public QGraphicsObject
 	Q_OBJECT
 
 public:
-	enum Border {
-		LEFT, RIGHT
-	};
+	using Border = Qt::Edge;
 
 	RangeSelectItem(QtCharts::QChart *parent = nullptr);
 	virtual QRectF boundingRect() const;

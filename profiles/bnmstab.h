@@ -12,6 +12,8 @@
 #include <unordered_map>
 
 class BnmsChart;
+class ProfileChart;
+class RangeSelectItem;
 
 class BnmsTab : public Viewer, private Ui::BnmsTab
 {
@@ -28,7 +30,10 @@ public:
 
 protected:
 	struct DataState : public Viewer::DataState {
+		~DataState(); // for unique_ptr
 		std::unique_ptr<BnmsChart> scene;
+		std::unique_ptr<ProfileChart> refScene;
+		std::unique_ptr<RangeSelectItem> rangeSelect;
 		bool logSpace = false;
 	};
 

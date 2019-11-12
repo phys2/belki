@@ -1,5 +1,6 @@
 #include "bnmstab.h"
 #include "bnmschart.h"
+#include "rangeselectitem.h"
 #include "compute/features.h"
 
 #include <QStandardItemModel>
@@ -50,6 +51,7 @@ BnmsTab::BnmsTab(QWidget *parent) :
 		if (current) {
 			current().logSpace = on;
 			current().scene->toggleLogSpace(on);
+			current().refScene->toggleLogSpace(on);
 		}
 	});
 	connect(referenceSelect, qOverload<int>(&QComboBox::currentIndexChanged), [this] {
@@ -90,11 +92,16 @@ void BnmsTab::selectDataset(unsigned id)
 	scene->toggleLabels(tabState.showLabels);
 	scene->toggleAverage(tabState.showAverage);
 	scene->toggleQuantiles(tabState.showQuantiles);
+	auto refScene = current().refScene.get();
+	refScene->clear();
+	refScene->addSample(tabState.reference, true);
+	refScene->finalize();
 
 	// apply datastate
 	actionLogarithmic->setChecked(current().logSpace);
 
 	view->setChart(scene);
+	referenceView->setChart(refScene);
 
 	// redundant call as availability of markers is data-dependent
 	setupMarkerMenu();
@@ -106,10 +113,22 @@ void BnmsTab::addDataset(Dataset::Ptr data)
 	auto &state = content[id]; // emplace (note: ids are never recycled)
 	state.data = data;
 	state.scene = std::make_unique<BnmsChart>(data);
+	state.refScene = std::make_unique<ProfileChart>(data, false, false);
 	if (data->peek<Dataset::Base>()->logSpace) {
 		state.logSpace = true;
 		state.scene->toggleLogSpace(true);
+		state.refScene->toggleLogSpace(true);
 	}
+
+	/* setup range */
+	auto ndim = data->peek<Dataset::Base>()->dimensions.size();
+	auto rangeItem = std::make_unique<RangeSelectItem>(state.refScene.get());
+	rangeItem->setLimits(0, ndim);
+	rangeItem->setRange(0, ndim);
+	connect(rangeItem.get(), &RangeSelectItem::borderChanged,
+	        state.scene.get(), &BnmsChart::setBorder);
+	state.rangeSelect = std::move(rangeItem);
+	state.scene->setBorder(Qt::Edge::RightEdge, ndim);
 
 	/* connect outgoing signals */
 	connect(state.scene.get(), &ProfileChart::menuRequested, [this] (ProteinId id) {
@@ -138,8 +157,13 @@ void BnmsTab::setReference(ProteinId id)
 
 	addToHistory(tabState.reference);
 	tabState.reference = id;
-	if (current)
+	if (current) {
 		current().scene->setReference(tabState.reference);
+		auto &refScene = current().refScene;
+		refScene->clear();
+		refScene->addSample(tabState.reference, true);
+		refScene->finalize();
+	}
 
 	QSignalBlocker _(referenceSelect);
 	referenceSelect->setCurrentIndex(referenceSelect->findData(id, Qt::UserRole + 1));
@@ -193,4 +217,8 @@ void BnmsTab::updateEnabled()
 	bool on = current;
 	setEnabled(on);
 	view->setVisible(on);
+}
+
+BnmsTab::DataState::~DataState()
+{
 }

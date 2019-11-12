@@ -1,5 +1,4 @@
 #include "bnmschart.h"
-#include "rangeselectitem.h"
 #include "dataset.h"
 #include "compute/features.h"
 #include "compute/colors.h"
@@ -13,20 +12,6 @@ BnmsChart::BnmsChart(Dataset::ConstPtr dataset)
 {
 	// we provide sorted by distance
 	sort = Sorting::NONE;
-
-	auto ndim = dataset->peek<Dataset::Base>()->dimensions.size();
-	range = {0, ndim};
-	rangeItem = std::make_unique<RangeSelectItem>(this);
-	rangeItem->setLimits(0, ndim);
-	rangeItem->setRange(0, ndim);
-	connect(rangeItem.get(), &RangeSelectItem::borderChanged, this,
-	        [this] (RangeSelectItem::Border border, qreal value) {
-		if (border == RangeSelectItem::LEFT)
-			range.first = value;
-		else
-			range.second = value;
-		repopulate();
-	});
 }
 
 struct DistIndexPair {
@@ -46,11 +31,6 @@ struct DistIndexPair {
 	double dist;
 	size_t index;
 };
-
-BnmsChart::~BnmsChart()
-{
-	// needed to delete unique_ptr
-}
 
 void BnmsChart::clear()
 {
@@ -73,8 +53,20 @@ void BnmsChart::setReference(ProteinId ref)
 	repopulate();
 }
 
+void BnmsChart::setBorder(Qt::Edge border, qreal value)
+{
+	if (border == Qt::Edge::LeftEdge)
+		range.first = value;
+	else
+		range.second = value;
+	repopulate();
+}
+
 void BnmsChart::repopulate()
 {
+	if (range.first == range.second)
+		return; // we aren't initialized
+
 	const unsigned numProts = 10; // TODO: dynamic based on relative offset?
 	auto distance = features::distfun(features::Distance::COSINE);
 
