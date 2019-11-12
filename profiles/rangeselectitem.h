@@ -23,14 +23,16 @@ public:
 	void setBorder(Border border, qreal x);
 
 public slots:
-	void setRect(const QRectF &area);
 	void setLimits(qreal min, qreal max);
 	void setRange(qreal min, qreal max);
 
 signals:
 	void borderChanged(Border border, qreal value);
 
-private:
+protected slots:
+	void setRect(const QRectF &area); // internally connected to parent
+
+protected:
 	struct HandleItem : QGraphicsRectItem {
 		HandleItem(Border border, RangeSelectItem *parent);
 

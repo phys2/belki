@@ -19,8 +19,6 @@ BnmsChart::BnmsChart(Dataset::ConstPtr dataset)
 	rangeItem = std::make_unique<RangeSelectItem>(this);
 	rangeItem->setLimits(0, ndim);
 	rangeItem->setRange(0, ndim);
-	connect(this, &BnmsChart::plotAreaChanged,
-	        rangeItem.get(), &RangeSelectItem::setRect);
 	connect(rangeItem.get(), &RangeSelectItem::borderChanged, this,
 	        [this] (RangeSelectItem::Border border, qreal value) {
 		if (border == RangeSelectItem::LEFT)

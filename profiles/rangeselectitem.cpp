@@ -14,6 +14,9 @@ RangeSelectItem::RangeSelectItem(QtCharts::QChart *parent)
 	handles[LEFT] = new HandleItem(LEFT, this);
 	handles[RIGHT] = new HandleItem(RIGHT, this);
 	updatePositions();
+
+	connect(parent, &QtCharts::QChart::plotAreaChanged,
+	        this, &RangeSelectItem::setRect);
 }
 
 QRectF RangeSelectItem::boundingRect() const
