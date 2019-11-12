@@ -64,6 +64,7 @@ protected:
 
 	void setupSeries();
 	virtual QString titleOf(unsigned index, const QString &name, bool isMarker) const;
+	virtual QColor colorOf(unsigned index, const QColor &color, bool isMarker) const;
 	virtual void animHighlight(int index, qreal step);
 	void toggleHighlight(int index = -1);
 	// helpers to constructors

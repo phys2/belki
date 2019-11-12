@@ -126,6 +126,13 @@ QString BnmsChart::titleOf(unsigned int index, const QString &name, bool isMarke
 	        .arg(plain).arg(score, 4, 'f', 3).arg(color.name());
 }
 
+QColor BnmsChart::colorOf(unsigned int index, const QColor &color, bool isMarker) const
+{
+	if (index == reference)
+		return Qt::black;
+	return ProfileChart::colorOf(index, color, isMarker);
+}
+
 void BnmsChart::animHighlight(int index, qreal step)
 {
 	/* same as ProfileChart::animHighlight(), but we always let reference stand
