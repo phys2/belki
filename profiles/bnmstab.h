@@ -12,7 +12,7 @@
 #include <unordered_map>
 
 class BnmsChart;
-class ProfileChart;
+class ReferenceChart;
 class RangeSelectItem;
 
 class BnmsTab : public Viewer, private Ui::BnmsTab
@@ -32,7 +32,7 @@ protected:
 	struct DataState : public Viewer::DataState {
 		~DataState(); // for unique_ptr
 		std::unique_ptr<BnmsChart> scene;
-		std::unique_ptr<ProfileChart> refScene;
+		std::unique_ptr<ReferenceChart> refScene;
 		std::unique_ptr<RangeSelectItem> rangeSelect;
 		bool logSpace = false;
 	};

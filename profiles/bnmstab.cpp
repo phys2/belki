@@ -1,5 +1,6 @@
 #include "bnmstab.h"
 #include "bnmschart.h"
+#include "referencechart.h"
 #include "rangeselectitem.h"
 #include "compute/features.h"
 
@@ -93,9 +94,7 @@ void BnmsTab::selectDataset(unsigned id)
 	scene->toggleAverage(tabState.showAverage);
 	scene->toggleQuantiles(tabState.showQuantiles);
 	auto refScene = current().refScene.get();
-	refScene->clear();
-	refScene->addSample(tabState.reference, true);
-	refScene->finalize();
+	refScene->setReference(tabState.reference);
 
 	// apply datastate
 	actionLogarithmic->setChecked(current().logSpace);
@@ -113,7 +112,7 @@ void BnmsTab::addDataset(Dataset::Ptr data)
 	auto &state = content[id]; // emplace (note: ids are never recycled)
 	state.data = data;
 	state.scene = std::make_unique<BnmsChart>(data);
-	state.refScene = std::make_unique<ProfileChart>(data, false, false);
+	state.refScene = std::make_unique<ReferenceChart>(data);
 	if (data->peek<Dataset::Base>()->logSpace) {
 		state.logSpace = true;
 		state.scene->toggleLogSpace(true);
@@ -159,10 +158,7 @@ void BnmsTab::setReference(ProteinId id)
 	tabState.reference = id;
 	if (current) {
 		current().scene->setReference(tabState.reference);
-		auto &refScene = current().refScene;
-		refScene->clear();
-		refScene->addSample(tabState.reference, true);
-		refScene->finalize();
+		current().refScene->setReference(tabState.reference);
 	}
 
 	QSignalBlocker _(referenceSelect);
