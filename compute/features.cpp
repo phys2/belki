@@ -173,4 +173,17 @@ distfun(Distance measure)
 	}
 }
 
+std::vector<double> generate_gauss(size_t range, double mean, double sigma)
+{
+	std::vector<double> ret(range);
+	auto twoSigmaSq = 2.*sigma*sigma;
+	auto d = 1. / std::sqrt(3.14159265358979323846 * twoSigmaSq);
+	for (size_t i = 0; i < range; ++i) {
+		auto diff = double(i) - mean;
+		auto n = std::exp(-(diff*diff) / twoSigmaSq);
+		ret[i] = n*d;
+	}
+	return ret;
+}
+
 }
