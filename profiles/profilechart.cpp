@@ -183,29 +183,13 @@ void ProfileChart::setupSeries()
 		});
 	}
 
-	// add & wire a series
-	auto add = [this] (QtCharts::QAbstractSeries *s, SeriesCategory cat, bool isMarker = false) {
-		addSeries(s);
-		s->attachAxis(ax);
-		s->attachAxis(logSpace ? (QtCharts::QAbstractAxis*)ayL : ay);
-		if (isMarker) // marker always shows
-			return;
-		s->setVisible(showCategories.count(cat));
-		std::map<SeriesCategory, void(ProfileChart::*)(bool)> sigs = {
-			{SeriesCategory::INDIVIDUAL, &ProfileChart::toggleIndividual},
-			{SeriesCategory::AVERAGE, &ProfileChart::toggleAverage},
-			{SeriesCategory::QUANTILE, &ProfileChart::toggleQuantiles},
-		};
-		connect(this, sigs.at(cat), s, &QtCharts::QAbstractSeries::setVisible);
-	};
-
 	// setup and add QLineSeries for mean
 	auto addMean = [&] {
 		auto s = new QtCharts::QLineSeries;
 		for (unsigned i = 0; i < stats.mean.size(); ++i) {
 			s->append(i, adjusted(stats.mean[i]));
 		}
-		add(s, SeriesCategory::AVERAGE);
+		addSeries(s, SeriesCategory::AVERAGE);
 		s->setName("Avg.");
 		auto pen = s->pen();
 		pen.setColor(Qt::black);
@@ -223,7 +207,7 @@ void ProfileChart::setupSeries()
 				lower->append(i, adjusted(l));
 			}
 			auto s = new QtCharts::QAreaSeries(upper, lower);
-			add(s, cat);
+			addSeries(s, cat);
 			return s;
 		};
 
@@ -302,7 +286,7 @@ void ProfileChart::setupSeries()
 
 			auto s = new QtCharts::QLineSeries;
 			series[index] = s;
-			add(s, SeriesCategory::INDIVIDUAL, isMarker);
+			addSeries(s, SeriesCategory::INDIVIDUAL, isMarker);
 			// color only markers in small view
 			if (isMarker && !small) { // acentuate markers in big view
 				auto pen = s->pen();
@@ -475,5 +459,21 @@ void ProfileChart::computeStats()
 			statsPerDim(i);
 	} else {
 		tbb::parallel_for(size_t(0), len, [&] (size_t i) { statsPerDim(i); });
-	}
+}
+}
+
+void ProfileChart::addSeries(QtCharts::QAbstractSeries *s, ProfileChart::SeriesCategory cat, bool sticky)
+{
+	QtCharts::QChart::addSeries(s);
+	s->attachAxis(ax);
+	s->attachAxis(logSpace ? (QtCharts::QAbstractAxis*)ayL : ay);
+	if (sticky || cat == SeriesCategory::CUSTOM) // always shows
+		return;
+	s->setVisible(showCategories.count(cat));
+	std::map<SeriesCategory, void(ProfileChart::*)(bool)> sigs = {
+		{SeriesCategory::INDIVIDUAL, &ProfileChart::toggleIndividual},
+		{SeriesCategory::AVERAGE, &ProfileChart::toggleAverage},
+		{SeriesCategory::QUANTILE, &ProfileChart::toggleQuantiles},
+	};
+	connect(this, sigs.at(cat), s, &QtCharts::QAbstractSeries::setVisible);
 }

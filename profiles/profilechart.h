@@ -59,7 +59,8 @@ protected:
 	enum class SeriesCategory { // see showCategories
 		INDIVIDUAL,
 		AVERAGE,
-		QUANTILE
+		QUANTILE,
+		CUSTOM
 	};
 
 	void setupSeries();
@@ -72,6 +73,8 @@ protected:
 	void setupAxes(const Features::Range &range);
 	// helper to finalize()
 	void computeStats();
+	// helper to setupSeries()
+	void addSeries(QtCharts::QAbstractSeries *s, SeriesCategory cat, bool sticky = false);
 
 	/* indices of proteins shown in the graph, as markers or not */
 	std::vector<std::pair<unsigned, bool>> content;
