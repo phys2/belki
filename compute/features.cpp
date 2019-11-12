@@ -175,15 +175,20 @@ distfun(Distance measure)
 
 std::vector<double> generate_gauss(size_t range, double mean, double sigma)
 {
-	std::vector<double> ret(range);
+	std::vector<double> ret(range, 0.);
+	add_gauss(ret, mean, sigma);
+	return ret;
+}
+
+void add_gauss(std::vector<double> &target, double mean, double sigma)
+{
 	auto twoSigmaSq = 2.*sigma*sigma;
 	auto d = 1. / std::sqrt(3.14159265358979323846 * twoSigmaSq);
-	for (size_t i = 0; i < range; ++i) {
+	for (size_t i = 0; i < target.size(); ++i) {
 		auto diff = double(i) - mean;
 		auto n = std::exp(-(diff*diff) / twoSigmaSq);
-		ret[i] = n*d;
+		target[i] += n*d;
 	}
-	return ret;
 }
 
 }

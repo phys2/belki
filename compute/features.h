@@ -31,6 +31,7 @@ std::function<double(const std::vector<double> &a, const std::vector<double> &b)
 distfun(Distance measure);
 
 std::vector<double> generate_gauss(size_t range, double mean, double sigma);
+void add_gauss(std::vector<double> &target, double mean, double sigma);
 
 }
 
