@@ -4,7 +4,6 @@
 #include "compute/colors.h"
 
 #include <QtCharts/QLineSeries>
-#include <QtCharts/QValueAxis>
 
 /* small, inset plot constructor */
 BnmsChart::BnmsChart(Dataset::ConstPtr dataset)
