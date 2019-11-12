@@ -171,17 +171,26 @@ void BnmsTab::setReference(ProteinId id)
 
 void BnmsTab::addToHistory(ProteinId id)
 {
-	actionHistoryMenu->setEnabled(true);
 	auto name = windowState->proteins().peek()->proteins[id].name;
 	auto action = new QAction(name, &historyMenu);
 	connect(action, &QAction::triggered, [this,id] { setReference(id); });
+
+	// first item ever
 	if (historyMenu.isEmpty()) {
 		historyMenu.addAction(action);
+		actionHistoryMenu->setEnabled(true);
 		return;
 	}
 
+	// remove dups from history
 	const auto &entries = historyMenu.actions();
+	for (auto i : entries) {
+		if (i->text() == name)
+			historyMenu.removeAction(i);
+	}
+	// add new entry
 	historyMenu.insertAction(entries.first(), action);
+	// limit history size
 	if (entries.count() > 20)
 		historyMenu.removeAction(entries.last());
 }
