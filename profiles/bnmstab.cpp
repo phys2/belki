@@ -121,13 +121,15 @@ void BnmsTab::addDataset(Dataset::Ptr data)
 
 	/* setup range */
 	auto ndim = data->peek<Dataset::Base>()->dimensions.size();
-	auto rangeItem = std::make_unique<RangeSelectItem>(state.refScene.get());
-	rangeItem->setLimits(0, ndim);
-	rangeItem->setRange(0, ndim);
-	connect(rangeItem.get(), &RangeSelectItem::borderChanged,
-	        state.scene.get(), &BnmsChart::setBorder);
-	state.rangeSelect = std::move(rangeItem);
 	state.scene->setBorder(Qt::Edge::RightEdge, ndim);
+	if (ndim > 10) { // does not work correctly with less than 10 dim
+		auto rangeItem = std::make_unique<RangeSelectItem>(state.refScene.get());
+		rangeItem->setLimits(0, ndim);
+		rangeItem->setRange(0, ndim);
+		connect(rangeItem.get(), &RangeSelectItem::borderChanged,
+		        state.scene.get(), &BnmsChart::setBorder);
+		state.rangeSelect = std::move(rangeItem);
+	}
 
 	/* connect outgoing signals */
 	connect(state.scene.get(), &ProfileChart::menuRequested, [this] (ProteinId id) {
