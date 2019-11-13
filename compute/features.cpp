@@ -173,21 +173,26 @@ distfun(Distance measure)
 	}
 }
 
-std::vector<double> generate_gauss(size_t range, double mean, double sigma)
+std::vector<double> generate_gauss(size_t range, double mean, double sigma, double scale)
 {
 	std::vector<double> ret(range, 0.);
-	add_gauss(ret, mean, sigma);
+	add_gauss(ret, mean, sigma, scale);
 	return ret;
 }
 
-void add_gauss(std::vector<double> &target, double mean, double sigma)
+void add_gauss(std::vector<double> &target, double mean, double sigma, double scale)
 {
 	auto twoSigmaSq = 2.*sigma*sigma;
-	auto d = 1. / std::sqrt(3.14159265358979323846 * twoSigmaSq);
-	for (size_t i = 0; i < target.size(); ++i) {
-		auto diff = double(i) - mean;
+	auto d = scale / std::sqrt(3.14159265358979323846 * twoSigmaSq);
+
+	auto eval = [&] (double x) {
+		auto diff = x - mean;
 		auto n = std::exp(-(diff*diff) / twoSigmaSq);
-		target[i] += n*d;
+		return n*d;
+	};
+
+	for (size_t i = 0; i < target.size(); ++i) {
+		target[i] += (eval(i-.5)+eval(i-.25)+eval(i)+eval(i+.25)+eval(i+.5))*0.2;
 	}
 }
 
