@@ -3,6 +3,7 @@
 
 #include "ui_bnmstab.h"
 #include "viewer.h"
+#include "bnmsmodel.h"
 
 #include <QIdentityProxyModel>
 #include <QMenu>
@@ -35,12 +36,15 @@ protected:
 		std::unique_ptr<ReferenceChart> refScene;
 		std::unique_ptr<RangeSelectItem> rangeSelect;
 		bool logSpace = false;
+		// components per-protein in dataset index (note: this should not be here)
+		std::vector<Components> components;
 	};
 
 	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
 	void setReference(ProteinId id);
 	void addToHistory(ProteinId id);
 	void setupMarkerMenu();
+	void loadComponents();
 	void updateEnabled();
 
 	struct {

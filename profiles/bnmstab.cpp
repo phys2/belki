@@ -4,6 +4,11 @@
 #include "rangeselectitem.h"
 #include "compute/features.h"
 
+// stuff for loading components. will most-probably be moved elsewhere!
+#include "widgets/mainwindow.h"
+#include "fileio.h"
+#include <QTextStream>
+
 #include <QStandardItemModel>
 #include <QAbstractProxyModel>
 #include <QCompleter>
@@ -60,6 +65,7 @@ BnmsTab::BnmsTab(QWidget *parent) :
 			return; // nothing selected
 		setReference((unsigned)referenceSelect->currentData(Qt::UserRole + 1).value<int>());
 	});
+	connect(actionLoadComponents, &QAction::triggered, this, &BnmsTab::loadComponents);
 
 	updateEnabled();
 }
@@ -112,7 +118,8 @@ void BnmsTab::addDataset(Dataset::Ptr data)
 	auto &state = content[id]; // emplace (note: ids are never recycled)
 	state.data = data;
 	state.scene = std::make_unique<BnmsChart>(data);
-	state.refScene = std::make_unique<ReferenceChart>(data);
+	state.components.resize(data->peek<Dataset::Base>()->features.size());
+	state.refScene = std::make_unique<ReferenceChart>(data, state.components);
 	if (data->peek<Dataset::Base>()->logSpace) {
 		state.logSpace = true;
 		state.scene->toggleLogSpace(true);
@@ -217,6 +224,59 @@ void BnmsTab::setupMarkerMenu()
 	}
 
 	actionMarkerMenu->setEnabled(!markerMenu.isEmpty());
+}
+
+void BnmsTab::loadComponents()
+{
+	if (!current)
+		return;
+
+	auto io = qobject_cast<MainWindow*>(window())->getIo();
+	auto fn = io->chooseFile(FileIO::OpenComponents);
+	if (fn.isEmpty())
+		return;
+	QFile f(fn);
+	if (!f.open(QIODevice::ReadOnly)) {
+		emit io->ioError(QString("Could not read file %1!").arg(fn));
+		return;
+	}
+	QTextStream in(&f);
+	/* file has no header right now
+	auto header = in.readLine().split("\t");
+	if (header.size() != 2 || header.first() != "Protein") {
+		emit io->ioError(QString("Could not parse file!<p>The first column must contain protein names.</p>").arg(fn));
+		return;
+	}
+	*/
+
+	// file parsing and storage; something that should _not_ be done here
+	auto p = current().data->peek<Dataset::Proteins>();
+	auto b = current().data->peek<Dataset::Base>();
+	auto &target = current().components;
+	std::fill(target.begin(), target.end(), Components{});
+
+	while (!in.atEnd()) {
+		auto line = in.readLine().split("\t");
+		if (line.empty() || line[0].isEmpty())
+			break; // early EOF
+		if ((line.size() - 1) % 3) { // we expect triples
+			emit io->ioError(QString("Stopped at '%1', incomplete row!").arg(line[0]));
+			break; // avoid message flood
+		}
+		unsigned row;
+		try {
+			row = b->protIndex.at(p->find(line[0]));
+		} catch (std::out_of_range&) {
+			std::cerr << "didn't find " << line[0].toStdString() << std::endl;
+			continue;
+		}
+
+		line.pop_front();
+		for (auto i = 0; i < line.size(); i+=3)
+			target[row].push_back({line[i+2].toDouble(), line[i].toDouble(), line[i+1].toDouble()});
+	}
+	// make use of new data
+	current().refScene->repopulate();
 }
 
 void BnmsTab::updateEnabled()

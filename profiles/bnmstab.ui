@@ -131,6 +131,8 @@
    <addaction name="actionShowQuantiles"/>
    <addaction name="separator"/>
    <addaction name="actionLogarithmic"/>
+   <addaction name="separator"/>
+   <addaction name="actionLoadComponents"/>
    <addaction name="actionSavePlot"/>
   </widget>
   <action name="actionSavePlot">
@@ -242,6 +244,17 @@
    </property>
    <property name="toolTip">
     <string>Latest reference profiles</string>
+   </property>
+  </action>
+  <action name="actionLoadComponents">
+   <property name="icon">
+    <iconset theme="document-open"/>
+   </property>
+   <property name="text">
+    <string>Load components</string>
+   </property>
+   <property name="toolTip">
+    <string>Load pre-computed components</string>
    </property>
   </action>
  </widget>

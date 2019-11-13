@@ -9,8 +9,8 @@
 #include <QLogValueAxis>
 
 /* small, inset plot constructor */
-ReferenceChart::ReferenceChart(Dataset::ConstPtr dataset)
-    : ProfileChart(dataset, false, true)
+ReferenceChart::ReferenceChart(Dataset::ConstPtr dataset, const std::vector<Components> &comps)
+    : ProfileChart(dataset, false, true), allComponents(comps)
 {
 	/* fooling around
 	legend()->detachFromChart();
@@ -34,15 +34,17 @@ void ReferenceChart::finalize()
 {
 	ProfileChart::finalize();
 
-	// TODO examples
-	//components = {{50., 1.5}, {150., 2.}};
+	// hide redundant reference marker
+	legend()->markers(series.at(reference)).first()->setVisible(false);
 
+	/* add component series */
 	auto colors = Palette::tableau20; // TODO use windowState's standard colors
 	auto ndim = size_t(series.at(reference)->pointsVector().size());
 
 	auto createComponent = [&] (unsigned index, const Component &source) {
+		auto &p = source.parameters;
 		auto upper = new QtCharts::QLineSeries, lower = new QtCharts::QLineSeries;
-		auto gauss = features::generate_gauss(ndim, source.mean, source.sigma);
+		auto gauss = features::generate_gauss(ndim, p.mean, p.sigma, p.weight);
 		auto minVal = (logSpace ? ayL->min() : 0.);
 		for (size_t i = 0; i < ndim; ++i) {
 			upper->append(i, gauss[i]);
@@ -57,7 +59,7 @@ void ReferenceChart::finalize()
 		border.setWidthF(border.widthF() * 0.5);
 		s->setPen(border);
 		s->setBorderColor(c);
-		c.setAlphaF(.8);
+		c.setAlphaF(.65);
 		auto fill = s->brush();
 		if (!source.active)
 			fill.setStyle(Qt::BrushStyle::BDiagPattern);
@@ -84,15 +86,12 @@ void ReferenceChart::setReference(ProteinId ref)
 		clear(); // invalid reference for our dataset
 		return;
 	}
+
 	if (reference == r->second)
 		return;
 
 	reference = r->second;
-	clear();
-	addSampleByIndex(reference, true); // claim "marker" state for bold drawing
-	finalize();
-	// hide redundant reference marker
-	legend()->markers(series.at(reference)).first()->setVisible(false);
+	repopulate();
 }
 
 void ReferenceChart::toggleComponent(unsigned index)
@@ -104,6 +103,17 @@ void ReferenceChart::toggleComponent(unsigned index)
 	auto fill = c.series->brush();
 	fill.setStyle(c.active ? Qt::BrushStyle::SolidPattern : Qt::BrushStyle::BDiagPattern);
 	c.series->setBrush(fill);
+}
+
+void ReferenceChart::repopulate()
+{
+	clear(); // clears components
+
+	for (auto &c : allComponents[reference])
+		components.push_back({c});
+	addSampleByIndex(reference, true); // claim "marker" state for bold drawing
+
+	finalize(); // applies components
 }
 
 QString ReferenceChart::titleOf(unsigned int index, const QString &name, bool isMarker) const
