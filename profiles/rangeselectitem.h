@@ -18,14 +18,15 @@ public:
 	RangeSelectItem(QtCharts::QChart *parent = nullptr);
 	virtual QRectF boundingRect() const;
 	virtual void paint(QPainter*, const QStyleOptionGraphicsItem*, QWidget*);
-	void setBorder(Border border, qreal x);
+	void setBorder(Border border, double x);
 
 public slots:
-	void setLimits(qreal min, qreal max);
-	void setRange(qreal min, qreal max);
+	void setLimits(double min, double max);
+	void setRange(double min, double max);
+	void setSubtle(bool on);
 
 signals:
-	void borderChanged(Border border, qreal value);
+	void borderChanged(Border border, double value);
 
 protected slots:
 	void setRect(const QRectF &area); // internally connected to parent
@@ -33,19 +34,22 @@ protected slots:
 protected:
 	struct HandleItem : QGraphicsRectItem {
 		HandleItem(Border border, RangeSelectItem *parent);
+		void setStyle(bool subtle);
 
 		QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
 		QPointF restrictPosition(QPointF newPos);
 
 		Border border;
 		RangeSelectItem* parent = nullptr;
-		qreal value, limit;
+		double value, limit;
 	};
 
-	qreal valueToPos(qreal value) const;
-	qreal posToValue(qreal x) const;
+	qreal valueToPos(double value) const;
+	double posToValue(qreal x) const;
 
 	void updatePositions();
+
+	bool subtle = false; // subtle style
 
 	QRectF area;
 	std::map<Border, HandleItem*> handles;

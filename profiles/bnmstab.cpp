@@ -101,6 +101,7 @@ void BnmsTab::selectDataset(unsigned id)
 	scene->toggleQuantiles(tabState.showQuantiles);
 	auto refScene = current().refScene.get();
 	refScene->setReference(tabState.reference);
+	current().rangeSelect->setSubtle(tabState.componentMode);
 
 	// apply datastate
 	actionLogarithmic->setChecked(current().logSpace);
@@ -129,12 +130,15 @@ void BnmsTab::addDataset(Dataset::Ptr data)
 	/* setup range */
 	auto ndim = data->peek<Dataset::Base>()->dimensions.size();
 	state.scene->setBorder(Qt::Edge::RightEdge, ndim);
+	state.refScene->applyBorder(Qt::Edge::RightEdge, ndim);
 	if (ndim > 10) { // does not work correctly with less than 10 dim
 		auto rangeItem = std::make_unique<RangeSelectItem>(state.refScene.get());
 		rangeItem->setLimits(0, ndim);
 		rangeItem->setRange(0, ndim);
 		connect(rangeItem.get(), &RangeSelectItem::borderChanged,
 		        state.scene.get(), &BnmsChart::setBorder);
+		connect(rangeItem.get(), &RangeSelectItem::borderChanged,
+		        state.refScene.get(), &ReferenceChart::applyBorder);
 		state.rangeSelect = std::move(rangeItem);
 	}
 
@@ -271,11 +275,20 @@ void BnmsTab::loadComponents()
 		}
 
 		line.pop_front();
+		/* hack: our profiles do not sum to 1, but as a pdf they should. so we
+		 * scale the pdfs the other way round by manipulating their weights. */
+		double scale = cv::sum(b->features[row])[0];
 		for (auto i = 0; i < line.size(); i+=3)
-			target[row].push_back({line[i+2].toDouble(), line[i].toDouble(), line[i+1].toDouble()});
+			target[row].push_back({scale*line[i+2].toDouble(), // weight
+			                       line[i].toDouble(), // mean
+			                       line[i+1].toDouble()}); // sigma
+		std::sort(target[row].begin(), target[row].end(),
+		          [] (const auto &a, const auto &b) { return a.mean < b.mean; });
 	}
-	// make use of new data
-	current().refScene->repopulate();
+	// TODO: have an action and toggle it
+	tabState.componentMode = true;
+	current().rangeSelect->setSubtle(true); // TODO: remove, action toggle takes over
+	current().refScene->repopulate(); // TODO: remove, action toggle takes over
 }
 
 void BnmsTab::updateEnabled()

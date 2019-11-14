@@ -29,6 +29,9 @@ QRectF RangeSelectItem::boundingRect() const
 
 void RangeSelectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
 {
+	if (subtle)
+		return;
+
 	QBrush fill({255, 195, 195, 127});
 	fill.setStyle(Qt::BrushStyle::Dense4Pattern);
 	std::array<QRectF, 2> areas = {
@@ -51,33 +54,44 @@ void RangeSelectItem::setRect(const QRectF &newArea)
 	updatePositions();
 }
 
-void RangeSelectItem::setLimits(qreal min, qreal max)
+void RangeSelectItem::setLimits(double min, double max)
 {
 	handles.at(LEFT)->limit = min;
 	handles.at(RIGHT)->limit = max;
 }
 
-void RangeSelectItem::setRange(qreal min, qreal max)
+void RangeSelectItem::setRange(double min, double max)
 {
 	setBorder(LEFT, min);
 	setBorder(RIGHT, max);
 }
 
-void RangeSelectItem::setBorder(Border border, qreal x)
+void RangeSelectItem::setSubtle(bool on)
+{
+	if (subtle == on)
+		return;
+
+	subtle = on;
+	for (auto &[_, item] : handles)
+		item->setStyle(subtle);
+	update();
+}
+
+void RangeSelectItem::setBorder(Border border, double x)
 {
 	handles.at(border)->value = x;
 	updatePositions();
 	emit borderChanged(border, x);
 }
 
-qreal RangeSelectItem::valueToPos(qreal value) const
+qreal RangeSelectItem::valueToPos(double value) const
 {
 	return (value - handles.at(LEFT)->limit)
 	        / (handles.at(RIGHT)->limit - handles.at(LEFT)->limit)
 	        * area.width() + area.left();
 }
 
-qreal RangeSelectItem::posToValue(qreal x) const
+double RangeSelectItem::posToValue(qreal x) const
 {
 	return (x - area.left())
 	        / area.width()
@@ -101,14 +115,24 @@ RangeSelectItem::HandleItem::HandleItem(Border border, RangeSelectItem* parent)
       parent(parent)
 {
 	setPen(Qt::NoPen);
-	QLinearGradient grad((border == LEFT ? -15 : 0), 0, (border == LEFT ? 0 : 15), 0);
-	grad.setColorAt((border == LEFT ? 0 : 1), {255, 255, 255, 0});
-	grad.setColorAt((border == LEFT ? 1 : 0), {255, 0, 0, 127});
-	setBrush(grad);
 	setFlag(ItemIsMovable);
 	setFlag(ItemSendsGeometryChanges);
 	setFlag(ItemIgnoresTransformations);
 	setCursor(Qt::SizeHorCursor);
+	setStyle(parent->subtle);
+}
+
+void RangeSelectItem::HandleItem::setStyle(bool subtle)
+{
+	QLinearGradient grad((border == LEFT ? -15 : 0), 0, (border == LEFT ? 0 : 15), 0);
+	if (subtle) {
+		grad.setColorAt((border == LEFT ? 0 : 1), {255, 255, 255, 0});
+		grad.setColorAt((border == LEFT ? 1 : 0), {0, 0, 255, 127});
+	} else {
+		grad.setColorAt((border == LEFT ? 0 : 1), {255, 255, 255, 0});
+		grad.setColorAt((border == LEFT ? 1 : 0), {255, 0, 0, 127});
+	}
+	setBrush(grad);
 }
 
 QVariant RangeSelectItem::HandleItem::itemChange(GraphicsItemChange change,

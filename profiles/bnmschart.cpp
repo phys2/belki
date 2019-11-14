@@ -4,6 +4,7 @@
 #include "compute/colors.h"
 
 #include <QtCharts/QLineSeries>
+#include <tbb/parallel_for.h>
 
 /* small, inset plot constructor */
 BnmsChart::BnmsChart(Dataset::ConstPtr dataset)
@@ -52,7 +53,7 @@ void BnmsChart::setReference(ProteinId ref)
 	repopulate();
 }
 
-void BnmsChart::setBorder(Qt::Edge border, qreal value)
+void BnmsChart::setBorder(Qt::Edge border, double value)
 {
 	if (border == Qt::Edge::LeftEdge)
 		range.first = value;
@@ -66,44 +67,59 @@ void BnmsChart::repopulate()
 	if (range.first == range.second)
 		return; // we aren't initialized
 
-	const unsigned numProts = 10; // TODO: dynamic based on relative offset?
 	auto distance = features::distfun(features::Distance::COSINE);
-
 	auto b = data->peek<Dataset::Base>();
+
+	/* precompute all distances in parallel */
 	meanScore = 0.;
+	std::vector<double> dists(b->features.size());
+	std::vector<double> r(b->features[reference].begin() + (int)range.first,
+	                      b->features[reference].begin() + (int)range.second);
+	// for (size_t i = 0; i < dists.size(); ++i) {
+	tbb::parallel_for(size_t(0), b->features.size(), [&] (size_t i) {
+		if (i == reference) {
+			dists[i] = 0.;
+			return;
+		}
+
+		std::vector<double> f(b->features[i].begin() + (int)range.first,
+		                      b->features[i].begin() + (int)range.second);
+		dists[i] = distance(f, r);
+		meanScore += dists[i];
+	});
+	meanScore /= (b->features.size() - 1);
+
+	/* use heap to sort out the top N */
+	const unsigned numProts = 15; // TODO: configurable
 	std::vector<DistIndexPair> candidates(numProts);
 	auto dfirst = candidates.begin(), dlast = candidates.end();
 	// initialize heap with infinity distances
 	std::fill(dfirst, dlast, DistIndexPair());
 
-	std::vector<double> r(b->features[reference].begin() + (int)range.first,
-	                      b->features[reference].begin() + (int)range.second);
-	for (size_t i = 0; i < b->features.size(); ++i) {
+	for (size_t i = 0; i < dists.size(); ++i) {
 		if (i == reference)
 			continue;
 
-		std::vector<double> f(b->features[i].begin() + (int)range.first,
-		                      b->features[i].begin() + (int)range.second);
-		auto dist = distance(f, r);
-		if (dist < dfirst->dist) {
+		if (dists[i] < dfirst->dist) {
 			// remove max. value in heap
 			std::pop_heap(dfirst, dlast, DistIndexPair::cmpDist);
 
 			// max element is now on position "back" and should be popped
 			// instead we overwrite it directly with the new element
 			DistIndexPair &back = *(dlast-1);
-			back = DistIndexPair(dist, i);
+			back = DistIndexPair(dists[i], i);
 			std::push_heap(dfirst, dlast, DistIndexPair::cmpDist);
 		}
-		meanScore += dist;
 	}
 	std::sort_heap(dfirst, dlast, DistIndexPair::cmpDist); // sort ascending
-	meanScore /= b->features.size();
 
 	clear();
 	addSampleByIndex(reference, true); // claim "marker" state for bold drawing
 	auto p = data->peek<Dataset::Proteins>();
 	for (auto c : candidates) {
+		// don't pollude poll with stuff we are not interested in
+		if (c.dist > 0.5) // TODO: relative to preceding candidates?
+			break;
 		scores[c.index] = c.dist;
 		addSampleByIndex(c.index, p->markers.count(b->protIds[c.index]));
 	}
@@ -125,11 +141,20 @@ QString BnmsChart::titleOf(unsigned int index, const QString &name, bool isMarke
 	        .arg(plain).arg(score, 4, 'f', 3).arg(color.name());
 }
 
-QColor BnmsChart::colorOf(unsigned int index, const QColor &color, bool isMarker) const
+QColor BnmsChart::colorOf(unsigned index, const QColor &color, bool isMarker) const
 {
 	if (index == reference)
 		return Qt::black;
-	return ProfileChart::colorOf(index, color, isMarker);
+	auto ret = ProfileChart::colorOf(index, color, isMarker);
+	ret.setAlphaF(alphaOf(index));
+	return ret;
+}
+
+qreal BnmsChart::alphaOf(unsigned index) const {
+	auto score = scores.at(index);
+	if (score < 0.2)
+		return 1.;
+	return std::max(0.1, 1. - std::sqrt(score));
 }
 
 void BnmsChart::animHighlight(int index, qreal step)
@@ -142,7 +167,8 @@ void BnmsChart::animHighlight(int index, qreal step)
 		auto c = s->color();
 		if ((int)i == index || i == reference || decrease) { // ⟵
 			if (c.alphaF() < 1.) {
-				c.setAlphaF(std::min(1., c.alphaF() + step));
+				auto alpha = ((int)i == index ? 1. : alphaOf(i));
+				c.setAlphaF(std::min(alpha, c.alphaF() + step)); // ⟵
 				done = false;
 			}
 		} else {

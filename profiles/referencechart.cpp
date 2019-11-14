@@ -76,6 +76,22 @@ void ReferenceChart::finalize()
 		auto &c = components[i];
 		c.series = createComponent(i, c);
 	}
+	/* TODO: debug code */
+	if (!components.empty()) {
+		std::vector<double> sum(ndim, 0.);
+		double sumWeights = 0.;
+		for (size_t i = 0; i < components.size(); ++i) {
+			auto &p = components[i].parameters;
+			features::add_gauss(sum, p.mean, p.sigma, p.weight);
+			sumWeights += p.weight;
+		}
+		auto s = new QtCharts::QLineSeries;
+		s->setName(QString::number(sumWeights));
+		for (size_t i = 0; i < ndim; ++i)
+			s->append(i, sum[i]);
+		addSeries(s, SeriesCategory::CUSTOM);
+		s->setPen({Qt::red});
+	}
 }
 
 void ReferenceChart::setReference(ProteinId ref)
@@ -94,11 +110,37 @@ void ReferenceChart::setReference(ProteinId ref)
 	repopulate();
 }
 
+void ReferenceChart::applyBorder(Qt::Edge border, double value)
+{
+	if (border == Qt::Edge::LeftEdge)
+		range.first = value;
+	else
+		range.second = value;
+	/* use range to re-set active components, but only once.
+	 * the user might use the range to quickly filter components, but then
+	 * refine by hand */
+	for (auto &c : components) {
+		bool inside = (c.parameters.mean >= range.first && c.parameters.mean <= range.second);
+		// only change inside or outside our edge; don't touch outside opposite
+		bool change = inside && !c.active;
+		if (!inside && border == Qt::Edge::LeftEdge)
+			change = (c.parameters.mean < range.first) && c.active;
+		if (!inside && border == Qt::Edge::RightEdge)
+			change = (c.parameters.mean > range.second) && c.active;
+		if (change)
+			toggleComponent(c);
+	}
+}
+
 void ReferenceChart::toggleComponent(unsigned index)
 {
 	if (index >= components.size())
 		return;
-	auto &c = components[index];
+	toggleComponent(components[index]);
+}
+
+void ReferenceChart::toggleComponent(Component &c)
+{
 	c.active = !c.active;
 	auto fill = c.series->brush();
 	fill.setStyle(c.active ? Qt::BrushStyle::SolidPattern : Qt::BrushStyle::BDiagPattern);
@@ -109,8 +151,10 @@ void ReferenceChart::repopulate()
 {
 	clear(); // clears components
 
-	for (auto &c : allComponents[reference])
-		components.push_back({c});
+	for (auto &c : allComponents[reference]) {
+		bool active = c.mean >= range.first && c.mean <= range.second;
+		components.push_back({c, active});
+	}
 	addSampleByIndex(reference, true); // claim "marker" state for bold drawing
 
 	finalize(); // applies components
