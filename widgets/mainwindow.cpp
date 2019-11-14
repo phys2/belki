@@ -126,7 +126,6 @@ void MainWindow::setupTabs()
 	auto *btn = new QToolButton;
 	btn->setDefaultAction(actionAddTab);
 	btn->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);
-	btn->setMinimumSize(btn->sizeHint()); // ensure button keeps showing when zero tabs
 	btn->setShortcut(QKeySequence::StandardKey::AddTab);
 	tabWidget->setCornerWidget(btn);
 
