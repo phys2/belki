@@ -18,8 +18,9 @@ public slots:
 	void repopulate();
 
 protected:
-	QString titleOf(unsigned int index, const QString &name, bool isMarker) const override;
-	QColor colorOf(unsigned int index, const QColor &color, bool isMarker) const override;
+	QString titleOf(unsigned index, const QString &name, bool isMarker) const override;
+	QColor colorOf(unsigned index, const QColor &color, bool isMarker) const override;
+	qreal alphaOf(unsigned index) const;
 	void animHighlight(int index, qreal step) override;
 
 	std::pair<qreal, qreal> range = {0., 0.};

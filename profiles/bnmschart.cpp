@@ -66,7 +66,7 @@ void BnmsChart::repopulate()
 	if (range.first == range.second)
 		return; // we aren't initialized
 
-	const unsigned numProts = 10; // TODO: dynamic based on relative offset?
+	const unsigned numProts = 15; // TODO: configurable
 	auto distance = features::distfun(features::Distance::COSINE);
 
 	auto b = data->peek<Dataset::Base>();
@@ -125,11 +125,20 @@ QString BnmsChart::titleOf(unsigned int index, const QString &name, bool isMarke
 	        .arg(plain).arg(score, 4, 'f', 3).arg(color.name());
 }
 
-QColor BnmsChart::colorOf(unsigned int index, const QColor &color, bool isMarker) const
+QColor BnmsChart::colorOf(unsigned index, const QColor &color, bool isMarker) const
 {
 	if (index == reference)
 		return Qt::black;
-	return ProfileChart::colorOf(index, color, isMarker);
+	auto ret = ProfileChart::colorOf(index, color, isMarker);
+	ret.setAlphaF(alphaOf(index));
+	return ret;
+}
+
+qreal BnmsChart::alphaOf(unsigned index) const {
+	auto score = scores.at(index);
+	if (score < 0.2)
+		return 1.;
+	return std::max(0.1, 1. - std::sqrt(score));
 }
 
 void BnmsChart::animHighlight(int index, qreal step)
@@ -142,7 +151,8 @@ void BnmsChart::animHighlight(int index, qreal step)
 		auto c = s->color();
 		if ((int)i == index || i == reference || decrease) { // ⟵
 			if (c.alphaF() < 1.) {
-				c.setAlphaF(std::min(1., c.alphaF() + step));
+				auto alpha = ((int)i == index ? 1. : alphaOf(i));
+				c.setAlphaF(std::min(alpha, c.alphaF() + step)); // ⟵
 				done = false;
 			}
 		} else {
