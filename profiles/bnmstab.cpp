@@ -282,6 +282,8 @@ void BnmsTab::loadComponents()
 			target[row].push_back({scale*line[i+2].toDouble(), // weight
 			                       line[i].toDouble(), // mean
 			                       line[i+1].toDouble()}); // sigma
+		std::sort(target[row].begin(), target[row].end(),
+		          [] (const auto &a, const auto &b) { return a.mean < b.mean; });
 	}
 	// TODO: have an action and toggle it
 	tabState.componentMode = true;
