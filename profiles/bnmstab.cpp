@@ -267,7 +267,6 @@ void BnmsTab::loadComponents()
 		try {
 			row = b->protIndex.at(p->find(line[0]));
 		} catch (std::out_of_range&) {
-			std::cerr << "didn't find " << line[0].toStdString() << std::endl;
 			continue;
 		}
 
