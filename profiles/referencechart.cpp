@@ -76,6 +76,22 @@ void ReferenceChart::finalize()
 		auto &c = components[i];
 		c.series = createComponent(i, c);
 	}
+	/* TODO: debug code */
+	if (!components.empty()) {
+		std::vector<double> sum(ndim, 0.);
+		double sumWeights = 0.;
+		for (size_t i = 0; i < components.size(); ++i) {
+			auto &p = components[i].parameters;
+			features::add_gauss(sum, p.mean, p.sigma, p.weight);
+			sumWeights += p.weight;
+		}
+		auto s = new QtCharts::QLineSeries;
+		s->setName(QString::number(sumWeights));
+		for (size_t i = 0; i < ndim; ++i)
+			s->append(i, sum[i]);
+		addSeries(s, SeriesCategory::CUSTOM);
+		s->setPen({Qt::red});
+	}
 }
 
 void ReferenceChart::setReference(ProteinId ref)
