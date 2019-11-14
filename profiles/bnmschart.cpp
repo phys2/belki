@@ -52,7 +52,7 @@ void BnmsChart::setReference(ProteinId ref)
 	repopulate();
 }
 
-void BnmsChart::setBorder(Qt::Edge border, qreal value)
+void BnmsChart::setBorder(Qt::Edge border, double value)
 {
 	if (border == Qt::Edge::LeftEdge)
 		range.first = value;
