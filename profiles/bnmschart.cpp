@@ -104,6 +104,9 @@ void BnmsChart::repopulate()
 	addSampleByIndex(reference, true); // claim "marker" state for bold drawing
 	auto p = data->peek<Dataset::Proteins>();
 	for (auto c : candidates) {
+		// don't pollude poll with stuff we are not interested in
+		if (c.dist > 0.5) // TODO: relative to preceding candidates?
+			break;
 		scores[c.index] = c.dist;
 		addSampleByIndex(c.index, p->markers.count(b->protIds[c.index]));
 	}
