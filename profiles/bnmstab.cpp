@@ -271,8 +271,13 @@ void BnmsTab::loadComponents()
 		}
 
 		line.pop_front();
+		/* hack: our profiles do not sum to 1, but as a pdf they should. so we
+		 * scale the pdfs the other way round by manipulating their weights. */
+		double scale = cv::sum(b->features[row])[0];
 		for (auto i = 0; i < line.size(); i+=3)
-			target[row].push_back({line[i+2].toDouble(), line[i].toDouble(), line[i+1].toDouble()});
+			target[row].push_back({scale*line[i+2].toDouble(), // weight
+			                       line[i].toDouble(), // mean
+			                       line[i+1].toDouble()}); // sigma
 	}
 	// make use of new data
 	current().refScene->repopulate();
