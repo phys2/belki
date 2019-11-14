@@ -4,6 +4,7 @@
 #include "compute/colors.h"
 
 #include <QtCharts/QLineSeries>
+#include <tbb/parallel_for.h>
 
 /* small, inset plot constructor */
 BnmsChart::BnmsChart(Dataset::ConstPtr dataset)
@@ -66,39 +67,51 @@ void BnmsChart::repopulate()
 	if (range.first == range.second)
 		return; // we aren't initialized
 
-	const unsigned numProts = 15; // TODO: configurable
 	auto distance = features::distfun(features::Distance::COSINE);
-
 	auto b = data->peek<Dataset::Base>();
+
+	/* precompute all distances in parallel */
 	meanScore = 0.;
+	std::vector<double> dists(b->features.size());
+	std::vector<double> r(b->features[reference].begin() + (int)range.first,
+	                      b->features[reference].begin() + (int)range.second);
+	// for (size_t i = 0; i < dists.size(); ++i) {
+	tbb::parallel_for(size_t(0), b->features.size(), [&] (size_t i) {
+		if (i == reference) {
+			dists[i] = 0.;
+			return;
+		}
+
+		std::vector<double> f(b->features[i].begin() + (int)range.first,
+		                      b->features[i].begin() + (int)range.second);
+		dists[i] = distance(f, r);
+		meanScore += dists[i];
+	});
+	meanScore /= (b->features.size() - 1);
+
+	/* use heap to sort out the top N */
+	const unsigned numProts = 15; // TODO: configurable
 	std::vector<DistIndexPair> candidates(numProts);
 	auto dfirst = candidates.begin(), dlast = candidates.end();
 	// initialize heap with infinity distances
 	std::fill(dfirst, dlast, DistIndexPair());
 
-	std::vector<double> r(b->features[reference].begin() + (int)range.first,
-	                      b->features[reference].begin() + (int)range.second);
-	for (size_t i = 0; i < b->features.size(); ++i) {
+	for (size_t i = 0; i < dists.size(); ++i) {
 		if (i == reference)
 			continue;
 
-		std::vector<double> f(b->features[i].begin() + (int)range.first,
-		                      b->features[i].begin() + (int)range.second);
-		auto dist = distance(f, r);
-		if (dist < dfirst->dist) {
+		if (dists[i] < dfirst->dist) {
 			// remove max. value in heap
 			std::pop_heap(dfirst, dlast, DistIndexPair::cmpDist);
 
 			// max element is now on position "back" and should be popped
 			// instead we overwrite it directly with the new element
 			DistIndexPair &back = *(dlast-1);
-			back = DistIndexPair(dist, i);
+			back = DistIndexPair(dists[i], i);
 			std::push_heap(dfirst, dlast, DistIndexPair::cmpDist);
 		}
-		meanScore += dist;
 	}
 	std::sort_heap(dfirst, dlast, DistIndexPair::cmpDist); // sort ascending
-	meanScore /= b->features.size();
 
 	clear();
 	addSampleByIndex(reference, true); // claim "marker" state for bold drawing
