@@ -75,13 +75,8 @@ void BnmsChart::repopulate()
 	std::vector<double> dists(b->features.size());
 	std::vector<double> r(b->features[reference].begin() + (int)range.first,
 	                      b->features[reference].begin() + (int)range.second);
-	// for (size_t i = 0; i < dists.size(); ++i) {
-	tbb::parallel_for(size_t(0), b->features.size(), [&] (size_t i) {
-		if (i == reference) {
-			dists[i] = 0.;
-			return;
-		}
-
+	//for (size_t i = 0; i < dists.size(); ++i) {
+	tbb::parallel_for(size_t(0), dists.size(), [&] (size_t i) {
 		std::vector<double> f(b->features[i].begin() + (int)range.first,
 		                      b->features[i].begin() + (int)range.second);
 		dists[i] = distance(f, r);
