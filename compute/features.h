@@ -22,6 +22,7 @@ enum class Distance {
 	COSINE,
 	CROSSCORREL, // note: higher is better
 	PEARSON, // note: higher is better
+	EMD, // Earth Mover's Distance
 };
 
 template<Distance D>

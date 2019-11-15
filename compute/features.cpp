@@ -162,6 +162,17 @@ double distance<Distance::PEARSON>(const std::vector<double> &a, const std::vect
 	return distance<Distance::CROSSCORREL>(aa, bb);
 }
 
+template<>
+double distance<Distance::EMD>(const std::vector<double> &a, const std::vector<double> &b)
+{
+	cv::Mat1f ina(a.size(), 1 + 1, 1.f); // weight + value
+	cv::Mat1f inb(b.size(), 1 + 1, 1.f); // weight + value
+	std::copy(a.cbegin(), a.cend(), ina.col(1).begin());
+	std::copy(b.cbegin(), b.cend(), inb.col(1).begin());
+	// use L1 here as we have scalar inputs anyway
+	return (double)cv::EMD(ina, inb, cv::DIST_L1);
+}
+
 std::function<double(const std::vector<double> &a, const std::vector<double> &b)>
 distfun(Distance measure)
 {
@@ -169,6 +180,7 @@ distfun(Distance measure)
 	case Distance::COSINE: return distance<Distance::COSINE>;
 	case Distance::CROSSCORREL: return distance<Distance::CROSSCORREL>;
 	case Distance::PEARSON: return distance<Distance::PEARSON>;
+	case Distance::EMD: return distance<Distance::EMD>;
 	default: return distance<Distance::EUCLIDEAN>;
 	}
 }
