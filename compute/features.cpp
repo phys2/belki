@@ -203,7 +203,10 @@ void add_gauss(std::vector<double> &target, double mean, double sigma, double sc
 		return n*d;
 	};
 
-	for (size_t i = 0; i < target.size(); ++i) {
+	auto left = std::max(size_t(0), size_t(mean - 3.5*sigma));
+	auto right = std::min(target.size(),
+	                      size_t(std::ceil(mean + 3.5*sigma + 1)));
+	for (size_t i = left; i < right; ++i) {
 		target[i] += (eval(i-.5)+eval(i-.25)+eval(i)+eval(i+.25)+eval(i+.5))*0.2;
 	}
 }
