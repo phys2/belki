@@ -185,6 +185,14 @@ distfun(Distance measure)
 	}
 }
 
+std::pair<size_t, size_t> gauss_cover(double mean, double sigma, size_t range)
+{
+	auto left = std::max(size_t(0), size_t(mean - 3.5*sigma));
+	auto right = std::min(range - 1,
+	                      size_t(std::ceil(mean + 3.5*sigma)));
+	return {left, right};
+}
+
 std::vector<double> generate_gauss(size_t range, double mean, double sigma, double scale)
 {
 	std::vector<double> ret(range, 0.);
@@ -203,10 +211,8 @@ void add_gauss(std::vector<double> &target, double mean, double sigma, double sc
 		return n*d;
 	};
 
-	auto left = std::max(size_t(0), size_t(mean - 3.5*sigma));
-	auto right = std::min(target.size(),
-	                      size_t(std::ceil(mean + 3.5*sigma + 1)));
-	for (size_t i = left; i < right; ++i) {
+	auto [left, right] = gauss_cover(mean, sigma, target.size());
+	for (size_t i = left; i <= right; ++i) {
 		target[i] += (eval(i-.5)+eval(i-.25)+eval(i)+eval(i+.25)+eval(i+.5))*0.2;
 	}
 }

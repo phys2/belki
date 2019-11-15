@@ -31,6 +31,7 @@ double distance(const std::vector<double> &a, const std::vector<double> &b);
 std::function<double(const std::vector<double> &a, const std::vector<double> &b)>
 distfun(Distance measure);
 
+std::pair<size_t, size_t> gauss_cover(double mean, double sigma, size_t range);
 std::vector<double> generate_gauss(size_t range, double mean, double sigma, double scale=1.);
 void add_gauss(std::vector<double> &target, double mean, double sigma, double scale=1.);
 

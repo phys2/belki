@@ -288,6 +288,11 @@ void BnmsTab::loadComponents()
 			target[row].push_back({scale*line[i+2].toDouble(), // weight
 			                       line[i].toDouble(), // mean
 			                       line[i+1].toDouble()}); // sigma
+		for (auto &i : target[row])
+			i.cover = features::gauss_cover(i.mean, i.sigma,
+			                                (size_t)b->dimensions.size());
+
+		// sort by peak position
 		std::sort(target[row].begin(), target[row].end(),
 		          [] (const auto &a, const auto &b) { return a.mean < b.mean; });
 	}
