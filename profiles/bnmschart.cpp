@@ -4,6 +4,8 @@
 #include "compute/colors.h"
 
 #include <QtCharts/QLineSeries>
+#include <QtCharts/QValueAxis>
+#include <QtCharts/QCategoryAxis>
 #include <tbb/parallel_for.h>
 
 /* small, inset plot constructor */
@@ -59,7 +61,22 @@ void BnmsChart::setBorder(Qt::Edge border, double value)
 		range.first = value;
 	else
 		range.second = value;
+	if (zoomToRange)
+		toggleZoom(true, true);
 	repopulate();
+}
+
+void BnmsChart::toggleZoom(bool toRange, bool force)
+{
+	if (!force && zoomToRange == toRange)
+		return;
+
+	zoomToRange = toRange;
+	auto r = range;
+	if (!zoomToRange)
+		r = {0., data->peek<Dataset::Base>()->dimensions.size() - 1};
+	ax->setRange(r.first, r.second);
+	axC->setRange(r.first, r.second);
 }
 
 void BnmsChart::repopulate()

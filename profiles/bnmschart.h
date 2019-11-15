@@ -15,6 +15,7 @@ public:
 public slots:
 	void setReference(ProteinId ref);
 	void setBorder(Qt::Edge border, double value);
+	void toggleZoom(bool toRange, bool force = false);
 	void repopulate();
 
 protected:
@@ -24,6 +25,7 @@ protected:
 	void animHighlight(int index, qreal step) override;
 
 	std::pair<double, double> range = {0., 0.};
+	bool zoomToRange = false;
 
 	// score/dist of all proteins on display
 	std::unordered_map<unsigned, double> scores;

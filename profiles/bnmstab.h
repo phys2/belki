@@ -49,6 +49,7 @@ protected:
 
 	struct {
 		ProteinId reference = 0; // first protein
+		bool zoomToRange = false;
 		bool componentMode = false;
 		bool showLabels = true;
 		bool showAverage = false;
