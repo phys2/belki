@@ -83,9 +83,9 @@ QMap<QString, QVector<QPointF>> compute(QString m, const std::vector<std::vector
 		}},
 		{"EMD", [&features] (size_t i, size_t j) {
 			cv::Mat1f mi(features[i].size(), 1 + 1, 1.f); // weight + value
-			cv::Mat1f mj(features[i].size(), 1 + 1, 1.f); // weight + value
-			std::copy(features[i].cbegin(), features[i].cend(), mi.begin() + 1);
-			std::copy(features[j].cbegin(), features[j].cend(), mj.begin() + 1);
+			cv::Mat1f mj(features[j].size(), 1 + 1, 1.f); // weight + value
+			std::copy(features[i].cbegin(), features[i].cend(), mi.col(1).begin());
+			std::copy(features[j].cbegin(), features[j].cend(), mj.col(1).begin());
 			// use L1 here as we have scalar inputs anyway
 			return cv::EMD(mi, mj, cv::DIST_L1);
 		}},
