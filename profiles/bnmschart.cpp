@@ -9,8 +9,9 @@
 #include <tbb/parallel_for.h>
 
 /* small, inset plot constructor */
-BnmsChart::BnmsChart(Dataset::ConstPtr dataset)
-    : ProfileChart(dataset, false, true)
+BnmsChart::BnmsChart(Dataset::ConstPtr dataset, const std::vector<Components> &comps)
+    : ProfileChart(dataset, false, true),
+      allComponents(comps)
 {
 	// we provide sorted by distance
 	sort = Sorting::NONE;
@@ -63,6 +64,12 @@ void BnmsChart::setBorder(Qt::Edge border, double value)
 		range.second = value;
 	if (zoomToRange)
 		toggleZoom(true, true);
+	repopulate();
+}
+
+void BnmsChart::setSelectedComponents(const std::vector<size_t> &selection)
+{
+	compSelection = selection;
 	repopulate();
 }
 

@@ -21,19 +21,21 @@ public:
 public slots:
 	void setReference(ProteinId ref);
 	void applyBorder(Qt::Edge border, double value);
-	void toggleComponent(unsigned index);
+	void toggleComponent(size_t index, bool signal = false);
 	void repopulate();
+
+signals:
+	void componentsSelected(std::vector<size_t> selection);
 
 protected:
 	struct Component {
-		::Component parameters;
 		bool active = true;
 		QtCharts::QAreaSeries *series = {};
 	};
 
 	QString titleOf(unsigned int index, const QString &name, bool isMarker) const override;
 	QColor colorOf(unsigned int index, const QColor &color, bool isMarker) const override;
-	void toggleComponent(Component &c);
+	void emitSelection();
 
 	// range, only kept to adequately react to border changes
 	std::pair<double, double> range = {0., 0.};

@@ -124,14 +124,17 @@ void BnmsTab::addDataset(Dataset::Ptr data)
 	auto id = data->id();
 	auto &state = content[id]; // emplace (note: ids are never recycled)
 	state.data = data;
-	state.scene = std::make_unique<BnmsChart>(data);
 	state.components.resize(data->peek<Dataset::Base>()->features.size());
+	state.scene = std::make_unique<BnmsChart>(data, state.components);
 	state.refScene = std::make_unique<ReferenceChart>(data, state.components);
 	if (data->peek<Dataset::Base>()->logSpace) {
 		state.logSpace = true;
 		state.scene->toggleLogSpace(true);
 		state.refScene->toggleLogSpace(true);
 	}
+
+	connect(state.refScene.get(), &ReferenceChart::componentsSelected,
+	        state.scene.get(), &BnmsChart::setSelectedComponents);
 
 	/* setup range */
 	auto rightmost = data->peek<Dataset::Base>()->dimensions.size() - 1;
