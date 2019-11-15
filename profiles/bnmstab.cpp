@@ -101,7 +101,8 @@ void BnmsTab::selectDataset(unsigned id)
 	scene->toggleQuantiles(tabState.showQuantiles);
 	auto refScene = current().refScene.get();
 	refScene->setReference(tabState.reference);
-	current().rangeSelect->setSubtle(tabState.componentMode);
+	if (current().rangeSelect)
+		current().rangeSelect->setSubtle(tabState.componentMode);
 
 	// apply datastate
 	actionLogarithmic->setChecked(current().logSpace);
@@ -287,7 +288,8 @@ void BnmsTab::loadComponents()
 	}
 	// TODO: have an action and toggle it
 	tabState.componentMode = true;
-	current().rangeSelect->setSubtle(true); // TODO: remove, action toggle takes over
+	if (current().rangeSelect)
+		current().rangeSelect->setSubtle(true); // TODO: remove, action toggle takes over
 	current().refScene->repopulate(); // TODO: remove, action toggle takes over
 }
 
