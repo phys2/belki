@@ -133,6 +133,7 @@
    <addaction name="separator"/>
    <addaction name="actionLogarithmic"/>
    <addaction name="separator"/>
+   <addaction name="actionComponentToggle"/>
    <addaction name="actionLoadComponents"/>
    <addaction name="actionSavePlot"/>
   </widget>
@@ -273,6 +274,20 @@
    </property>
    <property name="shortcut">
     <string>Z</string>
+   </property>
+  </action>
+  <action name="actionComponentToggle">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="draw-circle"/>
+   </property>
+   <property name="text">
+    <string>Toggle component mode</string>
+   </property>
+   <property name="toolTip">
+    <string>Use pre-calculated components for matching</string>
    </property>
   </action>
  </widget>

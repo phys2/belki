@@ -74,6 +74,15 @@ void BnmsChart::setSelectedComponents(const std::vector<size_t> &selection)
 	repopulate();
 }
 
+void BnmsChart::toggleComponentMode(bool on)
+{
+	if (componentMode == on)
+		return;
+
+	componentMode = on;
+	repopulate();
+}
+
 void BnmsChart::toggleZoom(bool toRange, bool force)
 {
 	if (!force && zoomToRange == toRange)

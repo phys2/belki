@@ -41,6 +41,7 @@ protected:
 	};
 
 	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
+	void toggleComponentMode(bool on); // call through actionComponentToggle
 	void setReference(ProteinId id);
 	void addToHistory(ProteinId id);
 	void setupMarkerMenu();

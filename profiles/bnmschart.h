@@ -17,6 +17,7 @@ public slots:
 	void setReference(ProteinId ref);
 	void setBorder(Qt::Edge border, double value);
 	void setSelectedComponents(const std::vector<size_t> &selection);
+	void toggleComponentMode(bool on);
 	void toggleZoom(bool toRange, bool force = false);
 	void repopulate();
 
@@ -26,6 +27,7 @@ protected:
 	qreal alphaOf(unsigned index) const;
 	void animHighlight(int index, qreal step) override;
 
+	bool componentMode = false;
 	std::pair<double, double> range = {0., 0.};
 	bool zoomToRange = false;
 

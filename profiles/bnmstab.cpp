@@ -24,6 +24,7 @@ BnmsTab::BnmsTab(QWidget *parent) :
 	toolBar->insertWidget(anchor, proteinBox);
 	toolBar->insertSeparator(anchor);
 
+	actionComponentToggle->setEnabled(false); // no component data yet
 	actionHistoryMenu->setMenu(&historyMenu);
 	actionHistoryMenu->setEnabled(false); // no history yet
 	actionMarkerMenu->setMenu(&markerMenu);
@@ -42,6 +43,8 @@ BnmsTab::BnmsTab(QWidget *parent) :
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, "Selected Profiles");
 	});
+	connect(actionComponentToggle, &QAction::toggled,
+	        this, &BnmsTab::toggleComponentMode);
 	connect(actionZoomToggle, &QAction::toggled, [this] (bool on) {
 		tabState.zoomToRange = on;
 		if (current) current().scene->toggleZoom(on);
@@ -100,12 +103,14 @@ void BnmsTab::selectDataset(unsigned id)
 	// pass guiState onto chart
 	auto scene = current().scene.get();
 	scene->setReference(tabState.reference);
+	scene->toggleComponentMode(tabState.componentMode); // TODO redundant rebuild
 	scene->toggleZoom(tabState.zoomToRange);
 	scene->toggleLabels(tabState.showLabels);
 	scene->toggleAverage(tabState.showAverage);
 	scene->toggleQuantiles(tabState.showQuantiles);
 	auto refScene = current().refScene.get();
 	refScene->setReference(tabState.reference);
+	// TODO: refScene toggleComponentMode
 	if (current().rangeSelect)
 		current().rangeSelect->setSubtle(tabState.componentMode);
 
@@ -169,6 +174,20 @@ std::unique_ptr<QMenu> BnmsTab::proteinMenu(ProteinId id)
 	connect(action, &QAction::triggered, [this,id] { setReference(id); });
 	ret->insertAction(anchor, action);
 	return ret;
+}
+
+void BnmsTab::toggleComponentMode(bool on)
+{
+	if (tabState.componentMode == on)
+		return;
+
+	tabState.componentMode = on;
+	if (!current)
+		return;
+	if (current().rangeSelect)
+		current().rangeSelect->setSubtle(on);
+	current().refScene->repopulate(); // TODO: also toggleComponentMode()
+	current().scene->toggleComponentMode(on);
 }
 
 void BnmsTab::setReference(ProteinId id)
@@ -299,11 +318,10 @@ void BnmsTab::loadComponents()
 		std::sort(target[row].begin(), target[row].end(),
 		          [] (const auto &a, const auto &b) { return a.mean < b.mean; });
 	}
-	// TODO: have an action and toggle it
-	tabState.componentMode = true;
-	if (current().rangeSelect)
-		current().rangeSelect->setSubtle(true); // TODO: remove, action toggle takes over
-	current().refScene->repopulate(); // TODO: remove, action toggle takes over
+
+	// we have components, we want to use them
+	actionComponentToggle->setEnabled(true);
+	actionComponentToggle->setChecked(true);
 }
 
 void BnmsTab::updateEnabled()
