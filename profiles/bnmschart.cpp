@@ -58,10 +58,11 @@ void BnmsChart::setReference(ProteinId ref)
 
 void BnmsChart::setBorder(Qt::Edge border, double value)
 {
-	if (border == Qt::Edge::LeftEdge)
-		range.first = value;
-	else
-		range.second = value;
+	auto &target = (border == Qt::Edge::LeftEdge ? range.first : range.second);
+	if (target == value)
+		return;
+
+	target = value;
 	if (zoomToRange)
 		toggleZoom(true, true);
 	repopulate();
