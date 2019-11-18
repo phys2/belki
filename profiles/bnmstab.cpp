@@ -2,9 +2,9 @@
 #include "bnmschart.h"
 #include "referencechart.h"
 #include "rangeselectitem.h"
-#include "compute/features.h"
 
 // stuff for loading components. will most-probably be moved elsewhere!
+#include "compute/components.h"
 #include "widgets/mainwindow.h"
 #include "fileio.h"
 #include <QTextStream>
@@ -24,6 +24,7 @@ BnmsTab::BnmsTab(QWidget *parent) :
 	toolBar->insertWidget(anchor, proteinBox);
 	toolBar->insertSeparator(anchor);
 
+	actionComponentToggle->setEnabled(false); // no component data yet
 	actionHistoryMenu->setMenu(&historyMenu);
 	actionHistoryMenu->setEnabled(false); // no history yet
 	actionMarkerMenu->setMenu(&markerMenu);
@@ -41,6 +42,12 @@ BnmsTab::BnmsTab(QWidget *parent) :
 	/* connect toolbar actions */
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, "Selected Profiles");
+	});
+	connect(actionComponentToggle, &QAction::toggled,
+	        this, &BnmsTab::toggleComponentMode);
+	connect(actionZoomToggle, &QAction::toggled, [this] (bool on) {
+		tabState.zoomToRange = on;
+		if (current) current().scene->toggleZoom(on);
 	});
 	connect(actionShowAverage, &QAction::toggled, [this] (bool on) {
 		tabState.showAverage = on;
@@ -96,12 +103,16 @@ void BnmsTab::selectDataset(unsigned id)
 	// pass guiState onto chart
 	auto scene = current().scene.get();
 	scene->setReference(tabState.reference);
+	scene->toggleComponentMode(tabState.componentMode); // TODO redundant rebuild
+	scene->toggleZoom(tabState.zoomToRange);
 	scene->toggleLabels(tabState.showLabels);
 	scene->toggleAverage(tabState.showAverage);
 	scene->toggleQuantiles(tabState.showQuantiles);
 	auto refScene = current().refScene.get();
 	refScene->setReference(tabState.reference);
-	current().rangeSelect->setSubtle(tabState.componentMode);
+	// TODO: refScene toggleComponentMode
+	if (current().rangeSelect)
+		current().rangeSelect->setSubtle(tabState.componentMode);
 
 	// apply datastate
 	actionLogarithmic->setChecked(current().logSpace);
@@ -118,8 +129,8 @@ void BnmsTab::addDataset(Dataset::Ptr data)
 	auto id = data->id();
 	auto &state = content[id]; // emplace (note: ids are never recycled)
 	state.data = data;
-	state.scene = std::make_unique<BnmsChart>(data);
 	state.components.resize(data->peek<Dataset::Base>()->features.size());
+	state.scene = std::make_unique<BnmsChart>(data, state.components);
 	state.refScene = std::make_unique<ReferenceChart>(data, state.components);
 	if (data->peek<Dataset::Base>()->logSpace) {
 		state.logSpace = true;
@@ -127,14 +138,17 @@ void BnmsTab::addDataset(Dataset::Ptr data)
 		state.refScene->toggleLogSpace(true);
 	}
 
+	connect(state.refScene.get(), &ReferenceChart::componentsSelected,
+	        state.scene.get(), &BnmsChart::setSelectedComponents);
+
 	/* setup range */
-	auto ndim = data->peek<Dataset::Base>()->dimensions.size();
-	state.scene->setBorder(Qt::Edge::RightEdge, ndim);
-	state.refScene->applyBorder(Qt::Edge::RightEdge, ndim);
-	if (ndim > 10) { // does not work correctly with less than 10 dim
+	auto rightmost = data->peek<Dataset::Base>()->dimensions.size() - 1;
+	state.scene->setBorder(Qt::Edge::RightEdge, rightmost);
+	state.refScene->applyBorder(Qt::Edge::RightEdge, rightmost);
+	if (rightmost > 10) { // does not work correctly with less than 10 dim
 		auto rangeItem = std::make_unique<RangeSelectItem>(state.refScene.get());
-		rangeItem->setLimits(0, ndim);
-		rangeItem->setRange(0, ndim);
+		rangeItem->setLimits(0, rightmost);
+		rangeItem->setRange(0, rightmost);
 		connect(rangeItem.get(), &RangeSelectItem::borderChanged,
 		        state.scene.get(), &BnmsChart::setBorder);
 		connect(rangeItem.get(), &RangeSelectItem::borderChanged,
@@ -160,6 +174,20 @@ std::unique_ptr<QMenu> BnmsTab::proteinMenu(ProteinId id)
 	connect(action, &QAction::triggered, [this,id] { setReference(id); });
 	ret->insertAction(anchor, action);
 	return ret;
+}
+
+void BnmsTab::toggleComponentMode(bool on)
+{
+	if (tabState.componentMode == on)
+		return;
+
+	tabState.componentMode = on;
+	if (!current)
+		return;
+	if (current().rangeSelect)
+		current().rangeSelect->setSubtle(on);
+	current().refScene->repopulate(); // TODO: also toggleComponentMode()
+	current().scene->toggleComponentMode(on);
 }
 
 void BnmsTab::setReference(ProteinId id)
@@ -282,13 +310,18 @@ void BnmsTab::loadComponents()
 			target[row].push_back({scale*line[i+2].toDouble(), // weight
 			                       line[i].toDouble(), // mean
 			                       line[i+1].toDouble()}); // sigma
+		for (auto &i : target[row])
+			i.cover = components::gauss_cover(i.mean, i.sigma,
+			                                (size_t)b->dimensions.size());
+
+		// sort by peak position
 		std::sort(target[row].begin(), target[row].end(),
 		          [] (const auto &a, const auto &b) { return a.mean < b.mean; });
 	}
-	// TODO: have an action and toggle it
-	tabState.componentMode = true;
-	current().rangeSelect->setSubtle(true); // TODO: remove, action toggle takes over
-	current().refScene->repopulate(); // TODO: remove, action toggle takes over
+
+	// we have components, we want to use them
+	actionComponentToggle->setEnabled(true);
+	actionComponentToggle->setChecked(true);
 }
 
 void BnmsTab::updateEnabled()

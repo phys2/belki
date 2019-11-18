@@ -41,6 +41,7 @@ protected:
 	};
 
 	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
+	void toggleComponentMode(bool on); // call through actionComponentToggle
 	void setReference(ProteinId id);
 	void addToHistory(ProteinId id);
 	void setupMarkerMenu();
@@ -49,6 +50,7 @@ protected:
 
 	struct {
 		ProteinId reference = 0; // first protein
+		bool zoomToRange = false;
 		bool componentMode = false;
 		bool showLabels = true;
 		bool showAverage = false;

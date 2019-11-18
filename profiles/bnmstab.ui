@@ -127,11 +127,13 @@
    <addaction name="actionHistoryMenu"/>
    <addaction name="actionMarkerMenu"/>
    <addaction name="separator"/>
+   <addaction name="actionZoomToggle"/>
    <addaction name="actionShowAverage"/>
    <addaction name="actionShowQuantiles"/>
    <addaction name="separator"/>
    <addaction name="actionLogarithmic"/>
    <addaction name="separator"/>
+   <addaction name="actionComponentToggle"/>
    <addaction name="actionLoadComponents"/>
    <addaction name="actionSavePlot"/>
   </widget>
@@ -255,6 +257,38 @@
    </property>
    <property name="toolTip">
     <string>Load pre-computed components</string>
+   </property>
+  </action>
+  <action name="actionZoomToggle">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="auto-scale-x"/>
+   </property>
+   <property name="text">
+    <string>Zoom to range</string>
+   </property>
+   <property name="toolTip">
+    <string>Zoom lower plot to current range</string>
+   </property>
+   <property name="shortcut">
+    <string>Z</string>
+   </property>
+  </action>
+  <action name="actionComponentToggle">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../resources/icons-custom/index.qrc">
+     <normaloff>:/icons/components.svg</normaloff>:/icons/components.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Toggle component mode</string>
+   </property>
+   <property name="toolTip">
+    <string>Use pre-calculated components for matching</string>
    </property>
   </action>
  </widget>

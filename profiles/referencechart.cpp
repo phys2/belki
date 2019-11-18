@@ -1,6 +1,6 @@
 #include "referencechart.h"
 #include "dataset.h"
-#include "compute/features.h"
+#include "compute/components.h"
 #include "compute/colors.h"
 
 #include <QLegendMarker>
@@ -41,10 +41,10 @@ void ReferenceChart::finalize()
 	auto colors = Palette::tableau20; // TODO use windowState's standard colors
 	auto ndim = size_t(series.at(reference)->pointsVector().size());
 
-	auto createComponent = [&] (unsigned index, const Component &source) {
-		auto &p = source.parameters;
+	auto createComponent = [&] (size_t index) {
+		auto &p = allComponents[reference][index];
 		auto upper = new QtCharts::QLineSeries, lower = new QtCharts::QLineSeries;
-		auto gauss = features::generate_gauss(ndim, p.mean, p.sigma, p.weight);
+		auto gauss = components::generate_gauss(ndim, p.mean, p.sigma, p.weight);
 		auto minVal = (logSpace ? ayL->min() : 0.);
 		for (size_t i = 0; i < ndim; ++i) {
 			upper->append(i, gauss[i]);
@@ -61,28 +61,26 @@ void ReferenceChart::finalize()
 		s->setBorderColor(c);
 		c.setAlphaF(.65);
 		auto fill = s->brush();
-		if (!source.active)
+		if (!components[index].active)
 			fill.setStyle(Qt::BrushStyle::BDiagPattern);
 		fill.setColor(c);
 		s->setBrush(fill);
 
-		auto toggleActive = [this,index] { toggleComponent(index); };
+		auto toggleActive = [this,index] { toggleComponent(index, true); };
 		connect(s, &QtCharts::QAreaSeries::clicked, toggleActive);
 		connect(legend()->markers(s).first(), &QtCharts::QLegendMarker::clicked, toggleActive);
 		return s;
 	};
 
-	for (size_t i = 0; i < components.size(); ++i) {
-		auto &c = components[i];
-		c.series = createComponent(i, c);
-	}
+	for (size_t i = 0; i < components.size(); ++i)
+		components[i].series = createComponent(i);
 	/* TODO: debug code */
 	if (!components.empty()) {
 		std::vector<double> sum(ndim, 0.);
 		double sumWeights = 0.;
 		for (size_t i = 0; i < components.size(); ++i) {
-			auto &p = components[i].parameters;
-			features::add_gauss(sum, p.mean, p.sigma, p.weight);
+			auto &p = allComponents[reference][i];
+			components::add_gauss(sum, p.mean, p.sigma, p.weight);
 			sumWeights += p.weight;
 		}
 		auto s = new QtCharts::QLineSeries;
@@ -112,48 +110,57 @@ void ReferenceChart::setReference(ProteinId ref)
 
 void ReferenceChart::applyBorder(Qt::Edge border, double value)
 {
-	if (border == Qt::Edge::LeftEdge)
-		range.first = value;
-	else
-		range.second = value;
+	auto &target = (border == Qt::Edge::LeftEdge ? range.first : range.second);
+	if (target == value)
+		return;
+
+	target = value;
+
 	/* use range to re-set active components, but only once.
 	 * the user might use the range to quickly filter components, but then
 	 * refine by hand */
-	for (auto &c : components) {
-		bool inside = (c.parameters.mean >= range.first && c.parameters.mean <= range.second);
+	bool changed = false;
+	for (size_t i = 0; i < components.size(); ++i) {
+		auto &p = allComponents[reference][i];
+		auto active = components[i].active;
+		bool inside = (p.mean >= range.first && p.mean <= range.second);
 		// only change inside or outside our edge; don't touch outside opposite
-		bool change = inside && !c.active;
+		bool change = inside && !active;
 		if (!inside && border == Qt::Edge::LeftEdge)
-			change = (c.parameters.mean < range.first) && c.active;
+			change = (p.mean < range.first) && active;
 		if (!inside && border == Qt::Edge::RightEdge)
-			change = (c.parameters.mean > range.second) && c.active;
-		if (change)
-			toggleComponent(c);
+			change = (p.mean > range.second) && active;
+		if (change) {
+			toggleComponent(i);
+			changed = true;
+		}
 	}
+	if (changed)
+		emitSelection();
 }
 
-void ReferenceChart::toggleComponent(unsigned index)
+void ReferenceChart::toggleComponent(size_t index, bool signal)
 {
 	if (index >= components.size())
 		return;
-	toggleComponent(components[index]);
-}
 
-void ReferenceChart::toggleComponent(Component &c)
-{
+	auto &c = components[index];
 	c.active = !c.active;
 	auto fill = c.series->brush();
 	fill.setStyle(c.active ? Qt::BrushStyle::SolidPattern : Qt::BrushStyle::BDiagPattern);
 	c.series->setBrush(fill);
+	if (signal)
+		emitSelection();
 }
 
 void ReferenceChart::repopulate()
 {
 	clear(); // clears components
 
-	for (auto &c : allComponents[reference]) {
-		bool active = c.mean >= range.first && c.mean <= range.second;
-		components.push_back({c, active});
+	for (size_t i = 0; i < allComponents[reference].size(); ++i) {
+		auto &p = allComponents[reference][i];
+		bool active = p.mean >= range.first && p.mean <= range.second;
+		components.push_back({active});
 	}
 	addSampleByIndex(reference, true); // claim "marker" state for bold drawing
 
@@ -172,4 +179,14 @@ QColor ReferenceChart::colorOf(unsigned int index, const QColor &color, bool isM
 	if (index == reference)
 		return Qt::black;
 	return ProfileChart::colorOf(index, color, isMarker);
+}
+
+void ReferenceChart::emitSelection()
+{
+	std::vector<size_t> selection;
+	for (size_t i = 0; i < components.size(); ++i) {
+		if (components[i].active)
+			selection.push_back(i);
+	}
+	emit componentsSelected(selection);
 }

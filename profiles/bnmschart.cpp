@@ -4,11 +4,14 @@
 #include "compute/colors.h"
 
 #include <QtCharts/QLineSeries>
+#include <QtCharts/QValueAxis>
+#include <QtCharts/QCategoryAxis>
 #include <tbb/parallel_for.h>
 
 /* small, inset plot constructor */
-BnmsChart::BnmsChart(Dataset::ConstPtr dataset)
-    : ProfileChart(dataset, false, true)
+BnmsChart::BnmsChart(Dataset::ConstPtr dataset, const std::vector<Components> &comps)
+    : ProfileChart(dataset, false, true),
+      allComponents(comps)
 {
 	// we provide sorted by distance
 	sort = Sorting::NONE;
@@ -55,11 +58,42 @@ void BnmsChart::setReference(ProteinId ref)
 
 void BnmsChart::setBorder(Qt::Edge border, double value)
 {
-	if (border == Qt::Edge::LeftEdge)
-		range.first = value;
-	else
-		range.second = value;
+	auto &target = (border == Qt::Edge::LeftEdge ? range.first : range.second);
+	if (target == value)
+		return;
+
+	target = value;
+	if (zoomToRange)
+		toggleZoom(true, true);
 	repopulate();
+}
+
+void BnmsChart::setSelectedComponents(const std::vector<size_t> &selection)
+{
+	compSelection = selection;
+	repopulate();
+}
+
+void BnmsChart::toggleComponentMode(bool on)
+{
+	if (componentMode == on)
+		return;
+
+	componentMode = on;
+	repopulate();
+}
+
+void BnmsChart::toggleZoom(bool toRange, bool force)
+{
+	if (!force && zoomToRange == toRange)
+		return;
+
+	zoomToRange = toRange;
+	auto r = range;
+	if (!zoomToRange)
+		r = {0., data->peek<Dataset::Base>()->dimensions.size() - 1};
+	ax->setRange(r.first, r.second);
+	axC->setRange(r.first, r.second);
 }
 
 void BnmsChart::repopulate()
@@ -75,13 +109,8 @@ void BnmsChart::repopulate()
 	std::vector<double> dists(b->features.size());
 	std::vector<double> r(b->features[reference].begin() + (int)range.first,
 	                      b->features[reference].begin() + (int)range.second);
-	// for (size_t i = 0; i < dists.size(); ++i) {
-	tbb::parallel_for(size_t(0), b->features.size(), [&] (size_t i) {
-		if (i == reference) {
-			dists[i] = 0.;
-			return;
-		}
-
+	//for (size_t i = 0; i < dists.size(); ++i) {
+	tbb::parallel_for(size_t(0), dists.size(), [&] (size_t i) {
 		std::vector<double> f(b->features[i].begin() + (int)range.first,
 		                      b->features[i].begin() + (int)range.second);
 		dists[i] = distance(f, r);

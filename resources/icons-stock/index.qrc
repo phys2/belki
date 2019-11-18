@@ -1,6 +1,7 @@
 <RCC>
 	<qresource prefix="/icons">
 		<file>application-exit.svg</file>
+		<file>auto-scale-x.svg</file>
 		<file>camera-photo.svg</file>
 		<file>document-import.svg</file>
 		<file>document-export.svg</file>

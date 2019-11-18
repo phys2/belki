@@ -22,6 +22,7 @@ enum class Distance {
 	COSINE,
 	CROSSCORREL, // note: higher is better
 	PEARSON, // note: higher is better
+	EMD, // Earth Mover's Distance
 };
 
 template<Distance D>
@@ -29,9 +30,6 @@ double distance(const std::vector<double> &a, const std::vector<double> &b);
 
 std::function<double(const std::vector<double> &a, const std::vector<double> &b)>
 distfun(Distance measure);
-
-std::vector<double> generate_gauss(size_t range, double mean, double sigma, double scale=1.);
-void add_gauss(std::vector<double> &target, double mean, double sigma, double scale=1.);
 
 }
 
