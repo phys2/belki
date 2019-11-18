@@ -187,7 +187,7 @@ distfun(Distance measure)
 
 std::pair<size_t, size_t> gauss_cover(double mean, double sigma, size_t range)
 {
-	auto left = std::max(size_t(0), size_t(mean - 3.5*sigma));
+	auto left = size_t(std::max(0., (mean - 3.5*sigma))); // works with neg. values
 	auto right = std::min(range - 1,
 	                      size_t(std::ceil(mean + 3.5*sigma)));
 	return {left, right};
