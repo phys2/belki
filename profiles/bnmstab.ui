@@ -281,7 +281,8 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="draw-circle"/>
+    <iconset resource="../resources/icons-custom/index.qrc">
+     <normaloff>:/icons/components.svg</normaloff>:/icons/components.svg</iconset>
    </property>
    <property name="text">
     <string>Toggle component mode</string>
