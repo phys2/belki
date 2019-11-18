@@ -2,9 +2,9 @@
 #include "bnmschart.h"
 #include "referencechart.h"
 #include "rangeselectitem.h"
-#include "compute/features.h"
 
 // stuff for loading components. will most-probably be moved elsewhere!
+#include "compute/components.h"
 #include "widgets/mainwindow.h"
 #include "fileio.h"
 #include <QTextStream>
@@ -311,7 +311,7 @@ void BnmsTab::loadComponents()
 			                       line[i].toDouble(), // mean
 			                       line[i+1].toDouble()}); // sigma
 		for (auto &i : target[row])
-			i.cover = features::gauss_cover(i.mean, i.sigma,
+			i.cover = components::gauss_cover(i.mean, i.sigma,
 			                                (size_t)b->dimensions.size());
 
 		// sort by peak position

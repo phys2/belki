@@ -1,6 +1,6 @@
 #include "referencechart.h"
 #include "dataset.h"
-#include "compute/features.h"
+#include "compute/components.h"
 #include "compute/colors.h"
 
 #include <QLegendMarker>
@@ -44,7 +44,7 @@ void ReferenceChart::finalize()
 	auto createComponent = [&] (size_t index) {
 		auto &p = allComponents[reference][index];
 		auto upper = new QtCharts::QLineSeries, lower = new QtCharts::QLineSeries;
-		auto gauss = features::generate_gauss(ndim, p.mean, p.sigma, p.weight);
+		auto gauss = components::generate_gauss(ndim, p.mean, p.sigma, p.weight);
 		auto minVal = (logSpace ? ayL->min() : 0.);
 		for (size_t i = 0; i < ndim; ++i) {
 			upper->append(i, gauss[i]);
@@ -80,7 +80,7 @@ void ReferenceChart::finalize()
 		double sumWeights = 0.;
 		for (size_t i = 0; i < components.size(); ++i) {
 			auto &p = allComponents[reference][i];
-			features::add_gauss(sum, p.mean, p.sigma, p.weight);
+			components::add_gauss(sum, p.mean, p.sigma, p.weight);
 			sumWeights += p.weight;
 		}
 		auto s = new QtCharts::QLineSeries;
