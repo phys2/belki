@@ -20,6 +20,7 @@ BnmsTab::BnmsTab(QWidget *parent) :
     Viewer(parent)
 {
 	setupUi(this);
+	referenceSelect->setModel(&proteinModel);
 	auto anchor = actionHistoryMenu;
 	toolBar->insertWidget(anchor, proteinBox);
 	toolBar->insertSeparator(anchor);
@@ -89,7 +90,8 @@ void BnmsTab::setWindowState(std::shared_ptr<WindowState> s)
 
 void BnmsTab::setProteinModel(QAbstractItemModel *m)
 {
-	referenceSelect->setModel(m);
+	//referenceSelect->setModel(m);
+	proteinModel.setSourceModel(m);
 }
 
 void BnmsTab::selectDataset(unsigned id)
@@ -333,4 +335,11 @@ void BnmsTab::updateEnabled()
 
 BnmsTab::DataState::~DataState()
 {
+}
+
+QVariant BnmsTab::InvalidCheckstateProxyModel::data(const QModelIndex &index, int role) const
+{
+	if (role != Qt::CheckStateRole)
+		return QIdentityProxyModel::data(index, role);
+	return {}; // invalid – prevent checkboxes from being drawn
 }
