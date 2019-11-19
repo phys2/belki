@@ -260,8 +260,11 @@ void Chart::toggleCursorLock()
 
 void Chart::openProteinMenu()
 {
-	if (nearestProtein > -1)
-		state->proteinMenu((ProteinId)nearestProtein)->exec(QCursor::pos());
+	if (nearestProtein < 0)
+		return;
+
+	auto protid = data->peek<Dataset::Base>()->protIds[(unsigned)nearestProtein];
+	state->proteinMenu((ProteinId)protid)->exec(QCursor::pos());
 }
 
 void Chart::refreshCursor()
@@ -298,8 +301,10 @@ void Chart::refreshCursor()
 		auto diffVec = pv[i] - center;
 		auto dist = QPointF::dotProduct(diffVec, diffVec);
 		if (dist < range) {
-			if (dist < nearest)
+			if (dist < nearest) {
+				nearest = dist;
 				nearestProtein = i;
+			}
 
 			list << (unsigned)i;
 			if (!annotations)
