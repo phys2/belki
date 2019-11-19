@@ -1,39 +1,29 @@
 #include "bnmschart.h"
 #include "dataset.h"
-#include "compute/features.h"
 #include "compute/colors.h"
 
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
 #include <QtCharts/QCategoryAxis>
-#include <tbb/parallel_for.h>
 
 /* small, inset plot constructor */
 BnmsChart::BnmsChart(Dataset::ConstPtr dataset, const std::vector<Components> &comps)
     : ProfileChart(dataset, false, true),
+      matcher(dataset, comps),
       allComponents(comps)
 {
 	// we provide sorted by distance
 	sort = Sorting::NONE;
+
+	qRegisterMetaType<std::pair<double, double>>();
+	qRegisterMetaType<components::DistIndexPair>();
+	qRegisterMetaType<std::vector<components::DistIndexPair>>();
+
+	// initialize matcher
+	connect(this, &BnmsChart::needRangeMatches, &matcher, &components::Matcher::matchRange);
+	connect(this, &BnmsChart::needCompMatches, &matcher, &components::Matcher::matchComponents);
+	connect(&matcher, &components::Matcher::newRanking, this, &BnmsChart::applyRanking);
 }
-
-struct DistIndexPair {
-	DistIndexPair()
-		: dist(std::numeric_limits<double>::infinity()), index(0)
-	{}
-	DistIndexPair(double dist, size_t index)
-		: dist(dist), index(index)
-	{}
-
-	/** Compare function to sort by distance. */
-	static inline bool cmpDist(const DistIndexPair& a, const DistIndexPair& b)
-	{
-		return (a.dist < b.dist);
-	}
-
-	double dist;
-	size_t index;
-};
 
 void BnmsChart::clear()
 {
@@ -101,49 +91,14 @@ void BnmsChart::repopulate()
 	if (range.first == range.second)
 		return; // we aren't initialized
 
-	auto distance = features::distfun(features::Distance::COSINE);
-	auto b = data->peek<Dataset::Base>();
+	emit needRangeMatches(reference, range, 15);
+}
 
-	/* precompute all distances in parallel */
-	meanScore = 0.;
-	std::vector<double> dists(b->features.size());
-	std::vector<double> r(b->features[reference].begin() + (int)range.first,
-	                      b->features[reference].begin() + (int)range.second);
-	//for (size_t i = 0; i < dists.size(); ++i) {
-	tbb::parallel_for(size_t(0), dists.size(), [&] (size_t i) {
-		std::vector<double> f(b->features[i].begin() + (int)range.first,
-		                      b->features[i].begin() + (int)range.second);
-		dists[i] = distance(f, r);
-		meanScore += dists[i];
-	});
-	meanScore /= (b->features.size() - 1);
-
-	/* use heap to sort out the top N */
-	const unsigned numProts = 15; // TODO: configurable
-	std::vector<DistIndexPair> candidates(numProts);
-	auto dfirst = candidates.begin(), dlast = candidates.end();
-	// initialize heap with infinity distances
-	std::fill(dfirst, dlast, DistIndexPair());
-
-	for (size_t i = 0; i < dists.size(); ++i) {
-		if (i == reference)
-			continue;
-
-		if (dists[i] < dfirst->dist) {
-			// remove max. value in heap
-			std::pop_heap(dfirst, dlast, DistIndexPair::cmpDist);
-
-			// max element is now on position "back" and should be popped
-			// instead we overwrite it directly with the new element
-			DistIndexPair &back = *(dlast-1);
-			back = DistIndexPair(dists[i], i);
-			std::push_heap(dfirst, dlast, DistIndexPair::cmpDist);
-		}
-	}
-	std::sort_heap(dfirst, dlast, DistIndexPair::cmpDist); // sort ascending
-
+void BnmsChart::applyRanking(std::vector<components::DistIndexPair> candidates)
+{
 	clear();
 	addSampleByIndex(reference, true); // claim "marker" state for bold drawing
+	auto b = data->peek<Dataset::Base>();
 	auto p = data->peek<Dataset::Proteins>();
 	for (auto c : candidates) {
 		// don't pollude poll with stuff we are not interested in

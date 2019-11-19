@@ -3,6 +3,7 @@
 
 #include "profilechart.h"
 #include "bnmsmodel.h"
+#include "compute/components.h"
 
 class BnmsChart : public ProfileChart
 {
@@ -21,6 +22,12 @@ public slots:
 	void toggleZoom(bool toRange, bool force = false);
 	void repopulate();
 
+	void applyRanking(std::vector<components::DistIndexPair> top);
+
+signals:
+	void needRangeMatches(unsigned reference, std::pair<double,double> range, unsigned topN);
+	void needCompMatches(Components reference, unsigned topN, unsigned ignore);
+
 protected:
 	QString titleOf(unsigned index, const QString &name, bool isMarker) const override;
 	QColor colorOf(unsigned index, const QColor &color, bool isMarker) const override;
@@ -31,9 +38,10 @@ protected:
 	std::pair<double, double> range = {0., 0.};
 	bool zoomToRange = false;
 
+	components::Matcher matcher;
+
 	// score/dist of all proteins on display
 	std::unordered_map<size_t, double> scores;
-	double meanScore = 1.;
 
 	// reference in data features index
 	unsigned reference = 1; // most probably not protein if id 0 (very first start)
