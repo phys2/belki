@@ -40,10 +40,11 @@ protected:
 		std::vector<Components> components;
 	};
 
-	/* our proxy that removes the check state by returning an invalid one */
-	struct InvalidCheckstateProxyModel : QIdentityProxyModel {
+	/* our proxy that removes checkable and check state */
+	struct NoCheckstateProxyModel : QIdentityProxyModel {
 		using QIdentityProxyModel::QIdentityProxyModel;
 		QVariant data(const QModelIndex &index, int role) const override;
+		Qt::ItemFlags flags(const QModelIndex &index) const override;
 	};
 
 	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
@@ -63,7 +64,7 @@ protected:
 		bool showQuantiles = false;
 	} tabState;
 
-	InvalidCheckstateProxyModel proteinModel;
+	NoCheckstateProxyModel proteinModel;
 	QMenu historyMenu, markerMenu;
 
 	ContentMap<DataState> content;

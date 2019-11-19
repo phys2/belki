@@ -337,9 +337,17 @@ BnmsTab::DataState::~DataState()
 {
 }
 
-QVariant BnmsTab::InvalidCheckstateProxyModel::data(const QModelIndex &index, int role) const
+QVariant BnmsTab::NoCheckstateProxyModel::data(const QModelIndex &index, int role) const
 {
+	// see https://bugreports.qt.io/browse/QTBUG-80197
 	if (role != Qt::CheckStateRole)
 		return QIdentityProxyModel::data(index, role);
 	return {}; // invalid – prevent checkboxes from being drawn
+}
+
+Qt::ItemFlags BnmsTab::NoCheckstateProxyModel::flags(const QModelIndex &index) const
+{
+	auto flags = QIdentityProxyModel::flags(index);
+	flags.setFlag(Qt::ItemFlag::ItemIsUserCheckable, false);
+	return flags;
 }
