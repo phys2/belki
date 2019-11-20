@@ -109,7 +109,7 @@ void Chart::wakeup()
 	auto s = state.get();
 	connect(s, &WindowState::annotationsToggled, this, &Chart::toggleAnnotations);
 	connect(s, &WindowState::annotationsChanged, this, &Chart::changeAnnotations);
-	connect(&state->proteins(), &ProteinDB::markersToggled, this , &Chart::toggleMarkers);
+	connect(&state->proteins(), &ProteinDB::markersToggled, this, &Chart::toggleMarkers);
 
 	/* get updates from dataset (specify receiver so signal is cleaned up!) */
 	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {

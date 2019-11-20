@@ -46,7 +46,7 @@ void HeatmapTab::setWindowState(std::shared_ptr<WindowState> s)
 	connect(ws, &WindowState::orderSynchronizingToggled, this, [this] {
 		actionLockOrder->setChecked(!windowState->orderSynchronizing);
 	});
-	connect(&s->proteins(), &ProteinDB::markersToggled, [this] (auto ids, bool present) {
+	connect(&s->proteins(), &ProteinDB::markersToggled, this, [this] (auto ids, bool present) {
 		// we do not keep track of markers for inactive scenes
 		if (current)
 			current().scene->toggleMarkers(ids, present);
