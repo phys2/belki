@@ -223,7 +223,7 @@ void MainWindow::setupActions()
 		if (filename.isEmpty())
 			return;
 
-		runInBackground([&s=state->global.store,filename] { s.exportMarkers(filename); });
+		runInBackground([&s=state->hub().store,filename] { s.exportMarkers(filename); });
 	});
 	connect(actionExportAnnotations, &QAction::triggered, [this] {
 		/* keep own copy while user chooses filename */
@@ -235,7 +235,7 @@ void MainWindow::setupActions()
 			return;
 
 		// TODO we cannot move unique_ptr to other thread. so no bg
-		state->global.store.exportAnnotations(filename, *localCopy);
+		state->hub().store.exportAnnotations(filename, *localCopy);
 	});
 	connect(actionPersistAnnotations, &QAction::triggered, [this] {
 		/* keep own copy while user edits the name */
@@ -260,7 +260,7 @@ void MainWindow::setupActions()
 		auto s = new SpawnDialog(data, state, this);
 		// spawn dialog deletes itself, should also kill connection+lambda, right?
 		connect(s, &SpawnDialog::spawn, [this] (auto data, auto& config) {
-			emit state->global.hub.spawn(data, config); // TODO change mechanic, dimredTab->currentMethod());
+			state->hub().spawn(data, config); // TODO change mechanic, dimredTab->currentMethod());
 		});
 	});
 
@@ -268,7 +268,7 @@ void MainWindow::setupActions()
 		auto filename = io->chooseFile(FileIO::SaveProject);
 		if (filename.isEmpty())
 			return;
-		state->global.hub.saveProjectAs(filename);
+		state->hub().saveProjectAs(filename);
 		// TODO: change our project filename to this one
 	});
 }
@@ -311,7 +311,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 	v->setProteinModel(&markerModel);
 
 	// connect singnalling into view (TODO: they should connect themselves)
-	auto hub = &state->global.hub;
+	auto hub = &state->hub();
 	auto proteins = &state->proteins();
 	connect(hub, &DataHub::newDataset, v, &Viewer::addDataset);
 	/* use queued conn. to ensure the views get the newDataset signal _first_! */
@@ -400,7 +400,7 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 	updateState(Dataset::Touch::ALL);
 
 	// TODO wronge place to do this in new storage concept
-	setFilename(data ? state->global.hub.store.name() : "");
+	setFilename(data ? state->hub().store.name() : "");
 }
 
 void MainWindow::setFilename(QString name)
@@ -503,7 +503,7 @@ void MainWindow::openFile(Input type, QString fn)
 			return; // nothing selected
 	}
 
-	auto &hub = state->global.hub;
+	auto &hub = state->hub();
 	switch (type) {
 	case Input::DATASET:      hub.importDataset(fn, "Dist"); break;
 	case Input::DATASET_RAW:  hub.importDataset(fn, "AbundanceLeft"); break;
