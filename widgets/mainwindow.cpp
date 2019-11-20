@@ -257,7 +257,7 @@ void MainWindow::setupActions()
 	connect(actionSplice, &QAction::triggered, [this] {
 		if (!data)
 			return;
-		auto s = new SpawnDialog(data, this);
+		auto s = new SpawnDialog(data, state, this);
 		// spawn dialog deletes itself, should also kill connection+lambda, right?
 		connect(s, &SpawnDialog::spawn, [this] (auto data, auto& config) {
 			emit state->global.hub.spawn(data, config); // TODO change mechanic, dimredTab->currentMethod());

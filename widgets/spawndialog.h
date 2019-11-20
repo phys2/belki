@@ -7,6 +7,7 @@
 
 class Dataset;
 class DatasetConfiguration;
+class WindowState;
 class DistmatScene;
 class QPushButton;
 
@@ -15,7 +16,7 @@ class SpawnDialog : public QDialog, private Ui::SpawnDialog
 	Q_OBJECT
 
 public:
-	explicit SpawnDialog(std::shared_ptr<Dataset> data, QWidget *parent = nullptr);
+	SpawnDialog(std::shared_ptr<Dataset> data, std::shared_ptr<WindowState> state, QWidget *parent = nullptr);
 
 signals:
 	void spawn(std::shared_ptr<Dataset const> source, const DatasetConfiguration& config);
@@ -36,8 +37,9 @@ protected:
 	std::unique_ptr<DistmatScene> scene;
 	QPushButton *okButton; // cached, owned by Ui::SpawnDialog
 
-	// data source
+	// data source & window state
 	std::shared_ptr<Dataset> data;
+	std::shared_ptr<WindowState> state;
 };
 
 #endif // SPAWNDIALOG_H
