@@ -81,7 +81,7 @@ BnmsTab::BnmsTab(QWidget *parent) :
 void BnmsTab::setWindowState(std::shared_ptr<WindowState> s)
 {
 	Viewer::setWindowState(s);
-	connect(&s->proteins(), &ProteinDB::markersToggled, [this] {
+	connect(&s->proteins(), &ProteinDB::markersToggled, this, [this] {
 		setupMarkerMenu();
 		if (current) // rebuild plot to reflect marker state change (TODO: awkward)
 			current().scene->repopulate();

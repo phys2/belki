@@ -54,7 +54,7 @@ ProfileTab::ProfileTab(QWidget *parent) :
 void ProfileTab::setWindowState(std::shared_ptr<WindowState> s)
 {
 	Viewer::setWindowState(s);
-	connect(&s->proteins(), &ProteinDB::markersToggled, [this] {
+	connect(&s->proteins(), &ProteinDB::markersToggled, this, [this] {
 		if (current)
 			rebuildPlot();
 	});
