@@ -26,6 +26,11 @@ ProteinDB& WindowState::proteins()
 	return global.proteins;
 }
 
+DataHub &WindowState::hub()
+{
+	return global.hub;
+}
+
 std::unique_ptr<QMenu> WindowState::proteinMenu(ProteinId id)
 {
 	return global.proteinMenu(id);

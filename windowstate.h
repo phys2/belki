@@ -12,6 +12,7 @@
 
 class GuiState;
 class ProteinDB;
+class DataHub;
 class QMenu;
 
 /* A "dumb" QObject – whoever manipulates also emits the signals
@@ -28,6 +29,7 @@ struct WindowState : QObject
 	WindowState(GuiState &global);
 
 	ProteinDB& proteins();
+	DataHub& hub();
 	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
 
 	void setOrder(Order::Type type);
@@ -58,7 +60,6 @@ signals:
 
 protected:
 	GuiState &global;
-	friend class MainWindow; // for access to global->hub/store. temporary
 };
 
 #endif
