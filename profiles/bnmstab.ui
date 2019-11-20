@@ -127,6 +127,7 @@
    <addaction name="separator"/>
    <addaction name="actionLogarithmic"/>
    <addaction name="separator"/>
+   <addaction name="actionSplice"/>
    <addaction name="actionComponentToggle"/>
    <addaction name="actionLoadComponents"/>
    <addaction name="actionSavePlot"/>
@@ -283,6 +284,18 @@
    </property>
    <property name="toolTip">
     <string>Use pre-calculated components for matching</string>
+   </property>
+  </action>
+  <action name="actionSplice">
+   <property name="icon">
+    <iconset theme="document-new">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Splice dataset</string>
+   </property>
+   <property name="toolTip">
+    <string>Create a new dataset from the current range</string>
    </property>
   </action>
  </widget>

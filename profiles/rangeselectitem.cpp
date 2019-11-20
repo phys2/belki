@@ -35,11 +35,16 @@ void RangeSelectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *,
 	QBrush fill({255, 195, 195, 127});
 	fill.setStyle(Qt::BrushStyle::Dense4Pattern);
 	std::array<QRectF, 2> areas = {
-	    QRectF{area.topLeft(), QPointF{valueToPos(handles[LEFT]->value), area.bottom()}},
-	    {QPointF{valueToPos(handles[RIGHT]->value), area.top()}, area.bottomRight()}
+	    QRectF{area.topLeft(), QPointF{valueToPos(handles.at(LEFT)->value), area.bottom()}},
+	    {QPointF{valueToPos(handles.at(RIGHT)->value), area.top()}, area.bottomRight()}
 	};
 	for (auto &a : areas)
 		painter->fillRect(a, fill);
+}
+
+std::pair<double, double> RangeSelectItem::range() const
+{
+	return {handles.at(LEFT)->value, handles.at(RIGHT)->value};
 }
 
 void RangeSelectItem::setRect(const QRectF &newArea)
@@ -152,12 +157,12 @@ QPointF RangeSelectItem::HandleItem::restrictPosition(QPointF newPos)
 {
 	/* We could also do this in screen space with area,
 	 * but this way, the enforced offset is in value space */
-	auto left = parent->handles[LEFT]->limit;
-	auto right = parent->handles[RIGHT]->limit;
+	auto left = parent->handles.at(LEFT)->limit;
+	auto right = parent->handles.at(RIGHT)->limit;
 	if (border == LEFT)
-		right = parent->handles[RIGHT]->value - 10;
+		right = parent->handles.at(RIGHT)->value - 10;
 	else
-		left = parent->handles[LEFT]->value + 10;
+		left = parent->handles.at(LEFT)->value + 10;
 	auto newX = std::max(left, std::min(right, parent->posToValue(newPos.x())));
 	newPos.setX(parent->valueToPos(newX));
 	newPos.setY(pos().y()); // don't allow vertical movement

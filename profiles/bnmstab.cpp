@@ -2,6 +2,7 @@
 #include "bnmschart.h"
 #include "referencechart.h"
 #include "rangeselectitem.h"
+#include "datahub.h" // for splice
 
 // stuff for loading components. will most-probably be moved elsewhere!
 #include "compute/components.h"
@@ -62,11 +63,11 @@ BnmsTab::BnmsTab(QWidget *parent) :
 		if (current) current().scene->toggleIndividual(on);
 	});
 	connect(actionLogarithmic, &QAction::toggled, [this] (bool on) {
-		if (current) {
-			current().logSpace = on;
-			current().scene->toggleLogSpace(on);
-			current().refScene->toggleLogSpace(on);
-		}
+		if (!current)
+			return;
+		current().logSpace = on;
+		current().scene->toggleLogSpace(on);
+		current().refScene->toggleLogSpace(on);
 	});
 	connect(referenceSelect, qOverload<int>(&QComboBox::currentIndexChanged), [this] {
 		if (referenceSelect->currentIndex() < 0)
@@ -74,6 +75,21 @@ BnmsTab::BnmsTab(QWidget *parent) :
 		setReference((unsigned)referenceSelect->currentData(Qt::UserRole + 1).value<int>());
 	});
 	connect(actionLoadComponents, &QAction::triggered, this, &BnmsTab::loadComponents);
+	connect(actionSplice, &QAction::triggered, [this] {
+		if (!current)
+			return;
+		DatasetConfiguration conf;
+		conf.parent = current().data->config().id;
+		auto [left, right] = current().rangeSelect->range();
+		conf.bands.resize(size_t(right) - size_t(left));
+		std::iota(conf.bands.begin(), conf.bands.end(), unsigned(left));
+		QString name("%1 to %2 (reference %3)");
+		auto b = current().data->peek<Dataset::Base>();
+		name = name.arg(b->dimensions.at(int(left))).arg(b->dimensions.at(int(right)));
+		conf.name = name.arg(
+		        windowState->proteins().peek()->proteins[tabState.reference].name);
+		windowState->hub().spawn(current().data, conf);
+	});
 
 	updateEnabled();
 }

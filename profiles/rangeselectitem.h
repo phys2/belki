@@ -16,8 +16,11 @@ public:
 	using Border = Qt::Edge;
 
 	RangeSelectItem(QtCharts::QChart *parent = nullptr);
+
 	virtual QRectF boundingRect() const;
 	virtual void paint(QPainter*, const QStyleOptionGraphicsItem*, QWidget*);
+
+	std::pair<double, double> range() const;
 	void setBorder(Border border, double x);
 
 public slots:
