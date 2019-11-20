@@ -24,6 +24,7 @@ struct Protein {
 	// random or user-set color
 	QColor color;
 };
+Q_DECLARE_METATYPE(Protein)
 
 struct Features {
 	using Ptr = std::unique_ptr<Features>;

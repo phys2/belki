@@ -8,9 +8,6 @@
 ProteinDB::ProteinDB(QObject *parent)
     : QObject(parent)
 {
-	qRegisterMetaType<ProteinId>("ProteinId"); // needed for typedefs
-	qRegisterMetaType<Protein>("Protein"); // needed for signal
-
 	colorset = Palette::iwanthue20;
 	groupColorset = colorset;
 	for (auto &c : groupColorset)

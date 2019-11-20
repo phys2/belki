@@ -2,6 +2,9 @@
 #include "guistate.h"
 #include "utils.h"
 
+// for registering meta types
+#include "model.h"
+
 #include <QChartView>
 #include <QApplication>
 #include <QIcon>
@@ -24,6 +27,9 @@ int main(int argc, char *argv[])
 	// register additional types needed in queued connections
 	qRegisterMetaType<QVector<QColor>>();
 	qRegisterMetaType<MessageType>();
+	qRegisterMetaType<Protein>("Protein"); // needed for signal
+	qRegisterMetaType<ProteinId>("ProteinId"); // needed for typedefs
+	qRegisterMetaType<std::vector<ProteinId>>("std::vector<ProteinId>"); // needed for signal
 
 	// revisit these at a later time
 	QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
