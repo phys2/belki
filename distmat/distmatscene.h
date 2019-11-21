@@ -70,7 +70,7 @@ public:
 
 signals:
 	void cursorChanged(QVector<unsigned> samples, QString title = {});
-	void selectionChanged(const std::vector<bool> dimensionSelected);
+	void selectionChanged(const std::vector<bool> &dimensionSelected);
 
 public slots:
 	void setDirection(Direction direction);
