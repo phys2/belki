@@ -91,7 +91,7 @@ void BnmsChart::repopulate()
 	if (range.first == range.second)
 		return; // we aren't initialized
 
-	emit needRangeMatches(reference, range, 15);
+	emit needRangeMatches(reference, range, 40);
 }
 
 void BnmsChart::applyRanking(std::vector<components::DistIndexPair> candidates)
