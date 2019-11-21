@@ -289,11 +289,13 @@ void FeatweightsScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 	if (!(event->buttons() & Qt::RightButton))
 		return;
 
-	QVector<unsigned> luckyOnes;
+	auto d = data->peek<Dataset::Base>();
+	std::vector<ProteinId> luckyOnes;
 	for (unsigned i = 0; i < contours.size(); ++i) {
 		if (contours[i][idx.x] >= idx.y)
-			luckyOnes.push_back(i);
+			luckyOnes.push_back(d->protIds[i]);
 	}
+	d.unlock();
 	auto real = translate(idx);
 	auto caption = QString("Tr %1 / W %2").arg(real.x()).arg(real.y());
 	emit cursorChanged(luckyOnes, caption);

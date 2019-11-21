@@ -301,7 +301,10 @@ void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 		return;
 
 	/* emit cursor change */
-	emit cursorChanged({idx.x, idx.y});
+	auto d = data->peek<Dataset::Base>();
+	std::vector<ProteinId> proteins = {d->protIds[idx.x], d->protIds[idx.y]};
+	d.unlock();
+	emit cursorChanged(proteins);
 }
 
 void DistmatScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)

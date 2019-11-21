@@ -36,7 +36,7 @@ public slots:
 
 signals:
 	void markerToggled(ProteinId id, bool present);
-	void cursorChanged(QVector<unsigned> samples, const QString &title = {});
+	void proteinsHighlighted(std::vector<ProteinId> proteins, const QString &title = {});
 	void exportRequested(QGraphicsView *source, QString description);
 	void exportRequested(QGraphicsScene *source, QString description);
 

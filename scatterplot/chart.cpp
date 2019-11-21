@@ -168,8 +168,9 @@ void Chart::updatePartitions()
 	if (source.empty())
 		return; // we're not displaying anything
 
-	auto d = data->peek<Dataset::Structure>(); // keep while we operate with Annot*!
-	auto annotations = d->fetch(state->annotations);
+	auto d = data->peek<Dataset::Base>();
+	auto s = data->peek<Dataset::Structure>(); // keep while we operate with Annot*!
+	auto annotations = s->fetch(state->annotations);
 	if (!annotations) {
 		toggleAnnotations();
 		return; // no clusters means nothing more to do!
@@ -188,16 +189,16 @@ void Chart::updatePartitions()
 		// go through clusters in their designated order
 		for (auto i : annotations->order) {
 			auto &g = annotations->groups.at(i);
-			auto s = new Proteins(g.name, g.color, this);
-			partitions.try_emplace((int)i, s);
+			auto series = new Proteins(g.name, g.color, this);
+			partitions.try_emplace((int)i, series);
 			/* enable profile view updates on legend label hover */
-			auto lm = legend()->markers(s).first();
-			connect(lm, &QtCharts::QLegendMarker::hovered, [this, s] (bool active) {
+			auto lm = legend()->markers(series).first();
+			connect(lm, &QtCharts::QLegendMarker::hovered, [this, series] (bool active) {
 				if (!active)
 					return;
-				emit cursorChanged(s->samples, s->name());
+				emit cursorChanged(series->proteins, series->name());
 				for (auto& [_, p] : partitions)
-					p->redecorate(false, s == p.get());
+					p->redecorate(false, series == p.get());
 			});
 		}
 	} else {
@@ -213,7 +214,7 @@ void Chart::updatePartitions()
 			target++; // second series, mixed
 		if (m.size() == 1)
 			target = (int)*m.begin();
-		partitions.at(target)->add(i, source[(int)i]);
+		partitions.at(target)->add(d->protIds[i], i, source[(int)i]);
 	}
 	// the partitions use deferred addition, need to finalize
 	for (auto &[_, p] : partitions)
@@ -289,10 +290,11 @@ void Chart::refreshCursor()
 	tracker->show();
 
 	// determine all proteins that fall into the cursor
-	QVector<unsigned> list;
+	std::vector<ProteinId> list;
 	std::set<int> affectedPartitions;
-	auto d = data->peek<Dataset::Structure>();
-	auto annotations = d->fetch(state->annotations);
+	auto d = data->peek<Dataset::Base>();
+	auto s = data->peek<Dataset::Structure>(); // keep while we work with annot.
+	auto annotations = s->fetch(state->annotations);
 	auto pv = master->pointsVector();
 
 	nearestProtein = -1;
@@ -306,13 +308,14 @@ void Chart::refreshCursor()
 				nearestProtein = i;
 			}
 
-			list << (unsigned)i;
+			list.push_back(d->protIds[(size_t)i]);
 			if (!annotations)
 				continue;
 			for (auto m : annotations->memberships[(unsigned)i])
 				affectedPartitions.insert((int)m);
 		}
 	}
+	s.unlock();
 	d.unlock();
 
 	for (auto& [i, p] : partitions)
@@ -450,10 +453,18 @@ Chart::Proteins::Proteins(const QString &label, QColor color, Chart *chart)
 	});
 }
 
-void Chart::Proteins::add(unsigned index, const QPointF &point)
+void Chart::Proteins::clear()
 {
-	replacement.append(point); // deferred addition to chart for speed reasons
+	proteins.clear();
+	samples.clear();
+	QtCharts::QScatterSeries::clear();
+}
+
+void Chart::Proteins::add(ProteinId id, unsigned index, const QPointF &point)
+{
+	proteins.push_back(id);
 	samples.append(index);
+	replacement.append(point); // deferred addition to chart for speed reasons
 }
 
 void Chart::Proteins::apply()

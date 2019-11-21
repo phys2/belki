@@ -66,9 +66,9 @@ void ProfileWidget::setData(std::shared_ptr<Dataset> dataset)
 	}
 }
 
-void ProfileWidget::updateDisplay(QVector<unsigned> newSamples, const QString &title)
+void ProfileWidget::updateDisplay(std::vector<ProteinId> newProteins, const QString &title)
 {
-	samples = newSamples;
+	proteins = newProteins;
 	if (chart)
 		chart->setTitle(title);
 
@@ -81,34 +81,40 @@ void ProfileWidget::update()
 	if (chart)
 		chart->clear();
 
-	if (samples.empty() || !data || !chart) {
+	if (proteins.empty() || !data || !chart) {
 		proteinList->clear();
 		setDisabled(true);
 		return;
 	}
 
-	/* determine marker proteins contained in samples */
 	auto d = data->peek<Dataset::Base>();
 	auto p = data->peek<Dataset::Proteins>();
-	auto idOf = [&] (auto index) { return d->protIds[index]; };
+
+	/* sender dataset & ours might be out-of-sync. play it save and compose samples */
+	std::vector<std::pair<ProteinId, unsigned>> samples;
+	for (auto i : proteins) {
+		try {
+			samples.push_back({i, d->protIndex.at(i)});
+		} catch (std::out_of_range&) {} // not in index, just leave it
+	}
+	unsigned total = samples.size();
+	bool reduced = total >= 25;
 
 	/* set up plot */
-	bool reduced = samples.size() >= 25;
+	for (auto [id, index] : samples)
+		chart->addSampleByIndex(index, p->markers.count(id));
 	chart->toggleAverage(reduced);
 	chart->toggleIndividual(!reduced);
-	for (auto i : qAsConst(samples))
-		chart->addSampleByIndex(i, p->markers.count(idOf(i)));
 	chart->finalize();
 
 	/* set up list */
 
 	// determine how many lines we can fit
-	auto total = samples.size();
 	auto testFont = proteinList->currentFont(); // replicate link font
 	testFont.setBold(true);
 	testFont.setUnderline(true);
-	auto showMax = proteinList->contentsRect().height() /
-	        QFontMetrics(testFont).lineSpacing() - 1;
+	auto showMax = size_t(proteinList->contentsRect().height() /
+	        QFontMetrics(testFont).lineSpacing() - 1);
 
 	// create format string and reduce set
 	auto text = QString("%1");
@@ -121,8 +127,8 @@ void ProfileWidget::update()
 	text.append(QString("(%1 total)").arg(total));
 
 	// sort by name -- _after_ set reduction to get a broad representation
-	std::sort(samples.begin(), samples.end(), [&d,&p] (unsigned a, unsigned b) {
-		return d->lookup(p, a).name < d->lookup(p, b).name;
+	std::sort(samples.begin(), samples.end(), [&p] (auto a, auto b) {
+		return p->proteins[a.first].name < p->proteins[b.first].name;
 	});
 
 	// obtain annotations, if available
@@ -133,19 +139,19 @@ void ProfileWidget::update()
 	QString content;
 	// TODO: custom URL with URL handler that leads to protein menu
 	QString tpl("<b><a href='protein:%1'>%2</a></b> <small>%3 <i>%4</i></small><br>");
-	for (auto i : qAsConst(samples)) {
+	for (auto [id, index] : samples) {
 		 // highlight marker proteins
-		if (p->markers.count(idOf(i)))
+		if (p->markers.count(id))
 			content.append("<small>★</small>");
-		auto &prot = p->proteins[idOf(i)];
+		auto &prot = p->proteins[id];
 		QStringList clusters;
 		if (annotations) {
-			auto &m = annotations->memberships[i];
+			auto &m = annotations->memberships[index]; // we checked protIndex before
 			clusters = std::accumulate(m.begin(), m.end(), QStringList(),
 			                           [&annotations] (QStringList a, unsigned b) {
 			                            return a << annotations->groups.at(b).name; });
 		}
-		content.append(tpl.arg(idOf(i)).arg(prot.name, clusters.join(", "), prot.description));
+		content.append(tpl.arg(id).arg(prot.name, clusters.join(", "), prot.description));
 	}
 	proteinList->setText(text.arg(content));
 

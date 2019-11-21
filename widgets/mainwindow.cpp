@@ -322,7 +322,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 
 	// connect signalling out of view
 	connect(v, &Viewer::markerToggled, this, &MainWindow::markerToggled);
-	connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateDisplay);
+	connect(v, &Viewer::proteinsHighlighted, profiles, &ProfileWidget::updateDisplay);
 
 	auto renderSlot = [this] (auto r, auto d) {
 		auto title = (data ? data->config().name : windowTitle());

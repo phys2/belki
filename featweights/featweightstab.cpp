@@ -105,7 +105,7 @@ void FeatweightsTab::addDataset(Dataset::Ptr data)
 	auto scene = state.scene.get();
 
 	/* connect outgoing signals */
-	connect(scene, &FeatweightsScene::cursorChanged, this, &Viewer::cursorChanged);
+	connect(scene, &FeatweightsScene::cursorChanged, this, &Viewer::proteinsHighlighted);
 }
 
 void FeatweightsTab::setupWeightingUI()

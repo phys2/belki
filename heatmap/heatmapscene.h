@@ -25,6 +25,7 @@ public:
 		QRectF boundingRect() const override;
 		void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
+		ProteinId id;
 		unsigned index;
 		// feature vector as alpha values (0…255)
 		cv::Mat1b features;
@@ -69,7 +70,7 @@ public:
 	void wakeup();
 
 signals:
-	void cursorChanged(QVector<unsigned> samples, QString title = {});
+	void cursorChanged(std::vector<ProteinId> proteins, QString title = {});
 
 public slots:
 	void rearrange(QSize viewport);
