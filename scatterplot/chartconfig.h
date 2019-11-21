@@ -16,7 +16,7 @@ struct ChartConfig {
 			qreal lo = .1;
 		} alpha;
 		struct {
-			QColor unlabeled = Qt::gray;
+			QColor unlabeled = Qt::lightGray;
 			QColor mixed = Qt::darkGray;
 		} color;
 		Qt::PenStyle border = Qt::PenStyle::DotLine;
