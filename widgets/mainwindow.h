@@ -120,7 +120,7 @@ protected:
 	    {Tab::DISTMAT, "Distance Map"},
 	    {Tab::PROFILES, "Profiles"},
 	    {Tab::FEATWEIGHTS, "Feature Weighting"},
-	    {Tab::BNMS, "⚙️ BNMS"},
+	    {Tab::BNMS, "Matching"},
 	};
 	std::multiset<Tab> tabHistory; // used as per-type incrementing counter
 };

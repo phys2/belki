@@ -143,9 +143,9 @@ void MainWindow::setupTabs()
 	}
 
 	// initial tabs
-	addTab(Tab::BNMS);
+	addTab(Tab::HEATMAP);
+	addTab(Tab::DISTMAT);
 	addTab(Tab::DIMRED);
-	addTab(Tab::SCATTER);
 	addTab(Tab::PROFILES);
 	tabWidget->setCurrentIndex(0);
 }
