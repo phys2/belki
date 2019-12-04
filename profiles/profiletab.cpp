@@ -7,12 +7,15 @@
 #include <QListWidget>
 #include <QMenu>
 #include <QCursor>
+#include <QShortcut>
 
 ProfileTab::ProfileTab(QWidget *parent) :
     Viewer(parent), proteinModel(tabState.extras)
 {
 	setupUi(this);
+	view->setRubberBand(QtCharts::QChartView::RectangleRubberBand); // TODO: issue #5
 	setupProteinBox();
+
 	auto anchor = actionShowLabels;
 	toolBar->insertWidget(anchor, proteinBox);
 	toolBar->insertSeparator(anchor);
@@ -46,6 +49,14 @@ ProfileTab::ProfileTab(QWidget *parent) :
 			current().logSpace = on;
 			current().scene->toggleLogSpace(on);
 		}
+	});
+
+	/* have a handy shortcut */
+	auto zoomReset = new QShortcut(this);
+	zoomReset->setKey({"Shift+z"});
+	connect(zoomReset, &QShortcut::activated, [this] {
+		if (current)
+			current().scene->zoomReset();
 	});
 
 	updateEnabled();
