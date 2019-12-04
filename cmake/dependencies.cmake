@@ -55,7 +55,7 @@ find_package(OpenCV REQUIRED core imgproc)
 list(APPEND DEP_INCLUDES ${OpenCV_INCLUDE_DIRS})
 if (STATIC_BUILD)
 	# sucks that the version is encoded in opencv static lib filenames
-	list(APPEND DEP_LIBRARIES opencv_imgproc401 opencv_core401)
+	list(APPEND DEP_LIBRARIES opencv_imgproc412 opencv_core412)
 else()
 	list(APPEND DEP_LIBRARIES ${OpenCV_LIBRARIES})
 endif()

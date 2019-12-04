@@ -98,7 +98,7 @@ void ScatterTab::addDataset(Dataset::Ptr data)
 	scene->setState(windowState);
 
 	/* connect outgoing signals */
-	connect(scene, &Chart::cursorChanged, this, &Viewer::cursorChanged);
+	connect(scene, &Chart::cursorChanged, this, &Viewer::proteinsHighlighted);
 }
 
 void ScatterTab::refillDimensionSelects(bool onlySecondary)

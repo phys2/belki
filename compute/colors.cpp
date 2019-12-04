@@ -49,6 +49,14 @@ cv::Mat3b Colormap::apply(const cv::Mat &source, double scale, double minVal)
 	return apply(prepare(source, scale, minVal));
 }
 
+cv::Vec3b Colormap::apply(double value, double min, double max)
+{
+	auto index = (value - min) / (max - min) * 255;
+	if (index < 0 || index > 255)
+		return Qt::black;
+	return map[(unsigned)index];
+}
+
 cv::Mat3b Colormap::apply(const cv::Mat1b &source)
 {
 	cv::Mat3b ret;

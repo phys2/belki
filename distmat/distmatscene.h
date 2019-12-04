@@ -69,8 +69,8 @@ public:
 	void wakeup() override;
 
 signals:
-	void cursorChanged(QVector<unsigned> samples, QString title = {});
-	void selectionChanged(const std::vector<bool> dimensionSelected);
+	void cursorChanged(std::vector<ProteinId> samples, QString title = {});
+	void selectionChanged(const std::vector<bool> &dimensionSelected);
 
 public slots:
 	void setDirection(Direction direction);

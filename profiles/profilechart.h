@@ -30,15 +30,16 @@ class ProfileChart : public QtCharts::QChart
 public:
 	ProfileChart(std::shared_ptr<Dataset const> data, bool small=true, bool global=false);
 	ProfileChart(ProfileChart *source);
+	virtual ~ProfileChart() {}
 
 	std::shared_ptr<Dataset const> dataset() { return data; }
 	unsigned numProfiles() { return content.size(); }
 	bool isLogSpace() { return logSpace; }
 
-	void clear(); // need to be called before addSample calls
+	virtual void clear(); // need to be called before addSample calls
 	void addSample(ProteinId id, bool marker = false);
 	void addSampleByIndex(unsigned index, bool marker = false);
-	void finalize(); // need to be called after addSample calls
+	virtual void finalize(); // need to be called after addSample calls
 	void toggleLabels(bool on);
 	void toggleLogSpace(bool on);
 
@@ -49,20 +50,31 @@ signals:
 	void menuRequested(ProteinId id);
 
 protected:
+	enum class Sorting {
+		NONE,
+		NAME,
+		MARKEDTHENNAME
+	} sort = Sorting::NAME;
+
 	enum class SeriesCategory { // see showCategories
 		INDIVIDUAL,
 		AVERAGE,
-		QUANTILE
+		QUANTILE,
+		CUSTOM
 	};
 
 	void setupSeries();
-	void animHighlight(int index, qreal step);
+	virtual QString titleOf(unsigned index, const QString &name, bool isMarker) const;
+	virtual QColor colorOf(unsigned index, const QColor &color, bool isMarker) const;
+	virtual void animHighlight(int index, qreal step);
 	void toggleHighlight(int index = -1);
 	// helpers to constructors
 	void setupSignals();
 	void setupAxes(const Features::Range &range);
 	// helper to finalize()
 	void computeStats();
+	// helper to setupSeries()
+	void addSeries(QtCharts::QAbstractSeries *s, SeriesCategory cat, bool sticky = false);
 
 	/* indices of proteins shown in the graph, as markers or not */
 	std::vector<std::pair<unsigned, bool>> content;

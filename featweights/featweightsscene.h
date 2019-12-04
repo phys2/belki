@@ -48,7 +48,7 @@ public:
 	explicit FeatweightsScene(Dataset::Ptr data);
 
 signals:
-	void cursorChanged(QVector<unsigned> samples, QString title = {});
+	void cursorChanged(std::vector<ProteinId> proteins, QString title = {});
 
 public slots:
 	void updateMarkers();

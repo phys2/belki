@@ -54,8 +54,8 @@ protected:
 		DESCRIPTIONS
 	};
 
-	enum class Tab {
-		DIMRED, SCATTER, HEATMAP, DISTMAT, PROFILES, FEATWEIGHTS
+	enum class Tab { // see also tabTitles!
+		DIMRED, SCATTER, HEATMAP, DISTMAT, PROFILES, FEATWEIGHTS, BNMS
 	};
 
 	/* our proxy to individually enable/disable protein entries based on dataset */
@@ -120,6 +120,7 @@ protected:
 	    {Tab::DISTMAT, "Distance Map"},
 	    {Tab::PROFILES, "Profiles"},
 	    {Tab::FEATWEIGHTS, "Feature Weighting"},
+	    {Tab::BNMS, "Matching"},
 	};
 	std::multiset<Tab> tabHistory; // used as per-type incrementing counter
 };

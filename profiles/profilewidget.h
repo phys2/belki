@@ -2,6 +2,7 @@
 #define PROFILEWIDGET_H
 
 #include "ui_profilewidget.h"
+#include "model.h"
 #include <memory>
 
 class ProfileChart;
@@ -18,13 +19,12 @@ public:
 public slots:
 	void setState(std::shared_ptr<WindowState> s) { state = s; }
 	void setData(std::shared_ptr<Dataset> data);
-	void updateDisplay(QVector<unsigned> samples, const QString &title = {});
+	void updateDisplay(std::vector<ProteinId> proteins, const QString &title = {});
 
 protected:
 	void update();
 
-
-	QVector<unsigned> samples;
+	std::vector<ProteinId> proteins;
 
 	ProfileChart *chart = nullptr;
 	std::shared_ptr<Dataset> data;

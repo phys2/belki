@@ -20,6 +20,8 @@ struct Colormap {
 	cv::Mat3b apply(const cv::Mat1b &source);
 	// convert any matrix (includes conversion to Mat1b)
 	cv::Mat3b apply(const cv::Mat &source, double scale, double minVal=0.);
+	// convert single value
+	cv::Vec3b apply(double value, double min, double max);
 
 	const std::array<cv::Vec3b, 256> map;
 

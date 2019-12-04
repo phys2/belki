@@ -26,6 +26,7 @@ QString FileIO::chooseFile(FileIO::Role purpose, QWidget *p)
 	                     "All Files (*)",
 	                      false, {}}},
 	    {OpenMarkers, {"Open Markers List", "List of markers (*.txt);; All Files (*)", false, {}}},
+	    {OpenComponents, {"Open Component Table", "Profile component table (*.tsv);; All Files (*)", false, {}}},
 	    {SaveMarkers, {"Save Markers to File", "List of markers (*.txt)", true, ".txt"}},
 	    {SaveAnnotations, {"Save Annotations to File", "Annotation table (*.tsv)", true, ".tsv"}},
 	    //with pdf//{SavePlot, {"Save Plot to File", "Scalable Vector Graphics (*.svg);; Portable Document Format (*.pdf);; Portable Network Graphics (*.png)", true, {}}},

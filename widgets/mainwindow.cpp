@@ -12,6 +12,7 @@
 #include "heatmap/heatmaptab.h"
 #include "distmat/distmattab.h"
 #include "profiles/profiletab.h"
+#include "profiles/bnmstab.h"
 #include "featweights/featweightstab.h"
 
 #include <QTreeView>
@@ -142,8 +143,9 @@ void MainWindow::setupTabs()
 	}
 
 	// initial tabs
+	addTab(Tab::HEATMAP);
+	addTab(Tab::DISTMAT);
 	addTab(Tab::DIMRED);
-	addTab(Tab::SCATTER);
 	addTab(Tab::PROFILES);
 	tabWidget->setCurrentIndex(0);
 }
@@ -305,6 +307,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 	case Tab::DISTMAT: v = new DistmatTab; break;
 	case Tab::PROFILES: v = new ProfileTab; break;
 	case Tab::FEATWEIGHTS: v = new FeatweightsTab; break;
+	case Tab::BNMS: v = new BnmsTab; break;
 	}
 
 	v->setWindowState(state);
@@ -319,7 +322,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 
 	// connect signalling out of view
 	connect(v, &Viewer::markerToggled, this, &MainWindow::markerToggled);
-	connect(v, &Viewer::cursorChanged, profiles, &ProfileWidget::updateDisplay);
+	connect(v, &Viewer::proteinsHighlighted, profiles, &ProfileWidget::updateDisplay);
 
 	auto renderSlot = [this] (auto r, auto d) {
 		auto title = (data ? data->config().name : windowTitle());

@@ -100,7 +100,7 @@ void DimredTab::addDataset(Dataset::Ptr data)
 	scene->setTitles("dim 1", "dim 2");
 
 	/* connect outgoing signals */
-	connect(scene, &Chart::cursorChanged, this, &Viewer::cursorChanged);
+	connect(scene, &Chart::cursorChanged, this, &Viewer::proteinsHighlighted);
 }
 
 void DimredTab::selectDisplay(const QString &name)

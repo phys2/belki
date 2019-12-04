@@ -77,7 +77,7 @@ void DistmatTab::addDataset(Dataset::Ptr data)
 	scene->setState(windowState);
 
 	/* connect outgoing signals */
-	connect(scene, &DistmatScene::cursorChanged, this, &Viewer::cursorChanged);
+	connect(scene, &DistmatScene::cursorChanged, this, &Viewer::proteinsHighlighted);
 }
 
 /* Note: shared code between DistmatTab and HeatmapTab */

@@ -24,6 +24,7 @@ ProfileChart::ProfileChart(Dataset::ConstPtr data, bool small, bool global)
 	if (small) {
 		setMargins({0, 10, 0, 0});
 		legend()->hide();
+		sort = Sorting::MARKEDTHENNAME; // put marked last (for z-index)
 	} else {
 		legend()->setAlignment(Qt::AlignLeft);
 	}
@@ -154,17 +155,17 @@ void ProfileChart::setupSeries()
 	auto d = data->peek<Dataset::Base>();
 	auto p = data->peek<Dataset::Proteins>();
 
-	std::function<bool(const std::pair<unsigned,bool> &a, const std::pair<unsigned,bool> & b)>
-	byName = [&d,&p] (auto a, auto b) {
+	std::map<Sorting,std::function<bool(const std::pair<unsigned,bool> &a, const std::pair<unsigned,bool> &b)>> sorters;
+	sorters[Sorting::NAME] = [&d,&p] (auto a, auto b) {
 		return d->lookup(p, a.first).name < d->lookup(p, b.first).name;
 	};
-	auto byMarkedThenName = [byName] (auto a, auto b) {
+	sorters[Sorting::MARKEDTHENNAME] = [super=sorters.at(Sorting::NAME)] (auto a, auto b) {
 		if (a.second != b.second)
 			return b.second;
-		return byName(a, b);
+		return super(a, b);
 	};
-	// sort by name, but in small view, put marked last (for z-index)
-	std::sort(content.begin(), content.end(), small ? byMarkedThenName : byName);
+	if (sort != Sorting::NONE)
+		std::sort(content.begin(), content.end(), sorters.at(sort));
 
 	std::function<double(double)> adjusted;
 	if (logSpace)
@@ -182,29 +183,13 @@ void ProfileChart::setupSeries()
 		});
 	}
 
-	// add & wire a series
-	auto add = [this] (QtCharts::QAbstractSeries *s, SeriesCategory cat, bool isMarker = false) {
-		addSeries(s);
-		s->attachAxis(ax);
-		s->attachAxis(logSpace ? (QtCharts::QAbstractAxis*)ayL : ay);
-		if (isMarker) // marker always shows
-			return;
-		s->setVisible(showCategories.count(cat));
-		std::map<SeriesCategory, void(ProfileChart::*)(bool)> sigs = {
-			{SeriesCategory::INDIVIDUAL, &ProfileChart::toggleIndividual},
-			{SeriesCategory::AVERAGE, &ProfileChart::toggleAverage},
-			{SeriesCategory::QUANTILE, &ProfileChart::toggleQuantiles},
-		};
-		connect(this, sigs.at(cat), s, &QtCharts::QAbstractSeries::setVisible);
-	};
-
 	// setup and add QLineSeries for mean
 	auto addMean = [&] {
 		auto s = new QtCharts::QLineSeries;
 		for (unsigned i = 0; i < stats.mean.size(); ++i) {
 			s->append(i, adjusted(stats.mean[i]));
 		}
-		add(s, SeriesCategory::AVERAGE);
+		addSeries(s, SeriesCategory::AVERAGE);
 		s->setName("Avg.");
 		auto pen = s->pen();
 		pen.setColor(Qt::black);
@@ -222,7 +207,7 @@ void ProfileChart::setupSeries()
 				lower->append(i, adjusted(l));
 			}
 			auto s = new QtCharts::QAreaSeries(upper, lower);
-			add(s, cat);
+			addSeries(s, cat);
 			return s;
 		};
 
@@ -301,17 +286,15 @@ void ProfileChart::setupSeries()
 
 			auto s = new QtCharts::QLineSeries;
 			series[index] = s;
-			add(s, SeriesCategory::INDIVIDUAL, isMarker);
-			QString title = (isMarker ? "<small>★</small>" : "") + d->lookup(p, index).name;
+			addSeries(s, SeriesCategory::INDIVIDUAL, isMarker);
 			// color only markers in small view
-			QColor color = (isMarker || !small ? prot.color : Qt::black);
 			if (isMarker && !small) { // acentuate markers in big view
 				auto pen = s->pen();
 				pen.setWidthF(3. * pen.widthF());
 				s->setPen(pen);
 			}
-			s->setColor(color);
-			s->setName(title);
+			s->setColor(colorOf(index, prot.color, isMarker));
+			s->setName(titleOf(index, prot.name, isMarker));
 
 			if (d->hasScores()) { // visualize scores through points along polyline
 				s->setPointsVisible(true);
@@ -357,6 +340,16 @@ void ProfileChart::setupSeries()
 	}
 }
 
+QString ProfileChart::titleOf(unsigned, const QString &name, bool isMarker) const
+{
+	return (isMarker ? "<small>★</small>" : "") + name;
+}
+
+QColor ProfileChart::colorOf(unsigned, const QColor &color, bool isMarker) const
+{
+	return (isMarker || !small ? color : Qt::black);
+}
+
 void ProfileChart::animHighlight(int index, qreal step)
 {
 	bool decrease = (index < 0);
@@ -384,7 +377,7 @@ void ProfileChart::toggleHighlight(int index)
 {
 	highlightAnim.disconnect();
 	highlightAnim.callOnTimeout([this,index] { animHighlight(index, .2); });
-	highlightAnimDeadline.setRemainingTime(100, Qt::PreciseTimer);
+	highlightAnimDeadline.setRemainingTime(150, Qt::PreciseTimer);
 	animHighlight(index, .2);
 	/* continue after first drawing update */
 	QTimer::singleShot(0, [this,index] {
@@ -466,5 +459,21 @@ void ProfileChart::computeStats()
 			statsPerDim(i);
 	} else {
 		tbb::parallel_for(size_t(0), len, [&] (size_t i) { statsPerDim(i); });
-	}
+}
+}
+
+void ProfileChart::addSeries(QtCharts::QAbstractSeries *s, ProfileChart::SeriesCategory cat, bool sticky)
+{
+	QtCharts::QChart::addSeries(s);
+	s->attachAxis(ax);
+	s->attachAxis(logSpace ? (QtCharts::QAbstractAxis*)ayL : ay);
+	if (sticky || cat == SeriesCategory::CUSTOM) // always shows
+		return;
+	s->setVisible(showCategories.count(cat));
+	std::map<SeriesCategory, void(ProfileChart::*)(bool)> sigs = {
+		{SeriesCategory::INDIVIDUAL, &ProfileChart::toggleIndividual},
+		{SeriesCategory::AVERAGE, &ProfileChart::toggleAverage},
+		{SeriesCategory::QUANTILE, &ProfileChart::toggleQuantiles},
+	};
+	connect(this, sigs.at(cat), s, &QtCharts::QAbstractSeries::setVisible);
 }

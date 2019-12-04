@@ -191,7 +191,7 @@ void HeatmapScene::recolor()
 }
 
 HeatmapScene::Profile::Profile(unsigned index, View<Dataset::Base> &d)
-    : index(index)
+    : id(d->protIds[index]), index(index)
 {
 	auto feat = cv::Mat(d->features[index]);
 	auto range = d->featureRange;
@@ -256,7 +256,7 @@ void HeatmapScene::Profile::hoverEnterEvent(QGraphicsSceneHoverEvent*)
 	highlight = true;
 	update();
 
-	emit scene()->cursorChanged({index});
+	emit scene()->cursorChanged({id});
 }
 
 void HeatmapScene::Profile::hoverLeaveEvent(QGraphicsSceneHoverEvent*)

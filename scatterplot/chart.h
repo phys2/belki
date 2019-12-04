@@ -29,11 +29,12 @@ public:
 	{
 		Proteins(const QString &label, QColor color, Chart* chart);
 
-		void clear() { QtCharts::QScatterSeries::clear(); samples.clear(); }
-		void add(unsigned index, const QPointF &point);
+		void clear();
+		void add(ProteinId id, unsigned index, const QPointF &point);
 		void apply();
 		void redecorate(bool full = true, bool highlight = false);
 
+		std::vector<ProteinId> proteins;
 		QVector<unsigned> samples;
 		QVector<QPointF> replacement;
 		bool highlighted = false;
@@ -80,7 +81,7 @@ public slots:
 	void openProteinMenu();
 
 signals:
-	void cursorChanged(QVector<unsigned> samples, QString title = {});
+	void cursorChanged(std::vector<ProteinId> proteins, QString title = {});
 	void areaChanged();
 	void proteinStyleUpdated();
 
