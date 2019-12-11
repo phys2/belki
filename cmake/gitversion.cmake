@@ -1,5 +1,5 @@
 set(PROJECT_VERSION_GIT ${PROJECT_VERSION})
-if (EXISTS ${PROJECT_SOURCE_DIR}/.git OR ${PROJECT_SOURCE_DIR}/../.git)
+if (EXISTS ${PROJECT_SOURCE_DIR}/.git OR EXISTS ${PROJECT_SOURCE_DIR}/../.git)
 	find_package(Git)
 	if (GIT_FOUND)
 		execute_process(
