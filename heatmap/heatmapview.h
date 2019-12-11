@@ -18,8 +18,8 @@ public slots:
 protected:
 	struct State {
 		bool singleColumn = false;
-		qreal currentScale = 1.; // current scale factor (pixel size in the scene)
-		qreal outerScale = 1.; // scale factor where scene is fully fitted
+		qreal currentScale = 0.; // current scale factor (pixel size in the scene)
+		qreal outerScale = 0.; // scale factor where scene is fully fitted
 	};
 
 	// override for internal use (does not work through pointer! scene() is non-virtual)
