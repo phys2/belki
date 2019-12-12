@@ -84,16 +84,14 @@ void HeatmapScene::rearrange(QSize newViewport)
 	viewport = newViewport; // keep information in case we have to stop here
 
 	auto aspect = (viewport.width() / layout.columnWidth) / viewport.height();
-	layout.columns = (unsigned)std::floor(std::sqrt(profiles.size() * aspect));
+	layout.columns = std::max(
+	            (unsigned)std::floor(std::sqrt(profiles.size() * aspect)), 1u);
 
 	rearrange(layout.columns);
 }
 
 void HeatmapScene::rearrange(unsigned columns)
 {
-	if (!columns)
-		return;
-
 	layout.rows = (unsigned)std::ceil(profiles.size() / (float)columns);
 
 	// reposition profiles
