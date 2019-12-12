@@ -39,6 +39,8 @@ const std::vector<dimred::Method> availableMethods()
 
 QMap<QString, QVector<QPointF>> compute(QString m, const std::vector<std::vector<double>> &features)
 {
+	if (features.empty() || features.front().size() < 3)
+		return {};
 	std::cout << "Computing " << m.toStdString() << std::endl;
 
 	// setup some logging
@@ -49,7 +51,7 @@ QMap<QString, QVector<QPointF>> compute(QString m, const std::vector<std::vector
 	ParametersSet p;
 	if (m.startsWith("PCA") || m.startsWith("kPCA") || m.startsWith("MDS")) {
 		p, method=(m == "PCA" ? PCA : (m.startsWith("kPCA") ? KernelPCA : MultidimensionalScaling));
-		p, target_dimension=3;
+		p, target_dimension=std::min(size_t(3), features.front().size() - 1);
 	}
 	if (m.startsWith("tSNE")) {
 		p, method=tDistributedStochasticNeighborEmbedding, target_dimension=2;
@@ -142,7 +144,7 @@ QMap<QString, QVector<QPointF>> compute(QString m, const std::vector<std::vector
 	}
 
 	// store result chart-readable: 3D → 2D
-	if (m.startsWith("PCA") || m.startsWith("kPCA") || m.startsWith("MDS")) {
+	if (output.embedding.cols() == 3) {
 		// hack: ensure the name does not yet contain dimension markers
 		m = m.split("/").first();
 		std::map<QString, std::pair<int, int>> map = {
