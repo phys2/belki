@@ -1,21 +1,15 @@
 #include "storage.h"
 #include "dataset.h"
 
-#include "storage/qzip.h"
 #include "compute/features.h"
 
 #include <QFile>
-#include <QSaveFile>
 #include <QFileInfo>
 #include <QCryptographicHash> // for checksum
 #include <QTextStream>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <QCborValue>
-#include <QCborArray>
-#include <QCborMap>
-#include <QCborStreamWriter>
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
 
@@ -27,9 +21,6 @@ Storage::Storage(ProteinDB &proteins, QObject *parent)
     : QObject(parent),
       proteins(proteins)
 {
-	/* hack: we will move to a project model, where the container is always
-	 * present */
-	d.container = std::make_unique<qzip::Zip>();
 }
 
 Storage::~Storage()
@@ -43,18 +34,10 @@ QString Storage::name()
 	return d.sourcename;
 }
 
+// TODO: make this export method that writes .tsv file directly for user pleasure
 void Storage::storeDisplay(const Dataset& data, const QString &name)
 {
-	if (data.config().parent)
-		return; // TODO: temporary hack to avoid saving from sliced data
-
-	QWriteLocker _(&d.l);
-	if (!d.container)
-		return;
-
 	auto entryname = "input/" + d.sourcename + "/displays/" + name + ".tsv";
-	if (d.container->has_file(entryname))
-		return; // do not save redundant copies
 
 	QByteArray blob;
 	QTextStream out(&blob, QIODevice::WriteOnly);
@@ -63,8 +46,6 @@ void Storage::storeDisplay(const Dataset& data, const QString &name)
 	auto &disp = in->display.at(name);
 	for (auto it = disp.constBegin(); it != disp.constEnd(); ++it)
 		out << it->x() << "\t" << it->y() << endl;
-
-	d.container->write(entryname, blob);
 }
 
 Features::Ptr Storage::openDataset(const QString &filename, const QString &featureColName)
@@ -125,37 +106,7 @@ Features::Ptr Storage::openDataset(const QString &filename, const QString &featu
 
 	QWriteLocker _(&d.l);
 	if (filetype == "zip") {
-		// check version
-		d.container = std::make_unique<qzip::Zip>();
-		try {
-			d.container->load(filename);
-		} catch (std::runtime_error& e) {
-			close();
-			ioError(QString("Could not open %1:<p>%2</p>").arg(filename, e.what()));
-			return {};
-		}
-		auto contents = d.container->names();
-
-		// version check
-		if (!check_version(filename, contents)) {
-			close();
-			return {};
-		}
-
-		// find source data
-		auto in = contents.filter(QRegularExpression("^input/.*\\.tsv$"));
-		if (in.empty()) {
-			close();
-			ioError(QString("No source dataset found in %1!").arg(filename));
-			return {};
-		}
-		d.sourcename = QFileInfo(in.constFirst()).completeBaseName();
-		QTextStream stream(d.container->read("input/" + d.sourcename + ".tsv"));
-		return readSource(stream, featureColName);
-
-		// TODO this emits lots of stuff (too early)
-		// better let them ask for it when data is read
-		// read_auxiliary(contents);
+		// TODO remove
 	} else {
 		d.sourcename = fi.completeBaseName();
 		QFile f(filename);
@@ -403,168 +354,6 @@ void Storage::finalizeRead(Features &data, bool normalize)
 		data.scoreRange = features::range_of(data.scores);
 }
 
-QCborValue Storage::serializeDataset(std::shared_ptr<const Dataset> src)
-{
-	auto b = src->peek<Dataset::Base>();
-	auto r = src->peek<Dataset::Representation>();
-
-	auto packFeatures = [] (const Features::Vec &src, const Features::Range &range) {
-		QCborArray data;
-		for (auto vec : src) {
-			QCborArray cVec;
-			for (auto v : vec)
-				cVec.append(v);
-			data.append(cVec);
-		}
-		return QCborMap{
-			{"data", data},
-			{"range", QCborArray{range.min, range.max}}
-		};
-	};
-
-	auto packDisplay = [] (const QVector<QPointF> &src) {
-		QCborArray ret;
-		for (auto v : src)
-			ret.append(QCborArray{v.x(), v.y()});
-		return ret;
-	};
-
-	QCborArray dimensions;
-	for (const auto &v : qAsConst(b->dimensions))
-		dimensions.append(v);
-	QCborArray protIds;
-	for (auto v : b->protIds)
-	     protIds.append(v);
-
-	QCborMap displays;
-	for (const auto &[k, v] : r->display) {
-		displays.insert(k, packDisplay(v));
-	}
-
-	auto features = packFeatures(b->features, b->featureRange);
-	features.insert({"logspace", b->logSpace});
-	QCborMap ret{
-		{"dimensions", dimensions},
-		{"protIds", protIds},
-		{"features", features},
-	};	
-
-	if (b->hasScores())
-		ret.insert({"scores", packFeatures(b->scores, b->scoreRange)});
-	ret.insert({"displays", displays});
-
-	return ret;
-}
-
-QCborValue Storage::serializeProteinDB()
-{
-	auto p = proteins.peek();
-
-	auto packProtein = [] (const Protein &src) {
-		QCborMap ret{
-			{"name", src.name},
-			{"species", src.species},
-			{"color", src.color.name()}
-		};
-		if (!src.description.isEmpty())
-			ret.insert({"description", src.description});
-		return ret;
-	};
-
-	QCborArray proteins;
-	for (const auto &v : p->proteins)
-		proteins.append(packProtein(v));
-
-	QCborArray markers;
-	for (auto v : p->markers)
-		markers.append(v);
-
-	QCborMap structures;
-	for (const auto &[k, v] : p->structures)
-		structures.insert(k, serializeStructure(v));
-
-	return QCborMap{
-		{"proteins", proteins},
-		{"markers", markers},
-		{"structures", structures}
-	};
-}
-
-QCborValue Storage::serializeStructure(const Structure &src)
-{
-	auto packCluster = [] (const HrClustering::Cluster &src) {
-		QCborArray children;
-		for (auto v : src.children)
-			children.append(v);
-		QCborMap ret{
-			{"distance", src.distance},
-			{"parent", src.parent},
-			{"children", children}
-		};
-		if (src.protein)
-			ret.insert({"protein", src.protein.value_or(0)}); // MacOS
-		return ret;
-	};
-
-	auto hr = std::get_if<HrClustering>(&src);
-	if (hr) {
-		QCborMap meta{{"name", hr->meta.name}};
-		if (hr->meta.dataset)
-			meta.insert({"dataset", hr->meta.dataset});
-		QCborArray clusters;
-		for (auto v : hr->clusters)
-			clusters.append(packCluster(v));
-		return QCborMap{
-			{"type", "hierarchy"},
-			{"meta", meta},
-			{"clusters", clusters}
-		};
-	}
-
-	auto packGroup = [] (const Annotations::Group &src) {
-		QCborArray members;
-		for (auto v : src.members)
-			members.append(v);
-		QCborArray mode;
-		for (auto v : src.mode)
-			mode.append(v);
-		return QCborMap{
-			{"name", src.name},
-			{"color", src.color.name()},
-			{"members", members},
-			{"mode", mode}
-		};
-	};
-
-	auto cl = std::get_if<Annotations>(&src);
-	if (cl) {
-		QCborMap meta{{"name", cl->meta.name}};
-		switch (cl->meta.type) {
-		case Annotations::Meta::SIMPLE: meta.insert({"type", "simple"}); break;
-		case Annotations::Meta::MEANSHIFT:
-			meta.insert({"type", "meanshift"});
-			meta.insert({"k", cl->meta.k});
-			break;
-		case Annotations::Meta::HIERCUT:
-			meta.insert({"type", "hiercut"});
-			meta.insert({"hierarchy", cl->meta.hierarchy});
-			meta.insert({"granularity", cl->meta.granularity});
-			break;
-		}
-		if (cl->meta.dataset)
-			meta.insert({"dataset", cl->meta.dataset});
-		QCborMap groups;
-		for (const auto &[k, v] : cl->groups)
-			groups.insert(k, packGroup(v));
-		return QCborMap{
-			{"type", "annotations"},
-			{"meta", meta},
-			{"groups", groups}
-		};
-	}
-	return QCborSimpleType::Undefined; // should not happen
-}
-
 QByteArray Storage::readFile(const QString &filename)
 {
 	QFile f(filename);
@@ -706,30 +495,6 @@ void Storage::importHierarchy(const QString &filename)
 	}
 
 	proteins.addHierarchy(std::move(target), true);
-}
-
-void Storage::saveProjectAs(const QString &filename, std::vector<std::shared_ptr<const Dataset>> snapshot)
-{
-	QSaveFile f(filename);
-	if (!f.open(QIODevice::WriteOnly))
-		return ioError(QString("Could not write file %1!").arg(filename));
-
-	QCborStreamWriter w(&f);
-	/* compose manually, so we only use extra memory for the single chunks */
-	w.startMap(3);
-	w.append("Belki File Version");
-	w.append(1);
-	w.append("proteindb");
-	serializeProteinDB().toCbor(w);
-
-	w.append("datasets");
-	w.startArray(snapshot.size());
-	for (auto &v : snapshot)
-		serializeDataset(v).toCbor(w);
-	w.endArray();
-	w.endMap();
-
-	f.commit();
 }
 
 void Storage::exportAnnotations(const QString &filename, const Annotations& source)

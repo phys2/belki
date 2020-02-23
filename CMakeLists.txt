@@ -58,9 +58,6 @@ target_sources(${APP_NAME} PRIVATE
 	meanshift/io.cpp meanshift/mode_pruning.cpp
 	)
 
-# storage / zip files support
-target_sources(${APP_NAME} PRIVATE storage/qzip.h storage/miniz.h storage/miniz.c)
-
 # resources
 target_sources(${APP_NAME} PRIVATE
 	resources/index.qrc
@@ -76,7 +73,7 @@ target_sources(${APP_NAME} PRIVATE
 	guistate.h guistate.cpp
 	model.h
 	proteindb.h proteindb.cpp
-	storage.h storage.cpp
+	storage.h storage.cpp storage/serialize.cpp
 	utils.h
 	viewer.h
 	windowstate.h windowstate.cpp

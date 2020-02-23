@@ -9,7 +9,6 @@
 #include <QColor>
 #include <memory>
 
-namespace qzip { class Zip; }
 class ProteinDB;
 class Dataset;
 class QTextStream;
@@ -61,7 +60,7 @@ protected:
 
 	struct : public RWLockable {
 		QString sourcename; // a file can have several source data in general, we only support/select one right now
-		std::unique_ptr<qzip::Zip> container;
+		//std::unique_ptr<qzip::Zip> container;
 	} d;
 
 	ProteinDB &proteins;
