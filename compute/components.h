@@ -6,7 +6,6 @@
 
 #include <QObject>
 #include <QThread>
-#include <tbb/task.h>
 #include <memory>
 
 class Dataset; // TODO: bad style, maybe Matcher should not be in compute/..
