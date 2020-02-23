@@ -58,6 +58,7 @@ protected:
 	QReadWriteLock &l;
 };
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
 namespace std {
 template<> struct hash<QString> {
 	std::size_t operator()(const QString& s) const {
@@ -65,6 +66,8 @@ template<> struct hash<QString> {
     }
 };
 }
+#endif
+
 // std::experimental::erase_if
 template<class Key, class T, class Compare, class Alloc, class Pred>
 void erase_if(std::unordered_map<Key,T,Compare,Alloc>& c, Pred pred)
