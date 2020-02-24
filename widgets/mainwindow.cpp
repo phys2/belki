@@ -315,7 +315,6 @@ void MainWindow::addTab(MainWindow::Tab type)
 
 	// connect singnalling into view (TODO: they should connect themselves)
 	auto hub = &state->hub();
-	auto proteins = &state->proteins();
 	connect(hub, &DataHub::newDataset, v, &Viewer::addDataset);
 	/* use queued conn. to ensure the views get the newDataset signal _first_! */
 	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
