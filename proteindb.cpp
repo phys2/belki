@@ -55,7 +55,7 @@ bool ProteinDB::addDescription(const QString& name, const QString& desc)
 	}
 }
 
-bool ProteinDB::readDescriptions(QTextStream &in)
+bool ProteinDB::readDescriptions(QTextStream in)
 {
 	auto header = in.readLine().split("\t");
 	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);

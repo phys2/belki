@@ -5,7 +5,6 @@
 
 #include <QFile>
 #include <QFileInfo>
-#include <QCryptographicHash> // for checksum
 #include <QTextStream>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -13,32 +12,15 @@
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
 
-/* storage version, increase on breaking changes */
-// TODO: when we start doing new versions, ensure we update a file we open to new version (incl. version entry)
-constexpr int storage_version = 1;
-
 Storage::Storage(ProteinDB &proteins, QObject *parent)
     : QObject(parent),
       proteins(proteins)
 {
 }
 
-Storage::~Storage()
-{
-	close(true);
-}
-
-QString Storage::name()
-{
-	QReadLocker _(&d.l);
-	return d.sourcename;
-}
-
 // TODO: make this export method that writes .tsv file directly for user pleasure
 void Storage::storeDisplay(const Dataset& data, const QString &name)
 {
-	auto entryname = "input/" + d.sourcename + "/displays/" + name + ".tsv";
-
 	QByteArray blob;
 	QTextStream out(&blob, QIODevice::WriteOnly);
 	auto in = data.peek<Dataset::Representation>();
@@ -50,112 +32,11 @@ void Storage::storeDisplay(const Dataset& data, const QString &name)
 
 Features::Ptr Storage::openDataset(const QString &filename, const QString &featureColName)
 {
-	close(true);
-
-	QFileInfo fi(filename);
-	auto filetype = fi.suffix().toLower();
-
-	auto check_version = [this] (auto &zipname, auto &contents) {
-		auto vs = contents.filter(QRegularExpression("^belki-[0-9]*$"));
-		if (vs.empty()) {
-			ioError(QString("Could not identify %1 as a Belki file!").arg(zipname));
-			return false;
-		}
-		if (vs.constFirst().split("-").constLast().toInt() > storage_version) {
-			ioError(QString("This version of Belki is too old to understand %1!").arg(zipname));
-			return false;
-		}
-		return true;
-	};
-	auto check_checksum = [this] (auto &zipname, auto &contents, auto &basename, auto proof) {
-		auto re = QString("^input/%1/.*\\.sha256$").arg(QRegularExpression::escape(basename));
-		auto cs = contents.filter(QRegularExpression(re));
-		if (cs.empty()) {
-			ioError(QString("The ZIP file %1 lacks a checksum for %2!").arg(zipname, basename));
-			return false;
-		}
-		if (QFileInfo(cs.constFirst()).completeBaseName() != proof) {
-			ioError(QString("The checksum for %2 in ZIP file %1 does not match!").arg(zipname, basename));
-			return false;
-		}
-		return true;
-	};
-	auto calc_checksum = [] (auto data) { return QCryptographicHash::hash(data, QCryptographicHash::Sha256).toHex(); };
-	auto read_auxiliary = [this] (auto &contents) {
-		// displays – read at start
-		auto re = QRegularExpression(
-		              QString("^input/%1/displays/(?<name>.*)\\.tsv$")
-		              .arg(QRegularExpression::escape(d.sourcename)));
-		auto de = contents.filter(re);
-		// TODO: emit newDisplay, let GUI decide whether to show it or not
-		for (auto &d : qAsConst(de))
-			emit newDisplay(re.match(d).captured("name"));
-
-		// annotations
-		auto an = contents.filter(QRegularExpression("^annotations/.*\\.tsv$"));
-		//for (auto &a : qAsConst(an))
-		//	emit newAnnotations(QFileInfo(a).completeBaseName());
-
-		// hierarchies (clustering)
-		auto hi = contents.filter(QRegularExpression("^hierarchies/.*\\.json$"));
-		//for (auto &h : qAsConst(hi))
-		//	emit newHierarchy(QFileInfo(h).completeBaseName());
-
-		// todo: read markerlists
-	};
-
-	QWriteLocker _(&d.l);
-	if (filetype == "zip") {
-		// TODO remove
-	} else {
-		d.sourcename = fi.completeBaseName();
-		QFile f(filename);
-		if (!f.open(QIODevice::ReadOnly)) {
-			freadError(filename);
-			return {};
-		}
-		// we will read it multiple times
-		// TODO see below auto tsv = f.readAll();
-
-		QTextStream stream(&f);
-		return readSource(stream, featureColName); // TODO
-
-		// TODO: need to rethink all this crap
-		// namely we want project files instead of shadow zips
-		/*
-		auto checksum = calc_checksum(tsv);
-
-		auto zipname = fi.path() + "/" + sourcename + ".zip";
-
-		if (QFileInfo(zipname).exists()) {
-			container->load(zipname);
-			auto contents = container->names();
-
-			// version check
-			if (!check_version(zipname, contents)) {
-				close();
-				return {};
-			}
-
-			// compare checksums
-			if (!check_checksum(zipname, contents, sourcename, checksum)) {
-				close();
-				return {};
-			}
-
-			read_auxiliary(contents);
-		} else {
-			// initialize new zip
-			container->setFilename(zipname);
-			container->write("belki-" + QString::number(storage_version), {});
-			container->write("input/" + sourcename + "/" + checksum + ".sha256", {});
-			container->write("input/" + sourcename + ".tsv", tsv);
-		}
-		*/
-	}
+	QFile f(filename); // keep in scope
+	return readSource(openToStream(&f), featureColName);
 }
 
-Features::Ptr Storage::readSource(QTextStream &in, const QString &featureColName)
+Features::Ptr Storage::readSource(QTextStream in, const QString &featureColName)
 {
 	// TODO: the featureColName argument is a hack. We probably want some "Config" struct instead
 	bool normalize = featureColName.isEmpty() || featureColName == "Dist";
@@ -354,40 +235,17 @@ void Storage::finalizeRead(Features &data, bool normalize)
 		data.scoreRange = features::range_of(data.scores);
 }
 
-QByteArray Storage::readFile(const QString &filename)
-{
-	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly)) {
-		freadError(filename);
-		return {};
-	}
-	return f.readAll();
-}
-
 void Storage::importDescriptions(const QString &filename)
 {
-	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly))
-		return freadError(filename);
-
-	auto content = QTextStream(&f);
+	QFile f(filename); // keep in scope
 	// TODO: implement the reading here
-	bool success = proteins.readDescriptions(content);
-	if (!success)
-		return;
-
-	// TODO: actual import (storage in ZIP, and then ability to re-read)
+	proteins.readDescriptions(openToStream(&f));
 }
 
 void Storage::importAnnotations(const QString &filename)
 {
-	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly)) {
-		freadError(filename);
-		return;
-	}
-
-	QTextStream in(&f);
+	QFile f(filename); // keep in scope
+	auto in = openToStream(&f);
 	auto target = std::make_unique<Annotations>();
 	target->meta.name = QFileInfo(filename).completeBaseName();
 
@@ -522,13 +380,8 @@ void Storage::exportAnnotations(const QString &filename, const Annotations& sour
 
 void Storage::importMarkers(const QString &filename)
 {
-	QFile f(filename);
-	if (!f.open(QIODevice::ReadOnly)) {
-		freadError(filename);
-		return;
-	}
-
-	QTextStream in(&f);
+	QFile f(filename); // keep in scope
+	auto in = openToStream(&f);
 	std::vector<QString> names;
 	while (!in.atEnd()) {
 		QString name;
@@ -560,13 +413,13 @@ void Storage::exportMarkers(const QString &filename)
 	}
 }
 
-void Storage::close(bool save)
+QTextStream Storage::openToStream(QFile *handler)
 {
-	// TODO disabled to cause no harm
-	//QWriteLocker _(&d.l);
-	//if (container && save)
-	//	container->save();
-	//d.container.reset();
+	if (!handler->open(QIODevice::ReadOnly)) {
+		freadError(handler->fileName());
+		return {};
+	}
+	return QTextStream(handler);
 }
 
 void Storage::freadError(const QString &filename)

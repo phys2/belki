@@ -44,7 +44,7 @@ public:
 
 	ProteinId add(const QString& fullname);
 	bool addDescription(const QString& name, const QString& desc);
-	bool readDescriptions(QTextStream &tsv);
+	bool readDescriptions(QTextStream tsv);
 
 	bool addMarker(ProteinId id);
 	bool removeMarker(ProteinId id);

@@ -402,7 +402,7 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 	updateState(Dataset::Touch::ALL);
 
 	// TODO wronge place to do this in new storage concept
-	setFilename(data ? state->hub().store.name() : "");
+	setFilename(data ? data->config().name : "");
 }
 
 void MainWindow::setFilename(QString name)
