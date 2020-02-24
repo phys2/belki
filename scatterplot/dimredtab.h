@@ -24,6 +24,7 @@ public:
 
 	void selectDataset(unsigned id) override;
 	void addDataset(Dataset::Ptr data) override;
+	void removeDataset(unsigned id) override;
 
 	QString currentMethod() const;
 

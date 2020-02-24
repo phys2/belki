@@ -136,6 +136,14 @@ void GuiState::addDataset(Dataset::Ptr dataset)
 		target->setDataset(dataset);
 }
 
+void GuiState::removeDataset(unsigned id)
+{
+	auto item = datasetControl.items.at(id);
+	delete item; // TODO: does it deregister from model? test!
+	datasetControl.items.erase(id);
+	// TODO: select another one?
+}
+
 void GuiState::addProtein(ProteinId id, const Protein &protein)
 {
 	/* setup new item */

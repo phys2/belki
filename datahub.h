@@ -24,6 +24,7 @@ public:
 signals:
 	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
 	void newDataset(DataPtr data);
+	void datasetRemoved(unsigned id);
 
 public slots:
 	void spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay = {});

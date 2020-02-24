@@ -101,6 +101,15 @@ void ScatterTab::addDataset(Dataset::Ptr data)
 	connect(scene, &Chart::cursorChanged, this, &Viewer::proteinsHighlighted);
 }
 
+void ScatterTab::removeDataset(unsigned id)
+{
+	if (current.id == id) {
+		current = {};
+		updateEnabled();
+	}
+	content.erase(id); // kills both dataset and scene
+}
+
 void ScatterTab::refillDimensionSelects(bool onlySecondary)
 {
 	auto d = current().data->peek<Dataset::Base>();

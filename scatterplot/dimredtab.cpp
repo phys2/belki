@@ -103,6 +103,15 @@ void DimredTab::addDataset(Dataset::Ptr data)
 	connect(scene, &Chart::cursorChanged, this, &Viewer::proteinsHighlighted);
 }
 
+void DimredTab::removeDataset(unsigned id)
+{
+	if (current.id == id) {
+		current = {};
+		updateEnabled();
+	}
+	content.erase(id); // kills both dataset and scene
+}
+
 void DimredTab::selectDisplay(const QString &name)
 {
 	if (!current || name.isEmpty())

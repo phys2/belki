@@ -33,6 +33,7 @@ public:
 public slots:
 	virtual void selectDataset(unsigned id)=0;
 	virtual void addDataset(Dataset::Ptr data)=0;
+	virtual void removeDataset(unsigned id)=0;
 
 signals:
 	void markerToggled(ProteinId id, bool present);

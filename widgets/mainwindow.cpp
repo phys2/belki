@@ -303,11 +303,12 @@ void MainWindow::addTab(MainWindow::Tab type)
 	switch (type) {
 	case Tab::DIMRED: v = new DimredTab; break;
 	case Tab::SCATTER: v = new ScatterTab; break;
-	case Tab::HEATMAP: v = new HeatmapTab; break;
+/*	case Tab::HEATMAP: v = new HeatmapTab; break;
 	case Tab::DISTMAT: v = new DistmatTab; break;
 	case Tab::PROFILES: v = new ProfileTab; break;
 	case Tab::FEATWEIGHTS: v = new FeatweightsTab; break;
-	case Tab::BNMS: v = new BnmsTab; break;
+	case Tab::BNMS: v = new BnmsTab; break;*/
+	default: return;
 	}
 
 	v->setWindowState(state);
@@ -316,6 +317,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 	// connect singnalling into view (TODO: they should connect themselves)
 	auto hub = &state->hub();
 	connect(hub, &DataHub::newDataset, v, &Viewer::addDataset);
+	connect(hub, &DataHub::datasetRemoved, v, &Viewer::removeDataset);
 	/* use queued conn. to ensure the views get the newDataset signal _first_! */
 	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
 
