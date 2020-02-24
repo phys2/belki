@@ -415,7 +415,7 @@ void MainWindow::setFilename(QString name)
 
 	setWindowTitle(QString("%1 – Belki").arg(name));
 	// TODO: right now the name is mangled. need to keep both path+name
-	setWindowFilePath(name);
+	// setWindowFilePath(name);
 }
 
 void MainWindow::setSelectedDataset(unsigned id)
