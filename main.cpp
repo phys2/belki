@@ -55,10 +55,10 @@ int main(int argc, char *argv[])
 	gui.addWindow();
 
 	/* support some basic arguments */
-	if (argc >= 2) // pass initial filename as single argument
-		hub.importDataset(argv[1]);
-	if (argc >= 3)
-		hub.store.importAnnotations(argv[2]);
+	if (argc >= 2) { // pass project filename as single argument
+		auto datasets = hub.store.openProject(argv[1]);
+		hub.init(datasets);
+	}
 
 	return a.exec();
 }

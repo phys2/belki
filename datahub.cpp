@@ -15,6 +15,20 @@ DataHub::DataHub(QObject *parent)
 	setupSignals();
 }
 
+void DataHub::init(const std::vector<DataHub::DataPtr> &datasets)
+{
+	QWriteLocker _(&data.l);
+	if (data.nextId != 1)
+		throw std::runtime_error("DataHub::init() called on non-empty object");
+
+	for (auto &dataset : datasets) {
+		// ensure the object does not live in threadpool (creating thread)!
+		dataset->moveToThread(thread());
+		data.sets[dataset->id()] = dataset;
+		data.nextId = std::max(data.nextId, dataset->id() + 1);
+	}
+}
+
 std::map<unsigned, DataHub::DataPtr> DataHub::datasets()
 {
 	QReadLocker _(&data.l);

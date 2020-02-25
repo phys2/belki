@@ -14,10 +14,11 @@ class DataHub : public QObject
 {
 	Q_OBJECT
 public:
-	explicit DataHub(QObject *parent = nullptr);
-
 	using DataPtr = Dataset::Ptr;
 	using ConstDataPtr = Dataset::ConstPtr;
+
+	explicit DataHub(QObject *parent = nullptr);
+	void init(const std::vector<DataPtr> &datasets);
 
 	std::map<unsigned, DataPtr> datasets();
 
@@ -28,7 +29,6 @@ signals:
 public slots:
 	void spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay = {});
 	void importDataset(const QString &filename, const QString featureCol = {});
-
 	void saveProjectAs(const QString &filename);
 
 public:

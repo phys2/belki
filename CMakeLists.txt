@@ -73,7 +73,7 @@ target_sources(${APP_NAME} PRIVATE
 	guistate.h guistate.cpp
 	model.h
 	proteindb.h proteindb.cpp
-	storage.h storage.cpp storage/serialize.cpp
+	storage.h storage.cpp storage/serialize.cpp storage/deserialize.cpp
 	utils.h
 	viewer.h
 	windowstate.h windowstate.cpp

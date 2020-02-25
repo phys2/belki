@@ -24,6 +24,7 @@ public:
 
 	Features::Ptr openDataset(const QString &filename, const QString &featureColName = "Dist");
 
+	std::vector<std::shared_ptr<Dataset>> openProject(const QString &filename);
 	void saveProjectAs(const QString &filename, std::vector<std::shared_ptr<const Dataset>> snapshot);
 
 signals: // IMPORTANT: always provide target object pointer for thread-affinity
@@ -46,6 +47,9 @@ protected:
 	QCborValue serializeDataset(std::shared_ptr<const Dataset> src);
 	QCborValue serializeProteinDB();
 	QCborValue serializeStructure(const Structure &src);
+
+	// see storage/deserialize.cpp
+	// TODO
 
 	void storeDisplay(const Dataset &data, const QString& name);
 
