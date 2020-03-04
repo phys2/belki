@@ -51,6 +51,11 @@ GuiState::GuiState(DataHub &hub)
 	connect(&hub, &DataHub::newDataset, this, &GuiState::addDataset);
 }
 
+GuiState::~GuiState()
+{
+	shutdown();
+}
+
 std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
 {
 	auto p = proteins.peek();
@@ -98,6 +103,9 @@ unsigned GuiState::addWindow()
 	        this, &GuiState::addWindow);
 	connect(target, &MainWindow::closeWindowRequested, this,
 	        [this,id=it->first] { removeWindow(id); });
+	connect(target, &MainWindow::closeProjectRequested, this, &GuiState::shutdown);
+	connect(target, &MainWindow::openProjectRequested,
+	        this, &GuiState::openProject);
 	connect(target, &MainWindow::markerFlipped, this, &GuiState::flipMarker);
 	connect(target, &MainWindow::markerToggled, this, &GuiState::toggleMarker);
 
@@ -116,7 +124,22 @@ void GuiState::removeWindow(unsigned id)
 	w->deleteLater(); // do not delete a window within its close event
 	windows.erase(id);
 	if (windows.empty())
-		QApplication::quit();
+		QTimer::singleShot(0, [this] {emit closed();}); // delete us later
+}
+
+void GuiState::openProject(const QString &filename)
+{
+	if (proteins.peek()->proteins.empty()) {
+		// note: we risk that proteins gets filled now before we call init
+		// also it would be nice if we would open in background thread
+		auto datasets = store.openProject(filename);
+		hub.init(datasets);
+		return;
+	}
+
+	/* need to open new window */
+	// TODO ask user if they want to close current project
+	emit instanceRequested(filename);
 }
 
 void GuiState::addDataset(Dataset::Ptr dataset)
@@ -190,6 +213,16 @@ void GuiState::displayMessage(const QString &message, MessageType type)
 	auto target = focused();
 	if (target)
 		target->displayMessage(message, type);
+}
+
+void GuiState::shutdown()
+{
+	/* close all windows, which will lead to our demise */
+	std::vector<unsigned> cache; // cache ids to avoid invalid iterators
+	for (auto &[k, _] : windows)
+		cache.push_back(k);
+	for (auto i : cache)
+		removeWindow(i);
 }
 
 void GuiState::sortMarkerModel()

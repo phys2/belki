@@ -190,8 +190,9 @@ void MainWindow::setupSignals()
 void MainWindow::setupActions()
 {
 	/* Shortcuts (standard keys not available in UI Designer) */
-	actionLoadDataset->setShortcut(QKeySequence::StandardKey::Open);
+	actionOpenProject->setShortcut(QKeySequence::StandardKey::Open);
 	actionSaveAs->setShortcut(QKeySequence::StandardKey::SaveAs);
+	actionCloseProject->setShortcut(QKeySequence::StandardKey::Close);
 	actionHelp->setShortcut(QKeySequence::StandardKey::HelpContents);
 	actionQuit->setShortcut(QKeySequence::StandardKey::Quit);
 
@@ -200,6 +201,7 @@ void MainWindow::setupActions()
 	saveMarkersButton->setDefaultAction(actionSaveMarkers);
 	clearMarkersButton->setDefaultAction(actionClearMarkers);
 
+	connect(actionCloseProject, &QAction::triggered, this, &MainWindow::closeProjectRequested);
 	connect(actionQuit, &QAction::triggered, [] { QApplication::exit(); });
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 	connect(actionAbout, &QAction::triggered, [this] {
@@ -219,6 +221,7 @@ void MainWindow::setupActions()
 	connect(actionLoadDescriptions, &QAction::triggered, [this] { openFile(Input::DESCRIPTIONS); });
 	connect(actionLoadMarkers, &QAction::triggered, [this] { openFile(Input::MARKERS); });
 	connect(actionImportStructure, &QAction::triggered, [this] { openFile(Input::STRUCTURE); });
+	connect(actionOpenProject, &QAction::triggered, [this] { openFile(Input::PROJECT); });
 
 	connect(actionSaveMarkers, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::SaveMarkers);
@@ -499,6 +502,7 @@ void MainWindow::openFile(Input type, QString fn)
 		    {Input::MARKERS, FileIO::OpenMarkers},
 		    {Input::DESCRIPTIONS, FileIO::OpenDescriptions},
 		    {Input::STRUCTURE, FileIO::OpenStructure},
+		    {Input::PROJECT, FileIO::OpenProject},
 		};
 		fn = io->chooseFile(mapping.at(type));
 		if (fn.isEmpty())
@@ -518,6 +522,7 @@ void MainWindow::openFile(Input type, QString fn)
 			runInBackground([&s=hub.store,fn] { s.importAnnotations(fn); });
 		break;
 	}
+	case Input::PROJECT: emit openProjectRequested(fn);
 	}
 }
 
@@ -641,9 +646,22 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 
 void MainWindow::dropEvent(QDropEvent *event)
 {
+	event->setDropAction(Qt::DropAction::CopyAction);
 	auto urls = event->mimeData()->urls();
-	auto title = (urls.size() == 1 ? "Open file as…"
-	                               : QString("Open %1 files as…").arg(urls.size()));
+	if (urls.empty())
+		return;
+
+	/* Accept a single project file drop */
+	if (urls.first().toLocalFile().endsWith(".belki", Qt::CaseInsensitive)) {
+		if (urls.size() != 1) // more than one project file? don't even bother
+			return; // do not accept event
+		emit openProjectRequested(urls.first().toLocalFile());
+		event->accept();
+		return;
+	}
+
+	auto title = (urls.size() == 1 ? "Load file as…"
+	                               : QString("Load %1 files as…").arg(urls.size()));
 
 	QMenu chooser(title, this);
 	auto label = new QLabel(QString("<b>%1</b>").arg(title));
@@ -674,7 +692,6 @@ void MainWindow::dropEvent(QDropEvent *event)
 			openFile(action->second, filename);
 	}
 
-	event->setDropAction(Qt::DropAction::CopyAction);
 	event->accept();
 }
 

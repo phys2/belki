@@ -22,6 +22,7 @@ public:
 		OpenStructure,
 		OpenMarkers,
 		OpenComponents, // bnms
+		OpenProject,
 		SaveMarkers,
 		SaveAnnotations,
 		SavePlot,

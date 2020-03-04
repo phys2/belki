@@ -23,14 +23,20 @@ class GuiState : public QObject
 
 public:
 	explicit GuiState(DataHub &hub);
+	~GuiState();
 
 	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
 
 	bool eventFilter(QObject *watched, QEvent *event) override;
 
+signals:
+	void instanceRequested(const QString &filename);
+	void closed();
+
 public slots:
 	unsigned addWindow();
 	void removeWindow(unsigned id);
+	void openProject(const QString &filename);
 
 	void addDataset(std::shared_ptr<Dataset> dataset);
 	void addProtein(ProteinId id, const Protein &protein);
@@ -47,6 +53,7 @@ public:
 	Storage &store;
 
 protected:
+	void shutdown();
 	void sortMarkerModel();
 
 	MainWindow *focused();

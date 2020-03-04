@@ -42,6 +42,8 @@ public slots:
 signals:
 	void newWindowRequested();
 	void closeWindowRequested();
+	void closeProjectRequested();
+	void openProjectRequested(QString filename);
 	void datasetSelected(unsigned id);
 	void markerFlipped(QModelIndex i);
 	void markerToggled(ProteinId id, bool present);
@@ -51,7 +53,8 @@ protected:
 		DATASET, DATASET_RAW,
 		STRUCTURE,
 		MARKERS,
-		DESCRIPTIONS
+		DESCRIPTIONS,
+		PROJECT
 	};
 
 	enum class Tab { // see also tabTitles!
