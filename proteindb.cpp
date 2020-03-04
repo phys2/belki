@@ -14,6 +14,30 @@ ProteinDB::ProteinDB(QObject *parent)
 		c = c.lighter(130); // 30 % lighter
 }
 
+void ProteinDB::init(std::unique_ptr<ProteinRegister> payload)
+{
+	data.l.lockForWrite();
+	if (!data.proteins.empty())
+		throw std::runtime_error("ProteinDB::init() called on non-empty object");
+
+	data.proteins = std::move(payload->proteins);
+	data.index = std::move(payload->index);
+	data.markers = std::move(payload->markers);
+	data.structures = std::move(payload->structures);
+
+	for (auto &[k, _] : data.structures)
+		data.nextStructureId = std::max(data.nextStructureId, k + 1);
+
+	data.l.unlock();
+
+	QReadLocker _(&data.l);
+	for (unsigned i = 0; i < data.proteins.size(); ++i)
+		emit proteinAdded(i, data.proteins[i]);
+	std::vector<ProteinId> markers(data.markers.cbegin(), data.markers.cend());
+	emit markersToggled(markers, true);
+	/* TODO: emit structures */
+}
+
 ProteinId ProteinDB::add(const QString &fullname)
 {
 	ProteinId id;

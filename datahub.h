@@ -18,7 +18,7 @@ public:
 	using ConstDataPtr = Dataset::ConstPtr;
 
 	explicit DataHub(QObject *parent = nullptr);
-	void init(const std::vector<DataPtr> &datasets);
+	void init(std::vector<DataPtr> datasets);
 
 	std::map<unsigned, DataPtr> datasets();
 

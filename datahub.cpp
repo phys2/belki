@@ -15,9 +15,9 @@ DataHub::DataHub(QObject *parent)
 	setupSignals();
 }
 
-void DataHub::init(const std::vector<DataHub::DataPtr> &datasets)
+void DataHub::init(std::vector<DataPtr> datasets)
 {
-	QWriteLocker _(&data.l);
+	data.l.lockForWrite();
 	if (data.nextId != 1)
 		throw std::runtime_error("DataHub::init() called on non-empty object");
 
@@ -27,6 +27,15 @@ void DataHub::init(const std::vector<DataHub::DataPtr> &datasets)
 		data.sets[dataset->id()] = dataset;
 		data.nextId = std::max(data.nextId, dataset->id() + 1);
 	}
+	data.l.unlock();
+
+	/* emit sorted by id to ensure parents are available
+	   there is no guarantee that everybody who writes .belki files sorts them */
+	std::sort(datasets.begin(), datasets.end(), [] (const DataPtr &a, const DataPtr &b) {
+		return a->id() < b->id();
+	});
+	for (auto &dataset : datasets)
+		emit newDataset(dataset);
 }
 
 std::map<unsigned, DataHub::DataPtr> DataHub::datasets()
