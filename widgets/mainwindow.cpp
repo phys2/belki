@@ -311,6 +311,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 	case Tab::PROFILES: v = new ProfileTab; break;
 	case Tab::FEATWEIGHTS: v = new FeatweightsTab; break;
 	case Tab::BNMS: v = new BnmsTab; break;
+	default: return;
 	}
 
 	v->setWindowState(state);
@@ -629,7 +630,7 @@ void MainWindow::runOnData(const std::function<void(Dataset::Ptr)> &work)
 {
 	if (!data)
 		return;
-	// pass shared ptr als lambda arg so thread works on own copy
+	// pass shared ptr by value so thread works on own copy
 	runInBackground([target=data,work] { work(target); });
 }
 

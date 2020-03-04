@@ -42,12 +42,12 @@ void Distmat::computeImage(const TranslateFun &translate)
 	}
 
 	/* convert to Mat1b and reorder at the same time */
-	double scale = 255./(maxVal - minVal);
+	float scale = 255./(maxVal - minVal);
 	cv::Mat1b matrixB(matrix.rows, matrix.cols);
 	tbb::parallel_for(0, matrix.rows, [&] (int y) {
 		for (int x = 0; x <= y; ++x)
 			matrixB(y, x) = matrixB(x, y)
-			        = (uchar)((matrix(translate(y, x)) - minVal)*scale);
+			        = (uchar)((matrix(translate(y, x)) - (float)minVal)*scale);
 	});
 
 	image = Colormap::pixmap(Colormap::magma.apply(matrixB));

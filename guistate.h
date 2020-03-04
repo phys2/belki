@@ -34,7 +34,7 @@ signals:
 	void closed();
 
 public slots:
-	unsigned addWindow();
+	void addWindow();
 	void removeWindow(unsigned id);
 	void openProject(const QString &filename);
 

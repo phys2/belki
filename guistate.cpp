@@ -89,7 +89,7 @@ std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
 	return ret;
 }
 
-unsigned GuiState::addWindow()
+void GuiState::addWindow()
 {
 	auto state = std::make_shared<WindowState>(*this);
 	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(state));
@@ -115,7 +115,6 @@ unsigned GuiState::addWindow()
 		target->setDataset(hub.datasets().rbegin()->second);
 
 	target->show();
-	return it->first;
 }
 
 void GuiState::removeWindow(unsigned id)
