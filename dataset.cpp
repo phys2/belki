@@ -39,6 +39,12 @@ void Dataset::spawn(Features::Ptr in)
 	b.scores = std::move(in->scores);
 	b.scoreRange = std::move(in->scoreRange);
 
+	/* build protein index if missing */
+	if (b.protIndex.empty()) {
+		for (unsigned i = 0; i < b.protIds.size(); ++i)
+			b.protIndex[b.protIds[i]] = i;
+	}
+
 	/* pre-cache features as QPoints for plotting */
 	b.featurePoints = features::pointify(b.features);
 
