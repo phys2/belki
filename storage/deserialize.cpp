@@ -7,17 +7,89 @@
 #include <QCborStreamReader>
 #include <QFile>
 
-template<int VER>
-std::vector<std::shared_ptr<Dataset>> deserializeProject(const QCborMap &top);
+template<>
+void Storage::deserializeProteinDB<2>(const QCborMap &source)
+{
+	auto unpackProtein = [] (const QCborMap& src) {
+		Protein ret;
+		ret.name = src.value("name").toString();
+		ret.species = src.value("species").toString();
+		ret.color = src.value("color").toString();
+		if (src.contains(QString{"description"}))
+			ret.description = src.value("description").toString();
+		return ret;
+	};
+
+	auto target = std::make_unique<ProteinDB::Public>();
+	for (auto i : source.value("proteins").toArray()) {
+		auto protein = unpackProtein(i.toMap());
+		target->index[protein.name] = target->proteins.size();
+		target->proteins.push_back(protein);
+	}
+	for (auto i : source.value("markers").toArray()) {
+		target->markers.insert(i.toInteger());
+	}
+	// TODO: import structures
+	proteins.init(std::move(target));
+}
 
 template<>
-std::vector<std::shared_ptr<Dataset>> deserializeProject<1>(const QCborMap &top) {
+std::shared_ptr<Dataset> Storage::deserializeDataset<2>(const QCborMap &source)
+{
+	auto unpackConfig = [] (const QCborMap& src) {
+		DatasetConfiguration ret;
+		auto bands = src.value("bands").toArray();
+		ret.id = src.value("id").toInteger();
+		ret.parent = src.value("parent").toInteger();
+		ret.name = src.value("name").toString();
+		for (auto i : bands)
+			ret.bands.push_back(i.toInteger());
+		ret.scoreThresh = src.value("scoreThreshold").toDouble();
+		return ret;
+	};
+
+	auto importFeats = [] (const QCborMap& src, Features::Vec &data, Features::Range &range) {
+		for (auto vec : src.value("data").toArray()) {
+			std::vector<double> row;
+			for (auto v : vec.toArray())
+				row.push_back(v.toDouble());
+			data.push_back(row);
+		}
+		auto irange = src.value("range").toArray();
+		range.min = irange.first().toDouble();
+		range.max = irange.last().toDouble();
+	};
+
+	auto features = std::make_unique<Features>();
+	auto ifeats = source.value("features").toMap();
+	importFeats(ifeats, features->features, features->featureRange);
+	features->logSpace = ifeats.value("logspace").toBool();
+	for (auto dim : source.value("dimensions").toArray())
+		features->dimensions.push_back(dim.toString());
+	for (auto pId : source.value("protIds").toArray())
+		features->protIds.push_back(pId.toInteger());
+	if (source.contains(QString{"scores"}))
+		importFeats(source.value("scores").toMap(), features->scores, features->scoreRange);
+
+	auto config = unpackConfig(source.value("config").toMap());
+	auto dataset = std::make_shared<Dataset>(proteins, config);
+	dataset->spawn(std::move(features));
+	// TODO import displays
+
+	return dataset;
+}
+
+template<>
+std::vector<std::shared_ptr<Dataset>> Storage::deserializeProject<2>(const QCborMap &top) {
 	// TODO: From here on, we expect a valid layout. Add checks where needed
-	auto proteindb = top.value("proteindb").toMap();
-	// TODO initialize/overwrite ProteinDB
-	auto datasets = top.value("proteindb").toArray();
-	// TODO read one by one
-	return {};
+
+	deserializeProteinDB<2>(top.value("proteindb").toMap());
+
+	auto datasets = top.value("datasets").toArray();
+	std::vector<std::shared_ptr<Dataset>> ret;
+	for (auto &i : qAsConst(datasets))
+		ret.push_back(deserializeDataset<2>(i.toMap()));
+	return ret;
 }
 
 std::vector<std::shared_ptr<Dataset>> Storage::openProject(const QString &filename)
@@ -28,6 +100,7 @@ std::vector<std::shared_ptr<Dataset>> Storage::openProject(const QString &filena
 		return {};
 	}
 	QCborStreamReader r(&f);
+
 	/* We expect a map with version etc. on top level */
 	if (r.isTag() && r.toTag() == QCborKnownTags::Signature)
 		r.next();
@@ -42,9 +115,13 @@ std::vector<std::shared_ptr<Dataset>> Storage::openProject(const QString &filena
 		return {};
 	}
 
-	if (version.toInteger(0) == 1)
-		return deserializeProject<1>(top);
+	/* dispatch for all known versions */
+	if (version.toInteger(0) == 2)
+		return deserializeProject<2>(top);
 
-	ioError(QString("File version %d not supported.<p>Please upgrade Belki.</p>").arg(version.toInteger()));
+	/* else: version too new */
+	auto minversion = top.value("Belki Release Version");
+	auto msg = "File version %1 not supported.<p>Please upgrade Belki to at least version %2.</p>";
+	ioError(QString(msg).arg(version.toInteger()).arg(minversion.toString("?")));
 	return {};
 }

@@ -9,7 +9,10 @@
 
 /* storage version, increase on breaking changes */
 // Note that this is local to serialize
-const int storage_version = 1;
+const int storage_version = 2;
+/* minimum Belki release version that can read this storage version */
+// new storage version should warrant a major release
+const char* minimum_version = "1.0";
 
 void Storage::saveProjectAs(const QString &filename, std::vector<std::shared_ptr<const Dataset>> snapshot)
 {
@@ -19,12 +22,15 @@ void Storage::saveProjectAs(const QString &filename, std::vector<std::shared_ptr
 
 	QCborStreamWriter w(&f);
 	/* compose manually, so we only use extra memory for the single chunks */
-	w.startMap(3);
+	w.startMap(4); // needs to be numbner of elements
+	// note when adding anything: element keys need to be sorted in ascending order!
 	w.append("Belki File Version");
 	w.append(storage_version);
+	w.append("Belki Release Version");
+	w.append(minimum_version);
+
 	w.append("proteindb");
 	serializeProteinDB().toCbor(w);
-
 	w.append("datasets");
 	w.startArray(snapshot.size());
 	for (auto &v : snapshot)
@@ -37,8 +43,18 @@ void Storage::saveProjectAs(const QString &filename, std::vector<std::shared_ptr
 
 QCborValue Storage::serializeDataset(std::shared_ptr<const Dataset> src)
 {
-	auto b = src->peek<Dataset::Base>();
-	auto r = src->peek<Dataset::Representation>();
+	auto packConfig = [] (const DatasetConfiguration& config) {
+		QCborArray bands;
+		for (auto i : config.bands)
+			bands.append(i);
+		return QCborMap{
+			{"id", config.id},
+			{"name", config.name},
+			{"parent", config.parent},
+			{"bands", bands},
+			{"scoreThreshold", config.scoreThresh}
+		};
+	};
 
 	auto packFeatures = [] (const Features::Vec &src, const Features::Range &range) {
 		QCborArray data;
@@ -61,6 +77,9 @@ QCborValue Storage::serializeDataset(std::shared_ptr<const Dataset> src)
 		return ret;
 	};
 
+	auto b = src->peek<Dataset::Base>();
+	auto r = src->peek<Dataset::Representation>();
+
 	QCborArray dimensions;
 	for (const auto &v : qAsConst(b->dimensions))
 		dimensions.append(v);
@@ -75,15 +94,16 @@ QCborValue Storage::serializeDataset(std::shared_ptr<const Dataset> src)
 
 	auto features = packFeatures(b->features, b->featureRange);
 	features.insert({"logspace", b->logSpace});
+
 	QCborMap ret{
+		{"config", packConfig(src->config())},
 		{"dimensions", dimensions},
 		{"protIds", protIds},
 		{"features", features},
-	};	
-
+		{"displays", displays},
+	};
 	if (b->hasScores())
 		ret.insert({"scores", packFeatures(b->scores, b->scoreRange)});
-	ret.insert({"displays", displays});
 
 	return ret;
 }

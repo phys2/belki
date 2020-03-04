@@ -49,7 +49,12 @@ protected:
 	QCborValue serializeStructure(const Structure &src);
 
 	// see storage/deserialize.cpp
-	// TODO
+	template<int VER>
+	void deserializeProteinDB(const QCborMap &proteindb);
+	template<int VER>
+	std::shared_ptr<Dataset> deserializeDataset(const QCborMap &dataset);
+	template<int VER>
+	std::vector<std::shared_ptr<Dataset>> deserializeProject(const QCborMap &top);
 
 	void storeDisplay(const Dataset &data, const QString& name);
 
