@@ -7,6 +7,8 @@
 #include <QTimer>
 #include <QEvent>
 #include <QMenu>
+#include <QPushButton>
+#include <QMessageBox>
 #include <QWidgetAction>
 #include <QDesktopServices>
 
@@ -137,8 +139,23 @@ void GuiState::openProject(const QString &filename)
 	}
 
 	/* need to open new window */
-	// TODO ask user if they want to close current project
-	emit instanceRequested(filename);
+	bool proceed = true;
+	QMessageBox dialog(QMessageBox::Question, "Close current project?",
+	                   "The project to be loaded will be opened in a new window."
+	                   "<br>Would you like to close the current project?",
+	                   QMessageBox::NoButton, focused());
+	std::map<QAbstractButton*, std::function<void()>> actions = {
+	  {dialog.addButton("Keep open", QMessageBox::ButtonRole::NoRole), [&] {}},
+	  {dialog.addButton("Close project", QMessageBox::ButtonRole::DestructiveRole),
+       [&] { shutdown(); }},
+	  {dialog.addButton(QMessageBox::StandardButton::Cancel), [&] { proceed = false; }},
+	  {nullptr, [&] { proceed = false; }},
+	};
+	dialog.exec();
+	actions.at(dialog.clickedButton())();
+
+	if (proceed)
+		emit instanceRequested(filename);
 }
 
 void GuiState::addDataset(Dataset::Ptr dataset)
