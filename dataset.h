@@ -63,10 +63,7 @@ public:
 		std::vector<QVector<QPointF>> featurePoints;
 	};
 
-	struct Representation : RWLockable {
-		// feature reduced point sets
-		std::map<QString, QVector<QPointF>> display;
-		// TODO: put distmats here & put this in model.h
+	struct Representations : ::Representations, RWLockable {
 	};
 
 	struct Structure : RWLockable {
@@ -127,7 +124,7 @@ protected:
 
 	// our current state
 	Base b;
-	Representation r;
+	Representations r;
 	Structure s;
 
 	// our meanshift worker. if set, holds a copy of features
@@ -138,7 +135,7 @@ protected:
 
 // forward declarations, see cpp file
 template<> View<Dataset::Base> Dataset::peek() const;
-template<> View<Dataset::Representation> Dataset::peek() const;
+template<> View<Dataset::Representations> Dataset::peek() const;
 template<> View<Dataset::Structure> Dataset::peek() const;
 template<> View<Dataset::Proteins> Dataset::peek() const;
 

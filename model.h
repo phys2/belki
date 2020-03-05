@@ -55,6 +55,13 @@ struct Features {
 	Range scoreRange;
 };
 
+struct Representations {
+	// feature reduced point sets
+	using Pointset = QVector<QPointF>;
+	std::map<QString, Pointset> displays;
+	// TODO: put distmats here
+};
+
 struct Annotations {
 	struct Meta {
 		enum Type {

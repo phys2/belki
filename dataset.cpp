@@ -22,7 +22,7 @@ Dataset::Dataset(ProteinDB &proteins, DatasetConfiguration conf)
 template<>
 View<Dataset::Base> Dataset::peek() const { return View(b); }
 template<>
-View<Dataset::Representation> Dataset::peek() const { return View(r); }
+View<Dataset::Representations> Dataset::peek() const { return View(r); }
 template<>
 View<Dataset::Structure> Dataset::peek() const { return View(s); }
 template<>
@@ -100,7 +100,7 @@ void Dataset::computeDisplay(const QString& request)
 
 	r.l.lockForWrite();
 	for (auto name : result.keys()) {
-		r.display[name] = result[name]; // TODO std::move
+		r.displays[name] = result[name]; // TODO std::move
 		// TODO: lookup in datasets[d->conf->parent].displays and perform rigid registration
 	}
 	r.l.unlock();
@@ -112,7 +112,7 @@ void Dataset::computeDisplays()
 {
 	/* compute PCA displays as a fast starting point */
 	r.l.lockForWrite(); // proactive write lock, avoid gap that may lead to double computation
-	if (!r.display.count("PCA 12"))
+	if (!r.displays.count("PCA 12"))
 		computeDisplay("PCA");
 	r.l.unlock();
 }
@@ -120,7 +120,7 @@ void Dataset::computeDisplays()
 void Dataset::addDisplay(const QString& name, const Representations::Pointset &points)
 {
 	r.l.lockForWrite();
-	r.display[name] = std::move(data);
+	r.displays[name] = std::move(points);
 	r.l.unlock();
 
 	emit update(Touch::DISPLAY);

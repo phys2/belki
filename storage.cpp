@@ -23,9 +23,9 @@ void Storage::storeDisplay(const Dataset& data, const QString &name)
 {
 	QByteArray blob;
 	QTextStream out(&blob, QIODevice::WriteOnly);
-	auto in = data.peek<Dataset::Representation>();
+	auto in = data.peek<Dataset::Representations>();
 	// TODO: check if display exists
-	auto &disp = in->display.at(name);
+	auto &disp = in->displays.at(name);
 	for (auto it = disp.constBegin(); it != disp.constEnd(); ++it)
 		out << it->x() << "\t" << it->y() << endl;
 }

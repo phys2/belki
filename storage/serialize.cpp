@@ -78,7 +78,7 @@ QCborValue Storage::serializeDataset(std::shared_ptr<const Dataset> src)
 	};
 
 	auto b = src->peek<Dataset::Base>();
-	auto r = src->peek<Dataset::Representation>();
+	auto r = src->peek<Dataset::Representations>();
 
 	QCborArray dimensions;
 	for (const auto &v : qAsConst(b->dimensions))
@@ -88,7 +88,7 @@ QCborValue Storage::serializeDataset(std::shared_ptr<const Dataset> src)
 	     protIds.append(v);
 
 	QCborMap displays;
-	for (const auto &[k, v] : r->display) {
+	for (const auto &[k, v] : r->displays) {
 		displays.insert(k, packDisplay(v));
 	}
 

@@ -83,7 +83,7 @@ void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, QSt
 		if (!initialDisplay.isEmpty())
 			return;
 
-		if (!target->peek<Dataset::Representation>()->display.count(initialDisplay))
+		if (!target->peek<Dataset::Representations>()->displays.count(initialDisplay))
 			target->computeDisplay(initialDisplay);
 	});
 }
