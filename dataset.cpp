@@ -28,16 +28,18 @@ View<Dataset::Structure> Dataset::peek() const { return View(s); }
 template<>
 View<Dataset::Proteins> Dataset::peek() const { return proteins.peek(); }
 
-void Dataset::spawn(Features::Ptr in)
+void Dataset::spawn(Features::Ptr base, std::unique_ptr<::Representations> repr)
 {
-	b.dimensions = std::move(in->dimensions);
-	b.protIds = std::move(in->protIds);
-	b.protIndex = std::move(in->protIndex);
-	b.features = std::move(in->features);
-	b.featureRange = std::move(in->featureRange);
-	b.logSpace = std::move(in->logSpace);
-	b.scores = std::move(in->scores);
-	b.scoreRange = std::move(in->scoreRange);
+	b.dimensions = std::move(base->dimensions);
+	b.protIds = std::move(base->protIds);
+	b.protIndex = std::move(base->protIndex);
+	b.features = std::move(base->features);
+	b.featureRange = std::move(base->featureRange);
+	b.logSpace = std::move(base->logSpace);
+	b.scores = std::move(base->scores);
+	b.scoreRange = std::move(base->scoreRange);
+
+	r.displays = std::move(repr->displays);
 
 	/* build protein index if missing */
 	if (b.protIndex.empty()) {

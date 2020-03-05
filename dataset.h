@@ -99,7 +99,7 @@ public:
 	template<typename T>
 	View<T> peek() const; // see specializations in cpp
 
-	void spawn(Features::Ptr data);
+	void spawn(Features::Ptr base, std::unique_ptr<::Representations> repr = {});
 	void spawn(ConstPtr source);
 
 	void computeDisplay(const QString &name);

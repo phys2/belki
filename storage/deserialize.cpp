@@ -48,6 +48,15 @@ std::shared_ptr<Dataset> Storage::deserializeDataset<2>(const QCborMap &source)
 		return ret;
 	};
 
+	auto unpackDisplay = [] (const QCborArray& src) {
+		Representations::Pointset ret;
+		for (auto i : src) {
+			auto arr = i.toArray();
+			ret.append({arr.first().toDouble(), arr.last().toDouble()});
+		}
+		return ret;
+	};
+
 	auto importFeats = [] (const QCborMap& src, Features::Vec &data, Features::Range &range) {
 		for (auto vec : src.value("data").toArray()) {
 			std::vector<double> row;
@@ -60,6 +69,8 @@ std::shared_ptr<Dataset> Storage::deserializeDataset<2>(const QCborMap &source)
 		range.max = irange.last().toDouble();
 	};
 
+	auto config = unpackConfig(source.value("config").toMap());
+
 	auto features = std::make_unique<Features>();
 	auto ifeats = source.value("features").toMap();
 	importFeats(ifeats, features->features, features->featureRange);
@@ -71,11 +82,15 @@ std::shared_ptr<Dataset> Storage::deserializeDataset<2>(const QCborMap &source)
 	if (source.contains(QString{"scores"}))
 		importFeats(source.value("scores").toMap(), features->scores, features->scoreRange);
 
-	auto config = unpackConfig(source.value("config").toMap());
-	auto dataset = std::make_shared<Dataset>(proteins, config);
-	dataset->spawn(std::move(features));
-	// TODO import displays
+	auto repr = std::make_unique<Representations>();
+	if (source.contains(QString{"displays"})) {
+		for (const auto &[name, points] : source.value("displays").toMap()) {
+			repr->displays[name.toString()] = unpackDisplay(points.toArray());
+		}
+	}
 
+	auto dataset = std::make_shared<Dataset>(proteins, config);
+	dataset->spawn(std::move(features), std::move(repr));
 	return dataset;
 }
 
