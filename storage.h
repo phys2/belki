@@ -53,6 +53,8 @@ protected:
 	template<int VER>
 	void deserializeProteinDB(const QCborMap &proteindb);
 	template<int VER>
+	Structure deserializeStructure(const QCborMap &structure, unsigned id);
+	template<int VER>
 	std::shared_ptr<Dataset> deserializeDataset(const QCborMap &dataset);
 	template<int VER>
 	std::vector<std::shared_ptr<Dataset>> deserializeProject(const QCborMap &top);

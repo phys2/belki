@@ -8,6 +8,68 @@
 #include <QFile>
 
 template<>
+Structure Storage::deserializeStructure<2>(const QCborMap &source, unsigned id)
+{
+	auto unpackCluster = [] (const QCborMap& src) {
+		HrClustering::Cluster ret;
+		ret.distance = src.value("distance").toInteger();
+		ret.parent = src.value("parent").toInteger();
+		for (auto i : src.value("children").toArray())
+			ret.children.push_back(i.toInteger());
+		if (src.contains(QString{"protein"}))
+			ret.protein = src.value("protein").toInteger();
+		return ret;
+	};
+
+	auto unpackGroup = [] (const QCborMap& src) {
+		Annotations::Group ret;
+		ret.name = src.value("name").toString();
+		ret.color = src.value("color").toString();
+		for (auto i : src.value("members").toArray())
+			ret.members.push_back(i.toInteger());
+		for (auto i : src.value("mode").toArray())
+			ret.mode.push_back(i.toDouble());
+		return ret;
+	};
+
+	auto type = source.value("type").toString();
+	if (type == "hierarchy") {
+		HrClustering ret;
+		auto meta = source.value("meta").toMap();
+		ret.meta.id = id;
+		ret.meta.name = meta.value("name").toString();
+		ret.meta.dataset = meta.value("parent").toInteger(0); // optional, default 0
+		for (auto i : source.value("clusters").toArray())
+			ret.clusters.push_back(unpackCluster(i.toMap()));
+		return ret;
+	}
+	if (type == "annotations") {
+		Annotations ret;
+		auto meta = source.value("meta").toMap();
+		std::map<QString, Annotations::Meta::Type> typeMap{
+			{"simple", Annotations::Meta::SIMPLE},
+			{"meanshift", Annotations::Meta::MEANSHIFT},
+			{"hiercut", Annotations::Meta::HIERCUT},
+		};
+		ret.meta.type = typeMap.at(meta.value("type").toString());
+		ret.meta.id = id;
+		ret.meta.name = meta.value("name").toString();
+		ret.meta.dataset = meta.value("parent").toInteger(0); // optional, default 0
+		// individual parameters are set depending on type, but we can just default
+		ret.meta.k = meta.value("k").toDouble(1.);
+		ret.meta.hierarchy = meta.value("hierarchy").toInteger(0);
+		ret.meta.granularity = meta.value("granularity").toInteger(0);
+
+		for (const auto &[k, v] : source.value("groups").toMap())
+			ret.groups[k.toInteger()] = unpackGroup(v.toMap());
+		annotations::order(ret, (type != Annotations::Meta::SIMPLE));
+
+		return ret;
+	}
+	return {};
+}
+
+template<>
 void Storage::deserializeProteinDB<2>(const QCborMap &source)
 {
 	auto unpackProtein = [] (const QCborMap& src) {
@@ -29,7 +91,10 @@ void Storage::deserializeProteinDB<2>(const QCborMap &source)
 	for (auto i : source.value("markers").toArray()) {
 		target->markers.insert(i.toInteger());
 	}
-	// TODO: import structures
+	for (const auto &[k, v] : source.value("structures").toMap()) {
+		auto structure = deserializeStructure<2>(v.toMap(), k.toInteger());
+		target->structures[k.toInteger()] = structure;
+	}
 	proteins.init(std::move(target));
 }
 

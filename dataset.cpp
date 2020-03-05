@@ -39,7 +39,8 @@ void Dataset::spawn(Features::Ptr base, std::unique_ptr<::Representations> repr)
 	b.scores = std::move(base->scores);
 	b.scoreRange = std::move(base->scoreRange);
 
-	r.displays = std::move(repr->displays);
+	if (repr)
+		r.displays = std::move(repr->displays);
 
 	/* build protein index if missing */
 	if (b.protIndex.empty()) {

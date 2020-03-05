@@ -20,7 +20,7 @@ void ProteinDB::init(std::unique_ptr<ProteinRegister> payload)
 	if (!data.proteins.empty())
 		throw std::runtime_error("ProteinDB::init() called on non-empty object");
 
-	data.proteins = std::move(payload->proteins);
+	data.proteins = payload->proteins; // *don't move*, we need copy for signal
 	data.index = std::move(payload->index);
 	data.markers = std::move(payload->markers);
 	data.structures = std::move(payload->structures);
@@ -28,14 +28,23 @@ void ProteinDB::init(std::unique_ptr<ProteinRegister> payload)
 	for (auto &[k, _] : data.structures)
 		data.nextStructureId = std::max(data.nextStructureId, k + 1);
 
+	/* keep metadata for signals */
+	std::vector<ProteinId> markers(data.markers.cbegin(), data.markers.cend());
+	std::vector<std::pair<unsigned, QString>> structures; // [id, name]
+	for (auto &[k, v] : data.structures) {
+		auto nameOf = [] (auto *s) { return (s ? s->meta.name : ""); };
+		auto a = std::get_if<Annotations>(&v);
+		auto b = std::get_if<HrClustering>(&v);
+		structures.push_back(std::make_pair(k, nameOf(a) + nameOf(b)));
+	}
 	data.l.unlock();
 
-	QReadLocker _(&data.l);
-	for (unsigned i = 0; i < data.proteins.size(); ++i)
-		emit proteinAdded(i, data.proteins[i]);
-	std::vector<ProteinId> markers(data.markers.cbegin(), data.markers.cend());
+	/* emit signals – w/o lock */
+	for (unsigned i = 0; i < payload->proteins.size(); ++i)
+		emit proteinAdded(i, payload->proteins[i]);
 	emit markersToggled(markers, true);
-	/* TODO: emit structures */
+	for (auto &[id, name] : structures)
+		emit structureAvailable(id, name, false);
 }
 
 ProteinId ProteinDB::add(const QString &fullname)
