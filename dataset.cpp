@@ -117,31 +117,13 @@ void Dataset::computeDisplays()
 	r.l.unlock();
 }
 
-// TODO move parsing to storage
-bool Dataset::readDisplay(const QString& name, QTextStream &in)
+void Dataset::addDisplay(const QString& name, const Representations::Pointset &points)
 {
-	QVector<QPointF> data;
-	while (!in.atEnd()) {
-		auto line = in.readLine().split("\t");
-		if (line.size() != 2) {
-			// TODO ioError(QString("Input malformed at line %2 in display %1").arg(name, data.size()+1));
-			return false;
-		}
-
-		data.push_back({line[0].toDouble(), line[1].toDouble()});
-	}
-
-	if (data.size() != (int)peek<Base>()->features.size()) {
-		// TODO ioError(QString("Display %1 length does not match source length!").arg(name));
-		return false;
-	}
-
 	r.l.lockForWrite();
 	r.display[name] = std::move(data);
 	r.l.unlock();
 
 	emit update(Touch::DISPLAY);
-	return true;
 }
 
 void Dataset::prepareAnnotations(const Annotations::Meta &desc)

@@ -107,7 +107,7 @@ public:
 
 	void computeDisplay(const QString &name);
 	void computeDisplays();
-	bool readDisplay(const QString &name, QTextStream &tsv);
+	void addDisplay(const QString &name, const Representations::Pointset &points);
 
 	void prepareAnnotations(const Annotations::Meta &desc);
 	void prepareOrder(const ::Order &desc);

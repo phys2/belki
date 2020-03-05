@@ -30,6 +30,28 @@ void Storage::storeDisplay(const Dataset& data, const QString &name)
 		out << it->x() << "\t" << it->y() << endl;
 }
 
+// TODO: this is just a gist
+void Storage::readDisplay(const QString& name, QTextStream &in)
+{
+	Representations::Pointset data;
+	while (!in.atEnd()) {
+		auto line = in.readLine().split("\t");
+		if (line.size() != 2) {
+			emit ioError(QString("Input malformed at line %2 in display %1").arg(name, data.size()+1));
+			return;
+		}
+
+		data.push_back({line[0].toDouble(), line[1].toDouble()});
+	}
+
+	/* TODO if (data.size() != (int)peek<Base>()->features.size()) {
+		ioError(QString("Display %1 length does not match source length!").arg(name));
+		return;
+	}*/
+
+	// TODO: what to do with the data
+}
+
 Features::Ptr Storage::openDataset(const QString &filename, const QString &featureColName)
 {
 	QFile f(filename); // keep in scope

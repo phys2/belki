@@ -39,6 +39,7 @@ public slots:
 	void exportAnnotations(const QString &filename, const Annotations &source);
 
 protected:
+	// TODO put implementations in storage/…
 	Features::Ptr readSource(QTextStream in, const QString &featureColName);
 	Features::Ptr readSimpleSource(QTextStream &in, bool normalize);
 	void finalizeRead(Features &data, bool normalize);
@@ -56,7 +57,9 @@ protected:
 	template<int VER>
 	std::vector<std::shared_ptr<Dataset>> deserializeProject(const QCborMap &top);
 
+	// TODO dead code right now
 	void storeDisplay(const Dataset &data, const QString& name);
+	void readDisplay(const QString& name, QTextStream &in);
 
 	QTextStream openToStream(QFile *handler);
 	void freadError(const QString &filename);
