@@ -60,7 +60,7 @@ protected:
 	std::vector<std::shared_ptr<Dataset>> deserializeProject(const QCborMap &top);
 
 	// TODO dead code right now
-	void storeDisplay(const Dataset &data, const QString& name);
+	void storeDisplay(const Representations::Pointset &disp, const QString& name);
 	void readDisplay(const QString& name, QTextStream &in);
 
 	QTextStream openToStream(QFile *handler);
