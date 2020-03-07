@@ -22,10 +22,10 @@ class Storage : public QObject
 public:
 	Storage(ProteinDB &proteins, QObject *parent = nullptr);
 
-	Features::Ptr openDataset(const QString &filename, const QString &featureColName = "Dist");
-
 	std::vector<std::shared_ptr<Dataset>> openProject(const QString &filename);
 	void saveProjectAs(const QString &filename, std::vector<std::shared_ptr<const Dataset>> snapshot);
+
+	Features::Ptr openDataset(const QString &filename, const QString &featureColName = "Dist");
 
 signals: // IMPORTANT: always provide target object pointer for thread-affinity
 	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);

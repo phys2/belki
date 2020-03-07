@@ -75,10 +75,8 @@ void instantiate(QString filename)
 
 	/* fire up */
 	gui->addWindow(); // open window first for wired error messages
-	if (!filename.isEmpty()) {
-		auto datasets = hub->store.openProject(filename);
-		hub->init(datasets);
-	}
+	if (!filename.isEmpty())
+		hub->openProject(filename);
 }
 
 void cleanup()

@@ -2,7 +2,7 @@
 #include "guistate.h"
 #include "windowstate.h"
 #include "datahub.h"
-#include "storage.h"
+#include "storage/storage.h"
 #include "fileio.h"
 #include "profiles/profilewindow.h"
 #include "widgets/spawndialog.h"
@@ -228,7 +228,7 @@ void MainWindow::setupActions()
 		if (filename.isEmpty())
 			return;
 
-		runInBackground([&s=state->hub().store,filename] { s.exportMarkers(filename); });
+		runInBackground([s=state->hub().store(),filename] { s->exportMarkers(filename); });
 	});
 	connect(actionExportAnnotations, &QAction::triggered, [this] {
 		/* keep own copy while user chooses filename */
@@ -240,7 +240,7 @@ void MainWindow::setupActions()
 			return;
 
 		// TODO we cannot move unique_ptr to other thread. so no bg
-		state->hub().store.exportAnnotations(filename, *localCopy);
+		state->hub().store()->exportAnnotations(filename, *localCopy);
 	});
 	connect(actionPersistAnnotations, &QAction::triggered, [this] {
 		/* keep own copy while user edits the name */
@@ -511,19 +511,20 @@ void MainWindow::openFile(Input type, QString fn)
 	}
 
 	auto &hub = state->hub();
+	auto s = hub.store();
 	switch (type) {
 	case Input::DATASET:      hub.importDataset(fn, "Dist"); break;
 	case Input::DATASET_RAW:  hub.importDataset(fn, "AbundanceLeft"); break;
-	case Input::MARKERS:      runInBackground([&s=hub.store,fn] { s.importMarkers(fn); }); break;
-	case Input::DESCRIPTIONS: runInBackground([&s=hub.store,fn] { s.importDescriptions(fn); }); break;
+	case Input::MARKERS:      runInBackground([s,fn] { s->importMarkers(fn); }); break;
+	case Input::DESCRIPTIONS: runInBackground([s,fn] { s->importDescriptions(fn); }); break;
 	case Input::STRUCTURE: {
 		if (QFileInfo(fn).suffix() == "json")
-			runInBackground([&s=hub.store,fn] { s.importHierarchy(fn); });
+			runInBackground([s,fn] { s->importHierarchy(fn); });
 		else
-			runInBackground([&s=hub.store,fn] { s.importAnnotations(fn); });
+			runInBackground([s,fn] { s->importAnnotations(fn); });
 		break;
 	}
-	case Input::PROJECT: emit openProjectRequested(fn);
+	case Input::PROJECT: emit openProjectRequested(fn); // goes through guistate
 	}
 }
 

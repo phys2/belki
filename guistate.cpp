@@ -13,7 +13,7 @@
 #include <QDesktopServices>
 
 GuiState::GuiState(DataHub &hub)
-    : hub(hub), proteins(hub.proteins), store(hub.store)
+    : hub(hub), proteins(hub.proteins)
 {
 	auto addStructureItem = [this] (QString name, QString icon, int id) {
 		auto item = new QStandardItem(name);
@@ -133,8 +133,7 @@ void GuiState::openProject(const QString &filename)
 	if (proteins.peek()->proteins.empty()) {
 		// note: we risk that proteins gets filled now before we call init
 		// also it would be nice if we would open in background thread
-		auto datasets = store.openProject(filename);
-		hub.init(datasets);
+		hub.openProject(filename);
 		return;
 	}
 

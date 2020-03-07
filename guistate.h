@@ -50,7 +50,6 @@ public slots:
 public:
 	DataHub &hub;
 	ProteinDB &proteins;
-	Storage &store;
 
 protected:
 	void shutdown();

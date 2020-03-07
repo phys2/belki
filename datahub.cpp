@@ -2,7 +2,7 @@
 
 #include "proteindb.h"
 #include "dataset.h"
-#include "storage.h"
+#include "storage/storage.h"
 
 #include <QtConcurrent>
 #include <QThread>
@@ -10,9 +10,14 @@
 
 DataHub::DataHub(QObject *parent)
     : QObject(parent),
-      store(proteins)
+      storage(std::make_unique<Storage>(proteins))
 {
 	setupSignals();
+}
+
+DataHub::~DataHub()
+{
+	// needed here for unique_ptr cleanup with complete type
 }
 
 void DataHub::init(std::vector<DataPtr> datasets)
@@ -46,10 +51,9 @@ std::map<unsigned, DataHub::DataPtr> DataHub::datasets()
 
 void DataHub::setupSignals()
 {
-	/* signal multiplexing */
-	for (auto o : std::vector<QObject*>{&proteins, &store})
-		connect(o, SIGNAL(ioError(const QString&, MessageType)),
-		        this, SIGNAL(ioError(const QString&, MessageType)));
+	/* signal pass-through */
+	connect(&proteins, &ProteinDB::ioError, this, &DataHub::ioError);
+	connect(storage.get(), &Storage::ioError, this, &DataHub::ioError);
 }
 
 DataHub::DataPtr DataHub::createDataset(DatasetConfiguration config)
@@ -91,7 +95,7 @@ void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, QSt
 void DataHub::importDataset(const QString &filename, const QString featureCol)
 {
 	QtConcurrent::run([=] {
-		auto dataset = store.openDataset(filename, featureCol);
+		auto dataset = storage->openDataset(filename, featureCol);
 		if (!dataset)
 			return;
 
@@ -121,6 +125,12 @@ void DataHub::importDataset(const QString &filename, const QString featureCol)
 	});
 }
 
+void DataHub::openProject(const QString &filename)
+{
+	auto datasets = storage->openProject(filename); // manipulates ProteinDB
+	init(datasets);
+}
+
 void DataHub::saveProjectAs(const QString &filename)
 {
 	QtConcurrent::run([=] {
@@ -128,6 +138,6 @@ void DataHub::saveProjectAs(const QString &filename)
 		std::vector<Dataset::ConstPtr> snapshot;
 		for (auto &[k, v] : data.sets)
 			snapshot.push_back(v);
-		store.saveProjectAs(filename, snapshot);
+		storage->saveProjectAs(filename, snapshot);
 	});
 }

@@ -3,12 +3,13 @@
 
 #include "dataset.h" // for DatasetConfiguration
 #include "proteindb.h"
-#include "storage.h"
 #include "utils.h"
 
 #include <QObject>
 #include <map>
 #include <memory>
+
+class Storage;
 
 class DataHub : public QObject
 {
@@ -18,8 +19,9 @@ public:
 	using ConstDataPtr = Dataset::ConstPtr;
 
 	explicit DataHub(QObject *parent = nullptr);
-	void init(std::vector<DataPtr> datasets);
+	~DataHub();
 
+	Storage *store() { return storage.get(); };
 	std::map<unsigned, DataPtr> datasets();
 
 signals:
@@ -29,14 +31,16 @@ signals:
 public slots:
 	void spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay = {});
 	void importDataset(const QString &filename, const QString featureCol = {});
+	void openProject(const QString &filename);
 	void saveProjectAs(const QString &filename);
 
 public:
 	ProteinDB proteins;
-	Storage store;
+	std::unique_ptr<Storage> storage;
 
 protected:
 	void setupSignals();
+	void init(std::vector<DataPtr> datasets);
 
 	DataPtr createDataset(DatasetConfiguration config);
 
