@@ -42,6 +42,7 @@ signals:
 	void closeWindowRequested();
 	void closeProjectRequested();
 	void openProjectRequested(QString filename);
+	void quitApplicationRequested();
 	void datasetSelected(unsigned id);
 	void markerFlipped(QModelIndex i);
 	void markerToggled(ProteinId id, bool present);

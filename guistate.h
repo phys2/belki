@@ -27,16 +27,18 @@ public:
 	~GuiState();
 
 	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
+	bool shutdown(bool withPrompt = true);
 
 	bool eventFilter(QObject *watched, QEvent *event) override;
 
 signals:
 	void instanceRequested(const QString &filename);
+	void quitRequested();
 	void closed();
 
 public slots:
 	void addWindow();
-	void removeWindow(unsigned id);
+	void removeWindow(unsigned id, bool withPrompt = true);
 	void openProject(const QString &filename);
 
 	void addDataset(std::shared_ptr<Dataset> dataset);
@@ -55,7 +57,7 @@ public:
 	std::unique_ptr<FileIO> io;
 
 protected:
-	void shutdown();
+	bool promptOnClose(QWidget *parent = nullptr);
 	void sortMarkerModel();
 
 	MainWindow *focused();

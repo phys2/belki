@@ -201,7 +201,7 @@ void MainWindow::setupActions()
 	clearMarkersButton->setDefaultAction(actionClearMarkers);
 
 	connect(actionCloseProject, &QAction::triggered, this, &MainWindow::closeProjectRequested);
-	connect(actionQuit, &QAction::triggered, [] { QApplication::exit(); });
+	connect(actionQuit, &QAction::triggered, this, &MainWindow::quitApplicationRequested);
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 	connect(actionAbout, &QAction::triggered, [this] {
 		auto date = QDateTime::fromString(PROJECT_DATE, "yyyyMMdd").toString("MMMM d, yyyy");
@@ -679,8 +679,10 @@ void MainWindow::dropEvent(QDropEvent *event)
 	event->accept();
 }
 
-void MainWindow::closeEvent(QCloseEvent *)
+void MainWindow::closeEvent(QCloseEvent *event)
 {
+	// delegate to signal handler, who might decide the window stays
+	event->ignore();
 	emit closeWindowRequested();
 }
 

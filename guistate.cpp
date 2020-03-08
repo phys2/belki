@@ -58,7 +58,7 @@ GuiState::GuiState(DataHub &hub)
 
 GuiState::~GuiState()
 {
-	shutdown();
+	shutdown(false);
 }
 
 std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
@@ -109,9 +109,9 @@ void GuiState::addWindow()
 	connect(target, &MainWindow::newWindowRequested, this, &GuiState::addWindow);
 	connect(target, &MainWindow::closeWindowRequested, this,
 	        [this,id=it->first] { removeWindow(id); });
-	connect(target, &MainWindow::closeProjectRequested, this, &GuiState::shutdown);
-	connect(target, &MainWindow::openProjectRequested,
-	        this, &GuiState::openProject);
+	connect(target, &MainWindow::closeProjectRequested, this, [this] { GuiState::shutdown(); });
+	connect(target, &MainWindow::openProjectRequested, this, &GuiState::openProject);
+	connect(target, &MainWindow::quitApplicationRequested, this, &GuiState::quitRequested);
 	connect(target, &MainWindow::markerFlipped, this, &GuiState::flipMarker);
 	connect(target, &MainWindow::markerToggled, this, &GuiState::toggleMarker);
 
@@ -125,8 +125,12 @@ void GuiState::addWindow()
 	target->show();
 }
 
-void GuiState::removeWindow(unsigned id)
+void GuiState::removeWindow(unsigned id, bool withPrompt)
 {
+	/* prompt first on last windows*/
+	if (withPrompt && windows.size() < 2 && !promptOnClose())
+		return;
+
 	auto w = windows.at(id);
 	w->deleteLater(); // do not delete a window within its close event
 	windows.erase(id);
@@ -256,14 +260,45 @@ void GuiState::displayMessageAt(const GuiMessage &message, QWidget *parent)
 	dialog.exec();
 }
 
-void GuiState::shutdown()
+bool GuiState::promptOnClose(QWidget *parent)
 {
+	if (proteins.peek()->proteins.empty())
+		return true; // no need to ask, empty project
+
+	/* Lazy way: If no filename set, only provide Ok/Cancel, otherwise Save/Discard/Cancel */
+	QMessageBox dialog(parent ? parent : focused());
+	auto name = hub.projectMeta().name;
+	if (name.isEmpty()) {
+		dialog.setText("Close project?");
+		dialog.setInformativeText("The project has not been saved.");
+		dialog.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+	} else {
+		dialog.setText(QString("Close project %1?").arg(name));
+		dialog.setInformativeText("The project might have unsaved changes."
+		                          "<br>Would you like to save it first?");
+		dialog.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+	}
+	dialog.setDefaultButton(QMessageBox::Cancel);
+	dialog.setEscapeButton(QMessageBox::Cancel);
+	int ret = dialog.exec();
+	if (ret == QMessageBox::Save)
+		hub.saveProject();
+	return (ret != QMessageBox::Cancel);
+}
+
+bool GuiState::shutdown(bool withPrompt)
+{
+	/* prompt first */
+	if (withPrompt && !promptOnClose())
+		return false;
+
 	/* close all windows, which will lead to our demise */
 	std::vector<unsigned> cache; // cache ids to avoid invalid iterators
 	for (auto &[k, _] : windows)
 		cache.push_back(k);
 	for (auto i : cache)
-		removeWindow(i);
+		removeWindow(i, false);
+	return true;
 }
 
 void GuiState::sortMarkerModel()

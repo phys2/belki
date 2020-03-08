@@ -68,9 +68,16 @@ void instantiate(QString filename)
 			QApplication::quit();
 	});
 
-	/* hook forking */
+	/* hook global requests (forking, quitting) */
 	gui->connect(gui, &GuiState::instanceRequested, [] (const QString& fn) {
 		instantiate(fn);
+	});
+	gui->connect(gui, &GuiState::quitRequested, [] () {
+		for (auto &[_, v] : instances) {
+			bool cont = v->shutdown(); // might or might not want to
+			if (!cont)
+				break;
+		} // application quit will happen in GuiState::closed handler above
 	});
 
 	/* fire up */
