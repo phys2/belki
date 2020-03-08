@@ -16,7 +16,7 @@ ProteinDB::ProteinDB(QObject *parent)
 
 void ProteinDB::init(std::unique_ptr<ProteinRegister> payload)
 {
-	data.l.lockForWrite();
+	QWriteLocker l(&data.l);
 	if (!data.proteins.empty())
 		throw std::runtime_error("ProteinDB::init() called on non-empty object");
 
@@ -37,7 +37,7 @@ void ProteinDB::init(std::unique_ptr<ProteinRegister> payload)
 		auto b = std::get_if<HrClustering>(&v);
 		structures.push_back(std::make_pair(k, nameOf(a) + nameOf(b)));
 	}
-	data.l.unlock();
+	l.unlock();
 
 	/* emit signals – w/o lock */
 	for (unsigned i = 0; i < payload->proteins.size(); ++i)
