@@ -29,7 +29,7 @@ void Storage::saveProject(const QString &filename, std::vector<std::shared_ptr<c
 {
 	QSaveFile f(filename);
 	if (!f.open(QIODevice::WriteOnly))
-		return ioError(QString("Could not write file %1!").arg(filename));
+		return fopenError(filename, true);
 	writeProject(&f, snapshot);
 	f.commit();
 	updateFilename(filename); // file must exist here, so do this after writing the file
@@ -45,13 +45,14 @@ void Storage::storeDisplay(const Representations::Pointset& disp, const QString 
 }
 
 // TODO: this is just a gist
-void Storage::readDisplay(const QString& name, QTextStream &in)
+void Storage::readDisplay(const QString&, QTextStream &in)
 {
 	Representations::Pointset data;
 	while (!in.atEnd()) {
 		auto line = in.readLine().split("\t");
 		if (line.size() != 2) {
-			emit ioError(QString("Input malformed at line %2 in display %1").arg(name, data.size()+1));
+			emit ioError({"Could not parse file!",
+			              QString("Input malformed at line %1").arg(data.size()+1)});
 			return;
 		}
 
@@ -59,7 +60,8 @@ void Storage::readDisplay(const QString& name, QTextStream &in)
 	}
 
 	/* TODO if (data.size() != (int)peek<Base>()->features.size()) {
-		ioError(QString("Display %1 length does not match source length!").arg(name));
+		ioError({"Display incompatible with data.",
+		         "Display length does not match source length!"});
 		return;
 	}*/
 
@@ -136,7 +138,8 @@ void Storage::importAnnotations(const QString &filename)
 			}
 		}
 	} else {
-		emit ioError("Could not parse file!<p>The first column must contain protein or group names.</p>");
+		emit ioError({"Could not parse file!",
+		              "The first column must contain protein or group names."});
 		return;
 	}
 
@@ -147,14 +150,15 @@ void Storage::importHierarchy(const QString &filename)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::ReadOnly)) {
-		freadError(filename);
+		fopenError(filename);
 		return;
 	}
 
-	auto json = QJsonDocument::fromJson(f.readAll());
+	QJsonParseError err;
+	auto json = QJsonDocument::fromJson(f.readAll(), &err);
 	if (json.isNull() || !json.isObject()) {
-		// TODO: we could pass parsing errors with fromJson() third argument
-		emit ioError(QString("File %1 does not contain valid JSON!").arg(filename));
+		emit ioError({QString("File %1 does not contain valid JSON!").arg(filename),
+		             err.errorString()});
 		return;
 	}
 
@@ -197,7 +201,7 @@ void Storage::exportAnnotations(const QString &filename, const Annotations& sour
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::WriteOnly))
-		return ioError(QString("Could not write file %1!").arg(filename));
+		return fopenError(filename, true);
 
 	QTextStream out(&f);
 	// write header
@@ -237,7 +241,7 @@ void Storage::importMarkers(const QString &filename)
 	}
 
 	if (names.size() > 500)
-		return ioError(QString("Refusing to load too many (%1) markers.").arg(names.size()));
+		return ioError({QString{"Refusing to load too many (%1) markers."}.arg(names.size())});
 
 	proteins.importMarkers(names);
 }
@@ -246,7 +250,7 @@ void Storage::exportMarkers(const QString &filename)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::WriteOnly))
-		return ioError(QString("Could not write file %1!").arg(filename));
+		return fopenError(filename, true);
 
 	auto p = proteins.peek();
 	QTextStream out(&f);
@@ -262,13 +266,14 @@ void Storage::exportMarkers(const QString &filename)
 QTextStream Storage::openToStream(QFileDevice *handler)
 {
 	if (!handler->open(QIODevice::ReadOnly)) {
-		freadError(handler->fileName());
+		fopenError(handler->fileName());
 		return {};
 	}
 	return QTextStream(handler);
 }
 
-void Storage::freadError(const QString &filename)
+void Storage::fopenError(const QString &filename, bool write)
 {
-	emit ioError(QString("Could not read file %1!").arg(filename));
+	QString format(write? "Could not write file %1!" : "Could not read file %1!");
+	emit ioError({format.arg(filename)});
 }

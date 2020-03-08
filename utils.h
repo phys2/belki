@@ -8,10 +8,11 @@
 #include <unordered_map>
 #include <functional>
 
-enum class MessageType {
-	INFO, WARNING, CRITICAL
+struct GuiMessage { // modeled after QMessageBox
+	QString text;
+	QString informativeText = {};
+	enum { INFO, WARNING, CRITICAL } type = CRITICAL;
 };
-Q_DECLARE_METATYPE(MessageType)
 
 class NonCopyable
 {

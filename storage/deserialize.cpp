@@ -176,7 +176,7 @@ std::vector<std::shared_ptr<Dataset>> Storage::readProject(const QString &filena
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::ReadOnly)) {
-		ioError(QString("Could not open file %1!").arg(filename));
+		fopenError(filename);
 		return {};
 	}
 	QCborStreamReader r(&f);
@@ -186,12 +186,12 @@ std::vector<std::shared_ptr<Dataset>> Storage::readProject(const QString &filena
 		r.next();
 	auto top = QCborValue::fromCbor(r).toMap();
 	if (r.lastError() != QCborError::NoError) {
-		ioError(QString("Error reading file:<p>%1</p>").arg(r.lastError().toString()));
+		ioError({"Error reading file!", r.lastError().toString()});
 		return {};
 	}
 	auto version = top.value("Belki File Version");
 	if (not version.isInteger()) {
-		ioError("Invalid file, could not read version");
+		ioError({"Error reading file!", "Invalid file, could not read version."});
 		return {};
 	}
 
@@ -201,7 +201,8 @@ std::vector<std::shared_ptr<Dataset>> Storage::readProject(const QString &filena
 
 	/* else: version too new */
 	auto minversion = top.value("Belki Release Version");
-	auto msg = "File version %1 not supported.<p>Please upgrade Belki to at least version %2.</p>";
-	ioError(QString(msg).arg(version.toInteger()).arg(minversion.toString("?")));
+	ioError({QString{"File version %1 not supported."}.arg(version.toInteger()),
+	         QString{"Please upgrade Belki to at least version %2."}
+	         .arg(minversion.toString("?"))});
 	return {};
 }

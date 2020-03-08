@@ -287,14 +287,15 @@ void BnmsTab::loadComponents()
 		return;
 	QFile f(fn);
 	if (!f.open(QIODevice::ReadOnly)) {
-		emit io->ioError(QString("Could not read file %1!").arg(fn));
+		emit io->ioError({QString("Could not read file %1!").arg(fn)});
 		return;
 	}
 	QTextStream in(&f);
 	/* file has no header right now
 	auto header = in.readLine().split("\t");
 	if (header.size() != 2 || header.first() != "Protein") {
-		emit io->ioError(QString("Could not parse file!<p>The first column must contain protein names.</p>").arg(fn));
+		emit io->ioError({"Could not parse file!",
+		                  "The first column must contain protein names."});
 		return;
 	}
 	*/
@@ -310,7 +311,8 @@ void BnmsTab::loadComponents()
 		if (line.empty() || line[0].isEmpty())
 			break; // early EOF
 		if ((line.size() - 1) % 3) { // we expect triples
-			emit io->ioError(QString("Stopped at '%1', incomplete row!").arg(line[0]));
+			emit io->ioError({"Could not parse complete file!",
+			                  QString{"Stopped at '%1', incomplete row!"}.arg(line[0])});
 			break; // avoid message flood
 		}
 		unsigned row;

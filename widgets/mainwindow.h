@@ -35,7 +35,7 @@ public:
 
 public slots:
 	void showHelp();
-	void displayMessage(const QString &message, MessageType type = MessageType::CRITICAL);
+	void displayMessage(const GuiMessage &message);
 	void setName(const QString &name, const QString &path);
 	void setDataset(Dataset::Ptr data);
 	void selectStructure(int id);

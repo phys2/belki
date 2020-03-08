@@ -153,7 +153,7 @@ void DataHub::saveProject(QString filename)
 		filename = data.project.path;
 		data.l.unlock();
 		if (filename.isEmpty()) // should not happen
-			return ioError("Could not save project, no filename specified!");
+			return ioError({"Could not save project!", "No filename specified."});
 	}
 
 	QtConcurrent::run([=] {

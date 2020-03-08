@@ -46,7 +46,7 @@ public:
 	QString chooseFile(Role purpose, QWidget *p = nullptr);
 
 signals:
-	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
+	void ioError(const GuiMessage &message);
 
 public slots:
 	// use source::render() to create image file (source may be QWidget or QGraphicsScene)

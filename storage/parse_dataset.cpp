@@ -20,18 +20,18 @@ Features::Ptr Storage::readSource(QTextStream in, const QString &featureColName)
 	}
 
 	if (header.contains("") || header.removeDuplicates()) {
-		emit ioError("Malformed header: Duplicate or empty columns!");
+		emit ioError({"Could not parse file!", "Duplicate or empty columns in header!"});
 		return {};
 	}
 	if (header.size() == 0 || header.first() != "Protein") {
-		emit ioError("Could not parse file!<p>The first column must contain protein names.</p>");
+		emit ioError({"Could not parse file!", "The first column must contain protein names."});
 		return {};
 	}
 	int nameCol = header.indexOf("Pair");
 	int featureCol = header.indexOf(featureColName.isEmpty() ? "Dist" : featureColName);
 	int scoreCol = header.indexOf("Score");
 	if (nameCol == -1 || featureCol == -1 || scoreCol == -1) {
-		emit ioError("Could not parse file!<p>Not all necessary columns found.</p>");
+		emit ioError({"Could not parse file!", "Not all necessary columns found."});
 		return {};
 	}
 
@@ -44,7 +44,8 @@ Features::Ptr Storage::readSource(QTextStream in, const QString &featureColName)
 			break; // early EOF
 
 		if (line.size() < header.size()) {
-			emit ioError(QString("Stopped at '%1', incomplete row!").arg(line[0]));
+			emit ioError({"Could not parse complete file!",
+			              QString{"Stopped at '%1', incomplete row!"}.arg(line[0])});
 			break; // avoid message flood
 		}
 
@@ -90,8 +91,8 @@ Features::Ptr Storage::readSource(QTextStream in, const QString &featureColName)
 		score = line[scoreCol].toDouble(&ok);
 		if (!success) {
 			auto name = proteins.peek()->proteins[protid].name;
-			auto err = QString("Stopped at protein '%1', malformed row!").arg(name);
-			emit ioError(err);
+			QString err{"Stopped at protein '%1', malformed row!"};
+			emit ioError({"Could not parse complete file!", err.arg(name)});
 			break; // avoid message flood
 		}
 
@@ -101,7 +102,7 @@ Features::Ptr Storage::readSource(QTextStream in, const QString &featureColName)
 	}
 
 	if (ret->features.empty() || ret->dimensions.empty()) {
-		emit ioError(QString("Could not read any valid data rows from file!"));
+		emit ioError({"Could not read any valid data rows from file!"});
 		return {};
 	}
 
@@ -119,7 +120,7 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 
 	// ensure header consistency
 	if (header.empty() || header.contains("") || header.removeDuplicates()) {
-		emit ioError("Malformed header: Duplicate or empty columns!");
+		emit ioError({"Could not parse file!", "Duplicate or empty columns in header!"});
 		return {};
 	}
 
@@ -134,7 +135,8 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 			break; // early EOF
 
 		if (line.size() < len + 1) {
-			emit ioError(QString("Stopped at '%1', incomplete row!").arg(line[0]));
+			emit ioError({"Could not parse complete file!",
+			              QString{"Stopped at '%1', incomplete row!"}.arg(line[0])});
 			break; // avoid message flood
 		}
 
@@ -144,7 +146,8 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 
 		/* check duplicates */
 		if (seen.count(name)) {
-			emit ioError(QString("Stopped at multiple occurance of protein '%1'!").arg(name));
+			emit ioError({"Could not parse complete file!",
+			              QString{"Stopped at multiple occurance of protein '%1'!"}.arg(name)});
 			return {};
 		}
 		seen.insert(name);
@@ -158,7 +161,8 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 			success = success && ok;
 		}
 		if (!success) {
-			emit ioError(QString("Stopped at protein '%1', malformed row!").arg(name));
+			QString err{"Stopped at protein '%1', malformed row!"};
+			emit ioError({"Could not parse complete file!", err.arg(name)});
 			break; // avoid message flood
 		}
 
@@ -169,7 +173,7 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 	}
 
 	if (ret->features.empty()) {
-		emit ioError(QString("Could not read any valid data rows from file!"));
+		emit ioError({"Could not read any valid data rows from file!"});
 		return {};
 	}
 
@@ -184,9 +188,10 @@ void Storage::finalizeRead(Features &data, bool normalize)
 	auto range = features::range_of(data.features);
 	// normalize, if needed
 	if (normalize && (range.min < 0 || range.max > 1)) {
-		emit ioError(QString("Values outside expected range (instead [%1, %2])."
-		                     "<br>Cutting of negative values and normalizing to [0, 1].")
-		             .arg(range.min).arg(range.max), MessageType::INFO);
+		QString format{"Values outside expected range (instead [%1, %2])."};
+		emit ioError({format.arg(range.min).arg(range.max),
+		              "Cutting off negative values and normalizing to [0, 1].",
+		              GuiMessage::INFO});
 
 		// cut off negative values
 		range.min = 0.;

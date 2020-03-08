@@ -108,12 +108,12 @@ void FileIO::renderToFile(QObject *source, const RenderMeta &meta, QString filen
 
 	auto suffix = QFileInfo(filename).suffix().toLower();
 	if (suffix.isEmpty()) {
-		emit ioError("Please select a filename with suffix (e.g. .svg)!");
+		emit ioError({"Please select a filename with suffix (e.g. .svg)!"});
 		return;
 	}
 	auto filetype = filetypes.find(suffix);
 	if (filetype == filetypes.end()) {
-		emit ioError("Unsupported file type (filename suffix) specified!");
+		emit ioError({"Unsupported file type (filename suffix) specified!"});
 		return;
 	}
 

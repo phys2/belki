@@ -26,7 +26,7 @@ void setupQt()
 {
 	// register additional types needed in queued connections
 	qRegisterMetaType<QVector<QColor>>();
-	qRegisterMetaType<MessageType>();
+	qRegisterMetaType<GuiMessage>("GuiMessage");
 	qRegisterMetaType<Protein>("Protein"); // needed for signal
 	qRegisterMetaType<ProteinId>("ProteinId"); // needed for typedefs
 	qRegisterMetaType<std::vector<ProteinId>>("std::vector<ProteinId>"); // needed for signal

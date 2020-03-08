@@ -237,7 +237,8 @@ void MainWindow::setupActions()
 		/* keep own copy while user chooses filename */
 		auto localCopy = currentAnnotations();
 		if (!localCopy)
-			return displayMessage("Cannot export:<br>Annotations are still under computation.");
+			return displayMessage({"Cannot export.",
+			                       "Annotations are still under computation.", GuiMessage::WARNING});
 		auto filename = io->chooseFile(FileIO::SaveAnnotations);
 		if (filename.isEmpty())
 			return;
@@ -249,7 +250,8 @@ void MainWindow::setupActions()
 		/* keep own copy while user edits the name */
 		auto localCopy = currentAnnotations();
 		if (!localCopy)
-			return displayMessage("Cannot snapshot:<br>Annotations are still under computation.");
+			return displayMessage({"Cannot create snapshot.",
+			                       "Annotations are still under computation.", GuiMessage::WARNING});
 	    auto name = QInputDialog::getText(this, "Keep snapshot of current clustering",
 		                                  "Please provide a name:", QLineEdit::Normal,
 		                                  localCopy->meta.name);
@@ -540,19 +542,17 @@ void MainWindow::showHelp()
 	box.exec();
 }
 
-void MainWindow::displayMessage(const QString &message, MessageType type)
+void MainWindow::displayMessage(const GuiMessage &message)
 {
-	switch (type) {
-	case MessageType::INFO:
-		QMessageBox::information(this, "Please note", message);
-		break;
-	case MessageType::WARNING:
-		QMessageBox::warning(this, "Warning", message);
-		break;
-	case MessageType::CRITICAL:
-		QMessageBox::critical(this, "An error occured", message);
-		break;
-	}
+	QMessageBox dialog(this);
+	dialog.setText(message.text);
+	dialog.setInformativeText(message.informativeText);
+	switch (message.type) {
+	case GuiMessage::INFO:     dialog.setIcon(QMessageBox::Information); break;
+	case GuiMessage::WARNING:  dialog.setIcon(QMessageBox::Warning); break;
+	case GuiMessage::CRITICAL: dialog.setIcon(QMessageBox::Critical); break;
+	};
+	dialog.exec();
 }
 
 void MainWindow::selectAnnotations(const Annotations::Meta &desc)

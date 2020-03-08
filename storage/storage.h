@@ -30,7 +30,7 @@ public:
 
 signals: // IMPORTANT: always provide target object pointer for thread-affinity
 	void nameChanged(const QString &name, const QString &path);
-	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
+	void ioError(const GuiMessage &message);
 
 public slots:
 	void importMarkers(const QString &filename);
@@ -70,7 +70,7 @@ protected:
 	void readDisplay(const QString& name, QTextStream &in);
 
 	QTextStream openToStream(QFileDevice *handler);
-	void freadError(const QString &filename);
+	void fopenError(const QString &filename, bool write = false);
 	static QStringList trimCrap(QStringList values);
 
 	ProteinDB &proteins;

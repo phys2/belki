@@ -225,11 +225,11 @@ void GuiState::handleMarkerChange(QStandardItem *item)
 		proteins.removeMarker(id);
 }
 
-void GuiState::displayMessage(const QString &message, MessageType type)
+void GuiState::displayMessage(const GuiMessage &message)
 {
 	auto target = focused();
 	if (target)
-		target->displayMessage(message, type);
+		target->displayMessage(message);
 }
 
 void GuiState::shutdown()

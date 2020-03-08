@@ -45,7 +45,7 @@ public slots:
 
 	void handleMarkerChange(QStandardItem *item);
 
-	void displayMessage(const QString &message, MessageType type = MessageType::CRITICAL);
+	void displayMessage(const GuiMessage &message);
 
 public:
 	DataHub &hub;
