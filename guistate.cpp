@@ -145,17 +145,26 @@ void GuiState::openProject(const QString &filename)
 
 	/* need to open new window */
 	bool proceed = true;
-	QMessageBox dialog(QMessageBox::Question, "Close current project?",
-	                   "The project to be loaded will be opened in a new window."
-	                   "<br>Would you like to close the current project?",
-	                   QMessageBox::NoButton, focused());
+	QMessageBox dialog(focused());
+	auto name = hub.projectMeta().name;
+	dialog.setText("Close current project?");
+	dialog.setInformativeText(QString{
+	                              "The project to be loaded will be opened in a new window."
+	                              "<br>Would you like to close %1?"
+	                          }.arg(name.isEmpty() ? "the current project" : name));
+	auto keepOpen = dialog.addButton("Keep open", QMessageBox::NoRole);
 	std::map<QAbstractButton*, std::function<void()>> actions = {
-	  {dialog.addButton("Keep open", QMessageBox::ButtonRole::NoRole), [&] {}},
-	  {dialog.addButton("Close project", QMessageBox::ButtonRole::DestructiveRole),
+	  {keepOpen, [&] {}},
+	  {dialog.addButton("Close project", QMessageBox::DestructiveRole),
        [&] { shutdown(); }},
-	  {dialog.addButton(QMessageBox::StandardButton::Cancel), [&] { proceed = false; }},
+	  {dialog.addButton(QMessageBox::Cancel), [&] { proceed = false; }},
 	  {nullptr, [&] { proceed = false; }},
 	};
+	if (!name.isEmpty()) {
+		actions.insert_or_assign(dialog.addButton("Save && Close", QMessageBox::YesRole),
+		  [&] { hub.saveProject(); shutdown(); });
+	}
+	dialog.setDefaultButton(keepOpen);
 	dialog.exec();
 	actions.at(dialog.clickedButton())();
 
