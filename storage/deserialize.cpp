@@ -172,7 +172,7 @@ std::vector<std::shared_ptr<Dataset>> Storage::deserializeProject<2>(const QCbor
 	return ret;
 }
 
-std::vector<std::shared_ptr<Dataset>> Storage::openProject(const QString &filename)
+std::vector<std::shared_ptr<Dataset>> Storage::readProject(const QString &filename)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::ReadOnly)) {

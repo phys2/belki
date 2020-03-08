@@ -2,6 +2,7 @@
 #include "proteindb.h"
 
 #include <QFile>
+#include <QSaveFile>
 #include <QFileInfo>
 #include <QTextStream>
 #include <QJsonDocument>
@@ -14,6 +15,24 @@ Storage::Storage(ProteinDB &proteins, QObject *parent)
     : QObject(parent),
       proteins(proteins)
 {
+}
+
+std::vector<std::shared_ptr<Dataset>> Storage::openProject(const QString &filename)
+{
+	auto ret = readProject(filename);
+	if (!ret.empty())
+		updateFilename(filename);
+	return ret;
+}
+
+void Storage::saveProject(const QString &filename, std::vector<std::shared_ptr<const Dataset> > snapshot)
+{
+	QSaveFile f(filename);
+	if (!f.open(QIODevice::WriteOnly))
+		return ioError(QString("Could not write file %1!").arg(filename));
+	writeProject(&f, snapshot);
+	f.commit();
+	updateFilename(filename); // file must exist here, so do this after writing the file
 }
 
 // TODO: make this export method that writes .tsv file directly for user pleasure
@@ -197,6 +216,14 @@ void Storage::exportAnnotations(const QString &filename, const Annotations& sour
 	}
 }
 
+void Storage::updateFilename(const QString &filename)
+{
+	auto fi = QFileInfo(filename);
+	auto name = fi.completeBaseName();
+	auto path = fi.canonicalFilePath(); // expects file to exist
+	emit nameChanged(name, path);
+}
+
 void Storage::importMarkers(const QString &filename)
 {
 	QFile f(filename); // keep in scope
@@ -232,7 +259,7 @@ void Storage::exportMarkers(const QString &filename)
 	}
 }
 
-QTextStream Storage::openToStream(QFile *handler)
+QTextStream Storage::openToStream(QFileDevice *handler)
 {
 	if (!handler->open(QIODevice::ReadOnly)) {
 		freadError(handler->fileName());

@@ -15,9 +15,27 @@ DataHub::DataHub(QObject *parent)
 	setupSignals();
 }
 
-DataHub::~DataHub()
+DataHub::~DataHub() {} // needed here for unique_ptr cleanup with complete type
+
+DataHub::Project DataHub::projectMeta()
 {
-	// needed here for unique_ptr cleanup with complete type
+	QReadLocker _(&data.l);
+	return data.project;
+}
+
+std::map<unsigned, DataHub::DataPtr> DataHub::datasets()
+{
+	QReadLocker _(&data.l);
+	return data.sets; // return a current copy
+}
+
+void DataHub::setupSignals()
+{
+	connect(storage.get(), &Storage::nameChanged, this, &DataHub::updateProjectName);
+
+	/* signal pass-through */
+	connect(&proteins, &ProteinDB::ioError, this, &DataHub::ioError);
+	connect(storage.get(), &Storage::ioError, this, &DataHub::ioError);
 }
 
 void DataHub::init(std::vector<DataPtr> datasets)
@@ -43,19 +61,6 @@ void DataHub::init(std::vector<DataPtr> datasets)
 		emit newDataset(dataset);
 }
 
-std::map<unsigned, DataHub::DataPtr> DataHub::datasets()
-{
-	QReadLocker _(&data.l);
-	return data.sets; // return a current copy
-}
-
-void DataHub::setupSignals()
-{
-	/* signal pass-through */
-	connect(&proteins, &ProteinDB::ioError, this, &DataHub::ioError);
-	connect(storage.get(), &Storage::ioError, this, &DataHub::ioError);
-}
-
 DataHub::DataPtr DataHub::createDataset(DatasetConfiguration config)
 {
 	data.l.lockForWrite();
@@ -67,6 +72,15 @@ DataHub::DataPtr DataHub::createDataset(DatasetConfiguration config)
 	data.l.unlock();
 
 	return dataset;
+}
+
+void DataHub::updateProjectName(const QString &name, const QString &path)
+{
+	data.l.lockForWrite();
+	data.project.name = name;
+	data.project.path = path;
+	data.l.unlock();
+	emit projectNameChanged(name, path);
 }
 
 void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay)
@@ -131,13 +145,22 @@ void DataHub::openProject(const QString &filename)
 	init(datasets);
 }
 
-void DataHub::saveProjectAs(const QString &filename)
+void DataHub::saveProject(QString filename)
 {
+	bool newName = !filename.isEmpty();
+	if (!newName) {
+		data.l.lockForRead();
+		filename = data.project.path;
+		data.l.unlock();
+		if (filename.isEmpty()) // should not happen
+			return ioError("Could not save project, no filename specified!");
+	}
+
 	QtConcurrent::run([=] {
 		QReadLocker _(&data.l);
 		std::vector<Dataset::ConstPtr> snapshot;
 		for (auto &[k, v] : data.sets)
 			snapshot.push_back(v);
-		storage->saveProjectAs(filename, snapshot);
+		storage->saveProject(filename, snapshot);
 	});
 }

@@ -1,11 +1,11 @@
 #include "storage.h"
 #include "dataset.h"
 
+#include <QIODevice>
 #include <QCborValue>
 #include <QCborArray>
 #include <QCborMap>
 #include <QCborStreamWriter>
-#include <QSaveFile>
 
 /* storage version, increase on breaking changes */
 // Note that this is local to serialize
@@ -14,15 +14,11 @@ const int storage_version = 2;
 // new storage version should warrant a major release
 const char* minimum_version = "1.0";
 
-void Storage::saveProjectAs(const QString &filename, std::vector<std::shared_ptr<const Dataset>> snapshot)
+void Storage::writeProject(QIODevice *target, std::vector<std::shared_ptr<const Dataset>> snapshot)
 {
-	QSaveFile f(filename);
-	if (!f.open(QIODevice::WriteOnly))
-		return ioError(QString("Could not write file %1!").arg(filename));
-
-	QCborStreamWriter w(&f);
+	QCborStreamWriter w(target);
 	/* compose manually, so we only use extra memory for the single chunks */
-	w.startMap(4); // needs to be numbner of elements
+	w.startMap(4); // needs to be number of elements
 	// note when adding anything: element keys need to be sorted in ascending order!
 	w.append("Belki File Version");
 	w.append(storage_version);
@@ -37,8 +33,6 @@ void Storage::saveProjectAs(const QString &filename, std::vector<std::shared_ptr
 		serializeDataset(v).toCbor(w);
 	w.endArray();
 	w.endMap();
-
-	f.commit();
 }
 
 QCborValue Storage::serializeDataset(std::shared_ptr<const Dataset> src)

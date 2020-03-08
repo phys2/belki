@@ -111,6 +111,8 @@ void GuiState::addWindow()
 	connect(target, &MainWindow::markerFlipped, this, &GuiState::flipMarker);
 	connect(target, &MainWindow::markerToggled, this, &GuiState::toggleMarker);
 
+	connect(&hub, &DataHub::projectNameChanged, target, &MainWindow::setName);
+
 	// pick latest dataset as a starting point
 	auto datasets = hub.datasets();
 	if (!datasets.empty())

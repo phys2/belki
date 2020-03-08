@@ -11,7 +11,8 @@
 
 class ProteinDB;
 class Dataset;
-class QFile;
+class QFileDevice;
+class QIODevice;
 class QTextStream;
 class QJsonDocument;
 class QCborValue;
@@ -23,11 +24,12 @@ public:
 	Storage(ProteinDB &proteins, QObject *parent = nullptr);
 
 	std::vector<std::shared_ptr<Dataset>> openProject(const QString &filename);
-	void saveProjectAs(const QString &filename, std::vector<std::shared_ptr<const Dataset>> snapshot);
+	void saveProject(const QString &filename, std::vector<std::shared_ptr<const Dataset> > snapshot);
 
 	Features::Ptr openDataset(const QString &filename, const QString &featureColName = "Dist");
 
 signals: // IMPORTANT: always provide target object pointer for thread-affinity
+	void nameChanged(const QString &name, const QString &path);
 	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
 
 public slots:
@@ -39,17 +41,21 @@ public slots:
 	void exportAnnotations(const QString &filename, const Annotations &source);
 
 protected:
-	// TODO put implementations in storage/…
+	void updateFilename(const QString &filename);
+
+	// see storage/parse_dataset.cpp
 	Features::Ptr readSource(QTextStream in, const QString &featureColName);
 	Features::Ptr readSimpleSource(QTextStream &in, bool normalize);
 	void finalizeRead(Features &data, bool normalize);
 
 	// see storage/serialize.cpp
+	void writeProject(QIODevice *target, std::vector<std::shared_ptr<const Dataset>> snapshot);
 	QCborValue serializeDataset(std::shared_ptr<const Dataset> src);
 	QCborValue serializeProteinDB();
 	QCborValue serializeStructure(const Structure &src);
 
 	// see storage/deserialize.cpp
+	std::vector<std::shared_ptr<Dataset>> readProject(const QString &filename);
 	template<int VER>
 	void deserializeProteinDB(const QCborMap &proteindb);
 	template<int VER>
@@ -63,7 +69,7 @@ protected:
 	void storeDisplay(const Representations::Pointset &disp, const QString& name);
 	void readDisplay(const QString& name, QTextStream &in);
 
-	QTextStream openToStream(QFile *handler);
+	QTextStream openToStream(QFileDevice *handler);
 	void freadError(const QString &filename);
 	static QStringList trimCrap(QStringList values);
 

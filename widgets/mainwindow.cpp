@@ -46,6 +46,8 @@ MainWindow::MainWindow(std::shared_ptr<WindowState> state) :
 	// initialize window state
 	actionShowStructure->setChecked(state->showAnnotations);
 	actionUseOpenGL->setChecked(state->useOpenGl);
+	auto p = state->hub().projectMeta();
+	setName(p.name, p.path);
 
 	// initialize widgets to be empty & most-restrictive
 	updateState(Dataset::Touch::BASE);
@@ -191,6 +193,7 @@ void MainWindow::setupActions()
 {
 	/* Shortcuts (standard keys not available in UI Designer) */
 	actionOpenProject->setShortcut(QKeySequence::StandardKey::Open);
+	actionSave->setShortcut(QKeySequence::StandardKey::Save);
 	actionSaveAs->setShortcut(QKeySequence::StandardKey::SaveAs);
 	actionCloseProject->setShortcut(QKeySequence::StandardKey::Close);
 	actionHelp->setShortcut(QKeySequence::StandardKey::HelpContents);
@@ -269,12 +272,12 @@ void MainWindow::setupActions()
 		});
 	});
 
+	connect(actionSave, &QAction::triggered, [this] { state->hub().saveProject(); });
 	connect(actionSaveAs, &QAction::triggered, [this] {
 		auto filename = io->chooseFile(FileIO::SaveProject);
 		if (filename.isEmpty())
 			return;
-		state->hub().saveProjectAs(filename);
-		// TODO: change our project filename to this one
+		state->hub().saveProject(filename);
 	});
 }
 void MainWindow::setDatasetControlModel(QStandardItemModel *m)
@@ -404,22 +407,18 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 
 	// update own GUI state once
 	updateState(Dataset::Touch::ALL);
-
-	// TODO wronge place to do this in new storage concept
-	setFilename(data ? data->config().name : "");
 }
 
-void MainWindow::setFilename(QString name)
+void MainWindow::setName(const QString &name, const QString &path)
 {
 	if (name.isEmpty()) {
 		setWindowTitle("Belki");
 		setWindowFilePath({});
-		return;
+	} else {
+		setWindowTitle(QString("%1 – Belki").arg(name));
+		setWindowFilePath(path);
 	}
-
-	setWindowTitle(QString("%1 – Belki").arg(name));
-	// TODO: right now the name is mangled. need to keep both path+name
-	// setWindowFilePath(name);
+	actionSave->setDisabled(name.isEmpty());
 }
 
 void MainWindow::setSelectedDataset(unsigned id)

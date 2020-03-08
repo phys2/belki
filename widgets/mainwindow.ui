@@ -332,6 +332,7 @@
     <addaction name="separator"/>
     <addaction name="actionLoadDescriptions"/>
     <addaction name="separator"/>
+    <addaction name="actionSave"/>
     <addaction name="actionSaveAs"/>
     <addaction name="actionCloseProject"/>
     <addaction name="actionQuit"/>
@@ -657,6 +658,21 @@
    </property>
    <property name="menuRole">
     <enum>QAction::QuitRole</enum>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="document-save">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Save</string>
+   </property>
+   <property name="toolTip">
+    <string>Save whole project</string>
    </property>
   </action>
  </widget>

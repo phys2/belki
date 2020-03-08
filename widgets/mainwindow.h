@@ -36,6 +36,7 @@ public:
 public slots:
 	void showHelp();
 	void displayMessage(const QString &message, MessageType type = MessageType::CRITICAL);
+	void setName(const QString &name, const QString &path);
 	void setDataset(Dataset::Ptr data);
 	void selectStructure(int id);
 
@@ -87,7 +88,6 @@ protected:
 
 	void addTab(Tab type);
 
-	void setFilename(QString name);
 	void setSelectedDataset(unsigned id);
 
 	void selectAnnotations(const Annotations::Meta &desc);
