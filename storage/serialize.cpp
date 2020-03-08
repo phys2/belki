@@ -17,6 +17,7 @@ const char* minimum_version = "1.0";
 void Storage::writeProject(QIODevice *target, std::vector<std::shared_ptr<const Dataset>> snapshot)
 {
 	QCborStreamWriter w(target);
+	w.append(QCborKnownTags::Signature);
 	/* compose manually, so we only use extra memory for the single chunks */
 	w.startMap(4); // needs to be number of elements
 	// note when adding anything: element keys need to be sorted in ascending order!
