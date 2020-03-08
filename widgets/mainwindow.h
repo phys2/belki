@@ -14,7 +14,6 @@
 
 class DataHub;
 class WindowState;
-class FileIO;
 class QLabel;
 class QTreeView;
 class QStandardItemModel;
@@ -27,20 +26,18 @@ class MainWindow : public QMainWindow, private Ui::MainWindow
 public:
 	explicit MainWindow(std::shared_ptr<WindowState> state);
 
-	FileIO *getIo() { return io; }
-
 	void setDatasetControlModel(QStandardItemModel *m);
 	void setMarkerControlModel(QStandardItemModel *m);
 	void setStructureControlModel(QStandardItemModel *m);
 
 public slots:
 	void showHelp();
-	void displayMessage(const GuiMessage &message);
 	void setName(const QString &name, const QString &path);
 	void setDataset(Dataset::Ptr data);
 	void selectStructure(int id);
 
 signals:
+	void message(const GuiMessage &message);
 	void newWindowRequested();
 	void closeWindowRequested();
 	void closeProjectRequested();
@@ -105,8 +102,6 @@ protected:
 
 	CustomEnableProxyModel markerModel;
 	QTreeView *datasetTree;
-
-	FileIO *io;
 
 	struct {
 		QAction *datasets;

@@ -23,7 +23,7 @@ ProfileWidget::ProfileWidget(QWidget *parent) :
 	profileViewButton->setDefaultAction(actionProfileView);
 	connect(actionProfileView, &QAction::triggered, [this] {
 		if (chart)
-			new ProfileWindow(chart, this->window());
+			new ProfileWindow(state, chart, this->window());
 	});
 
 	// setup protein menu

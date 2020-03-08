@@ -30,7 +30,7 @@ public:
 
 signals: // IMPORTANT: always provide target object pointer for thread-affinity
 	void nameChanged(const QString &name, const QString &path);
-	void ioError(const GuiMessage &message);
+	void message(const GuiMessage &message);
 
 public slots:
 	void importMarkers(const QString &filename);

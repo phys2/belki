@@ -186,12 +186,12 @@ std::vector<std::shared_ptr<Dataset>> Storage::readProject(const QString &filena
 		r.next();
 	auto top = QCborValue::fromCbor(r).toMap();
 	if (r.lastError() != QCborError::NoError) {
-		ioError({"Error reading file!", r.lastError().toString()});
+		message({"Error reading file!", r.lastError().toString()});
 		return {};
 	}
 	auto version = top.value("Belki File Version");
 	if (not version.isInteger()) {
-		ioError({"Error reading file!", "Invalid file, could not read version."});
+		message({"Error reading file!", "Invalid file, could not read version."});
 		return {};
 	}
 
@@ -201,7 +201,7 @@ std::vector<std::shared_ptr<Dataset>> Storage::readProject(const QString &filena
 
 	/* else: version too new */
 	auto minversion = top.value("Belki Release Version");
-	ioError({QString{"File version %1 not supported."}.arg(version.toInteger()),
+	message({QString{"File version %1 not supported."}.arg(version.toInteger()),
 	         QString{"Please upgrade Belki to at least version %2."}
 	         .arg(minversion.toString("?"))});
 	return {};

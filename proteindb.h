@@ -45,7 +45,7 @@ public:
 	void addHierarchy(std::unique_ptr<HrClustering> data, bool select);
 
 signals:
-	void ioError(const GuiMessage &message);
+	void message(const GuiMessage &message);
 	void proteinAdded(ProteinId id, const Protein &protein);
 	void proteinChanged(ProteinId id);
 	void markersToggled(const std::vector<ProteinId> &id, bool present);

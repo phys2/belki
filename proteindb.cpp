@@ -93,14 +93,14 @@ bool ProteinDB::readDescriptions(QTextStream in)
 	auto header = in.readLine().split("\t");
 	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
 	if (header.size() != 2 || !header[0].contains(re)) {
-		emit ioError({"Could not parse file!",
+		emit message({"Could not parse file!",
 		              "The first column must contain protein names, second descriptions.</p>"});
 		return false;
 	}
 
 	/* ensure we have data to annotate */
 	if (peek()->proteins.empty()) {
-		emit ioError({"Please load proteins first!"});
+		emit message({"Please load proteins first!"});
 		return false;
 	}
 

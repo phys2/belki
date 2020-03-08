@@ -13,6 +13,7 @@
 class GuiState;
 class ProteinDB;
 class DataHub;
+class FileIO;
 class QMenu;
 
 /* A "dumb" QObject – whoever manipulates also emits the signals
@@ -26,10 +27,13 @@ class QMenu;
  */
 struct WindowState : QObject
 {
+	using Ptr = std::shared_ptr<WindowState>;
+
 	WindowState(GuiState &global);
 
 	ProteinDB& proteins();
 	DataHub& hub();
+	FileIO& io();
 	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
 
 	void setOrder(Order::Type type);

@@ -8,6 +8,7 @@
 #include <QStandardItemModel>
 #include <memory>
 
+class FileIO;
 class MainWindow;
 class DataHub;
 class ProteinDB;
@@ -46,10 +47,12 @@ public slots:
 	void handleMarkerChange(QStandardItem *item);
 
 	void displayMessage(const GuiMessage &message);
+	void displayMessageAt(const GuiMessage &message, QWidget *parent = nullptr);
 
 public:
 	DataHub &hub;
 	ProteinDB &proteins;
+	std::unique_ptr<FileIO> io;
 
 protected:
 	void shutdown();

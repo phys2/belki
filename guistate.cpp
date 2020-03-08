@@ -2,6 +2,7 @@
 #include "windowstate.h"
 #include "datahub.h"
 #include "widgets/mainwindow.h"
+#include "fileio.h"
 
 #include <QAbstractProxyModel>
 #include <QTimer>
@@ -13,7 +14,8 @@
 #include <QDesktopServices>
 
 GuiState::GuiState(DataHub &hub)
-    : hub(hub), proteins(hub.proteins)
+    : hub(hub), proteins(hub.proteins),
+      io(std::make_unique<FileIO>())
 {
 	auto addStructureItem = [this] (QString name, QString icon, int id) {
 		auto item = new QStandardItem(name);
@@ -30,9 +32,10 @@ GuiState::GuiState(DataHub &hub)
 	/* internal wiring */
 	connect(&markerControl.model, &QStandardItemModel::itemChanged,
 	        this, &GuiState::handleMarkerChange);
+	connect(io.get(), &FileIO::message, this, &GuiState::displayMessage);
 
-	/* notifications from Protein db */
-	connect(&hub, &DataHub::ioError, this, &GuiState::displayMessage);
+	/* notifications from protein db and data hub */
+	connect(&hub, &DataHub::message, this, &GuiState::displayMessage);
 	connect(&proteins, &ProteinDB::proteinAdded, this, &GuiState::addProtein);
 	connect(&proteins, &ProteinDB::markersToggled,
 	        this, [this] (auto ids, bool present) {
@@ -101,8 +104,9 @@ void GuiState::addWindow()
 	target->setMarkerControlModel(&markerControl.model);
 	target->setStructureControlModel(&structureModel);
 
-	connect(target, &MainWindow::newWindowRequested,
-	        this, &GuiState::addWindow);
+	connect(target, &MainWindow::message, this,
+	        [this,target] (const auto &message) { displayMessageAt(message, target); });
+	connect(target, &MainWindow::newWindowRequested, this, &GuiState::addWindow);
 	connect(target, &MainWindow::closeWindowRequested, this,
 	        [this,id=it->first] { removeWindow(id); });
 	connect(target, &MainWindow::closeProjectRequested, this, &GuiState::shutdown);
@@ -227,9 +231,20 @@ void GuiState::handleMarkerChange(QStandardItem *item)
 
 void GuiState::displayMessage(const GuiMessage &message)
 {
-	auto target = focused();
-	if (target)
-		target->displayMessage(message);
+	displayMessageAt(message, focused());
+}
+
+void GuiState::displayMessageAt(const GuiMessage &message, QWidget *parent)
+{
+	QMessageBox dialog(parent);
+	dialog.setText(message.text);
+	dialog.setInformativeText(message.informativeText);
+	switch (message.type) {
+	case GuiMessage::INFO:     dialog.setIcon(QMessageBox::Information); break;
+	case GuiMessage::WARNING:  dialog.setIcon(QMessageBox::Warning); break;
+	case GuiMessage::CRITICAL: dialog.setIcon(QMessageBox::Critical); break;
+	};
+	dialog.exec();
 }
 
 void GuiState::shutdown()

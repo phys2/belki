@@ -32,7 +32,7 @@ public:
 
 signals:
 	void projectNameChanged(const QString &name, const QString &path);
-	void ioError(const GuiMessage &message);
+	void message(const GuiMessage &message);
 	void newDataset(DataPtr data);
 
 public slots:

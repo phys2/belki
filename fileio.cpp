@@ -1,6 +1,5 @@
 #include "fileio.h"
 
-#include <QMainWindow>
 #include <QFileDialog>
 #include <QMap>
 #include <QSvgGenerator>
@@ -9,13 +8,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 
-#include <QtDebug>
-
-FileIO::FileIO(QMainWindow *parent) :
-    QObject(parent), parent(parent)
-{}
-
-QString FileIO::chooseFile(FileIO::Role purpose, QWidget *p)
+QString FileIO::chooseFile(FileIO::Role purpose, QWidget *parent)
 {
 	const QMap<Role, RoleDef> map = {
 	    {OpenDataset, {"Open Dataset", "Peak Volumes Table (*.tsv *.txt);; All Files (*)", false, {}}},
@@ -35,18 +28,15 @@ QString FileIO::chooseFile(FileIO::Role purpose, QWidget *p)
 	    {SaveProject, {"Save Project to File", "Belki Project File (*.belki)", true, ".belki"}},
 	};
 
-	if (!p)
-		p = parent;
-
 	auto params = map[purpose];
 	if (params.isWrite) {
-		auto filename = QFileDialog::getSaveFileName(p, params.title, {}, params.filter);
+		auto filename = QFileDialog::getSaveFileName(parent, params.title, {}, params.filter);
 		if (!params.writeSuffix.isEmpty() && QFileInfo(filename).suffix().isEmpty())
 			filename.append(params.writeSuffix);
 		return filename;
 	}
 
-	return QFileDialog::getOpenFileName(p, params.title, {}, params.filter);
+	return QFileDialog::getOpenFileName(parent, params.title, {}, params.filter);
 }
 
 template<typename Q>
@@ -108,12 +98,12 @@ void FileIO::renderToFile(QObject *source, const RenderMeta &meta, QString filen
 
 	auto suffix = QFileInfo(filename).suffix().toLower();
 	if (suffix.isEmpty()) {
-		emit ioError({"Please select a filename with suffix (e.g. .svg)!"});
+		emit message({"Please select a filename with suffix (e.g. .svg)!"});
 		return;
 	}
 	auto filetype = filetypes.find(suffix);
 	if (filetype == filetypes.end()) {
-		emit ioError({"Unsupported file type (filename suffix) specified!"});
+		emit message({"Unsupported file type (filename suffix) specified!"});
 		return;
 	}
 

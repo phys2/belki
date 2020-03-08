@@ -34,8 +34,8 @@ void DataHub::setupSignals()
 	connect(storage.get(), &Storage::nameChanged, this, &DataHub::updateProjectName);
 
 	/* signal pass-through */
-	connect(&proteins, &ProteinDB::ioError, this, &DataHub::ioError);
-	connect(storage.get(), &Storage::ioError, this, &DataHub::ioError);
+	connect(&proteins, &ProteinDB::message, this, &DataHub::message);
+	connect(storage.get(), &Storage::message, this, &DataHub::message);
 }
 
 void DataHub::init(std::vector<DataPtr> datasets)
@@ -153,7 +153,7 @@ void DataHub::saveProject(QString filename)
 		filename = data.project.path;
 		data.l.unlock();
 		if (filename.isEmpty()) // should not happen
-			return ioError({"Could not save project!", "No filename specified."});
+			return message({"Could not save project!", "No filename specified."});
 	}
 
 	QtConcurrent::run([=] {

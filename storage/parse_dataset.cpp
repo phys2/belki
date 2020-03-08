@@ -20,18 +20,18 @@ Features::Ptr Storage::readSource(QTextStream in, const QString &featureColName)
 	}
 
 	if (header.contains("") || header.removeDuplicates()) {
-		emit ioError({"Could not parse file!", "Duplicate or empty columns in header!"});
+		emit message({"Could not parse file!", "Duplicate or empty columns in header!"});
 		return {};
 	}
 	if (header.size() == 0 || header.first() != "Protein") {
-		emit ioError({"Could not parse file!", "The first column must contain protein names."});
+		emit message({"Could not parse file!", "The first column must contain protein names."});
 		return {};
 	}
 	int nameCol = header.indexOf("Pair");
 	int featureCol = header.indexOf(featureColName.isEmpty() ? "Dist" : featureColName);
 	int scoreCol = header.indexOf("Score");
 	if (nameCol == -1 || featureCol == -1 || scoreCol == -1) {
-		emit ioError({"Could not parse file!", "Not all necessary columns found."});
+		emit message({"Could not parse file!", "Not all necessary columns found."});
 		return {};
 	}
 
@@ -44,7 +44,7 @@ Features::Ptr Storage::readSource(QTextStream in, const QString &featureColName)
 			break; // early EOF
 
 		if (line.size() < header.size()) {
-			emit ioError({"Could not parse complete file!",
+			emit message({"Could not parse complete file!",
 			              QString{"Stopped at '%1', incomplete row!"}.arg(line[0])});
 			break; // avoid message flood
 		}
@@ -92,7 +92,7 @@ Features::Ptr Storage::readSource(QTextStream in, const QString &featureColName)
 		if (!success) {
 			auto name = proteins.peek()->proteins[protid].name;
 			QString err{"Stopped at protein '%1', malformed row!"};
-			emit ioError({"Could not parse complete file!", err.arg(name)});
+			emit message({"Could not parse complete file!", err.arg(name)});
 			break; // avoid message flood
 		}
 
@@ -102,7 +102,7 @@ Features::Ptr Storage::readSource(QTextStream in, const QString &featureColName)
 	}
 
 	if (ret->features.empty() || ret->dimensions.empty()) {
-		emit ioError({"Could not read any valid data rows from file!"});
+		emit message({"Could not read any valid data rows from file!"});
 		return {};
 	}
 
@@ -120,7 +120,7 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 
 	// ensure header consistency
 	if (header.empty() || header.contains("") || header.removeDuplicates()) {
-		emit ioError({"Could not parse file!", "Duplicate or empty columns in header!"});
+		emit message({"Could not parse file!", "Duplicate or empty columns in header!"});
 		return {};
 	}
 
@@ -135,7 +135,7 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 			break; // early EOF
 
 		if (line.size() < len + 1) {
-			emit ioError({"Could not parse complete file!",
+			emit message({"Could not parse complete file!",
 			              QString{"Stopped at '%1', incomplete row!"}.arg(line[0])});
 			break; // avoid message flood
 		}
@@ -146,7 +146,7 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 
 		/* check duplicates */
 		if (seen.count(name)) {
-			emit ioError({"Could not parse complete file!",
+			emit message({"Could not parse complete file!",
 			              QString{"Stopped at multiple occurance of protein '%1'!"}.arg(name)});
 			return {};
 		}
@@ -162,7 +162,7 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 		}
 		if (!success) {
 			QString err{"Stopped at protein '%1', malformed row!"};
-			emit ioError({"Could not parse complete file!", err.arg(name)});
+			emit message({"Could not parse complete file!", err.arg(name)});
 			break; // avoid message flood
 		}
 
@@ -173,7 +173,7 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 	}
 
 	if (ret->features.empty()) {
-		emit ioError({"Could not read any valid data rows from file!"});
+		emit message({"Could not read any valid data rows from file!"});
 		return {};
 	}
 
@@ -189,7 +189,7 @@ void Storage::finalizeRead(Features &data, bool normalize)
 	// normalize, if needed
 	if (normalize && (range.min < 0 || range.max > 1)) {
 		QString format{"Values outside expected range (instead [%1, %2])."};
-		emit ioError({format.arg(range.min).arg(range.max),
+		emit message({format.arg(range.min).arg(range.max),
 		              "Cutting off negative values and normalizing to [0, 1].",
 		              GuiMessage::INFO});
 

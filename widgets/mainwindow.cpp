@@ -32,8 +32,7 @@
 #include <QDateTime>
 
 MainWindow::MainWindow(std::shared_ptr<WindowState> state) :
-    state(state),
-    io(new FileIO(this)) // cleanup by QObject
+    state(state)
 {
 	setupUi(this);
 	profiles->setState(state);
@@ -154,9 +153,6 @@ void MainWindow::setupTabs()
 
 void MainWindow::setupSignals()
 {
-	/* error dialogs */
-	connect(io, &FileIO::ioError, this, &MainWindow::displayMessage);
-
 	/* selecting dataset */
 	connect(datasetSelect, qOverload<int>(&QComboBox::activated), [this] {
 		setDataset(datasetSelect->currentData(Qt::UserRole + 1).value<Dataset::Ptr>());
@@ -227,7 +223,7 @@ void MainWindow::setupActions()
 	connect(actionOpenProject, &QAction::triggered, [this] { openFile(Input::PROJECT); });
 
 	connect(actionSaveMarkers, &QAction::triggered, [this] {
-		auto filename = io->chooseFile(FileIO::SaveMarkers);
+		auto filename = state->io().chooseFile(FileIO::SaveMarkers, this);
 		if (filename.isEmpty())
 			return;
 
@@ -237,9 +233,9 @@ void MainWindow::setupActions()
 		/* keep own copy while user chooses filename */
 		auto localCopy = currentAnnotations();
 		if (!localCopy)
-			return displayMessage({"Cannot export.",
-			                       "Annotations are still under computation.", GuiMessage::WARNING});
-		auto filename = io->chooseFile(FileIO::SaveAnnotations);
+			return message({"Cannot export.",
+			                "Annotations are still under computation.", GuiMessage::WARNING});
+		auto filename = state->io().chooseFile(FileIO::SaveAnnotations, this);
 		if (filename.isEmpty())
 			return;
 
@@ -250,8 +246,8 @@ void MainWindow::setupActions()
 		/* keep own copy while user edits the name */
 		auto localCopy = currentAnnotations();
 		if (!localCopy)
-			return displayMessage({"Cannot create snapshot.",
-			                       "Annotations are still under computation.", GuiMessage::WARNING});
+			return message({"Cannot create snapshot.",
+			                "Annotations are still under computation.", GuiMessage::WARNING});
 	    auto name = QInputDialog::getText(this, "Keep snapshot of current clustering",
 		                                  "Please provide a name:", QLineEdit::Normal,
 		                                  localCopy->meta.name);
@@ -276,7 +272,7 @@ void MainWindow::setupActions()
 
 	connect(actionSave, &QAction::triggered, [this] { state->hub().saveProject(); });
 	connect(actionSaveAs, &QAction::triggered, [this] {
-		auto filename = io->chooseFile(FileIO::SaveProject);
+		auto filename = state->io().chooseFile(FileIO::SaveProject, this);
 		if (filename.isEmpty())
 			return;
 		state->hub().saveProject(filename);
@@ -334,7 +330,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 
 	auto renderSlot = [this] (auto r, auto d) {
 		auto title = (data ? data->config().name : windowTitle());
-		io->renderToFile(r, {title, d});
+		state->io().renderToFile(r, {title, d});
 	};
 	connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
 	connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
@@ -506,7 +502,7 @@ void MainWindow::openFile(Input type, QString fn)
 		    {Input::STRUCTURE, FileIO::OpenStructure},
 		    {Input::PROJECT, FileIO::OpenProject},
 		};
-		fn = io->chooseFile(mapping.at(type));
+		fn = state->io().chooseFile(mapping.at(type), this);
 		if (fn.isEmpty())
 			return; // nothing selected
 	}
@@ -540,19 +536,6 @@ void MainWindow::showHelp()
 	box.setText(helpText.readAll());
 	box.setWindowModality(Qt::WindowModality::WindowModal); // sheet in OS X
 	box.exec();
-}
-
-void MainWindow::displayMessage(const GuiMessage &message)
-{
-	QMessageBox dialog(this);
-	dialog.setText(message.text);
-	dialog.setInformativeText(message.informativeText);
-	switch (message.type) {
-	case GuiMessage::INFO:     dialog.setIcon(QMessageBox::Information); break;
-	case GuiMessage::WARNING:  dialog.setIcon(QMessageBox::Warning); break;
-	case GuiMessage::CRITICAL: dialog.setIcon(QMessageBox::Critical); break;
-	};
-	dialog.exec();
 }
 
 void MainWindow::selectAnnotations(const Annotations::Meta &desc)

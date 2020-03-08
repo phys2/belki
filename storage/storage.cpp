@@ -51,7 +51,7 @@ void Storage::readDisplay(const QString&, QTextStream &in)
 	while (!in.atEnd()) {
 		auto line = in.readLine().split("\t");
 		if (line.size() != 2) {
-			emit ioError({"Could not parse file!",
+			emit message({"Could not parse file!",
 			              QString("Input malformed at line %1").arg(data.size()+1)});
 			return;
 		}
@@ -60,8 +60,8 @@ void Storage::readDisplay(const QString&, QTextStream &in)
 	}
 
 	/* TODO if (data.size() != (int)peek<Base>()->features.size()) {
-		ioError({"Display incompatible with data.",
-		         "Display length does not match source length!"});
+		message({"Display incompatible with data.",
+			     "Display length does not match source length!"});
 		return;
 	}*/
 
@@ -138,7 +138,7 @@ void Storage::importAnnotations(const QString &filename)
 			}
 		}
 	} else {
-		emit ioError({"Could not parse file!",
+		emit message({"Could not parse file!",
 		              "The first column must contain protein or group names."});
 		return;
 	}
@@ -157,7 +157,7 @@ void Storage::importHierarchy(const QString &filename)
 	QJsonParseError err;
 	auto json = QJsonDocument::fromJson(f.readAll(), &err);
 	if (json.isNull() || !json.isObject()) {
-		emit ioError({QString("File %1 does not contain valid JSON!").arg(filename),
+		emit message({QString("File %1 does not contain valid JSON!").arg(filename),
 		             err.errorString()});
 		return;
 	}
@@ -241,7 +241,7 @@ void Storage::importMarkers(const QString &filename)
 	}
 
 	if (names.size() > 500)
-		return ioError({QString{"Refusing to load too many (%1) markers."}.arg(names.size())});
+		return message({QString("Refusing to load too many (%1) markers.").arg(names.size())});
 
 	proteins.importMarkers(names);
 }
@@ -275,5 +275,5 @@ QTextStream Storage::openToStream(QFileDevice *handler)
 void Storage::fopenError(const QString &filename, bool write)
 {
 	QString format(write? "Could not write file %1!" : "Could not read file %1!");
-	emit ioError({format.arg(filename)});
+	emit message({format.arg(filename)});
 }
