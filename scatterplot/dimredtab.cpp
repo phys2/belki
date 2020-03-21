@@ -121,8 +121,8 @@ void DimredTab::selectDisplay(const QString &name)
 	if (current().displayName == name)
 		return;
 
-	auto d = current().data->peek<Dataset::Representation>();
-	current().scene->display(d->display.at(name));
+	auto d = current().data->peek<Dataset::Representations>();
+	current().scene->display(d->displays.at(name));
 	current().displayName = name;
 }
 
@@ -148,8 +148,8 @@ void DimredTab::updateMenus() {
 	if (!current)
 		return;
 
-	auto d = current().data->peek<Dataset::Representation>();
-	for (auto &[name, _] : d->display)
+	auto d = current().data->peek<Dataset::Representations>();
+	for (auto &[name, _] : d->displays)
 		transformSelect->addItem(name);
 
 	if (transformSelect->count() > 1) {
@@ -169,13 +169,13 @@ void DimredTab::updateMenus() {
 	actionComputeDisplay->setMenu(menu);
 
 	/* select a display */
-	if (d->display.empty())
+	if (d->displays.empty())
 		return; // nothing available
 
 	auto previous = current().displayName;
-	auto least = d->display.rbegin()->first;
+	auto least = d->displays.rbegin()->first;
 	for (auto &i : {tabState.preferredDisplay, previous, least}) {
-		if (d->display.count(i)) {
+		if (d->displays.count(i)) {
 			selectDisplay(i);
 			break;
 		}

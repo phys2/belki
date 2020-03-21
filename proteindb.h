@@ -6,10 +6,6 @@
 
 #include <QObject>
 #include <QVector>
-
-#include <vector>
-#include <unordered_map>
-#include <set>
 #include <memory>
 
 class QTextStream;
@@ -19,19 +15,12 @@ class ProteinDB : public QObject
 	Q_OBJECT
 
 public:
-	struct Public : RWLockable {
+	struct Public : ProteinRegister, RWLockable {
 		// helper for finding proteins, name may contain species, throws
 		ProteinId find(const QString &name) const;
 		// helper for annotations type
 		bool isHierarchy(unsigned id) const;
 
-		std::vector<Protein> proteins;
-		std::unordered_map<QString, ProteinId> index;
-
-		// TODO: sort set by prot. name
-		std::set<ProteinId> markers;
-
-		std::unordered_map<unsigned, Structure> structures;
 		unsigned nextStructureId = 1;
 	};
 
@@ -42,9 +31,10 @@ public:
 	const QVector<QColor>& groupColors() { return groupColorset; }
 	View peek() { return View(data); }
 
+	void init(std::unique_ptr<ProteinRegister> payload);
 	ProteinId add(const QString& fullname);
 	bool addDescription(const QString& name, const QString& desc);
-	bool readDescriptions(QTextStream &tsv);
+	bool readDescriptions(QTextStream tsv);
 
 	bool addMarker(ProteinId id);
 	bool removeMarker(ProteinId id);
@@ -55,7 +45,7 @@ public:
 	void addHierarchy(std::unique_ptr<HrClustering> data, bool select);
 
 signals:
-	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
+	void message(const GuiMessage &message);
 	void proteinAdded(ProteinId id, const Protein &protein);
 	void proteinChanged(ProteinId id);
 	void markersToggled(const std::vector<ProteinId> &id, bool present);

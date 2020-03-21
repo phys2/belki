@@ -73,7 +73,6 @@ target_sources(${APP_NAME} PRIVATE
 	guistate.h guistate.cpp
 	model.h
 	proteindb.h proteindb.cpp
-	storage.h storage.cpp storage/serialize.cpp
 	utils.h
 	viewer.h
 	windowstate.h windowstate.cpp
@@ -81,6 +80,7 @@ target_sources(${APP_NAME} PRIVATE
 
 # components (they add to target 'belki')
 add_subdirectory(compute)
+add_subdirectory(storage)
 add_subdirectory(widgets)
 add_subdirectory(profiles)
 add_subdirectory(scatterplot)

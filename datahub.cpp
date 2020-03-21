@@ -2,7 +2,7 @@
 
 #include "proteindb.h"
 #include "dataset.h"
-#include "storage.h"
+#include "storage/storage.h"
 
 #include <QtConcurrent>
 #include <QThread>
@@ -10,9 +10,17 @@
 
 DataHub::DataHub(QObject *parent)
     : QObject(parent),
-      store(proteins)
+      storage(std::make_unique<Storage>(proteins))
 {
 	setupSignals();
+}
+
+DataHub::~DataHub() {} // needed here for unique_ptr cleanup with complete type
+
+DataHub::Project DataHub::projectMeta()
+{
+	QReadLocker _(&data.l);
+	return data.project;
 }
 
 std::map<unsigned, DataHub::DataPtr> DataHub::datasets()
@@ -23,10 +31,34 @@ std::map<unsigned, DataHub::DataPtr> DataHub::datasets()
 
 void DataHub::setupSignals()
 {
-	/* signal multiplexing */
-	for (auto o : std::vector<QObject*>{&proteins, &store})
-		connect(o, SIGNAL(ioError(const QString&, MessageType)),
-		        this, SIGNAL(ioError(const QString&, MessageType)));
+	connect(storage.get(), &Storage::nameChanged, this, &DataHub::updateProjectName);
+
+	/* signal pass-through */
+	connect(&proteins, &ProteinDB::message, this, &DataHub::message);
+	connect(storage.get(), &Storage::message, this, &DataHub::message);
+}
+
+void DataHub::init(std::vector<DataPtr> datasets)
+{
+	data.l.lockForWrite();
+	if (data.nextId != 1)
+		throw std::runtime_error("DataHub::init() called on non-empty object");
+
+	for (auto &dataset : datasets) {
+		// ensure the object does not live in threadpool (creating thread)!
+		dataset->moveToThread(thread());
+		data.sets[dataset->id()] = dataset;
+		data.nextId = std::max(data.nextId, dataset->id() + 1);
+	}
+	data.l.unlock();
+
+	/* emit sorted by id to ensure parents are available
+	   there is no guarantee that everybody who writes .belki files sorts them */
+	std::sort(datasets.begin(), datasets.end(), [] (const DataPtr &a, const DataPtr &b) {
+		return a->id() < b->id();
+	});
+	for (auto &dataset : datasets)
+		emit newDataset(dataset);
 }
 
 DataHub::DataPtr DataHub::createDataset(DatasetConfiguration config)
@@ -40,6 +72,15 @@ DataHub::DataPtr DataHub::createDataset(DatasetConfiguration config)
 	data.l.unlock();
 
 	return dataset;
+}
+
+void DataHub::updateProjectName(const QString &name, const QString &path)
+{
+	data.l.lockForWrite();
+	data.project.name = name;
+	data.project.path = path;
+	data.l.unlock();
+	emit projectNameChanged(name, path);
 }
 
 void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay)
@@ -60,7 +101,7 @@ void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, QSt
 		if (!initialDisplay.isEmpty())
 			return;
 
-		if (!target->peek<Dataset::Representation>()->display.count(initialDisplay))
+		if (!target->peek<Dataset::Representations>()->displays.count(initialDisplay))
 			target->computeDisplay(initialDisplay);
 	});
 }
@@ -68,7 +109,7 @@ void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, QSt
 void DataHub::importDataset(const QString &filename, const QString featureCol)
 {
 	QtConcurrent::run([=] {
-		auto dataset = store.openDataset(filename, featureCol);
+		auto dataset = storage->openDataset(filename, featureCol);
 		if (!dataset)
 			return;
 
@@ -98,13 +139,28 @@ void DataHub::importDataset(const QString &filename, const QString featureCol)
 	});
 }
 
-void DataHub::saveProjectAs(const QString &filename)
+void DataHub::openProject(const QString &filename)
 {
+	auto datasets = storage->openProject(filename); // manipulates ProteinDB
+	init(datasets);
+}
+
+void DataHub::saveProject(QString filename)
+{
+	bool newName = !filename.isEmpty();
+	if (!newName) {
+		data.l.lockForRead();
+		filename = data.project.path;
+		data.l.unlock();
+		if (filename.isEmpty()) // should not happen
+			return message({"Could not save project!", "No filename specified."});
+	}
+
 	QtConcurrent::run([=] {
 		QReadLocker _(&data.l);
 		std::vector<Dataset::ConstPtr> snapshot;
 		for (auto &[k, v] : data.sets)
 			snapshot.push_back(v);
-		store.saveProjectAs(filename, snapshot);
+		storage->saveProject(filename, snapshot);
 	});
 }

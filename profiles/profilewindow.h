@@ -6,7 +6,7 @@
 #include "ui_profilewindow.h"
 
 class ProfileChart;
-class MainWindow;
+class WindowState;
 
 class ProfileWindow : public QMainWindow, private Ui::ProfileWindow
 {
@@ -14,7 +14,7 @@ class ProfileWindow : public QMainWindow, private Ui::ProfileWindow
 
 public:
 	// note: we only accept MainWindows as parent
-	explicit ProfileWindow(ProfileChart *source, QWidget *parent);
+	explicit ProfileWindow(std::shared_ptr<WindowState> state, ProfileChart *source, QWidget *parent);
 
 protected:
 	ProfileChart *chart;

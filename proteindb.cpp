@@ -14,6 +14,39 @@ ProteinDB::ProteinDB(QObject *parent)
 		c = c.lighter(130); // 30 % lighter
 }
 
+void ProteinDB::init(std::unique_ptr<ProteinRegister> payload)
+{
+	QWriteLocker l(&data.l);
+	if (!data.proteins.empty())
+		throw std::runtime_error("ProteinDB::init() called on non-empty object");
+
+	data.proteins = payload->proteins; // *don't move*, we need copy for signal
+	data.index = std::move(payload->index);
+	data.markers = std::move(payload->markers);
+	data.structures = std::move(payload->structures);
+
+	for (auto &[k, _] : data.structures)
+		data.nextStructureId = std::max(data.nextStructureId, k + 1);
+
+	/* keep metadata for signals */
+	std::vector<ProteinId> markers(data.markers.cbegin(), data.markers.cend());
+	std::vector<std::pair<unsigned, QString>> structures; // [id, name]
+	for (auto &[k, v] : data.structures) {
+		auto nameOf = [] (auto *s) { return (s ? s->meta.name : ""); };
+		auto a = std::get_if<Annotations>(&v);
+		auto b = std::get_if<HrClustering>(&v);
+		structures.push_back(std::make_pair(k, nameOf(a) + nameOf(b)));
+	}
+	l.unlock();
+
+	/* emit signals – w/o lock */
+	for (unsigned i = 0; i < payload->proteins.size(); ++i)
+		emit proteinAdded(i, payload->proteins[i]);
+	emit markersToggled(markers, true);
+	for (auto &[id, name] : structures)
+		emit structureAvailable(id, name, false);
+}
+
 ProteinId ProteinDB::add(const QString &fullname)
 {
 	ProteinId id;
@@ -55,18 +88,19 @@ bool ProteinDB::addDescription(const QString& name, const QString& desc)
 	}
 }
 
-bool ProteinDB::readDescriptions(QTextStream &in)
+bool ProteinDB::readDescriptions(QTextStream in)
 {
 	auto header = in.readLine().split("\t");
 	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
 	if (header.size() != 2 || !header[0].contains(re)) {
-		emit ioError("Could not parse file!<p>The first column must contain protein names, second descriptions.</p>");
+		emit message({"Could not parse file!",
+		              "The first column must contain protein names, second descriptions.</p>"});
 		return false;
 	}
 
 	/* ensure we have data to annotate */
 	if (peek()->proteins.empty()) {
-		emit ioError("Please load proteins first!");
+		emit message({"Please load proteins first!"});
 		return false;
 	}
 

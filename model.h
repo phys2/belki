@@ -8,6 +8,7 @@
 #include <QVector>
 #include <QPointF>
 #include <vector>
+#include <set>
 #include <unordered_map>
 #include <memory>
 #include <variant>
@@ -52,6 +53,13 @@ struct Features {
 	// measurement scores
 	Vec scores;
 	Range scoreRange;
+};
+
+struct Representations {
+	// feature reduced point sets
+	using Pointset = QVector<QPointF>;
+	std::map<QString, Pointset> displays;
+	// TODO: put distmats here
 };
 
 struct Annotations {
@@ -114,6 +122,16 @@ struct HrClustering {
 };
 
 using Structure = std::variant<Annotations, HrClustering>;
+
+struct ProteinRegister {
+	std::vector<Protein> proteins;
+	std::unordered_map<QString, ProteinId> index;
+
+	// TODO: sort set by prot. name
+	std::set<ProteinId> markers;
+
+	std::unordered_map<unsigned, Structure> structures;
+};
 
 struct Order {
 	enum Type {

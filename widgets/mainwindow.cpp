@@ -2,7 +2,7 @@
 #include "guistate.h"
 #include "windowstate.h"
 #include "datahub.h"
-#include "storage.h"
+#include "storage/storage.h"
 #include "fileio.h"
 #include "profiles/profilewindow.h"
 #include "widgets/spawndialog.h"
@@ -32,8 +32,7 @@
 #include <QDateTime>
 
 MainWindow::MainWindow(std::shared_ptr<WindowState> state) :
-    state(state),
-    io(new FileIO(this)) // cleanup by QObject
+    state(state)
 {
 	setupUi(this);
 	profiles->setState(state);
@@ -46,6 +45,8 @@ MainWindow::MainWindow(std::shared_ptr<WindowState> state) :
 	// initialize window state
 	actionShowStructure->setChecked(state->showAnnotations);
 	actionUseOpenGL->setChecked(state->useOpenGl);
+	auto p = state->hub().projectMeta();
+	setName(p.name, p.path);
 
 	// initialize widgets to be empty & most-restrictive
 	updateState(Dataset::Touch::BASE);
@@ -152,9 +153,6 @@ void MainWindow::setupTabs()
 
 void MainWindow::setupSignals()
 {
-	/* error dialogs */
-	connect(io, &FileIO::ioError, this, &MainWindow::displayMessage);
-
 	/* selecting dataset */
 	connect(datasetSelect, qOverload<int>(&QComboBox::activated), [this] {
 		setDataset(datasetSelect->currentData(Qt::UserRole + 1).value<Dataset::Ptr>());
@@ -190,8 +188,10 @@ void MainWindow::setupSignals()
 void MainWindow::setupActions()
 {
 	/* Shortcuts (standard keys not available in UI Designer) */
-	actionLoadDataset->setShortcut(QKeySequence::StandardKey::Open);
+	actionOpenProject->setShortcut(QKeySequence::StandardKey::Open);
+	actionSave->setShortcut(QKeySequence::StandardKey::Save);
 	actionSaveAs->setShortcut(QKeySequence::StandardKey::SaveAs);
+	actionCloseProject->setShortcut(QKeySequence::StandardKey::Close);
 	actionHelp->setShortcut(QKeySequence::StandardKey::HelpContents);
 	actionQuit->setShortcut(QKeySequence::StandardKey::Quit);
 
@@ -200,7 +200,8 @@ void MainWindow::setupActions()
 	saveMarkersButton->setDefaultAction(actionSaveMarkers);
 	clearMarkersButton->setDefaultAction(actionClearMarkers);
 
-	connect(actionQuit, &QAction::triggered, [] { QApplication::exit(); });
+	connect(actionCloseProject, &QAction::triggered, this, &MainWindow::closeProjectRequested);
+	connect(actionQuit, &QAction::triggered, this, &MainWindow::quitApplicationRequested);
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
 	connect(actionAbout, &QAction::triggered, [this] {
 		auto date = QDateTime::fromString(PROJECT_DATE, "yyyyMMdd").toString("MMMM d, yyyy");
@@ -219,31 +220,34 @@ void MainWindow::setupActions()
 	connect(actionLoadDescriptions, &QAction::triggered, [this] { openFile(Input::DESCRIPTIONS); });
 	connect(actionLoadMarkers, &QAction::triggered, [this] { openFile(Input::MARKERS); });
 	connect(actionImportStructure, &QAction::triggered, [this] { openFile(Input::STRUCTURE); });
+	connect(actionOpenProject, &QAction::triggered, [this] { openFile(Input::PROJECT); });
 
 	connect(actionSaveMarkers, &QAction::triggered, [this] {
-		auto filename = io->chooseFile(FileIO::SaveMarkers);
+		auto filename = state->io().chooseFile(FileIO::SaveMarkers, this);
 		if (filename.isEmpty())
 			return;
 
-		runInBackground([&s=state->hub().store,filename] { s.exportMarkers(filename); });
+		runInBackground([s=state->hub().store(),filename] { s->exportMarkers(filename); });
 	});
 	connect(actionExportAnnotations, &QAction::triggered, [this] {
 		/* keep own copy while user chooses filename */
 		auto localCopy = currentAnnotations();
 		if (!localCopy)
-			return displayMessage("Cannot export:<br>Annotations are still under computation.");
-		auto filename = io->chooseFile(FileIO::SaveAnnotations);
+			return message({"Cannot export.",
+			                "Annotations are still under computation.", GuiMessage::WARNING});
+		auto filename = state->io().chooseFile(FileIO::SaveAnnotations, this);
 		if (filename.isEmpty())
 			return;
 
 		// TODO we cannot move unique_ptr to other thread. so no bg
-		state->hub().store.exportAnnotations(filename, *localCopy);
+		state->hub().store()->exportAnnotations(filename, *localCopy);
 	});
 	connect(actionPersistAnnotations, &QAction::triggered, [this] {
 		/* keep own copy while user edits the name */
 		auto localCopy = currentAnnotations();
 		if (!localCopy)
-			return displayMessage("Cannot snapshot:<br>Annotations are still under computation.");
+			return message({"Cannot create snapshot.",
+			                "Annotations are still under computation.", GuiMessage::WARNING});
 	    auto name = QInputDialog::getText(this, "Keep snapshot of current clustering",
 		                                  "Please provide a name:", QLineEdit::Normal,
 		                                  localCopy->meta.name);
@@ -266,12 +270,12 @@ void MainWindow::setupActions()
 		});
 	});
 
+	connect(actionSave, &QAction::triggered, [this] { state->hub().saveProject(); });
 	connect(actionSaveAs, &QAction::triggered, [this] {
-		auto filename = io->chooseFile(FileIO::SaveProject);
+		auto filename = state->io().chooseFile(FileIO::SaveProject, this);
 		if (filename.isEmpty())
 			return;
-		state->hub().saveProjectAs(filename);
-		// TODO: change our project filename to this one
+		state->hub().saveProject(filename);
 	});
 }
 void MainWindow::setDatasetControlModel(QStandardItemModel *m)
@@ -327,7 +331,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 
 	auto renderSlot = [this] (auto r, auto d) {
 		auto title = (data ? data->config().name : windowTitle());
-		io->renderToFile(r, {title, d});
+		state->io().renderToFile(r, {title, d});
 	};
 	connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
 	connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
@@ -402,22 +406,18 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 
 	// update own GUI state once
 	updateState(Dataset::Touch::ALL);
-
-	// TODO wronge place to do this in new storage concept
-	setFilename(data ? state->hub().store.name() : "");
 }
 
-void MainWindow::setFilename(QString name)
+void MainWindow::setName(const QString &name, const QString &path)
 {
 	if (name.isEmpty()) {
 		setWindowTitle("Belki");
 		setWindowFilePath({});
-		return;
+	} else {
+		setWindowTitle(QString("%1 – Belki").arg(name));
+		setWindowFilePath(path);
 	}
-
-	setWindowTitle(QString("%1 – Belki").arg(name));
-	// TODO: right now the name is mangled. need to keep both path+name
-	setWindowFilePath(name);
+	actionSave->setDisabled(name.isEmpty());
 }
 
 void MainWindow::setSelectedDataset(unsigned id)
@@ -501,25 +501,28 @@ void MainWindow::openFile(Input type, QString fn)
 		    {Input::MARKERS, FileIO::OpenMarkers},
 		    {Input::DESCRIPTIONS, FileIO::OpenDescriptions},
 		    {Input::STRUCTURE, FileIO::OpenStructure},
+		    {Input::PROJECT, FileIO::OpenProject},
 		};
-		fn = io->chooseFile(mapping.at(type));
+		fn = state->io().chooseFile(mapping.at(type), this);
 		if (fn.isEmpty())
 			return; // nothing selected
 	}
 
 	auto &hub = state->hub();
+	auto s = hub.store();
 	switch (type) {
 	case Input::DATASET:      hub.importDataset(fn, "Dist"); break;
 	case Input::DATASET_RAW:  hub.importDataset(fn, "AbundanceLeft"); break;
-	case Input::MARKERS:      runInBackground([&s=hub.store,fn] { s.importMarkers(fn); }); break;
-	case Input::DESCRIPTIONS: runInBackground([&s=hub.store,fn] { s.importDescriptions(fn); }); break;
+	case Input::MARKERS:      runInBackground([s,fn] { s->importMarkers(fn); }); break;
+	case Input::DESCRIPTIONS: runInBackground([s,fn] { s->importDescriptions(fn); }); break;
 	case Input::STRUCTURE: {
 		if (QFileInfo(fn).suffix() == "json")
-			runInBackground([&s=hub.store,fn] { s.importHierarchy(fn); });
+			runInBackground([s,fn] { s->importHierarchy(fn); });
 		else
-			runInBackground([&s=hub.store,fn] { s.importAnnotations(fn); });
+			runInBackground([s,fn] { s->importAnnotations(fn); });
 		break;
 	}
+	case Input::PROJECT: emit openProjectRequested(fn); // goes through guistate
 	}
 }
 
@@ -534,21 +537,6 @@ void MainWindow::showHelp()
 	box.setText(helpText.readAll());
 	box.setWindowModality(Qt::WindowModality::WindowModal); // sheet in OS X
 	box.exec();
-}
-
-void MainWindow::displayMessage(const QString &message, MessageType type)
-{
-	switch (type) {
-	case MessageType::INFO:
-		QMessageBox::information(this, "Please note", message);
-		break;
-	case MessageType::WARNING:
-		QMessageBox::warning(this, "Warning", message);
-		break;
-	case MessageType::CRITICAL:
-		QMessageBox::critical(this, "An error occured", message);
-		break;
-	}
 }
 
 void MainWindow::selectAnnotations(const Annotations::Meta &desc)
@@ -626,7 +614,7 @@ void MainWindow::runOnData(const std::function<void(Dataset::Ptr)> &work)
 {
 	if (!data)
 		return;
-	// pass shared ptr als lambda arg so thread works on own copy
+	// pass shared ptr by value so thread works on own copy
 	runInBackground([target=data,work] { work(target); });
 }
 
@@ -643,9 +631,22 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *event)
 
 void MainWindow::dropEvent(QDropEvent *event)
 {
+	event->setDropAction(Qt::DropAction::CopyAction);
 	auto urls = event->mimeData()->urls();
-	auto title = (urls.size() == 1 ? "Open file as…"
-	                               : QString("Open %1 files as…").arg(urls.size()));
+	if (urls.empty())
+		return;
+
+	/* Accept a single project file drop */
+	if (urls.first().toLocalFile().endsWith(".belki", Qt::CaseInsensitive)) {
+		if (urls.size() != 1) // more than one project file? don't even bother
+			return; // do not accept event
+		emit openProjectRequested(urls.first().toLocalFile());
+		event->accept();
+		return;
+	}
+
+	auto title = (urls.size() == 1 ? "Load file as…"
+	                               : QString("Load %1 files as…").arg(urls.size()));
 
 	QMenu chooser(title, this);
 	auto label = new QLabel(QString("<b>%1</b>").arg(title));
@@ -676,12 +677,13 @@ void MainWindow::dropEvent(QDropEvent *event)
 			openFile(action->second, filename);
 	}
 
-	event->setDropAction(Qt::DropAction::CopyAction);
 	event->accept();
 }
 
-void MainWindow::closeEvent(QCloseEvent *)
+void MainWindow::closeEvent(QCloseEvent *event)
 {
+	// delegate to signal handler, who might decide the window stays
+	event->ignore();
 	emit closeWindowRequested();
 }
 

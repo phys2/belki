@@ -8,6 +8,7 @@
 #include <QStandardItemModel>
 #include <memory>
 
+class FileIO;
 class MainWindow;
 class DataHub;
 class ProteinDB;
@@ -23,14 +24,22 @@ class GuiState : public QObject
 
 public:
 	explicit GuiState(DataHub &hub);
+	~GuiState();
 
 	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
+	bool shutdown(bool withPrompt = true);
 
 	bool eventFilter(QObject *watched, QEvent *event) override;
 
+signals:
+	void instanceRequested(const QString &filename);
+	void quitRequested();
+	void closed();
+
 public slots:
-	unsigned addWindow();
-	void removeWindow(unsigned id);
+	void addWindow();
+	void removeWindow(unsigned id, bool withPrompt = true);
+	void openProject(const QString &filename);
 
 	void addDataset(std::shared_ptr<Dataset> dataset);
 	void removeDataset(unsigned id);
@@ -40,14 +49,16 @@ public slots:
 
 	void handleMarkerChange(QStandardItem *item);
 
-	void displayMessage(const QString &message, MessageType type = MessageType::CRITICAL);
+	void displayMessage(const GuiMessage &message);
+	void displayMessageAt(const GuiMessage &message, QWidget *parent = nullptr);
 
 public:
 	DataHub &hub;
 	ProteinDB &proteins;
-	Storage &store;
+	std::unique_ptr<FileIO> io;
 
 protected:
+	bool promptOnClose(QWidget *parent = nullptr);
 	void sortMarkerModel();
 
 	MainWindow *focused();

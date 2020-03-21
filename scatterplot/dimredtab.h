@@ -40,6 +40,9 @@ protected:
 	bool updateEnabled();
 
 	struct {
+		// TODO this is crap. Have a list of preferences instead,
+		// so if the user triggers computation of several, they actually get
+		// respected regardless of finishing order
 		QString preferredDisplay; // init to none
 	} tabState;
 

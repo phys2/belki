@@ -31,6 +31,11 @@ DataHub &WindowState::hub()
 	return global.hub;
 }
 
+FileIO &WindowState::io()
+{
+	return *global.io;
+}
+
 std::unique_ptr<QMenu> WindowState::proteinMenu(ProteinId id)
 {
 	return global.proteinMenu(id);

@@ -6,8 +6,6 @@
 #include <QObject>
 #include <map>
 
-class QMainWindow;
-
 class FileIO : public QObject
 {
 	Q_OBJECT
@@ -22,6 +20,7 @@ public:
 		OpenStructure,
 		OpenMarkers,
 		OpenComponents, // bnms
+		OpenProject,
 		SaveMarkers,
 		SaveAnnotations,
 		SavePlot,
@@ -40,19 +39,16 @@ public:
 		QString description;
 	};
 
-	explicit FileIO(QMainWindow *parent);
-
-	QString chooseFile(Role purpose, QWidget *p = nullptr);
+	QString chooseFile(Role purpose, QWidget *parent = nullptr);
 
 signals:
-	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
+	void message(const GuiMessage &message);
 
 public slots:
 	// use source::render() to create image file (source may be QWidget or QGraphicsScene)
 	void renderToFile(QObject *source, const RenderMeta &meta, QString filename = {});
 
 protected:
-	QMainWindow *parent; // anchor dialogs to main window
 	std::map<QString, FileType> filetypes = {
 	    {"svg", FileType::SVG},
 	    {"pdf", FileType::PDF},

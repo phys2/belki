@@ -3,47 +3,60 @@
 
 #include "dataset.h" // for DatasetConfiguration
 #include "proteindb.h"
-#include "storage.h"
 #include "utils.h"
 
 #include <QObject>
 #include <map>
 #include <memory>
 
+class Storage;
+
 class DataHub : public QObject
 {
 	Q_OBJECT
 public:
-	explicit DataHub(QObject *parent = nullptr);
+	struct Project {
+		QString name;
+		QString path;
+	};
 
 	using DataPtr = Dataset::Ptr;
 	using ConstDataPtr = Dataset::ConstPtr;
 
+	explicit DataHub(QObject *parent = nullptr);
+	~DataHub();
+
+	Project projectMeta();
+	Storage *store() { return storage.get(); };
 	std::map<unsigned, DataPtr> datasets();
 
 signals:
-	void ioError(const QString &message, MessageType type = MessageType::CRITICAL);
+	void projectNameChanged(const QString &name, const QString &path);
+	void message(const GuiMessage &message);
 	void newDataset(DataPtr data);
 	void datasetRemoved(unsigned id);
 
 public slots:
+	void updateProjectName(const QString &name, const QString &path);
 	void spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay = {});
 	void importDataset(const QString &filename, const QString featureCol = {});
-
-	void saveProjectAs(const QString &filename);
+	void openProject(const QString &filename);
+	void saveProject(QString filename = {});
 
 public:
 	ProteinDB proteins;
-	Storage store;
+	std::unique_ptr<Storage> storage;
 
 protected:
 	void setupSignals();
+	void init(std::vector<DataPtr> datasets);
 
 	DataPtr createDataset(DatasetConfiguration config);
 
 	void runOnCurrent(const std::function<void(DataPtr)> &work);
 
 	struct : public RWLockable {
+		Project project;
 		std::map<unsigned, DataPtr> sets;
 		unsigned nextId = 1;
 	} data;

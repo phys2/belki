@@ -22,22 +22,31 @@ Dataset::Dataset(ProteinDB &proteins, DatasetConfiguration conf)
 template<>
 View<Dataset::Base> Dataset::peek() const { return View(b); }
 template<>
-View<Dataset::Representation> Dataset::peek() const { return View(r); }
+View<Dataset::Representations> Dataset::peek() const { return View(r); }
 template<>
 View<Dataset::Structure> Dataset::peek() const { return View(s); }
 template<>
 View<Dataset::Proteins> Dataset::peek() const { return proteins.peek(); }
 
-void Dataset::spawn(Features::Ptr in)
+void Dataset::spawn(Features::Ptr base, std::unique_ptr<::Representations> repr)
 {
-	b.dimensions = std::move(in->dimensions);
-	b.protIds = std::move(in->protIds);
-	b.protIndex = std::move(in->protIndex);
-	b.features = std::move(in->features);
-	b.featureRange = std::move(in->featureRange);
-	b.logSpace = std::move(in->logSpace);
-	b.scores = std::move(in->scores);
-	b.scoreRange = std::move(in->scoreRange);
+	b.dimensions = std::move(base->dimensions);
+	b.protIds = std::move(base->protIds);
+	b.protIndex = std::move(base->protIndex);
+	b.features = std::move(base->features);
+	b.featureRange = std::move(base->featureRange);
+	b.logSpace = std::move(base->logSpace);
+	b.scores = std::move(base->scores);
+	b.scoreRange = std::move(base->scoreRange);
+
+	if (repr)
+		r.displays = std::move(repr->displays);
+
+	/* build protein index if missing */
+	if (b.protIndex.empty()) {
+		for (unsigned i = 0; i < b.protIds.size(); ++i)
+			b.protIndex[b.protIds[i]] = i;
+	}
 
 	/* pre-cache features as QPoints for plotting */
 	b.featurePoints = features::pointify(b.features);
@@ -94,7 +103,7 @@ void Dataset::computeDisplay(const QString& request)
 
 	r.l.lockForWrite();
 	for (auto name : result.keys()) {
-		r.display[name] = result[name]; // TODO std::move
+		r.displays[name] = result[name]; // TODO std::move
 		// TODO: lookup in datasets[d->conf->parent].displays and perform rigid registration
 	}
 	r.l.unlock();
@@ -106,36 +115,18 @@ void Dataset::computeDisplays()
 {
 	/* compute PCA displays as a fast starting point */
 	r.l.lockForWrite(); // proactive write lock, avoid gap that may lead to double computation
-	if (!r.display.count("PCA 12"))
+	if (!r.displays.count("PCA 12"))
 		computeDisplay("PCA");
 	r.l.unlock();
 }
 
-// TODO move parsing to storage
-bool Dataset::readDisplay(const QString& name, QTextStream &in)
+void Dataset::addDisplay(const QString& name, const Representations::Pointset &points)
 {
-	QVector<QPointF> data;
-	while (!in.atEnd()) {
-		auto line = in.readLine().split("\t");
-		if (line.size() != 2) {
-			// TODO ioError(QString("Input malformed at line %2 in display %1").arg(name, data.size()+1));
-			return false;
-		}
-
-		data.push_back({line[0].toDouble(), line[1].toDouble()});
-	}
-
-	if (data.size() != (int)peek<Base>()->features.size()) {
-		// TODO ioError(QString("Display %1 length does not match source length!").arg(name));
-		return false;
-	}
-
 	r.l.lockForWrite();
-	r.display[name] = std::move(data);
+	r.displays[name] = std::move(points);
 	r.l.unlock();
 
 	emit update(Touch::DISPLAY);
-	return true;
 }
 
 void Dataset::prepareAnnotations(const Annotations::Meta &desc)

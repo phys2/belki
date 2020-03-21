@@ -1,4 +1,4 @@
-target_sources(belki PRIVATE
+target_sources(${APP_NAME} PRIVATE
 	profilechart.h profilechart.cpp
 	profiletab.h	profiletab.cpp	profiletab.ui
 	profilewidget.h profilewidget.cpp profilewidget.ui

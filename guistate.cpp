@@ -2,16 +2,20 @@
 #include "windowstate.h"
 #include "datahub.h"
 #include "widgets/mainwindow.h"
+#include "fileio.h"
 
 #include <QAbstractProxyModel>
 #include <QTimer>
 #include <QEvent>
 #include <QMenu>
+#include <QPushButton>
+#include <QMessageBox>
 #include <QWidgetAction>
 #include <QDesktopServices>
 
 GuiState::GuiState(DataHub &hub)
-    : hub(hub), proteins(hub.proteins), store(hub.store)
+    : hub(hub), proteins(hub.proteins),
+      io(std::make_unique<FileIO>())
 {
 	auto addStructureItem = [this] (QString name, QString icon, int id) {
 		auto item = new QStandardItem(name);
@@ -28,9 +32,10 @@ GuiState::GuiState(DataHub &hub)
 	/* internal wiring */
 	connect(&markerControl.model, &QStandardItemModel::itemChanged,
 	        this, &GuiState::handleMarkerChange);
+	connect(io.get(), &FileIO::message, this, &GuiState::displayMessage);
 
-	/* notifications from Protein db */
-	connect(&hub, &DataHub::ioError, this, &GuiState::displayMessage);
+	/* notifications from protein db and data hub */
+	connect(&hub, &DataHub::message, this, &GuiState::displayMessage);
 	connect(&proteins, &ProteinDB::proteinAdded, this, &GuiState::addProtein);
 	connect(&proteins, &ProteinDB::markersToggled,
 	        this, [this] (auto ids, bool present) {
@@ -49,6 +54,11 @@ GuiState::GuiState(DataHub &hub)
 		}
 	});
 	connect(&hub, &DataHub::newDataset, this, &GuiState::addDataset);
+}
+
+GuiState::~GuiState()
+{
+	shutdown(false);
 }
 
 std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
@@ -84,7 +94,7 @@ std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
 	return ret;
 }
 
-unsigned GuiState::addWindow()
+void GuiState::addWindow()
 {
 	auto state = std::make_shared<WindowState>(*this);
 	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(state));
@@ -94,12 +104,18 @@ unsigned GuiState::addWindow()
 	target->setMarkerControlModel(&markerControl.model);
 	target->setStructureControlModel(&structureModel);
 
-	connect(target, &MainWindow::newWindowRequested,
-	        this, &GuiState::addWindow);
+	connect(target, &MainWindow::message, this,
+	        [this,target] (const auto &message) { displayMessageAt(message, target); });
+	connect(target, &MainWindow::newWindowRequested, this, &GuiState::addWindow);
 	connect(target, &MainWindow::closeWindowRequested, this,
 	        [this,id=it->first] { removeWindow(id); });
+	connect(target, &MainWindow::closeProjectRequested, this, [this] { GuiState::shutdown(); });
+	connect(target, &MainWindow::openProjectRequested, this, &GuiState::openProject);
+	connect(target, &MainWindow::quitApplicationRequested, this, &GuiState::quitRequested);
 	connect(target, &MainWindow::markerFlipped, this, &GuiState::flipMarker);
 	connect(target, &MainWindow::markerToggled, this, &GuiState::toggleMarker);
+
+	connect(&hub, &DataHub::projectNameChanged, target, &MainWindow::setName);
 
 	// pick latest dataset as a starting point
 	auto datasets = hub.datasets();
@@ -107,16 +123,57 @@ unsigned GuiState::addWindow()
 		target->setDataset(hub.datasets().rbegin()->second);
 
 	target->show();
-	return it->first;
 }
 
-void GuiState::removeWindow(unsigned id)
+void GuiState::removeWindow(unsigned id, bool withPrompt)
 {
+	/* prompt first on last windows*/
+	if (withPrompt && windows.size() < 2 && !promptOnClose())
+		return;
+
 	auto w = windows.at(id);
 	w->deleteLater(); // do not delete a window within its close event
 	windows.erase(id);
 	if (windows.empty())
-		QApplication::quit();
+		QTimer::singleShot(0, [this] {emit closed();}); // delete us later
+}
+
+void GuiState::openProject(const QString &filename)
+{
+	if (proteins.peek()->proteins.empty()) {
+		// note: we risk that proteins gets filled now before we call init
+		// also it would be nice if we would open in background thread
+		hub.openProject(filename);
+		return;
+	}
+
+	/* need to open new window */
+	bool proceed = true;
+	QMessageBox dialog(focused());
+	auto name = hub.projectMeta().name;
+	dialog.setText("Close current project?");
+	dialog.setInformativeText(QString{
+	                              "The project to be loaded will be opened in a new window."
+	                              "<br>Would you like to close %1?"
+	                          }.arg(name.isEmpty() ? "the current project" : name));
+	auto keepOpen = dialog.addButton("Keep open", QMessageBox::NoRole);
+	std::map<QAbstractButton*, std::function<void()>> actions = {
+	  {keepOpen, [&] {}},
+	  {dialog.addButton("Close project", QMessageBox::DestructiveRole),
+       [&] { shutdown(); }},
+	  {dialog.addButton(QMessageBox::Cancel), [&] { proceed = false; }},
+	  {nullptr, [&] { proceed = false; }},
+	};
+	if (!name.isEmpty()) {
+		actions.insert_or_assign(dialog.addButton("Save && Close", QMessageBox::YesRole),
+		  [&] { hub.saveProject(); shutdown(); });
+	}
+	dialog.setDefaultButton(keepOpen);
+	dialog.exec();
+	actions.at(dialog.clickedButton())();
+
+	if (proceed)
+		emit instanceRequested(filename);
 }
 
 void GuiState::addDataset(Dataset::Ptr dataset)
@@ -193,11 +250,63 @@ void GuiState::handleMarkerChange(QStandardItem *item)
 		proteins.removeMarker(id);
 }
 
-void GuiState::displayMessage(const QString &message, MessageType type)
+void GuiState::displayMessage(const GuiMessage &message)
 {
-	auto target = focused();
-	if (target)
-		target->displayMessage(message, type);
+	displayMessageAt(message, focused());
+}
+
+void GuiState::displayMessageAt(const GuiMessage &message, QWidget *parent)
+{
+	QMessageBox dialog(parent);
+	dialog.setText(message.text);
+	dialog.setInformativeText(message.informativeText);
+	switch (message.type) {
+	case GuiMessage::INFO:     dialog.setIcon(QMessageBox::Information); break;
+	case GuiMessage::WARNING:  dialog.setIcon(QMessageBox::Warning); break;
+	case GuiMessage::CRITICAL: dialog.setIcon(QMessageBox::Critical); break;
+	};
+	dialog.exec();
+}
+
+bool GuiState::promptOnClose(QWidget *parent)
+{
+	if (proteins.peek()->proteins.empty())
+		return true; // no need to ask, empty project
+
+	/* Lazy way: If no filename set, only provide Ok/Cancel, otherwise Save/Discard/Cancel */
+	QMessageBox dialog(parent ? parent : focused());
+	auto name = hub.projectMeta().name;
+	if (name.isEmpty()) {
+		dialog.setText("Close project?");
+		dialog.setInformativeText("The project has not been saved.");
+		dialog.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+	} else {
+		dialog.setText(QString("Close project %1?").arg(name));
+		dialog.setInformativeText("The project might have unsaved changes."
+		                          "<br>Would you like to save it first?");
+		dialog.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+	}
+	dialog.setDefaultButton(QMessageBox::Cancel);
+	dialog.setEscapeButton(QMessageBox::Cancel);
+	int ret = dialog.exec();
+	if (ret == QMessageBox::Save)
+		hub.saveProject();
+	return (ret != QMessageBox::Cancel);
+}
+
+bool GuiState::shutdown(bool withPrompt)
+{
+	/* prompt first */
+	if (withPrompt && !promptOnClose())
+		return false;
+
+	/* close all windows, which will lead to our demise */
+	std::vector<unsigned> cache; // cache ids to avoid invalid iterators
+	for (auto &[k, _] : windows)
+		cache.push_back(k);
+	for (auto i : cache)
+		removeWindow(i, false);
+	return true;
 }
 
 void GuiState::sortMarkerModel()

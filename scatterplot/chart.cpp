@@ -246,7 +246,7 @@ void Chart::moveCursor(const QPointF &pos)
 	}
 
 	refreshCursor();
-};
+}
 
 void Chart::resetCursor()
 {

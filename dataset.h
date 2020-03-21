@@ -63,10 +63,7 @@ public:
 		std::vector<QVector<QPointF>> featurePoints;
 	};
 
-	struct Representation : RWLockable {
-		// feature reduced point sets
-		std::map<QString, QVector<QPointF>> display;
-		// TODO: put distmats here & put this in model.h
+	struct Representations : ::Representations, RWLockable {
 	};
 
 	struct Structure : RWLockable {
@@ -102,12 +99,12 @@ public:
 	template<typename T>
 	View<T> peek() const; // see specializations in cpp
 
-	void spawn(Features::Ptr data);
+	void spawn(Features::Ptr base, std::unique_ptr<::Representations> repr = {});
 	void spawn(ConstPtr source);
 
 	void computeDisplay(const QString &name);
 	void computeDisplays();
-	bool readDisplay(const QString &name, QTextStream &tsv);
+	void addDisplay(const QString &name, const Representations::Pointset &points);
 
 	void prepareAnnotations(const Annotations::Meta &desc);
 	void prepareOrder(const ::Order &desc);
@@ -127,7 +124,7 @@ protected:
 
 	// our current state
 	Base b;
-	Representation r;
+	Representations r;
 	Structure s;
 
 	// our meanshift worker. if set, holds a copy of features
@@ -138,7 +135,7 @@ protected:
 
 // forward declarations, see cpp file
 template<> View<Dataset::Base> Dataset::peek() const;
-template<> View<Dataset::Representation> Dataset::peek() const;
+template<> View<Dataset::Representations> Dataset::peek() const;
 template<> View<Dataset::Structure> Dataset::peek() const;
 template<> View<Dataset::Proteins> Dataset::peek() const;
 
