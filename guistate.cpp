@@ -160,13 +160,13 @@ void GuiState::openProject(const QString &filename)
 	std::map<QAbstractButton*, std::function<void()>> actions = {
 	  {keepOpen, [&] {}},
 	  {dialog.addButton("Close project", QMessageBox::DestructiveRole),
-       [&] { shutdown(); }},
+       [&] { shutdown(false); }},
 	  {dialog.addButton(QMessageBox::Cancel), [&] { proceed = false; }},
 	  {nullptr, [&] { proceed = false; }},
 	};
 	if (!name.isEmpty()) {
 		actions.insert_or_assign(dialog.addButton("Save && Close", QMessageBox::YesRole),
-		  [&] { hub.saveProject(); shutdown(); });
+		  [&] { hub.saveProject(); shutdown(false); });
 	}
 	dialog.setDefaultButton(keepOpen);
 	dialog.exec();
