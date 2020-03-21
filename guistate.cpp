@@ -132,6 +132,12 @@ void GuiState::removeWindow(unsigned id, bool withPrompt)
 		return;
 
 	auto w = windows.at(id);
+	/* explicitely hide first, for two reasons:
+	 * - don't keep windows lingering, e.g. while new modal dialogs pop up
+	 * - we observed a strange spurious access violation in Chart::hibernate(),
+	 *   which indicates that the window was deleted _after_ close() below.
+	 *   Strange as we use QTimer to avoid exactly that… */
+	w->hide();
 	w->deleteLater(); // do not delete a window within its close event
 	windows.erase(id);
 	if (windows.empty())
@@ -160,13 +166,13 @@ void GuiState::openProject(const QString &filename)
 	std::map<QAbstractButton*, std::function<void()>> actions = {
 	  {keepOpen, [&] {}},
 	  {dialog.addButton("Close project", QMessageBox::DestructiveRole),
-       [&] { shutdown(); }},
+       [&] { shutdown(false); }},
 	  {dialog.addButton(QMessageBox::Cancel), [&] { proceed = false; }},
 	  {nullptr, [&] { proceed = false; }},
 	};
 	if (!name.isEmpty()) {
 		actions.insert_or_assign(dialog.addButton("Save && Close", QMessageBox::YesRole),
-		  [&] { hub.saveProject(); shutdown(); });
+		  [&] { hub.saveProject(); shutdown(false); });
 	}
 	dialog.setDefaultButton(keepOpen);
 	dialog.exec();
