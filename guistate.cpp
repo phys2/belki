@@ -132,6 +132,12 @@ void GuiState::removeWindow(unsigned id, bool withPrompt)
 		return;
 
 	auto w = windows.at(id);
+	/* explicitely hide first, for two reasons:
+	 * - don't keep windows lingering, e.g. while new modal dialogs pop up
+	 * - we observed a strange spurious access violation in Chart::hibernate(),
+	 *   which indicates that the window was deleted _after_ close() below.
+	 *   Strange as we use QTimer to avoid exactly that… */
+	w->hide();
 	w->deleteLater(); // do not delete a window within its close event
 	windows.erase(id);
 	if (windows.empty())
