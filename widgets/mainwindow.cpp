@@ -119,8 +119,11 @@ void MainWindow::setupModelViews()
 					m->data(index, Qt::UserRole + 1).value<Dataset::Ptr>()->setName(newName);
 				}
 			}
-			if (selected == remove)
+			if (selected == remove) {
 				state->hub().removeDataset(m->data(index, Qt::UserRole).toUInt());
+				if (datasetTree->model()->rowCount() == 0)
+					datasetSelect->hidePopup();
+			}
 		}
 	});
 
