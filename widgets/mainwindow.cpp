@@ -339,11 +339,11 @@ void MainWindow::addTab(MainWindow::Tab type)
 	switch (type) {
 	case Tab::DIMRED: v = new DimredTab; break;
 	case Tab::SCATTER: v = new ScatterTab; break;
-/*	case Tab::HEATMAP: v = new HeatmapTab; break;
+	case Tab::HEATMAP: v = new HeatmapTab; break;
 	case Tab::DISTMAT: v = new DistmatTab; break;
 	case Tab::PROFILES: v = new ProfileTab; break;
 	case Tab::FEATWEIGHTS: v = new FeatweightsTab; break;
-	case Tab::BNMS: v = new BnmsTab; break;*/
+	case Tab::BNMS: v = new BnmsTab; break;
 	default: return;
 	}
 
