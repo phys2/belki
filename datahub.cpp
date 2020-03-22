@@ -83,7 +83,7 @@ void DataHub::updateProjectName(const QString &name, const QString &path)
 	emit projectNameChanged(name, path);
 }
 
-void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay)
+void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config)
 {
 	QtConcurrent::run([=] {
 		auto target = createDataset(config);
@@ -95,14 +95,13 @@ void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, QSt
 		if (target->peek<Dataset::Base>()->dimensions.size() < 3)
 			return;
 
-		target->computeDisplays(); // standard set
+		// standard set
+		target->computeDisplays();
 
-		// current display
-		if (!initialDisplay.isEmpty())
-			return;
-
-		if (!target->peek<Dataset::Representations>()->displays.count(initialDisplay))
-			target->computeDisplay(initialDisplay);
+		// current display TODO dead code
+		/*if (!initialDisplay.isEmpty() &&
+		    !target->peek<Dataset::Representations>()->displays.count(initialDisplay))
+			target->computeDisplay(initialDisplay);*/
 	});
 }
 

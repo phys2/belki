@@ -37,7 +37,7 @@ signals:
 
 public slots:
 	void updateProjectName(const QString &name, const QString &path);
-	void spawn(ConstDataPtr source, const DatasetConfiguration& config, QString initialDisplay = {});
+	void spawn(ConstDataPtr source, const DatasetConfiguration& config);
 	void importDataset(const QString &filename, const QString featureCol = {});
 	void openProject(const QString &filename);
 	void saveProject(QString filename = {});
