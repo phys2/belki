@@ -75,17 +75,17 @@ void DimredTab::selectDataset(unsigned id)
 
 	updateMenus();
 	bool enabled = updateEnabled();
+	if (!enabled)
+		return;
 
-	if (enabled) {
-		view->switchChart(current().scene.get());
+	/* hook into dataset updates (specify receiver so signal is cleaned up!) */
+	connect(current().data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
+		if (!(touched & Dataset::Touch::DISPLAY))
+			return;
+		updateMenus();
+	});
 
-		/* hook into dataset updates (specify receiver so signal is cleaned up!) */
-		connect(current().data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
-			if (!(touched & Dataset::Touch::DISPLAY))
-				return;
-			updateMenus();
-		});
-	}
+	view->switchChart(current().scene.get());
 }
 
 void DimredTab::deselectDataset()

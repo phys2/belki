@@ -79,7 +79,7 @@ void ChartView::scaleCursor(qreal factor)
 
 void ChartView::showEvent(QShowEvent *event)
 {
-	if (chart())
+	if (chart()) // is nullptr if not a Chart object (e.g. placeholder QChart)
 		chart()->wakeup();
 	QChartView::showEvent(event);
 }

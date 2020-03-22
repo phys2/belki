@@ -192,6 +192,7 @@ void GuiState::addDataset(Dataset::Ptr dataset)
 	auto item = new QStandardItem(conf.name);
 	item->setData(dataset->id(), Qt::UserRole);
 	item->setData(QVariant::fromValue(dataset), Qt::UserRole + 1);
+
 	parent->appendRow(item);
 	datasetControl.items[conf.id] = item;
 

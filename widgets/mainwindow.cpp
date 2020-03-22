@@ -86,7 +86,7 @@ void MainWindow::setupModelViews()
 	});
 
 	/** Datasets **/
-	// setup datasets selection model+view
+	/* setup datasets selection view */
 	datasetTree = new QTreeView(this);
 	datasetTree->setHeaderHidden(true);
 	datasetTree->setFrameShape(QFrame::Shape::NoFrame);
@@ -353,7 +353,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 	auto hub = &state->hub();
 	connect(hub, &DataHub::newDataset, v, &Viewer::addDataset);
 	connect(hub, &DataHub::datasetRemoved, v, &Viewer::removeDataset);
-	/* use queued conn. to ensure the views get the newDataset signal _first_! */
+	/* use queued conn. to ensure the views get the *newDataset* signal first! */
 	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
 	connect(this, &MainWindow::datasetDeselected, v, &Viewer::deselectDataset);
 
@@ -424,7 +424,7 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 	data = selected;
 	if (data) {
 		// let views know before our GUI might send more signals
-		emit datasetSelected(data ? data->id() : 0);
+		emit datasetSelected(data->id());
 		// tell dataset what we need
 		runOnData([=] (auto d) {
 			// one thread as work might be redundant
