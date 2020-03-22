@@ -54,6 +54,7 @@ GuiState::GuiState(DataHub &hub)
 		}
 	});
 	connect(&hub, &DataHub::newDataset, this, &GuiState::addDataset);
+	connect(&hub, &DataHub::datasetRemoved, this, &GuiState::removeDataset);
 }
 
 GuiState::~GuiState()
@@ -116,6 +117,7 @@ void GuiState::addWindow()
 	connect(target, &MainWindow::markerToggled, this, &GuiState::toggleMarker);
 
 	connect(&hub, &DataHub::projectNameChanged, target, &MainWindow::setName);
+	connect(&hub, &DataHub::datasetRemoved, target, &MainWindow::removeDataset);
 
 	// pick latest dataset as a starting point
 	auto datasets = hub.datasets();
@@ -201,10 +203,13 @@ void GuiState::addDataset(Dataset::Ptr dataset)
 
 void GuiState::removeDataset(unsigned id)
 {
-	auto item = datasetControl.items.at(id);
-	delete item; // TODO: does it deregister from model? test!
-	datasetControl.items.erase(id);
-	// TODO: select another one?
+	try {
+		auto item = datasetControl.items.at(id);
+		// removing the row deletes the QStandardItem
+		datasetControl.model.removeRow(item->row(),
+		                               (item->parent() ? item->parent()->index() : QModelIndex{}));
+		datasetControl.items.erase(id);
+	} catch (std::out_of_range&) {}
 }
 
 void GuiState::addProtein(ProteinId id, const Protein &protein)

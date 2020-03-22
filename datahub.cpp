@@ -63,13 +63,18 @@ void DataHub::init(std::vector<DataPtr> datasets)
 
 DataHub::DataPtr DataHub::createDataset(DatasetConfiguration config)
 {
-	data.l.lockForWrite();
+	QWriteLocker _(&data.l);
+	// do not accept unknown parents which would lead to stale backreference
+	if (config.parent && !data.sets.count(config.parent)) {
+		emit message({"Could not create new dataset.", "The parent dataset is missing."});
+		return {};
+	}
+
 	config.id = data.nextId++; // inject id into config
 	auto dataset = std::make_shared<Dataset>(proteins, config);
 	// ensure the object does not live in threadpool (creating thread)!
 	dataset->moveToThread(thread());
 	data.sets[config.id] = dataset;
-	data.l.unlock();
 
 	return dataset;
 }
@@ -87,6 +92,8 @@ void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config, QSt
 {
 	QtConcurrent::run([=] {
 		auto target = createDataset(config);
+		if (!target)
+			return;
 		target->spawn(source);
 
 		emit newDataset(target);
@@ -137,6 +144,26 @@ void DataHub::importDataset(const QString &filename, const QString featureCol)
 			return;
 		target->computeDisplays();
 	});
+}
+
+void DataHub::removeDataset(unsigned id)
+{
+	std::set<unsigned> removals;
+	data.l.lockForWrite();
+	/* recursively erase them */
+	for (auto& [k, v] : data.sets) {
+		/* we rely on the fact that keys are ordered and parent ids are always
+		   lower, so parents come before their children */
+		if (k == id || removals.count(v->config().parent))
+			removals.insert(k);
+	}
+	for (auto i : removals)
+		data.sets.erase(i);
+	data.l.unlock();
+	/* Emit in bottom-up order. Otherwise some GUI code may crash.
+	   Qt models really hate if you delete an item that has children. */
+	for (auto it = removals.rbegin(); it != removals.rend(); ++it)
+		emit datasetRemoved(*it);
 }
 
 void DataHub::openProject(const QString &filename)

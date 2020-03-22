@@ -88,6 +88,13 @@ void DimredTab::selectDataset(unsigned id)
 	}
 }
 
+void DimredTab::deselectDataset()
+{
+	current = {};
+	view->releaseChart();
+	updateEnabled();
+}
+
 void DimredTab::addDataset(Dataset::Ptr data)
 {
 	auto id = data->id();
@@ -105,10 +112,8 @@ void DimredTab::addDataset(Dataset::Ptr data)
 
 void DimredTab::removeDataset(unsigned id)
 {
-	if (current.id == id) {
-		current = {};
-		updateEnabled();
-	}
+	if (current.id == id)
+		deselectDataset();
 	content.erase(id); // kills both dataset and scene
 }
 

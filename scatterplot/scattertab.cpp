@@ -84,6 +84,13 @@ void ScatterTab::selectDataset(unsigned id)
 	view->switchChart(current().scene.get());
 }
 
+void ScatterTab::deselectDataset()
+{
+	current = {};
+	view->releaseChart();
+	updateEnabled();
+}
+
 void ScatterTab::addDataset(Dataset::Ptr data)
 {
 	auto id = data->id();
@@ -103,10 +110,8 @@ void ScatterTab::addDataset(Dataset::Ptr data)
 
 void ScatterTab::removeDataset(unsigned id)
 {
-	if (current.id == id) {
-		current = {};
-		updateEnabled();
-	}
+	if (current.id == id)
+		deselectDataset();
 	content.erase(id); // kills both dataset and scene
 }
 

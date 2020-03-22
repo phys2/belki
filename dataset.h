@@ -95,6 +95,7 @@ public:
 	explicit Dataset(ProteinDB &proteins, DatasetConfiguration conf);
 	const DatasetConfiguration& config() const { return conf; }
 	unsigned id() const { return conf.id; }
+	void setName(const QString &name) { conf.name = name; }
 
 	template<typename T>
 	View<T> peek() const; // see specializations in cpp

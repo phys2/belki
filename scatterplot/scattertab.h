@@ -16,6 +16,7 @@ public:
 	void setWindowState(std::shared_ptr<WindowState> s) override;
 
 	void selectDataset(unsigned id) override;
+	void deselectDataset() override;
 	void addDataset(Dataset::Ptr data) override;
 	void removeDataset(unsigned id) override;
 

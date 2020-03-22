@@ -92,6 +92,37 @@ void MainWindow::setupModelViews()
 	datasetTree->setFrameShape(QFrame::Shape::NoFrame);
 	datasetTree->setSelectionMode(QTreeView::SelectionMode::NoSelection);
 	datasetTree->setItemsExpandable(false);
+
+	/* setup context menu on datasets */
+	datasetTree->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
+	connect(datasetTree, &QTreeView::customContextMenuRequested, this, [this] (const QPoint &pos) {
+		QModelIndex index = datasetTree->indexAt(pos);
+		if (index.isValid()) {
+			auto m = datasetSelect->model();
+			auto name = m->data(index).toString();
+			QMenu popup(QString{"Dataset %1"}.arg(name), this);
+			auto rename = popup.addAction(QIcon::fromTheme("edit-rename"), "Re&name");
+			auto remove = popup.addAction(QIcon::fromTheme("edit-delete"), "&Remove");
+			if (m->hasChildren(index))
+				remove->setText("&Remove with descendants");
+			auto selected = popup.exec(datasetTree->viewport()->mapToGlobal(pos));
+			if (selected == rename) {
+				/* datasetTree->edit() does not work as the view is wired to the combobox */
+				QString newName = QInputDialog::getText(
+				                      this, QString("Rename Dataset %1").arg(name),
+				                      "Enter dataset name:", QLineEdit::Normal, name);
+				if (newName != name && !newName.isEmpty()) {
+					m->setData(index, newName);
+					/* this could also be wired through model::dataChanged signal,
+					 * however it would be a bit complicated. Future work. */
+					m->data(index, Qt::UserRole + 1).value<Dataset::Ptr>()->setName(newName);
+				}
+			}
+			if (selected == remove)
+				state->hub().removeDataset(m->data(index, Qt::UserRole).toUInt());
+		}
+	});
+
 	datasetSelect->setView(datasetTree);
 }
 
@@ -324,6 +355,7 @@ void MainWindow::addTab(MainWindow::Tab type)
 	connect(hub, &DataHub::datasetRemoved, v, &Viewer::removeDataset);
 	/* use queued conn. to ensure the views get the newDataset signal _first_! */
 	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
+	connect(this, &MainWindow::datasetDeselected, v, &Viewer::deselectDataset);
 
 	// connect signalling out of view
 	connect(v, &Viewer::markerToggled, this, &MainWindow::markerToggled);
@@ -402,10 +434,18 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 		// wire updates
 		if (data)
 			connect(data.get(), &Dataset::update, this, &MainWindow::updateState);
+	} else {
+		emit datasetDeselected();
 	}
 
 	// update own GUI state once
 	updateState(Dataset::Touch::ALL);
+}
+
+void MainWindow::removeDataset(unsigned id)
+{
+	if (data && (data->id() == id)) // deselect
+		setDataset({});
 }
 
 void MainWindow::setName(const QString &name, const QString &path)
