@@ -44,12 +44,12 @@ ScatterTab::ScatterTab(QWidget *parent) :
 	connect(dimYSelect, qOverload<int>(&QComboBox::activated),
 	        this, &ScatterTab::selectSecondaryDimension);
 
-	updateEnabled();
+	updateIsEnabled();
 }
 
 ScatterTab::~ScatterTab()
 {
-	view->releaseChart(); // avoid double delete
+	deselectDataset(); // avoid double delete
 }
 
 void ScatterTab::setWindowState(std::shared_ptr<WindowState> s)
@@ -66,36 +66,33 @@ void ScatterTab::setWindowState(std::shared_ptr<WindowState> s)
 
 void ScatterTab::selectDataset(unsigned id)
 {
-	current = {id, &content[id]};
-	bool enabled = updateEnabled();
+	bool enabled = selectData(id);
 	if (!enabled)
 		return;
 
+	auto &current = selected();
 	// update dimensionSelects
 	refillDimensionSelects();
-	if (current().dimension < 0) {
+	if (current.dimension < 0) {
 		selectDimension(0);  // scene is still empty
 	} else {
 		// dimX has a direct index mapping, but dimY uses userData (due to index shifts)
-		dimXSelect->setCurrentIndex(current().dimension);
-		dimYSelect->setCurrentIndex(dimYSelect->findData(current().secondaryDimension));
+		dimXSelect->setCurrentIndex(current.dimension);
+		dimYSelect->setCurrentIndex(dimYSelect->findData(current.secondaryDimension));
 	}
 
-	view->switchChart(current().scene.get());
+	view->switchChart(current.scene.get());
 }
 
 void ScatterTab::deselectDataset()
 {
-	current = {};
 	view->releaseChart();
-	updateEnabled();
+	Viewer::deselectDataset();
 }
 
 void ScatterTab::addDataset(Dataset::Ptr data)
 {
-	auto id = data->id();
-	auto &state = content[id]; // emplace (note: ids are never recycled)
-	state.data = data;
+	auto &state = addData<DataState>(data);
 	state.hasScores = data->peek<Dataset::Base>()->hasScores();
 	if (!state.hasScores)
 		state.secondaryDimension = 1;
@@ -108,20 +105,13 @@ void ScatterTab::addDataset(Dataset::Ptr data)
 	connect(scene, &Chart::cursorChanged, this, &Viewer::proteinsHighlighted);
 }
 
-void ScatterTab::removeDataset(unsigned id)
-{
-	if (current.id == id)
-		deselectDataset();
-	content.erase(id); // kills both dataset and scene
-}
-
 void ScatterTab::refillDimensionSelects(bool onlySecondary)
 {
-	auto d = current().data->peek<Dataset::Base>();
+	auto d = selected().data->peek<Dataset::Base>();
 
 	// re-fill dimYSelect
 	dimYSelect->clear();
-	if (current().hasScores)
+	if (selected().hasScores)
 		dimYSelect->addItem("Score", -1);
 	for (auto i = 0; i < d->dimensions.size(); ++i) {
 		//if (i == current().dimension)	continue;
@@ -140,40 +130,41 @@ void ScatterTab::refillDimensionSelects(bool onlySecondary)
 
 void ScatterTab::selectDimension(int index)
 {
-	current().dimension = index;
+	selected().dimension = index;
 	dimXSelect->setCurrentIndex(index);
 
 	// update dimY state and plot
 	refillDimensionSelects(true);
-	selectSecondaryDimension(dimYSelect->findData(current().secondaryDimension));
+	selectSecondaryDimension(dimYSelect->findData(selected().secondaryDimension));
 }
 
 void ScatterTab::selectSecondaryDimension(int index)
 {
-	current().secondaryDimension = dimYSelect->itemData(index).toInt();
+	auto &current = selected();
+	current.secondaryDimension = dimYSelect->itemData(index).toInt();
 	dimYSelect->setCurrentIndex(index);
 
-	bool displayScores = current().secondaryDimension < 0;
+	bool displayScores = current.secondaryDimension < 0;
 
-	auto d = current().data->peek<Dataset::Base>();
-	auto dim = (size_t)current().dimension;
-	auto dim2 = (size_t)current().secondaryDimension;
+	auto d = current.data->peek<Dataset::Base>();
+	auto dim = (size_t)current.dimension;
+	auto dim2 = (size_t)current.secondaryDimension;
 	auto points = (displayScores
 	               ? features::scatter(d->features, dim, d->scores, dim)
 	               : features::scatter(d->features, dim, d->features, dim2));
 	d.unlock();
-	current().scene->display(points);
+	current.scene->display(points);
 
 	if (displayScores) {
-		current().scene->setTitles("Value", "Score");
+		current.scene->setTitles("Value", "Score");
 	} else {
-		current().scene->setTitles(dimXSelect->currentText(), dimYSelect->currentText());
+		current.scene->setTitles(dimXSelect->currentText(), dimYSelect->currentText());
 	}
 }
 
-bool ScatterTab::updateEnabled()
+bool ScatterTab::updateIsEnabled()
 {
-	bool on = current;
+	bool on = Viewer::updateIsEnabled();
 	setEnabled(on);
 	view->setVisible(on);
 

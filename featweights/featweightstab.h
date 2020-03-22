@@ -25,13 +25,16 @@ public:
 
 protected:
 	struct DataState : public Viewer::DataState {
+		using Viewer::DataState::DataState;
 		double scoreThreshold;
 		std::unique_ptr<FeatweightsScene> scene;
 	};
 
+	bool updateIsEnabled() override;
+
+	DataState &selected() { return selectedAs<DataState>(); }
 	void setupWeightingUI();
 	void updateScoreSlider();
-	void updateEnabled();
 
 	struct {
 		bool useAlternate = false;
@@ -39,8 +42,6 @@ protected:
 	} tabState;
 
 	std::vector<QAction*> scoreActions;
-	ContentMap<DataState> content;
-	Current<DataState> current;
 };
 
 #endif

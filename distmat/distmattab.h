@@ -22,18 +22,18 @@ public:
 
 protected:
 	struct DataState : public Viewer::DataState {
+		using Viewer::DataState::DataState;
 		std::unique_ptr<DistmatScene> scene;
 	};
 
+	bool updateIsEnabled() override;
+
+	DataState &selected() { return selectedAs<DataState>(); }
 	void setupOrderUI();
-	void updateEnabled();
 
 	struct {
 		Dataset::Direction direction = Dataset::Direction::PER_DIMENSION;
 	} tabState;
-
-	ContentMap<DataState> content;
-	Current<DataState> current;
 };
 
 #endif // distmatTAB_H

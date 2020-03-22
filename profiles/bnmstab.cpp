@@ -49,25 +49,26 @@ BnmsTab::BnmsTab(QWidget *parent) :
 	        this, &BnmsTab::toggleComponentMode);
 	connect(actionZoomToggle, &QAction::toggled, [this] (bool on) {
 		tabState.zoomToRange = on;
-		if (current) current().scene->toggleZoom(on);
+		if (haveData()) selected().scene->toggleZoom(on);
 	});
 	connect(actionShowAverage, &QAction::toggled, [this] (bool on) {
 		tabState.showAverage = on;
-		if (current) current().scene->toggleAverage(on);
+		if (haveData()) selected().scene->toggleAverage(on);
 	});
 	connect(actionShowQuantiles, &QAction::toggled, [this] (bool on) {
 		tabState.showQuantiles = on;
-		if (current) current().scene->toggleQuantiles(on);
+		if (haveData()) selected().scene->toggleQuantiles(on);
 	});
 	connect(actionShowIndividual, &QAction::toggled, [this] (bool on) {
-		if (current) current().scene->toggleIndividual(on);
+		if (haveData()) selected().scene->toggleIndividual(on);
 	});
 	connect(actionLogarithmic, &QAction::toggled, [this] (bool on) {
-		if (!current)
+		if (!haveData())
 			return;
-		current().logSpace = on;
-		current().scene->toggleLogSpace(on);
-		current().refScene->toggleLogSpace(on);
+		auto &current = selected();
+		current.logSpace = on;
+		current.scene->toggleLogSpace(on);
+		current.refScene->toggleLogSpace(on);
 	});
 	connect(referenceSelect, qOverload<int>(&QComboBox::currentIndexChanged), [this] {
 		if (referenceSelect->currentIndex() < 0)
@@ -76,22 +77,28 @@ BnmsTab::BnmsTab(QWidget *parent) :
 	});
 	connect(actionLoadComponents, &QAction::triggered, this, &BnmsTab::loadComponents);
 	connect(actionSplice, &QAction::triggered, [this] {
-		if (!current)
+		if (!haveData())
 			return;
+		auto &current = selected();
 		DatasetConfiguration conf;
-		conf.parent = current().data->config().id;
-		auto [left, right] = current().rangeSelect->range();
+		conf.parent = current.data->config().id;
+		auto [left, right] = current.rangeSelect->range();
 		conf.bands.resize(size_t(right) - size_t(left));
 		std::iota(conf.bands.begin(), conf.bands.end(), unsigned(left));
 		QString name("%1 to %2 (reference %3)");
-		auto b = current().data->peek<Dataset::Base>();
+		auto b = current.data->peek<Dataset::Base>();
 		name = name.arg(b->dimensions.at(int(left))).arg(b->dimensions.at(int(right)));
 		conf.name = name.arg(
 		        windowState->proteins().peek()->proteins[tabState.reference].name);
-		windowState->hub().spawn(current().data, conf);
+		windowState->hub().spawn(current.data, conf);
 	});
 
-	updateEnabled();
+	updateIsEnabled();
+}
+
+BnmsTab::~BnmsTab()
+{
+	deselectDataset(); // avoid double delete
 }
 
 void BnmsTab::setWindowState(std::shared_ptr<WindowState> s)
@@ -99,8 +106,8 @@ void BnmsTab::setWindowState(std::shared_ptr<WindowState> s)
 	Viewer::setWindowState(s);
 	connect(&s->proteins(), &ProteinDB::markersToggled, this, [this] {
 		setupMarkerMenu();
-		if (current) // rebuild plot to reflect marker state change (TODO: awkward)
-			current().scene->repopulate();
+		if (haveData()) // rebuild plot to reflect marker state change (TODO: awkward)
+			selected().scene->repopulate();
 	});
 }
 
@@ -112,28 +119,28 @@ void BnmsTab::setProteinModel(QAbstractItemModel *m)
 
 void BnmsTab::selectDataset(unsigned id)
 {
-	current = {id, &content[id]};
-	updateEnabled();
-
-	if (!current)
+	bool enabled = selectData(id);
+	if (!enabled)
 		return;
 
+	auto &current = selected();
+
 	// pass guiState onto chart
-	auto scene = current().scene.get();
+	auto scene = current.scene.get();
 	scene->setReference(tabState.reference);
 	scene->toggleComponentMode(tabState.componentMode); // TODO redundant rebuild
 	scene->toggleZoom(tabState.zoomToRange);
 	scene->toggleLabels(tabState.showLabels);
 	scene->toggleAverage(tabState.showAverage);
 	scene->toggleQuantiles(tabState.showQuantiles);
-	auto refScene = current().refScene.get();
+	auto refScene = current.refScene.get();
 	refScene->setReference(tabState.reference);
 	// TODO: refScene toggleComponentMode
-	if (current().rangeSelect)
-		current().rangeSelect->setSubtle(tabState.componentMode);
+	if (current.rangeSelect)
+		current.rangeSelect->setSubtle(tabState.componentMode);
 
 	// apply datastate
-	actionLogarithmic->setChecked(current().logSpace);
+	actionLogarithmic->setChecked(current.logSpace);
 
 	view->setChart(scene);
 	referenceView->setChart(refScene);
@@ -142,11 +149,17 @@ void BnmsTab::selectDataset(unsigned id)
 	setupMarkerMenu();
 }
 
+void BnmsTab::deselectDataset()
+{
+	// release ownerships
+	view->setChart(new QtCharts::QChart());
+	referenceView->setChart(new QtCharts::QChart());
+	Viewer::deselectDataset();
+}
+
 void BnmsTab::addDataset(Dataset::Ptr data)
 {
-	auto id = data->id();
-	auto &state = content[id]; // emplace (note: ids are never recycled)
-	state.data = data;
+	auto &state = addData<DataState>(data);
 	state.components.resize(data->peek<Dataset::Base>()->features.size());
 	state.scene = std::make_unique<BnmsChart>(data, state.components);
 	state.refScene = std::make_unique<ReferenceChart>(data, state.components);
@@ -200,12 +213,13 @@ void BnmsTab::toggleComponentMode(bool on)
 		return;
 
 	tabState.componentMode = on;
-	if (!current)
+	if (!haveData())
 		return;
-	if (current().rangeSelect)
-		current().rangeSelect->setSubtle(on);
-	current().refScene->repopulate(); // TODO: also toggleComponentMode()
-	current().scene->toggleComponentMode(on);
+	auto &current = selected();
+	if (current.rangeSelect)
+		current.rangeSelect->setSubtle(on);
+	current.refScene->repopulate(); // TODO: also toggleComponentMode()
+	current.scene->toggleComponentMode(on);
 }
 
 void BnmsTab::setReference(ProteinId id)
@@ -215,9 +229,9 @@ void BnmsTab::setReference(ProteinId id)
 
 	addToHistory(tabState.reference);
 	tabState.reference = id;
-	if (current) {
-		current().scene->setReference(tabState.reference);
-		current().refScene->setReference(tabState.reference);
+	if (haveData()) {
+		selected().scene->setReference(tabState.reference);
+		selected().refScene->setReference(tabState.reference);
 	}
 
 	QSignalBlocker _(referenceSelect);
@@ -252,12 +266,12 @@ void BnmsTab::addToHistory(ProteinId id)
 
 void BnmsTab::setupMarkerMenu()
 {
-	actionMarkerMenu->setEnabled(current);
-	if (!current)
+	actionMarkerMenu->setEnabled(haveData());
+	if (!haveData())
 		return;
 
 	markerMenu.clear();
-	auto p = current().data->peek<Dataset::Proteins>();
+	auto p = selected().data->peek<Dataset::Proteins>();
 
 	/* we need markers sorted */
 	std::vector<ProteinId> markers(p->markers.begin(), p->markers.end());
@@ -265,7 +279,7 @@ void BnmsTab::setupMarkerMenu()
 		return p->proteins[a].name < p->proteins[b].name;
 	});
 
-	auto b = current().data->peek<Dataset::Base>();
+	auto b = selected().data->peek<Dataset::Base>();
 	for (auto protId : markers) {
 		if (!b->protIndex.count(protId))
 			continue;
@@ -278,7 +292,7 @@ void BnmsTab::setupMarkerMenu()
 
 void BnmsTab::loadComponents()
 {
-	if (!current)
+	if (!haveData())
 		return;
 
 	auto &io = windowState->io();
@@ -301,9 +315,10 @@ void BnmsTab::loadComponents()
 	*/
 
 	// file parsing and storage; something that should _not_ be done here
-	auto p = current().data->peek<Dataset::Proteins>();
-	auto b = current().data->peek<Dataset::Base>();
-	auto &target = current().components;
+	auto &current = selected();
+	auto p = current.data->peek<Dataset::Proteins>();
+	auto b = current.data->peek<Dataset::Base>();
+	auto &target = current.components;
 	std::fill(target.begin(), target.end(), Components{});
 
 	while (!in.atEnd()) {
@@ -344,11 +359,12 @@ void BnmsTab::loadComponents()
 	actionComponentToggle->setChecked(true);
 }
 
-void BnmsTab::updateEnabled()
+bool BnmsTab::updateIsEnabled()
 {
-	bool on = current;
+	bool on = Viewer::updateIsEnabled();
 	setEnabled(on);
 	view->setVisible(on);
+	return on;
 }
 
 BnmsTab::DataState::~DataState()
