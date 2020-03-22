@@ -8,7 +8,6 @@
 
 #include <memory>
 #include <set>
-#include <unordered_map>
 
 class ProfileChart;
 class QMenu;

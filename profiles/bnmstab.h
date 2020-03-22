@@ -9,8 +9,6 @@
 #include <QMenu>
 
 #include <memory>
-#include <set>
-#include <unordered_map>
 
 class BnmsChart;
 class ReferenceChart;

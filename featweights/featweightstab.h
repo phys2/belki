@@ -7,7 +7,6 @@
 
 #include <vector>
 #include <memory>
-#include <cmath>
 
 class QAction;
 
