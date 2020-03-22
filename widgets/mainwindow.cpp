@@ -297,7 +297,7 @@ void MainWindow::setupActions()
 		auto s = new SpawnDialog(data, state, this);
 		// spawn dialog deletes itself, should also kill connection+lambda, right?
 		connect(s, &SpawnDialog::spawn, [this] (auto data, auto& config) {
-			state->hub().spawn(data, config); // TODO change mechanic, dimredTab->currentMethod());
+			state->hub().spawn(data, config);
 		});
 	});
 
