@@ -18,8 +18,8 @@ DistmatTab::DistmatTab(QWidget *parent) :
 	connect(actionToggleDistdir, &QAction::toggled, [this] (bool toggle) {
 		tabState.direction = toggle ? Dataset::Direction::PER_DIMENSION
 		                            : Dataset::Direction::PER_PROTEIN;
-		if (current)
-			current().scene->setDirection(tabState.direction);
+		if (haveData())
+			selected().scene->setDirection(tabState.direction);
 	});
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, "Distance Matrix");
@@ -28,7 +28,7 @@ DistmatTab::DistmatTab(QWidget *parent) :
 	/* propagate initial state */
 	actionToggleDistdir->setChecked(tabState.direction == Dataset::Direction::PER_DIMENSION);
 
-	updateEnabled();
+	updateIsEnabled();
 }
 
 void DistmatTab::setWindowState(std::shared_ptr<WindowState> s)
@@ -48,29 +48,25 @@ void DistmatTab::setWindowState(std::shared_ptr<WindowState> s)
 	});
 	connect(&s->proteins(), &ProteinDB::markersToggled, this, [this] (auto ids, bool present) {
 		// we do not keep track of markers for inactive scenes
-		if (current)
-			current().scene->toggleMarkers(ids, present);
+		if (haveData())
+			selected().scene->toggleMarkers(ids, present);
 	});
 }
 
 void DistmatTab::selectDataset(unsigned id)
 {
-	current = {id, &content[id]};
-	updateEnabled();
-
-	if (!current)
+	bool enabled = selectData(id);
+	if (!enabled)
 		return;
 
-	auto scene = current().scene.get();
+	auto scene = selected().scene.get();
 	scene->setDirection(tabState.direction);
 	view->switchScene(scene);
 }
 
 void DistmatTab::addDataset(Dataset::Ptr data)
 {
-	auto id = data->id();
-	auto &state = content[id]; // emplace (note: ids are never recycled)
-	state.data = data;
+	auto &state = addData<DataState>(data);
 	state.scene = std::make_unique<DistmatScene>(data);
 
 	auto scene = state.scene.get();
@@ -92,8 +88,8 @@ void DistmatTab::setupOrderUI()
 	// signalling
 	connect(orderSelect, QOverload<int>::of(&QComboBox::activated), [this] {
 		windowState->setOrder(orderSelect->currentData().value<Order::Type>());
-		if (current)
-			QtConcurrent::run([d=current().data,o=windowState->order] {
+		if (haveData())
+			QtConcurrent::run([d=selected().data,o=windowState->order] {
 				d->prepareOrder(o);
 			});
 	});
@@ -106,9 +102,10 @@ void DistmatTab::setupOrderUI()
 	orderBar->deleteLater();
 }
 
-void DistmatTab::updateEnabled()
+bool DistmatTab::updateIsEnabled()
 {
-	bool on = current;
+	bool on = Viewer::updateIsEnabled();
 	setEnabled(on);
 	view->setVisible(on);
+	return on;
 }

@@ -46,12 +46,12 @@ DimredTab::DimredTab(QWidget *parent) :
 		tabState.preferredDisplay = name;
 	});
 
-	updateEnabled();
+	updateIsEnabled();
 }
 
 DimredTab::~DimredTab()
 {
-	view->releaseChart(); // avoid double delete
+	deselectDataset(); // avoid double delete
 }
 
 void DimredTab::setWindowState(std::shared_ptr<WindowState> s)
@@ -68,31 +68,31 @@ void DimredTab::setWindowState(std::shared_ptr<WindowState> s)
 
 void DimredTab::selectDataset(unsigned id)
 {
-	if (current)
-		disconnect(current().data.get());
-
-	current = {id, &content[id]};
+	bool enabled = selectData(id);
 
 	updateMenus();
-	bool enabled = updateEnabled();
+	if (!enabled)
+		return;
 
-	if (enabled) {
-		view->switchChart(current().scene.get());
+	/* hook into dataset updates (specify receiver so signal is cleaned up!) */
+	connect(selected().data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
+		if (!(touched & Dataset::Touch::DISPLAY))
+			return;
+		updateMenus();
+	});
 
-		/* hook into dataset updates (specify receiver so signal is cleaned up!) */
-		connect(current().data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
-			if (!(touched & Dataset::Touch::DISPLAY))
-				return;
-			updateMenus();
-		});
-	}
+	view->switchChart(selected().scene.get());
+}
+
+void DimredTab::deselectDataset()
+{
+	view->releaseChart();
+	Viewer::deselectDataset();
 }
 
 void DimredTab::addDataset(Dataset::Ptr data)
 {
-	auto id = data->id();
-	auto &state = content[id]; // emplace (note: ids are never recycled)
-	state.data = data;
+	auto &state = addData<DataState>(data);
 	state.scene = std::make_unique<Chart>(data, view->getConfig());
 
 	auto scene = state.scene.get();
@@ -105,16 +105,17 @@ void DimredTab::addDataset(Dataset::Ptr data)
 
 void DimredTab::selectDisplay(const QString &name)
 {
-	if (!current || name.isEmpty())
+	if (!haveData() || name.isEmpty())
 		return;
 	transformSelect->setCurrentText(name);
 
-	if (current().displayName == name)
+	auto &current = selected();
+	if (current.displayName == name)
 		return;
 
-	auto d = current().data->peek<Dataset::Representations>();
-	current().scene->display(d->displays.at(name));
-	current().displayName = name;
+	auto d = current.data->peek<Dataset::Representations>();
+	current.scene->display(d->displays.at(name));
+	current.displayName = name;
 }
 
 QString DimredTab::currentMethod() const
@@ -123,10 +124,10 @@ QString DimredTab::currentMethod() const
 }
 
 void DimredTab::computeDisplay(const QString &name, const QString &id) {
-	if (!current)
+	if (!haveData())
 		return;
 	tabState.preferredDisplay = id;
-	auto d = current().data;
+	auto d = selected().data;
 	QtConcurrent::run([d,name] { d->computeDisplay(name); });
 }
 
@@ -136,10 +137,10 @@ void DimredTab::updateMenus() {
 	for (auto a : {actionCycleForward, actionCycleBackward})
 		a->setEnabled(false);
 
-	if (!current)
+	if (!haveData())
 		return;
 
-	auto d = current().data->peek<Dataset::Representations>();
+	auto d = selected().data->peek<Dataset::Representations>();
 	for (auto &[name, _] : d->displays)
 		transformSelect->addItem(name);
 
@@ -163,7 +164,7 @@ void DimredTab::updateMenus() {
 	if (d->displays.empty())
 		return; // nothing available
 
-	auto previous = current().displayName;
+	auto previous = selected().displayName;
 	auto least = d->displays.rbegin()->first;
 	for (auto &i : {tabState.preferredDisplay, previous, least}) {
 		if (d->displays.count(i)) {
@@ -173,12 +174,13 @@ void DimredTab::updateMenus() {
 	}
 }
 
-bool DimredTab::updateEnabled()
+bool DimredTab::updateIsEnabled()
 {
-	bool on = current;
-	on = on && current().data->peek<Dataset::Base>()->dimensions.count() > 2;
+	bool on = Viewer::updateIsEnabled();
+	on = on && selected().data->peek<Dataset::Base>()->dimensions.count() > 2;
 
 	setEnabled(on);
 	view->setVisible(on);
+
 	return on;
 }

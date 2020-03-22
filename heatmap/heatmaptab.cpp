@@ -17,18 +17,18 @@ HeatmapTab::HeatmapTab(QWidget *parent) :
 	/* connect toolbar actions */
 	connect(actionToggleSingleCol, &QAction::toggled, [this] (bool toggle) {
 		tabState.singleColumn = toggle;
-		if (current)
+		if (haveData())
 			view->setColumnMode(toggle);
 	});
 	connect(actionSavePlot, &QAction::triggered, [this] {
-		if (current)
-			emit exportRequested(current().scene.get(), "Heatmap");
+		if (haveData())
+			emit exportRequested(selected().scene.get(), "Heatmap");
 	});
 
 	/* propagate initial state */
 	actionToggleSingleCol->setChecked(tabState.singleColumn);
 
-	updateEnabled();
+	updateIsEnabled();
 }
 
 void HeatmapTab::setWindowState(std::shared_ptr<WindowState> s)
@@ -48,28 +48,24 @@ void HeatmapTab::setWindowState(std::shared_ptr<WindowState> s)
 	});
 	connect(&s->proteins(), &ProteinDB::markersToggled, this, [this] (auto ids, bool present) {
 		// we do not keep track of markers for inactive scenes
-		if (current)
-			current().scene->toggleMarkers(ids, present);
+		if (haveData())
+			selected().scene->toggleMarkers(ids, present);
 	});
 }
 
 void HeatmapTab::selectDataset(unsigned id)
 {
-	current = {id, &content[id]};
-	updateEnabled();
-
-	if (!current)
+	bool enabled = selectData(id);
+	if (!enabled)
 		return;
 
-	view->switchScene(current().scene.get());
+	view->switchScene(selected().scene.get());
 	view->setColumnMode(tabState.singleColumn);
 }
 
 void HeatmapTab::addDataset(Dataset::Ptr data)
 {
-	auto id = data->id();
-	auto &state = content[id]; // emplace (note: ids are never recycled)
-	state.data = data;
+	auto &state = addData<DataState>(data);
 	state.scene = std::make_unique<HeatmapScene>(data);
 
 	auto scene = state.scene.get();
@@ -91,8 +87,8 @@ void HeatmapTab::setupOrderUI()
 	// signalling
 	connect(orderSelect, QOverload<int>::of(&QComboBox::activated), [this] {
 		windowState->setOrder(orderSelect->currentData().value<Order::Type>());
-		if (current)
-			QtConcurrent::run([d=current().data,o=windowState->order] {
+		if (haveData())
+			QtConcurrent::run([d=selected().data,o=windowState->order] {
 				d->prepareOrder(o);
 			});
 	});
@@ -105,9 +101,10 @@ void HeatmapTab::setupOrderUI()
 	orderBar->deleteLater();
 }
 
-void HeatmapTab::updateEnabled()
+bool HeatmapTab::updateIsEnabled()
 {
-	bool on = current;
+	bool on = Viewer::updateIsEnabled();
 	setEnabled(on);
 	view->setVisible(on);
+	return on;
 }

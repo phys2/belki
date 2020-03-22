@@ -4,18 +4,11 @@
 #include "ui_dimredtab.h"
 #include "viewer.h"
 
-#include <QString>
-#include <QVector>
-#include <QColor>
-#include <memory>
-
-class Dataset;
 class Chart;
 
 class DimredTab : public Viewer, private Ui::DimredTab
 {
 	Q_OBJECT
-
 public:
 	explicit DimredTab(QWidget *parent = nullptr);
 	~DimredTab() override;
@@ -23,20 +16,24 @@ public:
 	void setWindowState(std::shared_ptr<WindowState> s) override;
 
 	void selectDataset(unsigned id) override;
+	void deselectDataset() override;
 	void addDataset(Dataset::Ptr data) override;
 
 	QString currentMethod() const;
 
 protected:
 	struct DataState : public Viewer::DataState {
+		using Viewer::DataState::DataState;
 		QString displayName;
 		std::unique_ptr<Chart> scene;
 	};
 
+	bool updateIsEnabled() override;
+
+	DataState &selected() { return selectedAs<DataState>(); }
 	void selectDisplay(const QString& name);
 	void computeDisplay(const QString &name, const QString &id);
 	void updateMenus();
-	bool updateEnabled();
 
 	struct {
 		// TODO this is crap. Have a list of preferences instead,
@@ -44,9 +41,6 @@ protected:
 		// respected regardless of finishing order
 		QString preferredDisplay; // init to none
 	} tabState;
-
-	ContentMap<DataState> content;
-	Current<DataState> current;
 };
 
 #endif

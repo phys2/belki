@@ -31,23 +31,23 @@ ProfileTab::ProfileTab(QWidget *parent) :
 	});
 	connect(actionShowLabels, &QAction::toggled, [this] (bool on) {
 		tabState.showLabels = on;
-		if (current) current().scene->toggleLabels(on);
+		if (haveData()) selected().scene->toggleLabels(on);
 	});
 	connect(actionShowAverage, &QAction::toggled, [this] (bool on) {
 		tabState.showAverage = on;
-		if (current) current().scene->toggleAverage(on);
+		if (haveData()) selected().scene->toggleAverage(on);
 	});
 	connect(actionShowQuantiles, &QAction::toggled, [this] (bool on) {
 		tabState.showQuantiles = on;
-		if (current) current().scene->toggleQuantiles(on);
+		if (haveData()) selected().scene->toggleQuantiles(on);
 	});
 	connect(actionShowIndividual, &QAction::toggled, [this] (bool on) {
-		if (current) current().scene->toggleIndividual(on);
+		if (haveData()) selected().scene->toggleIndividual(on);
 	});
 	connect(actionLogarithmic, &QAction::toggled, [this] (bool on) {
-		if (current) {
-			current().logSpace = on;
-			current().scene->toggleLogSpace(on);
+		if (haveData()) {
+			selected().logSpace = on;
+			selected().scene->toggleLogSpace(on);
 		}
 	});
 
@@ -55,19 +55,23 @@ ProfileTab::ProfileTab(QWidget *parent) :
 	auto zoomReset = new QShortcut(this);
 	zoomReset->setKey({"Shift+z"});
 	connect(zoomReset, &QShortcut::activated, [this] {
-		if (current)
-			current().scene->zoomReset();
+		if (haveData())
+			selected().scene->zoomReset();
 	});
 
-	updateEnabled();
+	updateIsEnabled();
+}
+
+ProfileTab::~ProfileTab()
+{
+	deselectDataset(); // avoid double delete
 }
 
 void ProfileTab::setWindowState(std::shared_ptr<WindowState> s)
 {
 	Viewer::setWindowState(s);
 	connect(&s->proteins(), &ProteinDB::markersToggled, this, [this] {
-		if (current)
-			rebuildPlot();
+		rebuildPlot();
 	});
 }
 
@@ -78,30 +82,32 @@ void ProfileTab::setProteinModel(QAbstractItemModel *m)
 
 void ProfileTab::selectDataset(unsigned id)
 {
-	current = {id, &content[id]};
-	updateEnabled();
-
-	if (!current)
+	bool enabled = selectData(id);
+	if (!enabled)
 		return;
 
 	// pass guiState onto chart
-	auto scene = current().scene.get();
+	auto scene = selected().scene.get();
 	rebuildPlot();  // TODO temporary hack
 	scene->toggleLabels(tabState.showLabels);
 	scene->toggleAverage(tabState.showAverage);
 	scene->toggleQuantiles(tabState.showQuantiles);
 
 	// apply datastate
-	actionLogarithmic->setChecked(current().logSpace);
+	actionLogarithmic->setChecked(selected().logSpace);
 
 	view->setChart(scene);
 }
 
+void ProfileTab::deselectDataset()
+{
+	view->setChart(new QtCharts::QChart()); // release ownership
+	Viewer::deselectDataset();
+}
+
 void ProfileTab::addDataset(Dataset::Ptr data)
 {
-	auto id = data->id();
-	auto &state = content[id]; // emplace (note: ids are never recycled)
-	state.data = data;
+	auto &state = addData<DataState>(data);
 	state.scene = std::make_unique<ProfileChart>(data, false, true);
 	if (data->peek<Dataset::Base>()->logSpace) {
 		state.logSpace = true;
@@ -144,10 +150,12 @@ std::unique_ptr<QMenu> ProfileTab::proteinMenu(ProteinId id)
 
 void ProfileTab::rebuildPlot()
 {
-	auto scene = current().scene.get();
+	if (!haveData())
+		return;
 
+	auto scene = selected().scene.get();
 	scene->clear();
-	auto markers = current().data->peek<Dataset::Proteins>()->markers; // copy
+	auto markers = selected().data->peek<Dataset::Proteins>()->markers; // copy
 	for (auto m : markers)
 		scene->addSample(m, true);
 	for (auto e : tabState.extras) {
@@ -202,11 +210,12 @@ void ProfileTab::setupProteinBox()
 	});*/
 }
 
-void ProfileTab::updateEnabled()
+bool ProfileTab::updateIsEnabled()
 {
-	bool on = current;
+	bool on = Viewer::updateIsEnabled();
 	setEnabled(on);
 	view->setVisible(on);
+	return on;
 }
 
 QVariant ProfileTab::CustomCheckedProxyModel::data(const QModelIndex &index, int role) const

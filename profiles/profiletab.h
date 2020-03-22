@@ -19,17 +19,20 @@ class ProfileTab : public Viewer, private Ui::ProfileTab
 
 public:
 	explicit ProfileTab(QWidget *parent = nullptr);
+	~ProfileTab();
 
 	void setWindowState(std::shared_ptr<WindowState> s) override;
 	void setProteinModel(QAbstractItemModel *) override;
 
 	void selectDataset(unsigned id) override;
+	void deselectDataset() override;
 	void addDataset(Dataset::Ptr data) override;
 
 	bool eventFilter(QObject *watched, QEvent *event) override;
 
 protected:
 	struct DataState : public Viewer::DataState {
+		using Viewer::DataState::DataState;
 		std::unique_ptr<ProfileChart> scene;
 		bool logSpace = false;
 	};
@@ -43,10 +46,12 @@ protected:
 		std::set<ProteinId> &marked;
 	};
 
+	bool updateIsEnabled() override;
+
+	DataState &selected() { return selectedAs<DataState>(); }
 	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
 	void rebuildPlot(); // TODO temporary hack
 	void toggleExtra(ProteinId id);
-	void updateEnabled();
 	void setupProteinBox();
 
 	CustomCheckedProxyModel proteinModel;
@@ -57,9 +62,6 @@ protected:
 		bool showAverage = false;
 		bool showQuantiles = false;
 	} tabState;
-
-	ContentMap<DataState> content;
-	Current<DataState> current;
 };
 
 #endif

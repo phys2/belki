@@ -42,6 +42,7 @@ public slots:
 	void openProject(const QString &filename);
 
 	void addDataset(std::shared_ptr<Dataset> dataset);
+	void removeDataset(unsigned id);
 	void addProtein(ProteinId id, const Protein &protein);
 	void flipMarker(QModelIndex i);
 	void toggleMarker(ProteinId id, bool present);

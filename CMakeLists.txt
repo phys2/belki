@@ -74,7 +74,7 @@ target_sources(${APP_NAME} PRIVATE
 	model.h
 	proteindb.h proteindb.cpp
 	utils.h
-	viewer.h
+	viewer.h viewer.cpp
 	windowstate.h windowstate.cpp
 	)
 

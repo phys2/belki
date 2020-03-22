@@ -28,22 +28,20 @@ FeatweightsTab::FeatweightsTab(QWidget *parent) :
 		auto text = QString("Score thresh.: <b>%1</b> ")
 		        .arg(QString::number(toDouble(v), 'f', 2));
 		scoreLabel->setText(text);
-		if (!current)
+		if (!haveData())
 			return;
 
-		current().scoreThreshold = v;
+		selected().scoreThreshold = v;
 		bool isMaximum = v == scoreSlider->maximum(); // if so, disable cutoff
-		current().scene->applyScoreThreshold(toDouble(isMaximum ? std::nan("") : v));
+		selected().scene->applyScoreThreshold(toDouble(isMaximum ? std::nan("") : v));
 	});
 	connect(actionToggleChart, &QAction::toggled, [this] (bool useAlternate) {
 		tabState.useAlternate = useAlternate;
-		if (current)
-			current().scene->toggleImage(useAlternate);
+		if (haveData()) selected().scene->toggleImage(useAlternate);
 	});
 	connect(weightingSelect, QOverload<int>::of(&QComboBox::activated), [this] () {
 		tabState.weighting = weightingSelect->currentData().value<FeatweightsScene::Weighting>();
-		if (current)
-			current().scene->setWeighting(tabState.weighting);
+		if (haveData()) selected().scene->setWeighting(tabState.weighting);
 	});
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, "Distance Matrix");
@@ -54,7 +52,7 @@ FeatweightsTab::FeatweightsTab(QWidget *parent) :
 	weightingSelect->setCurrentIndex(weightingSelect->findData(
 	                                     QVariant::fromValue(FeatweightsScene::Weighting::OFFSET)));
 
-	updateEnabled();
+	updateIsEnabled();
 }
 
 void FeatweightsTab::setWindowState(std::shared_ptr<WindowState> s)
@@ -64,28 +62,26 @@ void FeatweightsTab::setWindowState(std::shared_ptr<WindowState> s)
 	/* connect state change signals */
 	auto ws = s.get();
 	connect(ws, &WindowState::colorsetUpdated, this, [this] () {
-		if (current)
-			current().scene->updateColorset(windowState->standardColors);
+		if (haveData())
+			selected().scene->updateColorset(windowState->standardColors);
 	});
 	connect(&s->proteins(), &ProteinDB::markersToggled, this, [this] (auto ids, bool present) {
 		// we do not keep track of markers for inactive scenes
-		if (current)
-			current().scene->toggleMarkers(ids, present);
+		if (haveData())
+			selected().scene->toggleMarkers(ids, present);
 	});
 }
 
 void FeatweightsTab::selectDataset(unsigned id)
 {
-	current = {id, &content[id]};
-	updateEnabled();
-
-	if (!current)
+	bool enabled = selectData(id);
+	if (!enabled)
 		return;
 
 	updateScoreSlider();
 
 	// pass guiState onto scene
-	auto scene = current().scene.get();
+	auto scene = selected().scene.get();
 	scene->updateColorset(windowState->standardColors);
 	scene->setWeighting(weightingSelect->currentData().value<FeatweightsScene::Weighting>());
 	scene->toggleImage(tabState.useAlternate);
@@ -95,9 +91,7 @@ void FeatweightsTab::selectDataset(unsigned id)
 
 void FeatweightsTab::addDataset(Dataset::Ptr data)
 {
-	auto id = data->id();
-	auto &state = content[id]; // emplace (note: ids are never recycled)
-	state.data = data;
+	auto &state = addData<DataState>(data);
 	state.scoreThreshold = (data->peek<Dataset::Base>()->hasScores() ?
 	                            data->peek<Dataset::Base>()->scoreRange.max : 0);
 	state.scene = std::make_unique<FeatweightsScene>(data);
@@ -127,7 +121,9 @@ void FeatweightsTab::setupWeightingUI()
 
 void FeatweightsTab::updateScoreSlider()
 {
-	auto d = current().data->peek<Dataset::Base>();
+	if (!haveData())
+		return;
+	auto d = selected().data->peek<Dataset::Base>();
 
 	for (auto i : scoreActions)
 		i->setVisible(d->hasScores());
@@ -138,12 +134,13 @@ void FeatweightsTab::updateScoreSlider()
 	scoreSlider->setMinimum(toInt(d->scoreRange.min));
 	scoreSlider->setMaximum(toInt(d->scoreRange.max));
 	scoreSlider->setTickInterval(scoreSlider->maximum() / 10); // TODO round numbers
-	scoreSlider->setValue(toInt(current().scoreThreshold));
+	scoreSlider->setValue(toInt(selected().scoreThreshold));
 }
 
-void FeatweightsTab::updateEnabled()
+bool FeatweightsTab::updateIsEnabled()
 {
-	bool on = current;
+	bool on = Viewer::updateIsEnabled();
 	setEnabled(on);
 	view->setVisible(on);
+	return on;
 }

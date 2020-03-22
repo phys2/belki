@@ -22,15 +22,18 @@ class BnmsTab : public Viewer, private Ui::BnmsTab
 
 public:
 	explicit BnmsTab(QWidget *parent = nullptr);
+	~BnmsTab();
 
 	void setWindowState(std::shared_ptr<WindowState> s) override;
 	void setProteinModel(QAbstractItemModel *) override;
 
 	void selectDataset(unsigned id) override;
+	void deselectDataset() override;
 	void addDataset(Dataset::Ptr data) override;
 
 protected:
 	struct DataState : public Viewer::DataState {
+		using Viewer::DataState::DataState;
 		~DataState(); // for unique_ptr
 		std::unique_ptr<BnmsChart> scene;
 		std::unique_ptr<ReferenceChart> refScene;
@@ -47,13 +50,15 @@ protected:
 		Qt::ItemFlags flags(const QModelIndex &index) const override;
 	};
 
+	bool updateIsEnabled() override;
+
+	DataState &selected() { return selectedAs<DataState>(); }
 	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
 	void toggleComponentMode(bool on); // call through actionComponentToggle
 	void setReference(ProteinId id);
 	void addToHistory(ProteinId id);
 	void setupMarkerMenu();
 	void loadComponents();
-	void updateEnabled();
 
 	struct {
 		ProteinId reference = 0; // first protein
@@ -66,9 +71,6 @@ protected:
 
 	NoCheckstateProxyModel proteinModel;
 	QMenu historyMenu, markerMenu;
-
-	ContentMap<DataState> content;
-	Current<DataState> current;
 };
 
 #endif

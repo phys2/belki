@@ -34,6 +34,7 @@ public slots:
 	void showHelp();
 	void setName(const QString &name, const QString &path);
 	void setDataset(Dataset::Ptr data);
+	void removeDataset(unsigned id);
 	void selectStructure(int id);
 
 signals:
@@ -44,6 +45,7 @@ signals:
 	void openProjectRequested(QString filename);
 	void quitApplicationRequested();
 	void datasetSelected(unsigned id);
+	void datasetDeselected();
 	void markerFlipped(QModelIndex i);
 	void markerToggled(ProteinId id, bool present);
 

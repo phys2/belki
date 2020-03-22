@@ -22,18 +22,18 @@ public:
 
 protected:
 	struct DataState : public Viewer::DataState {
+		using Viewer::DataState::DataState;
 		std::unique_ptr<HeatmapScene> scene;
 	};
 
+	bool updateIsEnabled() override;
+
+	DataState &selected() { return selectedAs<DataState>(); }
 	void setupOrderUI();
-	void updateEnabled();
 
 	struct {
 		bool singleColumn = false;
 	} tabState;
-
-	ContentMap<DataState> content;
-	Current<DataState> current;
 };
 
 #endif // HEATMAPTAB_H

@@ -34,11 +34,13 @@ signals:
 	void projectNameChanged(const QString &name, const QString &path);
 	void message(const GuiMessage &message);
 	void newDataset(DataPtr data);
+	void datasetRemoved(unsigned id);
 
 public slots:
 	void updateProjectName(const QString &name, const QString &path);
 	void spawn(ConstDataPtr source, const DatasetConfiguration& config);
 	void importDataset(const QString &filename, const QString featureCol = {});
+	void removeDataset(unsigned id);
 	void openProject(const QString &filename);
 	void saveProject(QString filename = {});
 
@@ -56,7 +58,7 @@ protected:
 
 	struct : public RWLockable {
 		Project project;
-		std::map<unsigned, DataPtr> sets;
+		std::map<unsigned, DataPtr> sets; // Note: ordered map on purpose; code relies on it!
 		unsigned nextId = 1;
 	} data;
 };
