@@ -92,6 +92,7 @@ void MainWindow::setupModelViews()
 	datasetTree->setFrameShape(QFrame::Shape::NoFrame);
 	datasetTree->setSelectionMode(QTreeView::SelectionMode::NoSelection);
 	datasetTree->setItemsExpandable(false);
+	datasetTree->setRootIsDecorated(false); // avoid impression of common root to top-level datasets
 
 	/* setup context menu on datasets */
 	datasetTree->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
