@@ -76,11 +76,11 @@ ProteinId ProteinDB::add(const QString &fullname)
 
 bool ProteinDB::addDescription(const QString& name, const QString& desc)
 {
+	QWriteLocker l(&data.l);
 	try {
-		data.l.lockForWrite();
 		auto id = data.find(name);
 		data.proteins[id].description = desc;
-		data.l.unlock();
+		l.unlock();
 		emit proteinChanged(id);
 		return true;
 	} catch (std::out_of_range&) {
