@@ -62,14 +62,20 @@ void ProfileChart::setupSignals()
 
 void ProfileChart::setupAxes(const Features::Range &range)
 {
-	ax = new QtCharts::QCategoryAxis;
+	/* X axis – used for ticks */
+	ax = new QtCharts::QValueAxis;
 	ax->setRange(0, labels.size() - 1);
+	ax->setTickCount(labels.size());
+	ax->setLabelsVisible(false);
+	// additionally, make labels tiny as they occupy space
+	QFont tiny;
+	tiny.setPixelSize(1);
+	ax->setLabelsFont(tiny);
 	addAxis(ax, Qt::AlignBottom);
-	ax->hide();
 
 	if (!small) {
-		/* prepare a secondary axis that will show labels when requested.
-		 * smoother than show/hiding the primary axis w/ labels */
+		/* prepare (not add) a secondary axis that will show labels when requested.
+		 * see toggleLabels() for more explanation */
 		axC = new QtCharts::QCategoryAxis;
 
 		bool sparse = labels.size() > 50;
@@ -86,6 +92,7 @@ void ProfileChart::setupAxes(const Features::Range &range)
 		}
 	}
 
+	/* Y axis */
 	ay = new QtCharts::QValueAxis;
 	if (small) {
 		ay->setLabelFormat("%.2g");
@@ -140,7 +147,10 @@ void ProfileChart::setupSeries()
 
 	/* TODO: rework this so we only setup what is seen on screen, and use
 	 * insertSeries() on toggles. Note that we might also need a legendmarker
-	 * sorting functionality. */
+	 * sorting functionality.
+	 * This is important as it will greatly improve performance when showing
+	 * stats-only plots of a huge number of proteins.
+	 */
 
 	// compute stats always for large plots, but also when avg. is shown in small plot
 	if ((showCategories.count(SeriesCategory::AVERAGE) || !small) && stats.mean.empty()) {
@@ -390,7 +400,12 @@ void ProfileChart::toggleHighlight(int index)
 }
 
 void ProfileChart::toggleLabels(bool on) {
-	/* It appears smoother/faster to add/remove a secondary axis than to show/hide */
+	/* Note: We cannot just use a single axis and set visibility of labels as
+	 * the space occupied by the labels is not freed when hiding them. So we use
+	 * need to show/hide the full axis (and we need a second one as this would
+	 * also take away ticks). It appears smoother/faster to add/remove the
+	 * secondary axis though than to simply show/hiding it.
+	 */
 	if (axes().contains(axC) == on)
 		return;
 	if (on)

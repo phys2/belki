@@ -88,7 +88,7 @@ protected:
 	} stats;
 
 	// axes
-	QtCharts::QCategoryAxis *ax;
+	QtCharts::QValueAxis *ax;
 	QtCharts::QCategoryAxis *axC;
 	QtCharts::QValueAxis *ay;
 	QtCharts::QLogValueAxis *ayL;
