@@ -15,9 +15,9 @@ class ProfileWidget : public QWidget, private Ui::ProfileWidget
 
 public:
 	explicit ProfileWidget(QWidget *parent = nullptr);
+	void init(std::shared_ptr<WindowState> state);
 
 public slots:
-	void setState(std::shared_ptr<WindowState> s) { state = s; }
 	void setData(std::shared_ptr<Dataset> data);
 	void updateDisplay(std::vector<ProteinId> proteins, const QString &title = {});
 

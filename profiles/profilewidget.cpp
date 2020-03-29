@@ -35,7 +35,18 @@ ProfileWidget::ProfileWidget(QWidget *parent) :
 
 	// by default reduce long protein sets
 	actionAvoidScrolling->setChecked(true);
+	connect(actionAvoidScrolling, &QAction::toggled, [this] { updateDisplay(); });
 
+	setDisabled(true);
+}
+
+void ProfileWidget::init(std::shared_ptr<WindowState> s)
+{
+	if (state)
+		throw std::runtime_error("ProfileWidget::init() called twice");
+	state = s;
+
+	/* enable actions that need state */
 	connect(actionAddToMarkers, &QAction::triggered, [this] {
 		state->proteins().toggleMarkers(proteins, true);
 		updateDisplay();
@@ -55,17 +66,13 @@ ProfileWidget::ProfileWidget(QWidget *parent) :
 		if (chart)
 			new ProfileWindow(state, chart, this->window());
 	});
-	connect(actionAvoidScrolling, &QAction::toggled, [this] {
-		updateDisplay();
-	});
 
 	/* setup protein menu */
 	connect(proteinList, &QTextBrowser::anchorClicked, [this] (const QUrl& link) {
-		if (state && link.scheme() == "protein")
+		if (link.scheme() == "protein")
 			state->proteinMenu(link.path().toUInt())->exec(QCursor::pos());
 	});
 
-	setDisabled(true);
 }
 
 void ProfileWidget::setData(std::shared_ptr<Dataset> dataset)
@@ -164,7 +171,7 @@ void ProfileWidget::updateDisplay()
 
 	// obtain annotations, if available
 	auto s = data->peek<Dataset::Structure>(); // keep while we operate with Annot*!
-	auto annotations = s->fetch(state->annotations);
+	auto annotations = (state ? s->fetch(state->annotations) : nullptr);
 
 	// compose list
 	QString content;

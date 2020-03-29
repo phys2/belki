@@ -35,7 +35,7 @@ MainWindow::MainWindow(std::shared_ptr<WindowState> state) :
     state(state)
 {
 	setupUi(this);
-	profiles->setState(state);
+	profiles->init(state);
 	setupModelViews(); // before setupTabs(), tabs may need models
 	setupToolbar();
 	setupTabs();
