@@ -65,7 +65,12 @@ void ProfileChart::setupAxes(const Features::Range &range)
 	/* X axis – used for ticks */
 	ax = new QtCharts::QValueAxis;
 	ax->setRange(0, labels.size() - 1);
-	ax->setTickCount(labels.size());
+	if (small) {
+		ax->setTickCount(2);
+		ax->setMinorTickCount(labels.size() - 2);
+	} else {
+		ax->setTickCount(labels.size());
+	}
 	ax->setLabelsVisible(false);
 	// additionally, make labels tiny as they occupy space
 	QFont tiny;
