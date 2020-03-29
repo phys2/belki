@@ -72,10 +72,10 @@ void ProfileWidget::updateDisplay(std::vector<ProteinId> newProteins, const QStr
 	if (chart)
 		chart->setTitle(title);
 
-	update();
+	updateDisplay();
 }
 
-void ProfileWidget::update()
+void ProfileWidget::updateDisplay()
 {
 	/* clear plot */
 	if (chart)

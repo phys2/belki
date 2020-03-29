@@ -22,7 +22,7 @@ public slots:
 	void updateDisplay(std::vector<ProteinId> proteins, const QString &title = {});
 
 protected:
-	void update();
+	void updateDisplay();
 
 	std::vector<ProteinId> proteins;
 
