@@ -112,8 +112,8 @@ void BnmsChart::applyRanking(std::vector<components::DistIndexPair> candidates)
 
 QString BnmsChart::titleOf(unsigned int index, const QString &name, bool isMarker) const
 {
-	if (index == reference) // do not designate, we use "marker" state for bold drawing
-		return QString("<b>%1</b>").arg(name);
+	if (index == reference)
+		return QString("<b>%1</b>").arg(name); // do not further designate
 
 	auto plain = ProfileChart::titleOf(index, name, isMarker);
 	auto score = scores.at(index);

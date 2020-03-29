@@ -322,6 +322,8 @@ void ProfileChart::setupSeries()
 			s->replace(logSpace ? featurePoints[index] : d->featurePoints[index]);
 
 			auto lm = legend()->markers(s).first();
+			if (!isMarker)
+				lm->setShape(QtCharts::QLegend::MarkerShape::MarkerShapeCircle);
 
 			/* allow highlight through series/marker hover */
 			connect(s, &QtCharts::QLineSeries::hovered, [this,i=index] (auto, bool on) {
@@ -355,9 +357,9 @@ void ProfileChart::setupSeries()
 	}
 }
 
-QString ProfileChart::titleOf(unsigned, const QString &name, bool isMarker) const
+QString ProfileChart::titleOf(unsigned, const QString &name, bool) const
 {
-	return (isMarker ? "<small>★</small>" : "") + name;
+	return name;
 }
 
 QColor ProfileChart::colorOf(unsigned, const QColor &color, bool isMarker) const

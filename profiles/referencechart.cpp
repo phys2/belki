@@ -169,8 +169,8 @@ void ReferenceChart::repopulate()
 
 QString ReferenceChart::titleOf(unsigned int index, const QString &name, bool isMarker) const
 {
-	if (index == reference) // do not designate, we use "marker" state for bold drawing
-		return QString("<b>%1</b>").arg(name);
+	if (index == reference)
+		return QString("<b>%1</b>").arg(name); // do not further designate
 	return ProfileChart::titleOf(index, name, isMarker);
 }
 
