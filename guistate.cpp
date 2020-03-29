@@ -12,6 +12,8 @@
 #include <QMessageBox>
 #include <QWidgetAction>
 #include <QDesktopServices>
+#include <QGuiApplication>
+#include <QClipboard>
 
 GuiState::GuiState(DataHub &hub)
     : hub(hub), proteins(hub.proteins),
@@ -65,10 +67,10 @@ GuiState::~GuiState()
 std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
 {
 	auto p = proteins.peek();
-	auto title = p->proteins[id].name;
-	auto ret = std::make_unique<QMenu>(title);
+	auto name = p->proteins[id].name;
+	auto ret = std::make_unique<QMenu>(name);
 	// TODO icon based on color
-	auto label = new QLabel(title);
+	auto label = new QLabel(name);
 	QString style{"QLabel {background-color: %2; color: white; font-weight: bold}"};
 	label->setStyleSheet(style.arg(p->proteins[id].color.name()));
 	label->setAlignment(Qt::AlignCenter);
@@ -87,6 +89,9 @@ std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
 		});
 	}
 	ret->addSeparator();
+	ret->addAction(QIcon::fromTheme("edit-copy"), "Copy name to clipboard", [name] {
+		QGuiApplication::clipboard()->setText(name);
+	});
 	auto url = QString{"https://uniprot.org/uniprot/%1_%2"}
 	           .arg(p->proteins[id].name, p->proteins[id].species);
 	ret->addAction(QIcon::fromTheme("globe"), "Lookup in Uniprot", [url] {
