@@ -38,6 +38,7 @@ public:
 
 	bool addMarker(ProteinId id);
 	bool removeMarker(ProteinId id);
+	void toggleMarkers(const std::vector<ProteinId> &ids, bool on);
 	size_t importMarkers(const std::vector<QString> &names);
 	void clearMarkers();
 

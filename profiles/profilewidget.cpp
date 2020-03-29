@@ -6,6 +6,9 @@
 
 #include <QMenu>
 #include <QCursor>
+#include <QStringList>
+#include <QGuiApplication>
+#include <QClipboard>
 #include <random>
 
 ProfileWidget::ProfileWidget(QWidget *parent) :
@@ -19,23 +22,48 @@ ProfileWidget::ProfileWidget(QWidget *parent) :
 	p.setColor(QPalette::Window, p.color(QPalette::Base));
 	inlet->setPalette(p);
 
-	// setup full view action
-	profileViewButton->setDefaultAction(actionProfileView);
+	/* setup actions */
+	std::map<QToolButton*, QAction*> mapping = {
+	    {profileViewButton, actionProfileView},
+	    {avoidScrollingButton, actionAvoidScrolling},
+	    {copyToClipboardButton, actionCopyToClipboard},
+	    {addToMarkersButton, actionAddToMarkers},
+	    {removeFromMarkersButton, actionRemoveFromMarkers},
+	};
+	for (auto &[btn, action] : mapping)
+		btn->setDefaultAction(action);
+
+	// by default reduce long protein sets
+	actionAvoidScrolling->setChecked(true);
+
+	connect(actionAddToMarkers, &QAction::triggered, [this] {
+		state->proteins().toggleMarkers(proteins, true);
+		updateDisplay();
+	});
+	connect(actionRemoveFromMarkers, &QAction::triggered, [this] {
+		state->proteins().toggleMarkers(proteins, false);
+		updateDisplay();
+	});
+	connect(actionCopyToClipboard, &QAction::triggered, [this] {
+		auto p = state->proteins().peek();
+		QStringList list;
+		for (auto id : proteins)
+			list.append(p->proteins[id].name);
+		QGuiApplication::clipboard()->setText(list.join("\t"));
+	});
 	connect(actionProfileView, &QAction::triggered, [this] {
 		if (chart)
 			new ProfileWindow(state, chart, this->window());
 	});
+	connect(actionAvoidScrolling, &QAction::toggled, [this] {
+		updateDisplay();
+	});
 
-	// setup protein menu
+	/* setup protein menu */
 	connect(proteinList, &QTextBrowser::anchorClicked, [this] (const QUrl& link) {
 		if (state && link.scheme() == "protein")
 			state->proteinMenu(link.path().toUInt())->exec(QCursor::pos());
 	});
-
-	// move button into chart (evil :D)
-	profileViewButton->setParent(plot);
-	profileViewButton->move(4, 4);
-	topBar->deleteLater();
 
 	setDisabled(true);
 }
@@ -71,6 +99,9 @@ void ProfileWidget::updateDisplay(std::vector<ProteinId> newProteins, const QStr
 	proteins = newProteins;
 	if (chart)
 		chart->setTitle(title);
+
+	// avoid accidential misuse, which is also a performance concern
+	actionAddToMarkers->setEnabled(proteins.size() <= 25);
 
 	updateDisplay();
 }
@@ -114,10 +145,11 @@ void ProfileWidget::updateDisplay()
 	testFont.setUnderline(true);
 	auto showMax = size_t(proteinList->contentsRect().height() /
 	        QFontMetrics(testFont).lineSpacing() - 1);
+	actionAvoidScrolling->setEnabled(total > showMax); // indicate if we are reducing or not
 
 	// create format string and reduce set
 	auto text = QString("%1");
-	if (total > showMax) {
+	if (actionAvoidScrolling->isChecked() && total > showMax) {
 		text.append("… ");
 		// shuffle before cutting off
 		std::shuffle(samples.begin(), samples.end(), std::mt19937(0));
@@ -136,7 +168,7 @@ void ProfileWidget::updateDisplay()
 
 	// compose list
 	QString content;
-	// TODO: custom URL with URL handler that leads to protein menu
+	// 'protein' url scheme is internally handled (shows protein menu)
 	QString tpl("<b><a href='protein:%1'>%2</a></b> <small>%3 <i>%4</i></small><br>");
 	for (auto [id, index] : samples) {
 		 // highlight marker proteins

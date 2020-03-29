@@ -120,7 +120,7 @@ bool ProteinDB::readDescriptions(QTextStream in)
 bool ProteinDB::addMarker(ProteinId id)
 {
 	data.l.lockForWrite();
-	auto [at, isnew] = data.markers.insert(id);
+	auto [_, isnew] = data.markers.insert(id);
 	data.l.unlock();
 	if (isnew)
 		emit markersToggled({id}, true);
@@ -137,6 +137,28 @@ bool ProteinDB::removeMarker(ProteinId id)
 	return affected;
 }
 
+void ProteinDB::toggleMarkers(const std::vector<ProteinId> &ids, bool on)
+{
+	std::vector<ProteinId> affected;
+	data.l.lockForWrite();
+	if (on) {
+		for (const auto id : ids) {
+			auto [_, change] = data.markers.insert(id);
+			if (change)
+				affected.push_back(id);
+		}
+	} else {
+		for (const auto id : ids) {
+			auto change = data.markers.erase(id);
+			if (change)
+				affected.push_back(id);
+		}
+	}
+	data.l.unlock();
+	if (!affected.empty())
+		emit markersToggled(affected, on);
+}
+
 size_t ProteinDB::importMarkers(const std::vector<QString> &names)
 {
 	std::vector<ProteinId> wanted;
@@ -145,8 +167,8 @@ size_t ProteinDB::importMarkers(const std::vector<QString> &names)
 
 	std::vector<ProteinId> affected;
 	data.l.lockForWrite();
-	for (const auto &id : wanted) {
-		auto [at, isnew] = data.markers.insert(id);
+	for (const auto id : wanted) {
+		auto [_, isnew] = data.markers.insert(id);
 		if (isnew)
 			affected.push_back(id);
 	}

@@ -165,17 +165,12 @@ void ChartView::keyReleaseEvent(QKeyEvent *event)
 	auto adjustScale = [this] (bool decr) {
 		scaleProteins(decr ? 0.8 : 1.25);
 	};
-	auto adjustCursor = [this] (bool decr) {
-		scaleCursor(decr ? 0.8 : 1.25);
-	};
 
 	if (event->key() == Qt::Key_Plus || event->key() == Qt::Key_Minus) {
 		if (event->modifiers() & Qt::AltModifier)
 			adjustAlpha(event->key() == Qt::Key_Minus);
 		else if (event->modifiers() & Qt::ControlModifier)
 			adjustScale(event->key() == Qt::Key_Minus);
-		else
-			adjustCursor(event->key() == Qt::Key_Minus);
 	}
 
 	if (event->key() == Qt::Key_B)
