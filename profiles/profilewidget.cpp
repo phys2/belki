@@ -199,11 +199,8 @@ void ProfileWidget::updateDisplay()
 	// compose list
 	QString content;
 	// 'protein' url scheme is internally handled (shows protein menu)
-	QString tpl("<b><a href='protein:%1'>%2</a></b> <small>%3 <i>%4</i></small><br>");
+	QString tpl("<b %5><a style='color: black;' href='protein:%1'>%2</a></b> <small>%3 <i>%4</i></small><br>");
 	for (auto [id, index] : samples) {
-		 // highlight marker proteins
-		if (p->markers.count(id))
-			content.append("<small>★</small>");
 		auto &prot = p->proteins[id];
 		QStringList clusters;
 		if (annotations) {
@@ -212,7 +209,14 @@ void ProfileWidget::updateDisplay()
 			                           [&annotations] (QStringList a, unsigned b) {
 			                            return a << annotations->groups.at(b).name; });
 		}
-		content.append(tpl.arg(id).arg(prot.name, clusters.join(", "), prot.description));
+		QString styleAttr;
+		if (p->markers.count(id)) {	// highlight marker proteins
+			auto bgcolor = prot.color;
+			bgcolor.setAlphaF(.33);
+			styleAttr = QString{"style='background-color:%1'"}
+			            .arg(bgcolor.name(QColor::NameFormat::HexArgb));
+		}
+		content.append(tpl.arg(id).arg(prot.name, clusters.join(", "), prot.description).arg(styleAttr));
 	}
 	proteinList->setText(text.arg(content));
 
