@@ -49,11 +49,9 @@ void ProfileWidget::init(std::shared_ptr<WindowState> s)
 	/* enable actions that need state */
 	connect(actionAddToMarkers, &QAction::triggered, [this] {
 		state->proteins().toggleMarkers(proteins, true);
-		updateDisplay();
 	});
 	connect(actionRemoveFromMarkers, &QAction::triggered, [this] {
 		state->proteins().toggleMarkers(proteins, false);
-		updateDisplay();
 	});
 	connect(actionCopyToClipboard, &QAction::triggered, [this] {
 		auto p = state->proteins().peek();
@@ -73,6 +71,8 @@ void ProfileWidget::init(std::shared_ptr<WindowState> s)
 			state->proteinMenu(link.path().toUInt())->exec(QCursor::pos());
 	});
 
+	/* setup updates on protein changes */
+	connect(&state->proteins(), &ProteinDB::markersToggled, this, &ProfileWidget::updateMarkers);
 }
 
 void ProfileWidget::setData(std::shared_ptr<Dataset> dataset)
@@ -111,6 +111,29 @@ void ProfileWidget::updateDisplay(std::vector<ProteinId> newProteins, const QStr
 	actionAddToMarkers->setEnabled(proteins.size() <= 25);
 
 	updateDisplay();
+}
+
+void ProfileWidget::updateMarkers(const std::vector<ProteinId> &ids, bool)
+{
+	if (proteins.empty())
+		return;
+
+	if (proteins.size() == 1) { // easy, but not seldom case: we currently show only one protein
+		for (auto id : ids) {
+			if (id == proteins.front()) {
+				updateDisplay();
+				break;
+			}
+		}
+	} else {
+		std::set affected(ids.begin(), ids.end()); // convert the vector that is typically small
+		for (auto id : proteins) {
+			if (affected.find(id) != affected.end()) {
+				updateDisplay();
+				break;
+			}
+		}
+	}
 }
 
 void ProfileWidget::updateDisplay()

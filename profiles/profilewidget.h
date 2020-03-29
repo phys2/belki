@@ -20,6 +20,7 @@ public:
 public slots:
 	void setData(std::shared_ptr<Dataset> data);
 	void updateDisplay(std::vector<ProteinId> proteins, const QString &title = {});
+	void updateMarkers(const std::vector<ProteinId> &ids, bool present);
 
 protected:
 	void updateDisplay();

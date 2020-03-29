@@ -49,7 +49,7 @@ signals:
 	void message(const GuiMessage &message);
 	void proteinAdded(ProteinId id, const Protein &protein);
 	void proteinChanged(ProteinId id);
-	void markersToggled(const std::vector<ProteinId> &id, bool present);
+	void markersToggled(const std::vector<ProteinId> &ids, bool present);
 	void structureAvailable(unsigned id, QString name, bool select);
 
 protected:
