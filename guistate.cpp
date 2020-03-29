@@ -30,7 +30,7 @@ GuiState::GuiState(DataHub &hub)
 	addStructureItem("Adaptive Mean Shift", ":/icons/type-meanshift.svg", -1);
 
 	/* internal wiring */
-	connect(&markerControl.model, &QStandardItemModel::itemChanged,
+	connect(&markers.model, &QStandardItemModel::itemChanged,
 	        this, &GuiState::handleMarkerChange);
 	connect(io.get(), &FileIO::message, this, &GuiState::displayMessage);
 
@@ -41,7 +41,7 @@ GuiState::GuiState(DataHub &hub)
 	        this, [this] (auto ids, bool present) {
 		auto state = present ? Qt::Checked : Qt::Unchecked;
 		for (auto id : ids)
-			this->markerControl.items.at(id)->setCheckState(state);
+			this->markers.items.at(id)->setCheckState(state);
 	});
 	connect(&proteins, &ProteinDB::structureAvailable, this,
 	        [this,addStructureItem] (unsigned id, QString name, bool select) {
@@ -101,8 +101,8 @@ void GuiState::addWindow()
 	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(state));
 	auto target = it->second;
 	target->installEventFilter(this); // for focus tracking
-	target->setDatasetControlModel(&datasetControl.model);
-	target->setMarkerControlModel(&markerControl.model);
+	target->setDatasetControlModel(&datasets.model);
+	target->setMarkerControlModel(&markers.model);
 	target->setStructureControlModel(&structureModel);
 
 	connect(target, &MainWindow::message, this,
@@ -187,14 +187,14 @@ void GuiState::openProject(const QString &filename)
 void GuiState::addDataset(Dataset::Ptr dataset)
 {
 	auto conf = dataset->config();
-	auto parent = (conf.parent ? datasetControl.items.at(conf.parent)
-	                           : datasetControl.model.invisibleRootItem()); // top level
+	auto parent = (conf.parent ? datasets.items.at(conf.parent)
+	                           : datasets.model.invisibleRootItem()); // top level
 	auto item = new QStandardItem(conf.name);
 	item->setData(dataset->id(), Qt::UserRole);
 	item->setData(QVariant::fromValue(dataset), Qt::UserRole + 1);
 
 	parent->appendRow(item);
-	datasetControl.items[conf.id] = item;
+	datasets.items[conf.id] = item;
 
 	// auto-select
 	auto target = focused();
@@ -205,11 +205,11 @@ void GuiState::addDataset(Dataset::Ptr dataset)
 void GuiState::removeDataset(unsigned id)
 {
 	try {
-		auto item = datasetControl.items.at(id);
+		auto item = datasets.items.at(id);
 		// removing the row deletes the QStandardItem
-		datasetControl.model.removeRow(item->row(),
+		datasets.model.removeRow(item->row(),
 		                               (item->parent() ? item->parent()->index() : QModelIndex{}));
-		datasetControl.items.erase(id);
+		datasets.items.erase(id);
 	} catch (std::out_of_range&) {}
 }
 
@@ -223,11 +223,11 @@ void GuiState::addProtein(ProteinId id, const Protein &protein)
 	item->setCheckState(Qt::Unchecked);
 
 	/* add item to model */
-	markerControl.model.appendRow(item);
-	markerControl.items[id] = item;
+	markers.model.appendRow(item);
+	markers.items[id] = item;
 
 	/* ensure items are sorted in the end, but defer sorting */
-	markerControl.dirty = true;
+	markers.dirty = true;
 	QTimer::singleShot(0, this, &GuiState::sortMarkerModel);
 }
 
@@ -237,7 +237,7 @@ void GuiState::flipMarker(QModelIndex i)
 		return; // didn't click on a row, e.g. clicked on a checkmark
 	while (auto proxy = qobject_cast<const QAbstractProxyModel*>(i.model()))
 		i = proxy->mapToSource(i);
-	auto item = markerControl.model.itemFromIndex(i);
+	auto item = markers.model.itemFromIndex(i);
 	if (!item->isEnabled())
 		return;
 	item->setCheckState(item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked);
@@ -245,7 +245,7 @@ void GuiState::flipMarker(QModelIndex i)
 
 void GuiState::toggleMarker(ProteinId id, bool present)
 {
-	markerControl.items.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
+	markers.items.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 }
 
 void GuiState::handleMarkerChange(QStandardItem *item)
@@ -323,10 +323,10 @@ bool GuiState::shutdown(bool withPrompt)
 
 void GuiState::sortMarkerModel()
 {
-	if (!markerControl.dirty) // already in good state
+	if (!markers.dirty) // already in good state
 		return;
-	markerControl.model.sort(0);
-	markerControl.dirty = false;
+	markers.model.sort(0);
+	markers.dirty = false;
 }
 
 MainWindow *GuiState::focused()

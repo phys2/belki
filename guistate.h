@@ -70,13 +70,13 @@ protected:
 	struct {
 		QStandardItemModel model;
 		std::map<unsigned, QStandardItem*> items;
-	} datasetControl;
+	} datasets;
 
 	struct {
 		QStandardItemModel model;
 		std::unordered_map<ProteinId, QStandardItem*> items;
 		bool dirty = false;
-	} markerControl;
+	} markers;
 
 	QStandardItemModel structureModel;
 };
