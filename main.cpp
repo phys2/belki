@@ -43,8 +43,10 @@ void setupQt()
 	// setup icons we ship as fallback for theme icons
 	QIcon::setFallbackSearchPaths(QIcon::fallbackSearchPaths() << ":/icons");
 	// on non-theme platforms, we need to tell Qt to even _try_
-	if (QIcon::themeName().isEmpty())
-		QIcon::setThemeName("hicolor");
+	if (QIcon::themeName().isEmpty()) {
+		QIcon::setThemeName("breeze"); // our look&feel
+		QIcon::setFallbackThemeName("hicolor"); // default fallback
+	}
 
 	// set application metadata
 	QApplication::setApplicationName("Belki");
