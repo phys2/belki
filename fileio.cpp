@@ -31,7 +31,8 @@ QString FileIO::chooseFile(FileIO::Role purpose, QWidget *parent)
 	auto params = map[purpose];
 	if (params.isWrite) {
 		auto filename = QFileDialog::getSaveFileName(parent, params.title, {}, params.filter);
-		if (!params.writeSuffix.isEmpty() && QFileInfo(filename).suffix().isEmpty())
+		if (!params.writeSuffix.isEmpty() && !filename.isEmpty() &&
+		    QFileInfo(filename).suffix().isEmpty())
 			filename.append(params.writeSuffix);
 		return filename;
 	}
