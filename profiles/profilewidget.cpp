@@ -126,7 +126,7 @@ void ProfileWidget::updateMarkers(const std::vector<ProteinId> &ids, bool)
 			}
 		}
 	} else {
-		std::set affected(ids.begin(), ids.end()); // convert the vector that is typically small
+		std::set<ProteinId> affected(ids.begin(), ids.end()); // convert the vector that is typically small
 		for (auto id : proteins) {
 			if (affected.find(id) != affected.end()) {
 				updateDisplay();
