@@ -5,20 +5,6 @@ set(DEP_LIBRARIES "") # for target_link_libraries
 if (APPLE)
 	include_directories("/usr/local/include" "/usr/local/opt/llvm/include")
 	link_directories("/usr/local/lib" "/usr/local/opt/llvm/lib")
-
-	if (CMAKE_C_COMPILER_ID MATCHES "Clang")
-		set(OpenMP_C "${CMAKE_C_COMPILER}")
-		set(OpenMP_C_FLAGS "-fopenmp=libomp -Wno-unused-command-line-argument")
-		set(OpenMP_C_LIB_NAMES "libomp")
-		set(OpenMP_libomp_LIBRARY "omp")
-	endif()
-
-	if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-		set(OpenMP_CXX "${CMAKE_CXX_COMPILER}")
-		set(OpenMP_CXX_FLAGS "-fopenmp=libomp -Wno-unused-command-line-argument")
-		set(OpenMP_CXX_LIB_NAMES "libomp")
-		set(OpenMP_libomp_LIBRARY "omp")
-	endif()
 endif()
 
 ## Tapkee (uses Open MP, ARPACK, Eigen)
