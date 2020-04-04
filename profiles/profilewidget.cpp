@@ -17,9 +17,11 @@ ProfileWidget::ProfileWidget(QWidget *parent) :
 	setupUi(this);
 
 	plot->setRenderHint(QPainter::Antialiasing);
-	// common background for plot and its container
+	/* have QTextBrowser use same background as whole widget, avoid graying out when disabled */
 	auto p = inlet->palette();
-	p.setColor(QPalette::Window, p.color(QPalette::Base));
+	auto color = p.color(QPalette::Base);
+	p.setColor(QPalette::Window, color);
+	p.setColor(QPalette::Base, color);
 	inlet->setPalette(p);
 
 	/* setup actions */
