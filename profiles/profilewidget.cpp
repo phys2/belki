@@ -201,24 +201,32 @@ void ProfileWidget::updateDisplay()
 	// compose list
 	QString content;
 	// 'protein' url scheme is internally handled (shows protein menu)
-	QString tpl("<b %5><a style='color: black;' href='protein:%1'>%2</a></b> <small>%3 <i>%4</i></small><br>");
+	QString tpl("<span %5><a style='color: %6;' href='protein:%1'>%2</a></span>"
+	            " <small>%3 <i>%4</i></small><br>");
+	auto textColor = inlet->palette().color(QPalette::ColorRole::Text).name();
+	auto markupCluster = [annotations] (QStringList a, unsigned b) {
+		auto &g = annotations->groups.at(b);
+		auto bgColor = g.color;
+		bgColor.setAlphaF(.33);
+		QString markup{"<span style='background-color:%2;'>&nbsp;%1&nbsp;</span>"};
+		return std::move(a) << markup.arg(g.name).arg(bgColor.name(QColor::NameFormat::HexArgb));
+	};
 	for (auto [id, index] : samples) {
 		auto &prot = p->proteins[id];
 		QStringList clusters;
 		if (annotations) {
 			auto &m = annotations->memberships[index]; // we checked protIndex before
-			clusters = std::accumulate(m.begin(), m.end(), QStringList(),
-			                           [&annotations] (QStringList a, unsigned b) {
-			                            return a << annotations->groups.at(b).name; });
+			clusters = std::accumulate(m.begin(), m.end(), QStringList(), markupCluster);
 		}
 		QString styleAttr;
 		if (p->markers.count(id)) {	// highlight marker proteins
-			auto bgcolor = prot.color;
-			bgcolor.setAlphaF(.33);
-			styleAttr = QString{"style='background-color:%1'"}
-			            .arg(bgcolor.name(QColor::NameFormat::HexArgb));
+			auto bgColor = prot.color;
+			bgColor.setAlphaF(.33);
+			styleAttr = QString{"style='font-weight:bold;background-color:%1;'"}
+			            .arg(bgColor.name(QColor::NameFormat::HexArgb));
 		}
-		content.append(tpl.arg(id).arg(prot.name, clusters.join(", "), prot.description).arg(styleAttr));
+		content.append(tpl.arg(id).arg(prot.name, clusters.join(""), prot.description)
+		               .arg(styleAttr).arg(textColor));
 	}
 	proteinList->setText(text.arg(content));
 
