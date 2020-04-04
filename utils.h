@@ -60,13 +60,41 @@ protected:
 };
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
-namespace std {
-template<> struct hash<QString> {
-	std::size_t operator()(const QString& s) const {
-		return qHash(s);
-    }
-};
-}
+// https://github.com/qt/qtbase/commit/4469e36d7203a55a4e158a50f0e9effc3f2fa3c2
+#define QT_SPECIALIZE_STD_HASH_TO_CALL_QHASH(Class, Arguments)      \
+    QT_BEGIN_INCLUDE_NAMESPACE                                      \
+    namespace std {                                                 \
+        template <>                                                 \
+        struct hash< QT_PREPEND_NAMESPACE(Class) > {                \
+            using argument_type = QT_PREPEND_NAMESPACE(Class);      \
+            using result_type = size_t;                             \
+            size_t operator()(Arguments s) const                    \
+                noexcept(noexcept(QT_PREPEND_NAMESPACE(qHash)(s)))  \
+            {                                                       \
+                /* this seeds qHash with the result of */           \
+                /* std::hash applied to an int, to reap */          \
+                /* any protection against predictable hash */       \
+                /* values the std implementation may provide */     \
+                return QT_PREPEND_NAMESPACE(qHash)(s,               \
+                           QT_PREPEND_NAMESPACE(qHash)(             \
+                                      std::hash<int>{}(0)));        \
+            }                                                       \
+        };                                                          \
+    }                                                               \
+    QT_END_INCLUDE_NAMESPACE                                        \
+    /*end*/
+
+#define QT_SPECIALIZE_STD_HASH_TO_CALL_QHASH_BY_CREF(Class) \
+    QT_SPECIALIZE_STD_HASH_TO_CALL_QHASH(Class, const argument_type &)
+#define QT_SPECIALIZE_STD_HASH_TO_CALL_QHASH_BY_VALUE(Class) \
+    QT_SPECIALIZE_STD_HASH_TO_CALL_QHASH(Class, argument_type)
+
+QT_SPECIALIZE_STD_HASH_TO_CALL_QHASH_BY_CREF(QString)
+QT_SPECIALIZE_STD_HASH_TO_CALL_QHASH_BY_CREF(QStringRef)
+QT_SPECIALIZE_STD_HASH_TO_CALL_QHASH_BY_VALUE(QStringView)
+QT_SPECIALIZE_STD_HASH_TO_CALL_QHASH_BY_VALUE(QLatin1String)
+QT_SPECIALIZE_STD_HASH_TO_CALL_QHASH_BY_CREF(QByteArray)
+QT_SPECIALIZE_STD_HASH_TO_CALL_QHASH_BY_CREF(QBitArray)
 #endif
 
 // std::experimental::erase_if

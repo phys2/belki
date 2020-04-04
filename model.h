@@ -13,6 +13,8 @@
 #include <memory>
 #include <variant>
 
+#include "utils.h" // needed with Qt<5.14 for std::map<QString,…>
+
 using ProteinId = unsigned; // for semantic distinction
 
 struct Protein {

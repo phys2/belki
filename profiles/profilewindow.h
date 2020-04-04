@@ -1,9 +1,10 @@
 #ifndef PROFILEWINDOW_H
 #define PROFILEWINDOW_H
 
-#include <QMainWindow>
-
 #include "ui_profilewindow.h"
+
+#include <QMainWindow>
+#include <memory>
 
 class ProfileChart;
 class WindowState;
