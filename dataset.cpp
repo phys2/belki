@@ -85,7 +85,7 @@ void Dataset::spawn(ConstPtr srcholder)
 		b.scoreRange = features::range_of(b.scores);
 	}
 
-	b.featureRange = bIn->featureRange; // note: no adaptive handling yet
+	b.featureRange = features::range_of(b.features);
 	b.featurePoints = features::pointify(b.features);
 
 	auto sIn = srcholder->peek<Structure>();
