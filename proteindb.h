@@ -18,6 +18,8 @@ public:
 	struct Public : ProteinRegister, RWLockable {
 		// helper for finding proteins, name may contain species, throws
 		ProteinId find(const QString &name) const;
+		// helper for querying marker state
+		bool isMarker(ProteinId id) const { return markers.count(id); }
 		// helper for annotations type
 		bool isHierarchy(unsigned id) const;
 

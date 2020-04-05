@@ -138,7 +138,7 @@ std::unique_ptr<QMenu> ProfileTab::proteinMenu(ProteinId id)
 	auto ret = windowState->proteinMenu(id);
 	if (ret->actions().count() < 2)
 		return ret;
-	if (windowState->proteins().peek()->markers.count(id))
+	if (windowState->proteins().peek()->isMarker(id))
 		return ret; // don't confuse user with markers shadowing extra proteins
 	auto anchor = ret->actions().at(1);
 	auto text = (tabState.extras.count(id) ? "Remove from plot" : "Add to plot");

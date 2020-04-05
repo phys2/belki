@@ -79,7 +79,7 @@ std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
 	t->setDefaultWidget(label);
 	ret->addAction(t);
 
-	if (p->markers.count(id)) {
+	if (p->isMarker(id)) {
 		ret->addAction(QIcon::fromTheme("list-remove"), "Remove from markers", [this,id] {
 			proteins.removeMarker(id);
 		});
@@ -259,7 +259,7 @@ void GuiState::handleMarkerChange(QStandardItem *item)
 	bool wanted = item->checkState() == Qt::Checked;
 	/* We are called on check state change, but also other item changes,
 	   e.g. quite many items get enabled/disabled regularly. */
-	if (proteins.peek()->markers.count(id) == wanted)
+	if (proteins.peek()->isMarker(id) == wanted)
 		return;
 	if (wanted)
 		proteins.addMarker(id);
