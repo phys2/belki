@@ -33,6 +33,7 @@ protected:
 
 	DataState &selected() { return selectedAs<DataState>(); }
 	void setupWeightingUI();
+	void updateScoreLabel();
 	void updateScoreSlider();
 
 	struct {

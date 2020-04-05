@@ -23,17 +23,14 @@ FeatweightsTab::FeatweightsTab(QWidget *parent) :
 
 	/* connect toolbar actions */
 	connect(scoreSlider, &QSlider::valueChanged, [this] (int v) {
-		auto toDouble = [] (auto value) { return value * 0.01; };
-		// note: ensure fixed text width to avoid the slider jumping around
-		auto text = QString("Score thresh.: <b>%1</b> ")
-		        .arg(QString::number(toDouble(v), 'f', 2));
-		scoreLabel->setText(text);
-		if (!haveData())
+		double thresh = v * 0.01;
+		if (!haveData() || selected().scoreThreshold == thresh)
 			return;
 
-		selected().scoreThreshold = v;
+		selected().scoreThreshold = thresh;
 		bool isMaximum = v == scoreSlider->maximum(); // if so, disable cutoff
-		selected().scene->applyScoreThreshold(toDouble(isMaximum ? std::nan("") : v));
+		selected().scene->applyScoreThreshold(isMaximum ? std::nan("") : thresh);
+		updateScoreLabel();
 	});
 	connect(actionToggleChart, &QAction::toggled, [this] (bool useAlternate) {
 		tabState.useAlternate = useAlternate;
@@ -78,6 +75,7 @@ void FeatweightsTab::selectDataset(unsigned id)
 	if (!enabled)
 		return;
 
+	updateScoreLabel();
 	updateScoreSlider();
 
 	// pass guiState onto scene
@@ -119,22 +117,35 @@ void FeatweightsTab::setupWeightingUI()
 	}
 }
 
+void FeatweightsTab::updateScoreLabel()
+{
+	if (!haveData())
+		return;
+
+	// note: ensure fixed text width to avoid the slider jumping around
+	auto text = QString("Score thresh.: <b>%1</b> ")
+	        .arg(QString::number(selected().scoreThreshold, 'f', 2));
+	scoreLabel->setText(text);
+}
+
 void FeatweightsTab::updateScoreSlider()
 {
 	if (!haveData())
 		return;
-	auto d = selected().data->peek<Dataset::Base>();
 
+	auto d = selected().data->peek<Dataset::Base>();
 	for (auto i : scoreActions)
 		i->setVisible(d->hasScores());
 	if (!d->hasScores())
 		return;
 
 	auto toInt = [] (auto value) { return (int)(value * 100); };
+	scoreSlider->blockSignals(true); // avoid mingling with datastate when prev. value was >limit
 	scoreSlider->setMinimum(toInt(d->scoreRange.min));
 	scoreSlider->setMaximum(toInt(d->scoreRange.max));
 	scoreSlider->setTickInterval(scoreSlider->maximum() / 10); // TODO round numbers
 	scoreSlider->setValue(toInt(selected().scoreThreshold));
+	scoreSlider->blockSignals(false);
 }
 
 bool FeatweightsTab::updateIsEnabled()
