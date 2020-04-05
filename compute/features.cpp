@@ -95,14 +95,31 @@ unsigned cutoff_effect(const vec &source, double threshold)
 	}, std::plus<unsigned>());
 }
 
-void apply_cutoff(vec &feats, const vec &scores, double threshold)
+vec with_cutoff(const vec &feats, const vec &scores, double threshold)
 {
 	vec ret(feats.size());
 	tbb::parallel_for(size_t(0), feats.size(), [&] (size_t p) {
+		auto &source = feats[p];
+		auto &target = ret[p];
+		auto &score = scores[p];
+		target.resize(source.size());
+		for (size_t i = 0; i < source.size(); ++i)
+			target[i] = (score[i] <= threshold) * source[i];
+	});
+	return ret;
+}
+
+void apply_cutoff(vec &feats, vec &scores, double threshold)
+{
+	tbb::parallel_for(size_t(0), feats.size(), [&] (size_t p) {
 		auto &feat = feats[p];
 		auto &score = scores[p];
-		for (size_t i = 0; i < feat.size(); ++i)
-			feat[i] = (score[i] <= threshold ? feat[i] : 0.);
+		for (size_t i = 0; i < feat.size(); ++i) {
+			if (score[i] > threshold) {
+				feat[i] = 0.;
+				score[i] = threshold; // normalize to new limit
+			}
+		}
 	});
 }
 

@@ -210,9 +210,7 @@ void FeatweightsScene::applyScoreThreshold(double threshold)
 		clippedFeatures.clear();
 	} else {
 		auto d = data->peek<Dataset::Base>();
-		clippedFeatures = d->features;
-		features::apply_cutoff(clippedFeatures, d->scores, threshold);
-		d.unlock();
+		clippedFeatures = features::with_cutoff(d->features, d->scores, threshold);
 	}
 
 	computeWeights();
