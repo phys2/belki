@@ -59,8 +59,8 @@ void ProfileWidget::init(std::shared_ptr<WindowState> s)
 		auto p = state->proteins().peek();
 		QStringList list;
 		for (auto id : proteins)
-			list.append(p->proteins[id].name);
-		QGuiApplication::clipboard()->setText(list.join("\t"));
+			list.append(p->proteins.at(id).name);
+		QGuiApplication::clipboard()->setText(list.join("\r\n"));
 	});
 	connect(actionProfileView, &QAction::triggered, [this] {
 		if (chart)
