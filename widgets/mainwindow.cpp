@@ -85,6 +85,16 @@ void MainWindow::setupModelViews()
 		lastText = text;
 	});
 
+	/* setup context menu on protein list */
+	protList->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
+	connect(protList, &QListView::customContextMenuRequested, this, [this] (const QPoint &pos) {
+		QModelIndex index = protList->indexAt(pos);
+		if (index.isValid()) {
+			auto id = protList->model()->data(index, Qt::UserRole + 1).toUInt();
+			state->proteinMenu(id)->exec(QCursor::pos());
+		}
+	});
+
 	/** Datasets **/
 	/* setup datasets selection view */
 	datasetTree = new QTreeView(this);
