@@ -30,6 +30,7 @@
 #include <QShortcut>
 #include <QtConcurrent>
 #include <QDateTime>
+#include <QClipboard>
 
 MainWindow::MainWindow(std::shared_ptr<WindowState> state) :
     state(state)
@@ -94,6 +95,20 @@ void MainWindow::setupModelViews()
 			state->proteinMenu(id)->exec(QCursor::pos());
 		}
 	});
+
+	/* change action state according to what's going on */
+	auto recognizeEmpty = [this,m] {
+		bool isEmpty = m->rowCount() == 0;
+		actionCopyProtlistToClipboard->setDisabled(isEmpty);
+	};
+	auto recognizeNoMarkers = [this] {
+		bool haveMarkers = !state->proteins().peek()->markers.empty();
+		for (auto i : {actionSaveMarkers, actionClearMarkers})
+			i->setEnabled(haveMarkers);
+	};
+	connect(m, &QAbstractItemModel::rowsRemoved, recognizeEmpty);
+	connect(m, &QAbstractItemModel::rowsInserted, recognizeEmpty);
+	connect(&state->proteins(), &ProteinDB::markersToggled, recognizeNoMarkers);
 
 	/** Datasets **/
 	/* setup datasets selection view */
@@ -241,9 +256,29 @@ void MainWindow::setupActions()
 	actionQuit->setShortcut(QKeySequence::StandardKey::Quit);
 
 	/* Buttons to be wired to actions */
+	copyProtsButton->setDefaultAction(actionCopyProtlistToClipboard);
+	onlyMarkersButton->setDefaultAction(actionOnlyMarkers);
 	loadMarkersButton->setDefaultAction(actionLoadMarkers);
 	saveMarkersButton->setDefaultAction(actionSaveMarkers);
 	clearMarkersButton->setDefaultAction(actionClearMarkers);
+
+	connect(actionOnlyMarkers, &QAction::toggled, [this] (bool checked) {
+		markerModel.onlyMarkers = checked;
+		markerModel.invalidateFilter();
+	});
+	connect(actionCopyProtlistToClipboard, &QAction::triggered, [this] {
+		// see also ProfileWidget::actionCopyToClipboard
+		auto p = state->proteins().peek();
+		auto m = protList->model();
+		// build two columns, first for name, second for marker state (x)
+		QStringList list;
+		for (int i = 0; i < m->rowCount(); ++i) { // we know we have a flat list
+			auto id = m->data(m->index(i, 0), Qt::UserRole + 1).toUInt();
+			list.append(QString("%1\t%2")
+			            .arg(p->proteins.at(id).name).arg(p->isMarker(id) ? "x" : ""));
+		}
+		QGuiApplication::clipboard()->setText(list.join("\r\n"));
+	});
 
 	connect(actionCloseProject, &QAction::triggered, this, &MainWindow::closeProjectRequested);
 	connect(actionQuit, &QAction::triggered, this, &MainWindow::quitApplicationRequested);
@@ -742,7 +777,16 @@ void MainWindow::closeEvent(QCloseEvent *event)
 	emit closeWindowRequested();
 }
 
-Qt::ItemFlags MainWindow::CustomEnableProxyModel::flags(const QModelIndex &index) const
+bool MainWindow::CustomShowAndEnableProxyModel::filterAcceptsRow(int row, const QModelIndex &parent) const
+{
+	if (!onlyMarkers)
+		return true;
+
+	auto checkState = sourceModel()->data(sourceModel()->index(row, 0, parent), Qt::CheckStateRole);
+	return checkState != Qt::Unchecked;
+}
+
+Qt::ItemFlags MainWindow::CustomShowAndEnableProxyModel::flags(const QModelIndex &index) const
 {
 	auto flags = sourceModel()->flags(mapToSource(index));
 	flags.setFlag(Qt::ItemFlag::ItemIsEnabled,

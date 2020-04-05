@@ -56,6 +56,7 @@ void ProfileWidget::init(std::shared_ptr<WindowState> s)
 		state->proteins().toggleMarkers(proteins, false);
 	});
 	connect(actionCopyToClipboard, &QAction::triggered, [this] {
+		// see also MainWindow::actionCopyProtlistToClipboard
 		auto p = state->proteins().peek();
 		QStringList list;
 		for (auto id : proteins)

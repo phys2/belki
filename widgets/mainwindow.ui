@@ -198,12 +198,12 @@
     <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
    </property>
    <property name="windowTitle">
-    <string>Markers</string>
+    <string>Proteins &amp;&amp; Markers</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
    </attribute>
-   <widget class="QWidget" name="markerWidget">
+   <widget class="QWidget" name="proteinWidget">
     <layout class="QVBoxLayout" name="verticalLayout_4">
      <property name="leftMargin">
       <number>0</number>
@@ -257,22 +257,25 @@
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <property name="spacing">
+        <number>0</number>
+       </property>
        <item>
-        <widget class="QToolButton" name="loadMarkersButton">
+        <widget class="QToolButton" name="copyProtsButton">
          <property name="text">
-          <string>...</string>
+          <string>cpy</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QToolButton" name="saveMarkersButton">
+        <widget class="QToolButton" name="onlyMarkersButton">
          <property name="text">
-          <string>...</string>
+          <string>only mrk</string>
          </property>
         </widget>
        </item>
        <item>
-        <spacer name="horizontalSpacer">
+        <spacer name="horizontalSpacer_2">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
@@ -285,9 +288,39 @@
         </spacer>
        </item>
        <item>
+        <widget class="QToolButton" name="loadMarkersButton">
+         <property name="text">
+          <string>ld mrk</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="saveMarkersButton">
+         <property name="text">
+          <string>sv mrk</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Preferred</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>10</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
         <widget class="QToolButton" name="clearMarkersButton">
          <property name="text">
-          <string>...</string>
+          <string>cl mrk</string>
          </property>
         </widget>
        </item>
@@ -673,6 +706,33 @@
    </property>
    <property name="toolTip">
     <string>Save whole project</string>
+   </property>
+  </action>
+  <action name="actionOnlyMarkers">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="view-filter">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>Show only markers</string>
+   </property>
+   <property name="toolTip">
+    <string>Show only marker proteins</string>
+   </property>
+  </action>
+  <action name="actionCopyProtlistToClipboard">
+   <property name="icon">
+    <iconset theme="edit-copy">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>Copy list to clipboard</string>
+   </property>
+   <property name="toolTip">
+    <string>Copy protein names to clipboard</string>
    </property>
   </action>
  </widget>

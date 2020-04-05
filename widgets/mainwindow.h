@@ -6,7 +6,7 @@
 #include "utils.h"
 
 #include <QMainWindow>
-#include <QIdentityProxyModel>
+#include <QSortFilterProxyModel>
 
 #include <map>
 #include <unordered_map>
@@ -62,15 +62,21 @@ protected:
 		DIMRED, SCATTER, HEATMAP, DISTMAT, PROFILES, FEATWEIGHTS, BNMS
 	};
 
-	/* our proxy to individually enable/disable protein entries based on dataset */
-	struct CustomEnableProxyModel : QIdentityProxyModel {
-		using QIdentityProxyModel::QIdentityProxyModel;
+	/* our proxy to individually:
+	 * (1) filter proteins, if desired, to only show markers
+	 * (2) enable/disable protein entries based on dataset
+	 */
+	struct CustomShowAndEnableProxyModel : QSortFilterProxyModel {
+		using QSortFilterProxyModel::QSortFilterProxyModel;
+		void invalidateFilter() { QSortFilterProxyModel::invalidateFilter(); } // publicify
 
-		Qt::ItemFlags flags(const QModelIndex &index) const override;
+		bool filterAcceptsRow(int row, const QModelIndex &parent) const override;
+		Qt::ItemFlags flags(const QModelIndex &index) const override; // for 'enabled' flag
 
 		// TODO: use more clever/efficient cache which items should be enabled (in itemdata?)
-		// esp. we can do it per-dataset instead of per-window
+		// esp. we can do it per-dataset instead of per-window (fill-in once per new-dataset)
 		std::unordered_set<ProteinId> available;
+		bool onlyMarkers = false;
 	};
 
 	void dragEnterEvent(QDragEnterEvent *event) override;
@@ -103,7 +109,7 @@ protected:
 	Dataset::Ptr data;
 	std::shared_ptr<WindowState> state;
 
-	CustomEnableProxyModel markerModel;
+	CustomShowAndEnableProxyModel markerModel;
 	QTreeView *datasetTree;
 
 	struct {
