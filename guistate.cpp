@@ -1,5 +1,4 @@
 #include "guistate.h"
-#include "windowstate.h"
 #include "datahub.h"
 #include "widgets/mainwindow.h"
 #include "fileio.h"
@@ -102,8 +101,7 @@ std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
 
 void GuiState::addWindow()
 {
-	auto state = std::make_shared<WindowState>(*this);
-	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(state));
+	auto [it,_] = windows.try_emplace(nextId++, new MainWindow(*this));
 	auto target = it->second;
 	target->installEventFilter(this); // for focus tracking
 	target->setDatasetControlModel(&datasets.model);

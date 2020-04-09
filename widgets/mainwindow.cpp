@@ -1,5 +1,4 @@
 #include "mainwindow.h"
-#include "guistate.h"
 #include "windowstate.h"
 #include "datahub.h"
 #include "storage/storage.h"
@@ -32,8 +31,8 @@
 #include <QDateTime>
 #include <QClipboard>
 
-MainWindow::MainWindow(std::shared_ptr<WindowState> state) :
-    state(state)
+MainWindow::MainWindow(GuiState &owner)
+    : state(std::make_shared<WindowState>(owner))
 {
 	setupUi(this);
 	profiles->init(state);
