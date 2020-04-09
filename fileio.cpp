@@ -10,7 +10,7 @@
 
 QString FileIO::chooseFile(FileIO::Role purpose, QWidget *parent)
 {
-	const QMap<Role, RoleDef> map = {
+	static const QMap<Role, RoleDef> map = {
 	    {OpenDataset, {"Open Dataset", "Peak Volumes Table (*.tsv *.txt);; All Files (*)", false, {}}},
 	    {OpenDescriptions, {"Open Descriptions", "Two-column table with descriptions (*.tsv *.txt);; All Files (*)", false, {}}},
 	    {OpenStructure, {"Open Annotations or Clustering",
