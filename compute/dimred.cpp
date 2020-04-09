@@ -13,9 +13,9 @@ using namespace tapkee;
 
 namespace dimred {
 
-const std::vector<dimred::Method> availableMethods()
+const std::vector<dimred::Method> &availableMethods()
 {
-	return {
+	static std::vector<dimred::Method> ret{
 		{"PCA", "PCA/12", "Principal Component Analysis"},
 		{"kPCA EMD", "kPCA EMD/12", "Kernel-PCA, EMD"},
 		{"kPCA L1", "kPCA L1/12", "Kernel-PCA, Manhattan"},
@@ -35,6 +35,7 @@ const std::vector<dimred::Method> availableMethods()
 		{"tSNE 60", "tSNE 60", "t-SNE with perplexity 60"},
 		{"tSNE 70", "tSNE 70", "t-SNE with perplexity 70"},
 	};
+	return ret;
 }
 
 QMap<QString, QVector<QPointF>> compute(QString m, const std::vector<std::vector<double>> &features)
