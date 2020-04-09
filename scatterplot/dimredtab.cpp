@@ -1,10 +1,8 @@
 #include "dimredtab.h"
 #include "chart.h"
-#include "compute/dimred.h"
 
 #include <QMenu>
 #include <QToolButton>
-#include <QtConcurrent>
 
 DimredTab::DimredTab(QWidget *parent) :
     Viewer(parent)
@@ -123,12 +121,15 @@ QString DimredTab::currentMethod() const
 	return transformSelect->currentText();
 }
 
-void DimredTab::computeDisplay(const QString &name, const QString &id) {
+void DimredTab::computeDisplay(const dimred::Method &method) {
+	tabState.preferredDisplay = method.id;
 	if (!haveData())
 		return;
-	tabState.preferredDisplay = id;
 	auto d = selected().data;
-	QtConcurrent::run([d,name] { d->computeDisplay(name); });
+	Task task{[d,name=method.name] { d->computeDisplay(name); },
+	          Task::Type::COMPUTE, {method.description, d->config().name}};
+	// note: when we have a local progress indicator thingy, we can add it to listeners
+	JobRegistry::run(task, windowState->jobListeners);
 }
 
 void DimredTab::updateMenus() {
@@ -150,13 +151,13 @@ void DimredTab::updateMenus() {
 	}
 
 	/* add all methods that are not here yet to compute offers */
-	auto methods = dimred::availableMethods();
+	const auto& methods = dimred::availableMethods();
 	auto menu = new QMenu(this->window());
 	for (const auto& m : methods) {
 		if (transformSelect->findText(m.id) >= 0)
 			continue;
 
-		menu->addAction(m.description, [this, m] { computeDisplay(m.name, m.id); });
+		menu->addAction(m.description, [this, m] { computeDisplay(m); });
 	}
 	actionComputeDisplay->setMenu(menu);
 

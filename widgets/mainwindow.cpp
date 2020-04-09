@@ -5,7 +5,9 @@
 #include "storage/storage.h"
 #include "fileio.h"
 #include "profiles/profilewindow.h"
-#include "widgets/spawndialog.h"
+#include "spawndialog.h"
+#include "jobstatus.h"
+#include "jobregistry.h"
 
 #include "scatterplot/dimredtab.h"
 #include "scatterplot/scattertab.h"
@@ -28,7 +30,6 @@
 #include <QMimeData>
 #include <QWidgetAction>
 #include <QShortcut>
-#include <QtConcurrent>
 #include <QDateTime>
 #include <QClipboard>
 
@@ -171,6 +172,14 @@ void MainWindow::setupToolbar()
 
 	// remove container we picked from
 	topBar->deleteLater();
+
+	// add background job indicator
+	auto* spacer = new QWidget();
+	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+	toolBar->addWidget(spacer);
+	jobWidget = new JobStatus();
+	toolBar->addWidget(jobWidget);
+	state->jobListeners.push_back(jobWidget);
 }
 
 void MainWindow::setupTabs()
@@ -307,7 +316,9 @@ void MainWindow::setupActions()
 		if (filename.isEmpty())
 			return;
 
-		runInBackground([s=state->hub().store(),filename] { s->exportMarkers(filename); });
+		Task task{[s=state->hub().store(),filename] { s->exportMarkers(filename); },
+			      Task::Type::EXPORT_MARKERS, {filename}};
+		JobRegistry::run(task, state->jobListeners);
 	});
 	connect(actionExportAnnotations, &QAction::triggered, [this] {
 		/* keep own copy while user chooses filename */
@@ -319,8 +330,11 @@ void MainWindow::setupActions()
 		if (filename.isEmpty())
 			return;
 
-		// TODO we cannot move unique_ptr to other thread. so no bg
-		state->hub().store()->exportAnnotations(filename, *localCopy);
+		auto name = localCopy->meta.name; // take out before we move!
+		Task task{[s=state->hub().store(),filename,a=std::move(*localCopy)]
+			       { s->exportAnnotations(filename, a); },
+			      Task::Type::EXPORT_ANNOTATIONS, {filename, name}};
+		JobRegistry::run(task, state->jobListeners);
 	});
 	connect(actionPersistAnnotations, &QAction::triggered, [this] {
 		/* keep own copy while user edits the name */
@@ -335,8 +349,10 @@ void MainWindow::setupActions()
 			return; // user cancelled
 
 		localCopy->meta.name = name;
-		// TODO we cannot move unique_ptr to other thread. so no bg
-		state->proteins().addAnnotations(std::move(localCopy), false, true);
+		Task task{[p=&state->proteins(),a=std::move(*localCopy)]
+			       { p->addAnnotations(std::make_unique<Annotations>(std::move(a)), false, true); },
+			      Task::Type::PERSIST_ANNOTATIONS, {name}};
+		JobRegistry::run(task, state->jobListeners);
 	});
 	connect(actionClearMarkers, &QAction::triggered, &state->proteins(), &ProteinDB::clearMarkers);
 
@@ -345,17 +361,23 @@ void MainWindow::setupActions()
 			return;
 		auto s = new SpawnDialog(data, state, this);
 		// spawn dialog deletes itself, should also kill connection+lambda, right?
-		connect(s, &SpawnDialog::spawn, [this] (auto data, auto& config) {
-			state->hub().spawn(data, config);
+		connect(s, &SpawnDialog::spawn, [this] (auto source, const auto& config) {
+			Task task{[h=&state->hub(),source,config] { h->spawn(source, config); },
+				      Task::Type::SPAWN, {config.name}};
+			JobRegistry::run(task, state->jobListeners);
 		});
 	});
 
-	connect(actionSave, &QAction::triggered, [this] { state->hub().saveProject(); });
+	connect(actionSave, &QAction::triggered, [this] {
+		Task task{[h=&state->hub()] { h->saveProject(); }, Task::Type::SAVE, {}};
+		JobRegistry::run(task, state->jobListeners);
+	});
 	connect(actionSaveAs, &QAction::triggered, [this] {
 		auto filename = state->io().chooseFile(FileIO::SaveProject, this);
 		if (filename.isEmpty())
 			return;
-		state->hub().saveProject(filename);
+		Task task{[h=&state->hub(),filename] { h->saveProject(filename); }, Task::Type::SAVE, {}};
+		JobRegistry::run(task, state->jobListeners);
 	});
 }
 void MainWindow::setDatasetControlModel(QStandardItemModel *m)
@@ -476,11 +498,17 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 		// let views know before our GUI might send more signals
 		emit datasetSelected(data->id());
 		// tell dataset what we need
-		runOnData([=] (auto d) {
-			// one thread as work might be redundant
-			d->prepareAnnotations(state->annotations);
-			d->prepareOrder(state->order);
-		});
+		std::vector<Task> tasks; // use a pipeline to avoid redundant order computation
+		if (state->annotations.id || state->annotations.type != Annotations::Meta::SIMPLE) {
+			// TODO: in the future do not trigger meanshift computation here
+			auto type = (state->annotations.type == Annotations::Meta::MEANSHIFT ? Task::Type::COMPUTE : Task::Type::ANNOTATE);
+			auto name = (state->annotations.type == Annotations::Meta::MEANSHIFT ? "Mean Shift" : state->annotations.name);
+			tasks.push_back({[s=state,d=data] { d->prepareAnnotations(s->annotations); },
+		                     type, {name, data->config().name}});
+		}
+		tasks.push_back({[s=state,d=data] { d->prepareOrder(s->order); },
+		                 Task::Type::ORDER, {"preference", data->config().name}});
+		JobRegistry::pipeline(tasks, state->jobListeners);
 		// wire updates
 		if (data)
 			connect(data.get(), &Dataset::update, this, &MainWindow::updateState);
@@ -598,22 +626,38 @@ void MainWindow::openFile(Input type, QString fn)
 			return; // nothing selected
 	}
 
-	auto &hub = state->hub();
-	auto s = hub.store();
+	auto h = &state->hub();
+	auto s = h->store();
+	Task task;
 	switch (type) {
-	case Input::DATASET:      hub.importDataset(fn, "Dist"); break;
-	case Input::DATASET_RAW:  hub.importDataset(fn, "AbundanceLeft"); break;
-	case Input::MARKERS:      runInBackground([s,fn] { s->importMarkers(fn); }); break;
-	case Input::DESCRIPTIONS: runInBackground([s,fn] { s->importDescriptions(fn); }); break;
-	case Input::STRUCTURE: {
-		if (QFileInfo(fn).suffix() == "json")
-			runInBackground([s,fn] { s->importHierarchy(fn); });
-		else
-			runInBackground([s,fn] { s->importAnnotations(fn); });
+	case Input::DATASET:
+		task = {[h,fn] { h->importDataset(fn, "Dist"); }, Task::Type::IMPORT_DATASET, {fn}};
 		break;
+	case Input::DATASET_RAW:
+		task = {[h,fn] { h->importDataset(fn, "AbundanceLeft"); }, Task::Type::IMPORT_DATASET, {fn}};
+		break;
+	case Input::MARKERS:
+		task = {[s,fn] { s->importMarkers(fn); }, Task::Type::IMPORT_MARKERS, {fn}};
+		break;
+	case Input::DESCRIPTIONS:
+		task = {[s,fn] { s->importDescriptions(fn); }, Task::Type::IMPORT_DESCRIPTIONS, {fn}};
+		break;
+	case Input::STRUCTURE:
+		if (QFileInfo(fn).suffix() == "json")
+			task = {[s,fn] { s->importHierarchy(fn); }, Task::Type::IMPORT_HIERARCHY, {fn}};
+		else
+			task = {[s,fn] { s->importAnnotations(fn); }, Task::Type::IMPORT_ANNOTATIONS, {fn}};
+		break;
+	case Input::PROJECT:
+		if (state->proteins().peek()->proteins.empty()) { // we are empty, so load directly
+			// note: we risk that proteins gets filled while the task runs
+			task = {[h,fn] { h->openProject(fn); }, Task::Type::LOAD, {fn}};
+		} else {
+			emit openProjectRequested(fn); // open in separate GUI, goes through guistate
+		}
 	}
-	case Input::PROJECT: emit openProjectRequested(fn); // goes through guistate
-	}
+	if (task.fun)
+		JobRegistry::run(task, state->jobListeners);
 }
 
 void MainWindow::showHelp()
@@ -633,14 +677,20 @@ void MainWindow::selectAnnotations(const Annotations::Meta &desc)
 {
 	state->annotations = desc;
 	emit state->annotationsChanged();
-	runOnData([=] (auto d) { d->prepareAnnotations(state->annotations); });
+	if (state->orderSynchronizing && state->preferredOrder == Order::CLUSTERING) {
+		state->order = {Order::CLUSTERING, state->annotations};
+		emit state->orderChanged();
+	}
 
-	if (!state->orderSynchronizing || state->preferredOrder != Order::CLUSTERING)
-		return;
-
-	state->order = {Order::CLUSTERING, state->annotations};
-	emit state->orderChanged();
-	runOnData([=] (auto d) { d->prepareOrder(state->order); });
+	if (data && (desc.id || desc.type != Annotations::Meta::SIMPLE)) {
+		auto type = (desc.type == Annotations::Meta::MEANSHIFT ? Task::Type::COMPUTE
+		                                                       : Task::Type::ANNOTATE);
+		auto name = (desc.type == Annotations::Meta::MEANSHIFT ? "Mean Shift" : desc.name);
+		// note: prepareAnnotations in our case (types SIMPLE/MEANSHIFT) always also computes order
+		Task task({[s=state,d=data] { d->prepareAnnotations(s->annotations); },
+		           type, {name, data->config().name}});
+		JobRegistry::run(task, state->jobListeners);
+	}
 }
 
 void MainWindow::selectFAMS(float k)
@@ -656,13 +706,18 @@ void MainWindow::selectHierarchy(unsigned id, unsigned granularity)
 	emit state->hierarchyChanged();
 	switchHierarchyPartition(granularity);
 
+	// note: the hierarchy-based order is independent of the hierarchy partition
 	if (!state->orderSynchronizing ||
 	    (state->preferredOrder != Order::HIERARCHY && state->preferredOrder != Order::CLUSTERING))
 		return;
 
 	state->order = {Order::HIERARCHY, state->hierarchy};
 	emit state->orderChanged();
-	runOnData([=] (auto d) { d->prepareOrder(state->order); });
+	if (data) {
+		Task task{[s=state,d=data] { d->prepareOrder(s->order); },
+			      Task::Type::ORDER, {state->hierarchy.name, data->config().name}};
+		JobRegistry::run(task, state->jobListeners);
+	}
 }
 
 void MainWindow::switchHierarchyPartition(unsigned granularity)
@@ -671,41 +726,31 @@ void MainWindow::switchHierarchyPartition(unsigned granularity)
 	state->annotations.hierarchy = state->hierarchy.id;
 	state->annotations.granularity = granularity;
 	emit state->annotationsChanged();
-	runOnData([=] (auto d) { d->prepareAnnotations(state->annotations); });
+	if (data) {
+		Task task{[s=state,d=data] { d->prepareAnnotations(s->annotations); },
+			      Task::Type::PARTITION_HIERARCHY, {state->hierarchy.name, data->config().name}};
+		JobRegistry::run(task, state->jobListeners);
+	}
 }
 
-std::unique_ptr<Annotations> MainWindow::currentAnnotations()
+std::optional<Annotations> MainWindow::currentAnnotations()
 {
 	/* maybe proteindb has it? */
 	if (state->annotations.id > 0) {
 		auto p = state->proteins().peek();
 		auto source = std::get_if<Annotations>(&p->structures.at(state->annotations.id));
 		if (source)
-			return std::make_unique<Annotations>(*source);
+			return {*source}; // copy
 	}
 
 	/* ok, try to get it from data */
 	if (data) {
 		auto s = data->peek<Dataset::Structure>();
 		auto source = s->fetch(state->annotations);
-		if (source) // always return a copy, the pointer is guarded by RAII!
-			return std::make_unique<Annotations>(*source);
+		if (source)
+			return {*source}; // copy
 	}
-
 	return {};
-}
-
-void MainWindow::runInBackground(const std::function<void()> &work)
-{
-	QtConcurrent::run(work);
-}
-
-void MainWindow::runOnData(const std::function<void(Dataset::Ptr)> &work)
-{
-	if (!data)
-		return;
-	// pass shared ptr by value so thread works on own copy
-	runInBackground([target=data,work] { work(target); });
 }
 
 void MainWindow::dragEnterEvent(QDragEnterEvent *event)

@@ -3,6 +3,7 @@
 #include "referencechart.h"
 #include "rangeselectitem.h"
 #include "datahub.h" // for splice
+#include "jobregistry.h" // for splice
 
 // stuff for loading components. will most-probably be moved elsewhere!
 #include "compute/components.h"
@@ -88,9 +89,11 @@ BnmsTab::BnmsTab(QWidget *parent) :
 		QString name("%1 to %2 (reference %3)");
 		auto b = current.data->peek<Dataset::Base>();
 		name = name.arg(b->dimensions.at(int(left))).arg(b->dimensions.at(int(right)));
-		conf.name = name.arg(
-		        windowState->proteins().peek()->proteins[tabState.reference].name);
-		windowState->hub().spawn(current.data, conf);
+		conf.name = name.arg(windowState->proteins().peek()->proteins[tabState.reference].name);
+
+		Task task{[h=&windowState->hub(),source=current.data,conf] { h->spawn(source, conf); },
+		          Task::Type::SPAWN, {conf.name}};
+		JobRegistry::run(task, windowState->jobListeners);
 	});
 
 	updateIsEnabled();

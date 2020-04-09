@@ -4,9 +4,10 @@
 #include "dataset.h"
 #include "storage/storage.h"
 
-#include <QtConcurrent>
 #include <QThread>
 #include <QVector>
+#include <QFileInfo>
+#include <QDir>
 
 DataHub::DataHub(QObject *parent)
     : QObject(parent),
@@ -90,59 +91,55 @@ void DataHub::updateProjectName(const QString &name, const QString &path)
 
 void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config)
 {
-	QtConcurrent::run([=] {
-		auto target = createDataset(config);
-		if (!target)
-			return;
-		target->spawn(source);
+	auto target = createDataset(config);
+	if (!target)
+		return;
+	target->spawn(source);
 
-		emit newDataset(target);
+	emit newDataset(target);
 
-		/* also compute displays expected by the user – TODO initiate in dimredtab */
-		if (target->peek<Dataset::Base>()->dimensions.size() < 3)
-			return;
+	/* also compute displays expected by the user – TODO initiate in dimredtab */
+	if (target->peek<Dataset::Base>()->dimensions.size() < 3)
+		return;
 
-		// standard set
-		target->computeDisplays();
+	// standard set
+	target->computeDisplays();
 
-		// current display TODO dead code
-		/*if (!initialDisplay.isEmpty() &&
-		    !target->peek<Dataset::Representations>()->displays.count(initialDisplay))
-			target->computeDisplay(initialDisplay);*/
-	});
+	// current display TODO dead code
+	/*if (!initialDisplay.isEmpty() &&
+		!target->peek<Dataset::Representations>()->displays.count(initialDisplay))
+		target->computeDisplay(initialDisplay);*/
 }
 
 void DataHub::importDataset(const QString &filename, const QString featureCol)
 {
-	QtConcurrent::run([=] {
-		auto dataset = storage->openDataset(filename, featureCol);
-		if (!dataset)
-			return;
+	auto dataset = storage->openDataset(filename, featureCol);
+	if (!dataset)
+		return;
 
-		/* setup a nice name */
-		QFileInfo f(filename);
-		auto path = f.canonicalPath().split(QDir::separator());
-		QString name;
-		if (path.size() > 1)
-			name.append(*(++path.rbegin()) + "/");
-		if (path.size() > 0)
-			name.append(path.back() + "/");
-		name.append(f.completeBaseName()); // hack
-		if (!featureCol.isEmpty() && featureCol != "Dist")
-			name += " " + featureCol;
-		DatasetConfiguration config;
-		config.name = name;
+	/* setup a nice name */
+	QFileInfo f(filename);
+	auto path = f.canonicalPath().split(QDir::separator());
+	QString name;
+	if (path.size() > 1)
+		name.append(*(++path.rbegin()) + "/");
+	if (path.size() > 0)
+		name.append(path.back() + "/");
+	name.append(f.completeBaseName()); // hack
+	if (!featureCol.isEmpty() && featureCol != "Dist")
+		name += " " + featureCol;
+	DatasetConfiguration config;
+	config.name = name;
 
-		auto target = createDataset(config);
-		target->spawn(std::move(dataset));
+	auto target = createDataset(config);
+	target->spawn(std::move(dataset));
 
-		emit newDataset(target);
+	emit newDataset(target);
 
-		/* compute intial set of displays – TODO initiate in dimredtab */
-		if (target->peek<Dataset::Base>()->dimensions.size() < 3)
-			return;
-		target->computeDisplays();
-	});
+	/* compute intial set of displays – TODO initiate in dimredtab */
+	if (target->peek<Dataset::Base>()->dimensions.size() < 3)
+		return;
+	target->computeDisplays();
 }
 
 void DataHub::removeDataset(unsigned id)
@@ -173,20 +170,16 @@ void DataHub::openProject(const QString &filename)
 
 void DataHub::saveProject(QString filename)
 {
-	bool newName = !filename.isEmpty();
-	if (!newName) {
-		data.l.lockForRead();
+	QReadLocker l(&data.l);
+	if (filename.isEmpty()) {
 		filename = data.project.path;
-		data.l.unlock();
 		if (filename.isEmpty()) // should not happen
 			return message({"Could not save project!", "No filename specified."});
 	}
+	std::vector<Dataset::ConstPtr> snapshot;
+	for (auto &[k, v] : data.sets)
+		snapshot.push_back(v);
+	l.unlock();
 
-	QtConcurrent::run([=] {
-		QReadLocker _(&data.l);
-		std::vector<Dataset::ConstPtr> snapshot;
-		for (auto &[k, v] : data.sets)
-			snapshot.push_back(v);
-		storage->saveProject(filename, snapshot);
-	});
+	storage->saveProject(filename, snapshot); // might lock for write to update filename
 }

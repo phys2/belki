@@ -3,6 +3,7 @@
 #include "datahub.h"
 #include "widgets/mainwindow.h"
 #include "fileio.h"
+#include "jobregistry.h"
 
 #include <QAbstractProxyModel>
 #include <QTimer>
@@ -153,14 +154,6 @@ void GuiState::removeWindow(unsigned id, bool withPrompt)
 
 void GuiState::openProject(const QString &filename)
 {
-	if (proteins.peek()->proteins.empty()) {
-		// note: we risk that proteins gets filled now before we call init
-		// also it would be nice if we would open in background thread
-		hub.openProject(filename);
-		return;
-	}
-
-	/* need to open new window */
 	bool proceed = true;
 	QMessageBox dialog(focused());
 	auto name = hub.projectMeta().name;

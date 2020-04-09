@@ -1,6 +1,7 @@
 <RCC>
-	<qresource prefix="/">
-		<file alias="appicon">icon.ico</file>
+    <qresource prefix="/">
+        <file alias="appicon">icon.ico</file>
         <file>help.html</file>
+        <file>spinner.svg</file>
     </qresource>
 </RCC>

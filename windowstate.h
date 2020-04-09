@@ -3,6 +3,7 @@
 
 #include "model.h"
 #include "compute/colors.h"
+#include "jobregistry.h"
 
 #include <QObject>
 #include <QColor>
@@ -50,6 +51,7 @@ struct WindowState : QObject
 	bool orderSynchronizing = true; // order follows annot./hier. selection
 
 	QStandardItemModel orderModel;
+	std::vector<QPointer<QObject>> jobListeners;
 
 	Q_OBJECT
 

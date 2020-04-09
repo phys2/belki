@@ -1,7 +1,6 @@
 #include "distmattab.h"
 #include "distmatscene.h"
-
-#include <QtConcurrent>
+#include "jobregistry.h"
 
 DistmatTab::DistmatTab(QWidget *parent) :
     Viewer(parent)
@@ -88,10 +87,12 @@ void DistmatTab::setupOrderUI()
 	// signalling
 	connect(orderSelect, QOverload<int>::of(&QComboBox::activated), [this] {
 		windowState->setOrder(orderSelect->currentData().value<Order::Type>());
-		if (haveData())
-			QtConcurrent::run([d=selected().data,o=windowState->order] {
-				d->prepareOrder(o);
-			});
+		if (haveData()) {
+			Task task{[s=windowState,d=selected().data] { d->prepareOrder(s->order); },
+				      Task::Type::ORDER,
+				      {orderSelect->currentText(), selected().data->config().name}};
+			JobRegistry::run(task, windowState->jobListeners);
+		}
 	});
 	connect(actionLockOrder, &QAction::toggled, [this] {
 		windowState->orderSynchronizing = !actionLockOrder->isChecked();

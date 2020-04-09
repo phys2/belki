@@ -17,14 +17,15 @@ class WindowState;
 class QLabel;
 class QTreeView;
 class QStandardItemModel;
-class QTreeWidgetItem; // todo remove
+class JobStatus;
+class GuiState;
 
 class MainWindow : public QMainWindow, private Ui::MainWindow
 {
 	Q_OBJECT
 
 public:
-	explicit MainWindow(std::shared_ptr<WindowState> state);
+	explicit MainWindow(GuiState &owner);
 
 	void setDatasetControlModel(QStandardItemModel *m);
 	void setMarkerControlModel(QStandardItemModel *m);
@@ -100,17 +101,14 @@ protected:
 	void selectFAMS(float k);
 	void selectHierarchy(unsigned id, unsigned granularity);
 	void switchHierarchyPartition(unsigned granularity);
-
-	std::unique_ptr<Annotations> currentAnnotations();
-
-	void runInBackground(const std::function<void()> &work);
-	void runOnData(const std::function<void(Dataset::Ptr)> &work);
+	std::optional<Annotations> currentAnnotations();
 
 	Dataset::Ptr data;
 	std::shared_ptr<WindowState> state;
 
 	CustomShowAndEnableProxyModel markerModel;
 	QTreeView *datasetTree;
+	JobStatus *jobWidget;
 
 	struct {
 		QAction *datasets;

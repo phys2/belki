@@ -3,6 +3,7 @@
 
 #include "ui_dimredtab.h"
 #include "viewer.h"
+#include "compute/dimred.h"
 
 class Chart;
 
@@ -32,7 +33,7 @@ protected:
 
 	DataState &selected() { return selectedAs<DataState>(); }
 	void selectDisplay(const QString& name);
-	void computeDisplay(const QString &name, const QString &id);
+	void computeDisplay(const dimred::Method &method);
 	void updateMenus();
 
 	struct {
