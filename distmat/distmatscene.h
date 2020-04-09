@@ -46,7 +46,7 @@ public:
 		unsigned sampleIndex;
 	};
 
-	class Clusterbars : NonCopyable // adds its items to the scene
+	class Clusterbars : public NonCopyable // adds its items to the scene
 	{
 	public:
 		Clusterbars(DistmatScene *scene);

@@ -14,9 +14,8 @@ struct GuiMessage { // modeled after QMessageBox
 	enum { INFO, WARNING, CRITICAL } type = CRITICAL;
 };
 
-class NonCopyable
+struct NonCopyable
 {
-public: 
 	NonCopyable(const NonCopyable&) = delete;
 	NonCopyable& operator=(const NonCopyable &) = delete;
 
