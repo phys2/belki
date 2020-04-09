@@ -2,8 +2,8 @@
 #define MAINWINDOW_H
 
 #include "ui_mainwindow.h"
-#include "dataset.h"
 #include "utils.h"
+#include "dataset.h"
 
 #include <QMainWindow>
 #include <QSortFilterProxyModel>
