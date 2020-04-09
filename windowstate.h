@@ -28,6 +28,8 @@ class QMenu;
  */
 struct WindowState : QObject
 {
+	Q_OBJECT
+public:
 	using Ptr = std::shared_ptr<WindowState>;
 
 	WindowState(GuiState &global);
@@ -37,7 +39,7 @@ struct WindowState : QObject
 	FileIO& io();
 	std::unique_ptr<QMenu> proteinMenu(ProteinId id);
 
-	void setOrder(Order::Type type);
+	void setOrder(Order::Type type); // emits
 
 	bool showAnnotations = true;
 	bool useOpenGl = false;
@@ -52,8 +54,6 @@ struct WindowState : QObject
 
 	QStandardItemModel orderModel;
 	std::vector<QPointer<QObject>> jobListeners;
-
-	Q_OBJECT
 
 signals:
 	void colorsetUpdated();

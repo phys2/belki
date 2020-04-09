@@ -72,7 +72,7 @@ struct Annotations {
 			HIERCUT
 		} type = SIMPLE;
 
-		unsigned id = 0;
+		unsigned id = 0; // 0 means empty or special case
 		QString name = {};
 		// source dataset (reference for mode/centroid)
 		unsigned dataset = 0; // 0 means none
@@ -105,7 +105,7 @@ struct Annotations {
 
 struct HrClustering {
 	struct Meta {
-		unsigned id = 0;
+		unsigned id = 0; // 0 means empty
 		QString name = {};
 		// source dataset
 		unsigned dataset = 0; // 0 means none
