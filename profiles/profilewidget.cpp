@@ -210,7 +210,7 @@ void ProfileWidget::updateDisplay()
 		auto bgColor = g.color;
 		bgColor.setAlphaF(.33);
 		QString markup{"<span style='background-color:%2;'>&nbsp;%1&nbsp;</span>"};
-		return std::move(a) << markup.arg(g.name).arg(bgColor.name(QColor::NameFormat::HexArgb));
+		return std::move(a) << markup.arg(g.name).arg(bgColor.rgba());
 	};
 	for (auto [id, index] : samples) {
 		auto &prot = p->proteins[id];
@@ -224,7 +224,7 @@ void ProfileWidget::updateDisplay()
 			auto bgColor = prot.color;
 			bgColor.setAlphaF(.33);
 			styleAttr = QString{"style='font-weight:bold;background-color:%1;'"}
-			            .arg(bgColor.name(QColor::NameFormat::HexArgb));
+			            .arg(bgColor.rgba());
 		}
 		content.append(tpl.arg(id).arg(prot.name, clusters.join(""), prot.description)
 		               .arg(styleAttr).arg(textColor));
