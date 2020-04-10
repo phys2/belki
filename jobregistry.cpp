@@ -4,28 +4,26 @@
 #include <QMetaObject>
 #include <QtConcurrent>
 
-#include <iostream>
-
 std::shared_ptr<JobRegistry> JobRegistry::get()
 {
 	static auto instance = std::make_shared<JobRegistry>();
 	return instance;
 }
 
-void JobRegistry::run(const Task &task, const std::vector<QPointer<QObject>> &listeners)
+void JobRegistry::run(const Task &task, const std::vector<QPointer<QObject>> &monitors)
 {
-	pipeline({task}, listeners);
+	pipeline({task}, monitors);
 }
 
 void JobRegistry::pipeline(const std::vector<Task> &tasks,
-                           const std::vector<QPointer<QObject>> &listeners)
+                           const std::vector<QPointer<QObject>> &monitors)
 {
-	QtConcurrent::run([tasks,listeners] {
+	QtConcurrent::run([tasks,monitors] {
 		auto reg = JobRegistry::get();
 		for (auto &task : tasks) {
 			reg->startCurrentJob(task.type, task.fields);
-			for (auto i : listeners)
-				reg->addCurrentJobListener(i);
+			for (auto i : monitors)
+				reg->addCurrentJobMonitor(i);
 			task.fun();
 			reg->endCurrentJob();
 		}
@@ -62,16 +60,16 @@ void JobRegistry::startCurrentJob(Task::Type type, const std::vector<QString> &f
 	createEntry(type, fields);
 }
 
-void JobRegistry::addCurrentJobListener(QPointer<QObject> listener)
+void JobRegistry::addCurrentJobMonitor(QPointer<QObject> monitor)
 {
-	if (!listener)
+	if (!monitor)
 		return;
 	QWriteLocker _(&lock);
 	auto it = threadToEntry();
 	if (it != jobs.end()) {
-		listeners.insert({it->second.id, listener});
+		monitors.insert({it->second.id, monitor});
 		// let them know we exist
-		QMetaObject::invokeMethod(listener, "addJob", Qt::ConnectionType::QueuedConnection,
+		QMetaObject::invokeMethod(monitor, "addJob", Qt::ConnectionType::QueuedConnection,
 		                          Q_ARG(unsigned, it->second.id));
 	}
 	// TODO complain else
@@ -122,23 +120,19 @@ void JobRegistry::createEntry(Task::Type type, const std::vector<QString> &field
 		name = name.arg(i);
 	// TODO: check for nullptr & complain
 	jobs[QThread::currentThread()] = {id, name};
-
-	std::cerr << "Job created: " << id << "\t" << name.toStdString() << std::endl;
 }
 
 void JobRegistry::eraseEntry(JobMap::iterator entry)
 {
-	std::cerr << "Job finished: " << entry->second.id << "\t" << entry->second.name.toStdString() << std::endl;
-
 	// caller needs to hold lock
 	auto jobId = entry->second.id;
-	auto range = listeners.equal_range(jobId);
+	auto range = monitors.equal_range(jobId);
 	for (auto it = range.first; it != range.second; ++it) {
 		if (it->second) {
 			QMetaObject::invokeMethod(it->second, "removeJob", Qt::ConnectionType::QueuedConnection,
 			                          Q_ARG(unsigned, jobId));
 		}
 	}
-	listeners.erase(jobId);
+	monitors.erase(jobId);
 	jobs.erase(entry);
 }

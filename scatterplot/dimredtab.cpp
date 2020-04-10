@@ -1,6 +1,8 @@
 #include "dimredtab.h"
 #include "chart.h"
 
+#include "jobregistry.h"
+
 #include <QMenu>
 #include <QToolButton>
 
@@ -128,8 +130,8 @@ void DimredTab::computeDisplay(const dimred::Method &method) {
 	auto d = selected().data;
 	Task task{[d,name=method.name] { d->computeDisplay(name); },
 	          Task::Type::COMPUTE, {method.description, d->config().name}};
-	// note: when we have a local progress indicator thingy, we can add it to listeners
-	JobRegistry::run(task, windowState->jobListeners);
+	// note: when we have a local progress indicator thingy, we can add it to monitors
+	JobRegistry::run(task, windowState->jobMonitors);
 }
 
 void DimredTab::updateMenus() {

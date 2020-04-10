@@ -3,9 +3,9 @@
 
 #include "model.h"
 #include "compute/colors.h"
-#include "jobregistry.h"
 
 #include <QObject>
+#include <QPointer>
 #include <QColor>
 #include <QVector>
 #include <QStandardItemModel>
@@ -53,7 +53,7 @@ public:
 	bool orderSynchronizing = true; // order follows annot./hier. selection
 
 	QStandardItemModel orderModel;
-	std::vector<QPointer<QObject>> jobListeners;
+	std::vector<QPointer<QObject>> jobMonitors;
 
 signals:
 	void colorsetUpdated();

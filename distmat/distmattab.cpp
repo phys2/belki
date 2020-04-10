@@ -91,7 +91,7 @@ void DistmatTab::setupOrderUI()
 			Task task{[s=windowState,d=selected().data] { d->prepareOrder(s->order); },
 				      Task::Type::ORDER,
 				      {orderSelect->currentText(), selected().data->config().name}};
-			JobRegistry::run(task, windowState->jobListeners);
+			JobRegistry::run(task, windowState->jobMonitors);
 		}
 	});
 	connect(actionLockOrder, &QAction::toggled, [this] {

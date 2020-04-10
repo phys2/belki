@@ -178,7 +178,7 @@ void MainWindow::setupToolbar()
 	toolBar->addWidget(spacer);
 	jobWidget = new JobStatus();
 	toolBar->addWidget(jobWidget);
-	state->jobListeners.push_back(jobWidget);
+	state->jobMonitors.push_back(jobWidget);
 }
 
 void MainWindow::setupTabs()
@@ -317,7 +317,7 @@ void MainWindow::setupActions()
 
 		Task task{[s=state->hub().store(),filename] { s->exportMarkers(filename); },
 			      Task::Type::EXPORT_MARKERS, {filename}};
-		JobRegistry::run(task, state->jobListeners);
+		JobRegistry::run(task, state->jobMonitors);
 	});
 	connect(actionExportAnnotations, &QAction::triggered, [this] {
 		/* keep own copy while user chooses filename */
@@ -333,7 +333,7 @@ void MainWindow::setupActions()
 		Task task{[s=state->hub().store(),filename,a=std::move(*localCopy)]
 			       { s->exportAnnotations(filename, a); },
 			      Task::Type::EXPORT_ANNOTATIONS, {filename, name}};
-		JobRegistry::run(task, state->jobListeners);
+		JobRegistry::run(task, state->jobMonitors);
 	});
 	connect(actionPersistAnnotations, &QAction::triggered, [this] {
 		/* keep own copy while user edits the name */
@@ -351,7 +351,7 @@ void MainWindow::setupActions()
 		Task task{[p=&state->proteins(),a=std::move(*localCopy)]
 			       { p->addAnnotations(std::make_unique<Annotations>(std::move(a)), false, true); },
 			      Task::Type::PERSIST_ANNOTATIONS, {name}};
-		JobRegistry::run(task, state->jobListeners);
+		JobRegistry::run(task, state->jobMonitors);
 	});
 	connect(actionClearMarkers, &QAction::triggered, &state->proteins(), &ProteinDB::clearMarkers);
 
@@ -363,20 +363,20 @@ void MainWindow::setupActions()
 		connect(s, &SpawnDialog::spawn, [this] (auto source, const auto& config) {
 			Task task{[h=&state->hub(),source,config] { h->spawn(source, config); },
 				      Task::Type::SPAWN, {config.name}};
-			JobRegistry::run(task, state->jobListeners);
+			JobRegistry::run(task, state->jobMonitors);
 		});
 	});
 
 	connect(actionSave, &QAction::triggered, [this] {
 		Task task{[h=&state->hub()] { h->saveProject(); }, Task::Type::SAVE, {}};
-		JobRegistry::run(task, state->jobListeners);
+		JobRegistry::run(task, state->jobMonitors);
 	});
 	connect(actionSaveAs, &QAction::triggered, [this] {
 		auto filename = state->io().chooseFile(FileIO::SaveProject, this);
 		if (filename.isEmpty())
 			return;
 		Task task{[h=&state->hub(),filename] { h->saveProject(filename); }, Task::Type::SAVE, {}};
-		JobRegistry::run(task, state->jobListeners);
+		JobRegistry::run(task, state->jobMonitors);
 	});
 }
 void MainWindow::setDatasetControlModel(QStandardItemModel *m)
@@ -507,7 +507,7 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 		}
 		tasks.push_back({[s=state,d=data] { d->prepareOrder(s->order); },
 		                 Task::Type::ORDER, {"preference", data->config().name}});
-		JobRegistry::pipeline(tasks, state->jobListeners);
+		JobRegistry::pipeline(tasks, state->jobMonitors);
 		// wire updates
 		if (data)
 			connect(data.get(), &Dataset::update, this, &MainWindow::updateState);
@@ -656,7 +656,7 @@ void MainWindow::openFile(Input type, QString fn)
 		}
 	}
 	if (task.fun)
-		JobRegistry::run(task, state->jobListeners);
+		JobRegistry::run(task, state->jobMonitors);
 }
 
 void MainWindow::showHelp()
@@ -688,7 +688,7 @@ void MainWindow::selectAnnotations(const Annotations::Meta &desc)
 		// note: prepareAnnotations in our case (types SIMPLE/MEANSHIFT) always also computes order
 		Task task({[s=state,d=data] { d->prepareAnnotations(s->annotations); },
 		           type, {name, data->config().name}});
-		JobRegistry::run(task, state->jobListeners);
+		JobRegistry::run(task, state->jobMonitors);
 	}
 }
 
@@ -715,7 +715,7 @@ void MainWindow::selectHierarchy(unsigned id, unsigned granularity)
 	if (data) {
 		Task task{[s=state,d=data] { d->prepareOrder(s->order); },
 			      Task::Type::ORDER, {state->hierarchy.name, data->config().name}};
-		JobRegistry::run(task, state->jobListeners);
+		JobRegistry::run(task, state->jobMonitors);
 	}
 }
 
@@ -728,7 +728,7 @@ void MainWindow::switchHierarchyPartition(unsigned granularity)
 	if (data) {
 		Task task{[s=state,d=data] { d->prepareAnnotations(s->annotations); },
 			      Task::Type::PARTITION_HIERARCHY, {state->hierarchy.name, data->config().name}};
-		JobRegistry::run(task, state->jobListeners);
+		JobRegistry::run(task, state->jobMonitors);
 	}
 }
 

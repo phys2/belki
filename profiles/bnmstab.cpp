@@ -93,7 +93,7 @@ BnmsTab::BnmsTab(QWidget *parent) :
 
 		Task task{[h=&windowState->hub(),source=current.data,conf] { h->spawn(source, conf); },
 		          Task::Type::SPAWN, {conf.name}};
-		JobRegistry::run(task, windowState->jobListeners);
+		JobRegistry::run(task, windowState->jobMonitors);
 	});
 
 	updateIsEnabled();
