@@ -6,19 +6,22 @@
 #include <QSvgRenderer>
 #include <QTimer>
 #include <QToolTip>
-
-const int fps = 25;
+#include <QHBoxLayout>
+#include <QStyle>
+#include <QStyleOptionButton>
 
 JobStatus::JobStatus(QWidget *parent)
     : QWidget(parent)
 {
-	setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
-	setMouseTracking(true);
+	auto layout = new QHBoxLayout(this);
+	layout->setContentsMargins(0, 0, 0, 0);
+	layout->setSpacing(0);
 
+	// provide shared renderer and animation timer for all children
 	renderer = new QSvgRenderer(QString{":/spinner.svg"}, this);
-	animator = new QTimer(this);
-
 	renderer->setFramesPerSecond(fps);
+	// extra timer as QSvgRenderer::repaintNeeded() signal seems not to respect FPS
+	animator = new QTimer(this);
 	animator->setInterval(1000 / fps);
 	animator->setSingleShot(false);
 	connect(animator, &QTimer::timeout, [this] { update(); });
@@ -26,59 +29,66 @@ JobStatus::JobStatus(QWidget *parent)
 
 void JobStatus::addJob(unsigned id)
 {
-	jobs.push_back(id);
+	auto widget = new JobWidget(id, renderer);
+	layout()->addWidget(widget); // sets parent
+	jobs.try_emplace(id, widget);
 	updateJobs();
 }
 
-void JobStatus::updateJob(unsigned)
+void JobStatus::updateJob(unsigned id)
 {
-	// TODO update progress (currently not propagated or handled yet)
+	try {
+		jobs.at(id)->update();
+	}  catch (std::out_of_range&) {} // TODO complain, state error on caller side
 }
 
 void JobStatus::removeJob(unsigned id)
 {
-	for (auto it = jobs.begin(); it != jobs.end(); ++it) {
-		if (*it == id) {
-			jobs.erase(it);
-			break;
-		}
-	}
+	try {
+		delete jobs.at(id);
+	}  catch (std::out_of_range&) {} // TODO complain, state error on caller side
+	jobs.erase(id);
 	updateJobs();
 }
 
 void JobStatus::updateJobs()
 {
-	auto w = height() * jobs.size();
-	setMinimumWidth(w);
-	setMaximumWidth(w);
 	if (jobs.empty())
 		animator->stop();
 	else
 		animator->start();
 }
 
-void JobStatus::mouseMoveEvent(QMouseEvent *event)
+JobWidget::JobWidget(unsigned jobId, QSvgRenderer *renderer, QWidget *parent)
+    : QWidget(parent), renderer(renderer), jobId(jobId)
 {
-	size_t index = event->pos().x() / height();
-	if (index < jobs.size()) {
-		auto text = JobRegistry::get()->job(jobs[index]).name;
-		QRect area({(int)index*height(), 0}, QSize(height(), height()));
-		QToolTip::showText(event->globalPos(), text, this, area);
-	}
+	// allow expansion in y-direction, and honor the width we set on resizes
+	setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+	setMouseTracking(true);
 }
 
-void JobStatus::resizeEvent(QResizeEvent *event)
+void JobWidget::resizeEvent(QResizeEvent *event)
 {
-	if (event->size().height() != event->oldSize().height())
-		updateJobs();
+	auto newHeight = event->size().height();
+	// ensure square size
+	if (newHeight != event->oldSize().height())
+		setMinimumWidth(newHeight);
 }
 
-void JobStatus::paintEvent(QPaintEvent*)
+void JobWidget::mouseMoveEvent(QMouseEvent *event)
 {
-	QSize areaSize(height() - 4, height() - 4);
+	auto text = JobRegistry::get()->job(jobId).name;
+	QToolTip::showText(event->globalPos(), text, this);
+}
+
+void JobWidget::paintEvent(QPaintEvent *)
+{
 	QPainter painter(this);
-	for (size_t i = 0; i < jobs.size(); ++i) {
-		QRect area({2 + (int)i*height(), 2}, areaSize);
-		renderer->render(&painter, area);
-	}
+	/* draw a tool-button style panel so we look like a button; includes hover effects */
+	QStyleOptionButton opt;
+	opt.initFrom(this);
+	opt.rect = rect();
+	style()->drawPrimitive(QStyle::PE_PanelButtonTool, &opt, &painter, this);
+	/* draw the spinner animation */
+	renderer->render(&painter, contentsRect().adjusted(4, 4, -4, -4));
 }

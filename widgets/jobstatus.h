@@ -3,10 +3,25 @@
 
 #include <QWidget>
 #include <memory>
-#include <vector>
+#include <map>
 
 class QSvgRenderer;
 class QTimer;
+
+class JobWidget : public QWidget
+{
+	Q_OBJECT
+public:
+	JobWidget(unsigned jobId, QSvgRenderer *renderer, QWidget *parent=nullptr);
+
+protected:
+	void resizeEvent(QResizeEvent *event) override;
+	void mouseMoveEvent(QMouseEvent *event) override;
+	void paintEvent(QPaintEvent *event) override;
+
+	QSvgRenderer *renderer;
+	unsigned jobId;
+};
 
 class JobStatus : public QWidget
 {
@@ -22,14 +37,12 @@ public slots:
 protected:
 	void updateJobs();
 
-	void mouseMoveEvent(QMouseEvent *event) override;
-	void resizeEvent(QResizeEvent *event) override;
-	void paintEvent(QPaintEvent *event) override;
+	const int fps = 25;
 
 	QSvgRenderer *renderer;
 	QTimer *animator;
 
-	std::vector<unsigned> jobs;
+	std::map<unsigned, JobWidget*> jobs;
 };
 
 #endif
