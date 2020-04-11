@@ -149,10 +149,8 @@ std::optional<Meanshift::Result> Meanshift::compute()
 {
 	std::scoped_lock _(l); // wait for any other threads to finish
 
-	/* We compress several redundant requests for computation by always computing
-	 * on the latest setting for k and by not repeating computation if same k was
-	 * used in the previous run. */
-	if (fams->config.k == k || k == 0)
+	/* Don't compute if cancelled (invalid k) */
+	if (!k)
 		return {};
 
 	fams->resetState();
