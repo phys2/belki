@@ -114,7 +114,7 @@ protected:
 		QAction *datasets;
 		QAction *structure;
 		QAction *granularity;
-		QAction *famsK;
+		QAction *fams;
 	} toolbarActions;
 	std::unique_ptr<QMenu> tabMenu;
 

@@ -167,7 +167,8 @@ void MainWindow::setupToolbar()
 	toolBar->insertWidget(anchor, structureLabel);
 	toolbarActions.structure = toolBar->insertWidget(anchor, structureSelect);
 	toolbarActions.granularity = toolBar->addWidget(granularitySlider);
-	toolbarActions.famsK = toolBar->addWidget(famsKSlider);
+	famsStopButton->setVisible(false);
+	toolbarActions.fams = toolBar->addWidget(famsWidget);
 
 	// remove container we picked from
 	topBar->deleteLater();
@@ -246,10 +247,8 @@ void MainWindow::setupSignals()
 		granularitySlider->setToolTip(QString("Granularity: %1").arg(v));
 		switchHierarchyPartition((unsigned)v);
 	});
-	connect(famsKSlider, &QSlider::valueChanged, [this] (int v) {
-		float k = v*0.01f;
-		famsKSlider->setToolTip(QString("Parameter k: %1").arg(k));
-		selectFAMS(k);
+	connect(famsRunButton, &QToolButton::clicked, [this] {
+		selectFAMS(famsKSelect->value());
 	});
 }
 
@@ -468,13 +467,12 @@ void MainWindow::updateState(Dataset::Touched affected)
 	}
 
 	if (!data) {
-		/* hide and disable widgets that need data or even more */
-		actionSplice->setEnabled(false);
-		actionShowStructure->setEnabled(false);
-		toolbarActions.granularity->setVisible(false);
-		toolbarActions.famsK->setVisible(false);
-		actionExportAnnotations->setEnabled(false);
-		actionPersistAnnotations->setEnabled(false);
+		/* hide and disable data-dependent actions */
+		for (auto i : {actionSplice, actionShowStructure, actionExportAnnotations,
+		               actionPersistAnnotations})
+			i->setEnabled(false);
+		for (auto i : {toolbarActions.granularity, toolbarActions.fams})
+			i->setVisible(false);
 		return;
 	}
 
@@ -580,15 +578,17 @@ void MainWindow::selectStructure(int id)
 	actionExportAnnotations->setEnabled(id != 0);
 	actionPersistAnnotations->setEnabled(false);
 	toolbarActions.granularity->setVisible(false);
-	toolbarActions.famsK->setVisible(false);
+	toolbarActions.fams->setVisible(false);
 
 	/* special items */
 	if (id == 0) { // "None"
 		selectAnnotations({});
 		return;
 	} else if (id == -1) { // Mean shift
-		selectFAMS(famsKSlider->value()*0.01f);
-		toolbarActions.famsK->setVisible(true);
+		selectFAMS(famsKSelect->value()); // TODO avoid auto trigger
+		toolbarActions.fams->setVisible(true);
+		// TODO: be more clever about this. if meanshift with this k is already computed,
+		// enable this but disable run button; else do the opposite
 		actionPersistAnnotations->setEnabled(true);
 		return;
 	}
@@ -694,6 +694,8 @@ void MainWindow::selectAnnotations(const Annotations::Meta &desc)
 
 void MainWindow::selectFAMS(float k)
 {
+	// TODO: trigger computation and when available select?
+	// or add logic to get notified
 	Annotations::Meta desc{Annotations::Meta::MEANSHIFT};
 	desc.k = k;
 	selectAnnotations(desc);

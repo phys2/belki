@@ -25,6 +25,8 @@
 		<file>list-remove.svg</file>
 		<file>lock.svg</file>
 		<file>object-columns.svg</file>
+		<file>process-stop.svg</file>
+		<file>run-build.svg</file>
 		<file>show-gpu-effects.svg</file>
 		<file>sort-name.svg</file>
 		<file>sort_incr.svg</file>
