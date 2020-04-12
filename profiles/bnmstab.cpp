@@ -7,7 +7,6 @@
 
 // stuff for loading components. will most-probably be moved elsewhere!
 #include "compute/components.h"
-#include "widgets/mainwindow.h"
 #include "fileio.h"
 #include <QTextStream>
 

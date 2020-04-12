@@ -1,7 +1,7 @@
 #include "profilewindow.h"
 #include "profilechart.h"
-#include "widgets/mainwindow.h"
 #include "windowstate.h"
+#include "dataset.h"
 #include "fileio.h"
 
 ProfileWindow::ProfileWindow(std::shared_ptr<WindowState> state, ProfileChart *source, QWidget *parent) :
