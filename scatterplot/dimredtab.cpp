@@ -21,7 +21,8 @@ DimredTab::DimredTab(QWidget *parent) :
 	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	toolBar->insertWidget(actionSavePlot, spacer);
 
-	// let compute button display menu without holding mouse
+	// initialize compute menu and let button display menu without holding mouse
+	actionComputeDisplay->setMenu(new QMenu(widget));
 	auto btn = qobject_cast<QToolButton*>(toolBar->widgetForAction(actionComputeDisplay));
 	btn->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);
 
@@ -154,14 +155,14 @@ void DimredTab::updateMenus() {
 
 	/* add all methods that are not here yet to compute offers */
 	const auto& methods = dimred::availableMethods();
-	auto menu = new QMenu(this->window());
+	auto menu = actionComputeDisplay->menu();
+	menu->clear();
 	for (const auto& m : methods) {
 		if (transformSelect->findText(m.id) >= 0)
 			continue;
 
 		menu->addAction(m.description, [this, m] { computeDisplay(m); });
 	}
-	actionComputeDisplay->setMenu(menu);
 
 	/* select a display */
 	if (d->displays.empty())
