@@ -18,6 +18,7 @@ class QLabel;
 class QTreeView;
 class QStandardItemModel;
 class JobStatus;
+class FAMSControl;
 class GuiState;
 
 class MainWindow : public QMainWindow, private Ui::MainWindow
@@ -97,7 +98,6 @@ protected:
 	void setSelectedDataset(unsigned id);
 
 	void selectAnnotations(const Annotations::Meta &desc);
-	void selectFAMS(float k);
 	void selectHierarchy(unsigned id, unsigned granularity);
 	void switchHierarchyPartition(unsigned granularity);
 	std::optional<Annotations> currentAnnotations();
@@ -108,6 +108,7 @@ protected:
 	CustomShowAndEnableProxyModel markerModel;
 	QTreeView *datasetTree;
 	JobStatus *jobWidget;
+	FAMSControl *famsControl;
 
 	struct {
 		QAction *datasets;

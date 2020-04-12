@@ -6,6 +6,7 @@
 #include "profiles/profilewindow.h"
 #include "spawndialog.h"
 #include "jobstatus.h"
+#include "famscontrol.h"
 #include "jobregistry.h"
 
 #include "scatterplot/dimredtab.h"
@@ -167,8 +168,12 @@ void MainWindow::setupToolbar()
 	toolBar->insertWidget(anchor, structureLabel);
 	toolbarActions.structure = toolBar->insertWidget(anchor, structureSelect);
 	toolbarActions.granularity = toolBar->addWidget(granularitySlider);
-	famsStopButton->setVisible(false);
-	toolbarActions.fams = toolBar->addWidget(famsWidget);
+	famsControl = new FAMSControl(this);
+	famsControl->setWindowState(state);
+	connect(this, &MainWindow::datasetSelected, famsControl, &Viewer::selectDataset,
+	        Qt::QueuedConnection);
+	connect(this, &MainWindow::datasetDeselected, famsControl, &Viewer::deselectDataset);
+	toolbarActions.fams = toolBar->addWidget(famsControl->getWidget());
 
 	// remove container we picked from
 	topBar->deleteLater();
@@ -246,9 +251,6 @@ void MainWindow::setupSignals()
 	connect(granularitySlider, &QSlider::valueChanged, [this] (int v) {
 		granularitySlider->setToolTip(QString("Granularity: %1").arg(v));
 		switchHierarchyPartition((unsigned)v);
-	});
-	connect(famsRunButton, &QToolButton::clicked, [this] {
-		selectFAMS(famsKSelect->value());
 	});
 }
 
@@ -489,13 +491,13 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 		emit datasetSelected(data->id());
 		// tell dataset what we need
 		std::vector<Task> tasks; // use a pipeline to avoid redundant order computation
-		if (state->annotations.id || state->annotations.type != Annotations::Meta::SIMPLE) {
-			// TODO: in the future do not trigger meanshift computation here
-			auto type = (state->annotations.type == Annotations::Meta::MEANSHIFT ? Task::Type::COMPUTE : Task::Type::ANNOTATE);
-			auto name = (state->annotations.type == Annotations::Meta::MEANSHIFT ? "Mean Shift" : state->annotations.name);
+		if (state->annotations.id) { // simple case
 			tasks.push_back({[s=state,d=data] { d->prepareAnnotations(s->annotations); },
-		                     type, {name, data->config().name}});
-		}
+		                     Task::Type::ANNOTATE, {state->annotations.name, data->config().name}});
+		} else if (state->annotations.type == Annotations::Meta::HIERCUT) {
+			tasks.push_back({[s=state,d=data] { d->prepareAnnotations(s->annotations); },
+			                 Task::Type::PARTITION_HIERARCHY, {state->hierarchy.name, data->config().name}});
+		} // note: MEANSHIFT case is handled by FAMSControl
 		tasks.push_back({[s=state,d=data] { d->prepareOrder(s->order); },
 		                 Task::Type::ORDER, {"preference", data->config().name}});
 		JobRegistry::pipeline(tasks, state->jobMonitors);
@@ -578,10 +580,9 @@ void MainWindow::selectStructure(int id)
 		selectAnnotations({});
 		return;
 	} else if (id == -1) { // Mean shift
-		selectFAMS(famsKSelect->value()); // TODO avoid auto trigger
 		toolbarActions.fams->setVisible(true);
-		// TODO: be more clever about this. if meanshift with this k is already computed,
-		// enable this but disable run button; else do the opposite
+		famsControl->configure();
+		// TODO: can we avoid enabling this early?
 		actionPersistAnnotations->setEnabled(true);
 		return;
 	}
@@ -674,24 +675,13 @@ void MainWindow::selectAnnotations(const Annotations::Meta &desc)
 		emit state->orderChanged();
 	}
 
-	if (data && (desc.id || desc.type != Annotations::Meta::SIMPLE)) {
-		auto type = (desc.type == Annotations::Meta::MEANSHIFT ? Task::Type::COMPUTE
-		                                                       : Task::Type::ANNOTATE);
-		auto name = (desc.type == Annotations::Meta::MEANSHIFT ? "Mean Shift" : desc.name);
-		// note: prepareAnnotations in our case (types SIMPLE/MEANSHIFT) always also computes order
+	// compute if not the null case (we are not called for special cases)
+	if (data && desc.id) {
+		// note: prepareAnnotations in our case (types SIMPLE) always also computes order
 		Task task({[s=state,d=data] { d->prepareAnnotations(s->annotations); },
-		           type, {name, data->config().name}});
+		           Task::Type::ANNOTATE, {desc.name, data->config().name}});
 		JobRegistry::run(task, state->jobMonitors);
 	}
-}
-
-void MainWindow::selectFAMS(float k)
-{
-	// TODO: trigger computation and when available select?
-	// or add logic to get notified
-	Annotations::Meta desc{Annotations::Meta::MEANSHIFT};
-	desc.k = k;
-	selectAnnotations(desc);
 }
 
 void MainWindow::selectHierarchy(unsigned id, unsigned granularity)

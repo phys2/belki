@@ -4,4 +4,5 @@ target_sources(${APP_NAME} PRIVATE
 	graphicsview.h graphicsview.cpp
 	spawndialog.h spawndialog.cpp spawndialog.ui
 	jobstatus.h jobstatus.cpp
+	famscontrol.h famscontrol.cpp
 	)

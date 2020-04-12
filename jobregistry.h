@@ -20,6 +20,7 @@ struct Task {
 	enum class Type {
 		GENERIC,
 		COMPUTE,
+		COMPUTE_FAMS,
 		PARTITION_HIERARCHY,
 		ANNOTATE,
 		ORDER,
