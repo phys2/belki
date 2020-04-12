@@ -230,6 +230,7 @@ void GuiState::flipMarker(QModelIndex i)
 {
 	if (!i.isValid())
 		return; // didn't click on a row, e.g. clicked on a checkmark
+	/* get back to QStandardItemModel so we can get hold of QStandardItem */
 	while (auto proxy = qobject_cast<const QAbstractProxyModel*>(i.model()))
 		i = proxy->mapToSource(i);
 	auto item = markers.model.itemFromIndex(i);
