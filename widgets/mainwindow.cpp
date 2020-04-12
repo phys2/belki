@@ -403,6 +403,7 @@ void MainWindow::setStructureControlModel(QStandardItemModel *m)
 
 void MainWindow::addTab(MainWindow::Tab type)
 {
+	/* initialize Viewer */
 	Viewer *v(nullptr);
 	switch (type) {
 	case Tab::DIMRED: v = new DimredTab; break;
@@ -414,22 +415,15 @@ void MainWindow::addTab(MainWindow::Tab type)
 	case Tab::BNMS: v = new BnmsTab; break;
 	default: return;
 	}
-
 	v->setWindowState(state);
 	v->setProteinModel(&markerModel);
 
-	// connect singnalling into view (TODO: they should connect themselves)
-	auto hub = &state->hub();
-	connect(hub, &DataHub::newDataset, v, &Viewer::addDataset);
-	connect(hub, &DataHub::datasetRemoved, v, &Viewer::removeDataset);
-	/* use queued conn. to ensure the views get the *newDataset* signal first! */
+	/* connect signals */
+	// use queued conn. to ensure the views get the *newDataset* signal from hub first!
 	connect(this, &MainWindow::datasetSelected, v, &Viewer::selectDataset, Qt::QueuedConnection);
 	connect(this, &MainWindow::datasetDeselected, v, &Viewer::deselectDataset);
-
-	// connect signalling out of view
 	connect(v, &Viewer::proteinsHighlighted, profiles,
 	        qOverload<std::vector<ProteinId>, const QString&>(&ProfileWidget::updateDisplay));
-
 	auto renderSlot = [this] (auto r, auto d) {
 		auto title = (data ? data->config().name : windowTitle());
 		state->io().renderToFile(r, {title, d});
@@ -437,12 +431,11 @@ void MainWindow::addTab(MainWindow::Tab type)
 	connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
 	connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
 
-	// TODO: they could do that themselves, too
-	for (auto &[_, d] : hub->datasets())
-		v->addDataset(d);
+	/* propagate data selection */
 	if (data)
 		v->selectDataset(data->id());
 
+	/* add under unique title */
 	auto title = tabTitles.at(type);
 	auto count = tabHistory.count(type);
 	if (count)

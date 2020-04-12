@@ -1,4 +1,5 @@
 #include "viewer.h"
+#include "datahub.h"
 
 #include <QWidget>
 
@@ -10,12 +11,22 @@ Viewer::Viewer(QWidget *widget, QObject *parent)
 void Viewer::setWindowState(std::shared_ptr<WindowState> s)
 {
 	if (windowState) {
-		/* disconnect anything that might have been connected in override */
+		/* disconnect anything that might have been connected by us or in override */
 		windowState->disconnect(this);
 		windowState->proteins().disconnect(this);
 	}
 	windowState = s;
-	// now override might connect stuff
+
+	// connect signals
+	auto hub = &s->hub();
+	connect(hub, &DataHub::newDataset, this, &Viewer::addDataset);
+	connect(hub, &DataHub::datasetRemoved, this, &Viewer::removeDataset);
+
+	// get up to speed
+	for (auto &[_, d] : hub->datasets())
+		addDataset(d);
+
+	// now override might connect more stuff
 }
 
 void Viewer::deselectDataset()
