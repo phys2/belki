@@ -3,13 +3,14 @@
 
 #include "jobregistry.h"
 
+#include <QMainWindow>
 #include <QMenu>
 #include <QToolButton>
 
 DimredTab::DimredTab(QWidget *parent) :
-    Viewer(parent)
+    Viewer(new QMainWindow, parent)
 {
-	setupUi(this);
+	setupUi(qobject_cast<QMainWindow*>(widget));
 
 	// setup toolbar
 	auto anchor = actionCycleBackward;
@@ -183,7 +184,7 @@ bool DimredTab::updateIsEnabled()
 	bool on = Viewer::updateIsEnabled();
 	on = on && selected().data->peek<Dataset::Base>()->dimensions.count() > 2;
 
-	setEnabled(on);
+	widget->setEnabled(on);
 	view->setVisible(on);
 
 	return on;

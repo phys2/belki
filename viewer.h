@@ -5,20 +5,26 @@
 #include "dataset.h"
 #include "windowstate.h"
 
-#include <QMainWindow>
+#include <QObject>
 #include <memory>
 
+class QWidget;
 class QGraphicsScene;
 class QGraphicsView;
 class QAbstractItemModel;
 
-class Viewer : public QMainWindow
+class Viewer : public QObject
 {
 	Q_OBJECT
 
 public:
-	using QMainWindow::QMainWindow;
+	/* Note: if no explicit parent is specified, the widget is used as parent;
+	 * so the lifetime of the widget dictates the lifetime of the viewer */
+	Viewer(QWidget *widget = nullptr, QObject *parent = nullptr);
 	virtual ~Viewer() {}
+
+	// may be overloaded to return descendant type
+	virtual QWidget *getWidget() { return widget; }
 
 	virtual void setProteinModel(QAbstractItemModel*) {}
 	virtual void setWindowState(std::shared_ptr<WindowState> s);
@@ -57,6 +63,7 @@ protected:
 	ContentMap::iterator addData(unsigned id, DataState::Ptr elem);
 
 	std::shared_ptr<WindowState> windowState;
+	QWidget *widget;
 
 private:
 	ContentMap dataStates;

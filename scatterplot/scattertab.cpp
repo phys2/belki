@@ -2,10 +2,12 @@
 #include "chart.h"
 #include "compute/features.h"
 
+#include <QMainWindow>
+
 ScatterTab::ScatterTab(QWidget *parent) :
-    Viewer(parent)
+    Viewer(new QMainWindow, parent)
 {
-	setupUi(this);
+	setupUi(qobject_cast<QMainWindow*>(widget));
 
 	// setup toolbar
 	auto anchor = actionCycleBackward;
@@ -165,7 +167,7 @@ void ScatterTab::selectSecondaryDimension(int index)
 bool ScatterTab::updateIsEnabled()
 {
 	bool on = Viewer::updateIsEnabled();
-	setEnabled(on);
+	widget->setEnabled(on);
 	view->setVisible(on);
 
 	return on;

@@ -1,10 +1,12 @@
 #include "featweightstab.h"
 #include "featweightsscene.h"
 
+#include <QMainWindow>
+
 FeatweightsTab::FeatweightsTab(QWidget *parent) :
-    Viewer(parent)
+    Viewer(new QMainWindow, parent)
 {
-	setupUi(this);
+	setupUi(qobject_cast<QMainWindow*>(widget));
 	setupWeightingUI();
 
 	auto anchor = actionSavePlot;
@@ -151,7 +153,7 @@ void FeatweightsTab::updateScoreSlider()
 bool FeatweightsTab::updateIsEnabled()
 {
 	bool on = Viewer::updateIsEnabled();
-	setEnabled(on);
+	widget->setEnabled(on);
 	view->setVisible(on);
 	return on;
 }

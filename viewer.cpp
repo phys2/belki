@@ -1,5 +1,12 @@
 #include "viewer.h"
 
+#include <QWidget>
+
+Viewer::Viewer(QWidget *widget, QObject *parent)
+    : QObject(parent ? parent : widget), widget(widget)
+{
+}
+
 void Viewer::setWindowState(std::shared_ptr<WindowState> s)
 {
 	if (windowState) {

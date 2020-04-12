@@ -449,8 +449,9 @@ void MainWindow::addTab(MainWindow::Tab type)
 		title.append(QString(" (%1)").arg(count + 1));
 	tabHistory.insert(type);
 
-    tabWidget->addTab(v, title);
-	tabWidget->setCurrentWidget(v);
+	// note: takes ownership of widget, and with it, viewer v through its internal mechanics
+	tabWidget->addTab(v->getWidget(), title);
+	tabWidget->setCurrentWidget(v->getWidget());
 }
 
 void MainWindow::updateState(Dataset::Touched affected)

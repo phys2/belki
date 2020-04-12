@@ -1,6 +1,7 @@
 #include "profiletab.h"
 #include "profilechart.h"
 
+#include <QMainWindow>
 #include <QStandardItemModel>
 #include <QAbstractProxyModel>
 #include <QCompleter>
@@ -10,9 +11,10 @@
 #include <QShortcut>
 
 ProfileTab::ProfileTab(QWidget *parent) :
-    Viewer(parent), proteinModel(tabState.extras)
+    Viewer(new QMainWindow, parent),
+	proteinModel(tabState.extras)
 {
-	setupUi(this);
+	setupUi(qobject_cast<QMainWindow*>(widget));
 	view->setRubberBand(QtCharts::QChartView::RectangleRubberBand); // TODO: issue #5
 	setupProteinBox();
 
@@ -52,7 +54,7 @@ ProfileTab::ProfileTab(QWidget *parent) :
 	});
 
 	/* have a handy shortcut */
-	auto zoomReset = new QShortcut(this);
+	auto zoomReset = new QShortcut(widget);
 	zoomReset->setKey({"Shift+z"});
 	connect(zoomReset, &QShortcut::activated, [this] {
 		if (haveData())
@@ -213,7 +215,7 @@ void ProfileTab::setupProteinBox()
 bool ProfileTab::updateIsEnabled()
 {
 	bool on = Viewer::updateIsEnabled();
-	setEnabled(on);
+	widget->setEnabled(on);
 	view->setVisible(on);
 	return on;
 }

@@ -2,10 +2,12 @@
 #include "heatmapscene.h"
 #include "jobregistry.h"
 
+#include <QMainWindow>
+
 HeatmapTab::HeatmapTab(QWidget *parent) :
-    Viewer(parent)
+    Viewer(new QMainWindow, parent)
 {
-	setupUi(this);
+	setupUi(qobject_cast<QMainWindow*>(widget));
 	setupOrderUI();
 
 	// right-align screenshot button
@@ -105,7 +107,7 @@ void HeatmapTab::setupOrderUI()
 bool HeatmapTab::updateIsEnabled()
 {
 	bool on = Viewer::updateIsEnabled();
-	setEnabled(on);
+	widget->setEnabled(on);
 	view->setVisible(on);
 	return on;
 }

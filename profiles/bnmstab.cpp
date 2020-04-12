@@ -10,6 +10,7 @@
 #include "fileio.h"
 #include <QTextStream>
 
+#include <QMainWindow>
 #include <QStandardItemModel>
 #include <QAbstractProxyModel>
 #include <QCompleter>
@@ -18,9 +19,9 @@
 #include <QToolButton>
 
 BnmsTab::BnmsTab(QWidget *parent) :
-    Viewer(parent)
+    Viewer(new QMainWindow, parent)
 {
-	setupUi(this);
+	setupUi(qobject_cast<QMainWindow*>(widget));
 	referenceSelect->setModel(&proteinModel);
 	auto anchor = actionHistoryMenu;
 	toolBar->insertWidget(anchor, proteinBox);
@@ -364,7 +365,7 @@ void BnmsTab::loadComponents()
 bool BnmsTab::updateIsEnabled()
 {
 	bool on = Viewer::updateIsEnabled();
-	setEnabled(on);
+	widget->setEnabled(on);
 	view->setVisible(on);
 	return on;
 }
