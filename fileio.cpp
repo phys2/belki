@@ -8,7 +8,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 
-QString FileIO::chooseFile(FileIO::Role purpose, QWidget *parent)
+QString FileIO::chooseFile(FileIO::Role purpose, QWidget *window)
 {
 	static const QMap<Role, RoleDef> map = {
 	    {OpenDataset, {"Open Dataset", "Peak Volumes Table (*.tsv *.txt);; All Files (*)", false, {}}},
@@ -30,14 +30,14 @@ QString FileIO::chooseFile(FileIO::Role purpose, QWidget *parent)
 
 	auto params = map[purpose];
 	if (params.isWrite) {
-		auto filename = QFileDialog::getSaveFileName(parent, params.title, {}, params.filter);
+		auto filename = QFileDialog::getSaveFileName(window, params.title, {}, params.filter);
 		if (!params.writeSuffix.isEmpty() && !filename.isEmpty() &&
 		    QFileInfo(filename).suffix().isEmpty())
 			filename.append(params.writeSuffix);
 		return filename;
 	}
 
-	return QFileDialog::getOpenFileName(parent, params.title, {}, params.filter);
+	return QFileDialog::getOpenFileName(window, params.title, {}, params.filter);
 }
 
 template<typename Q>

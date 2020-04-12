@@ -39,7 +39,7 @@ public:
 		QString description;
 	};
 
-	QString chooseFile(Role purpose, QWidget *parent = nullptr);
+	QString chooseFile(Role purpose, QWidget *window = nullptr);
 
 signals:
 	void message(const GuiMessage &message);

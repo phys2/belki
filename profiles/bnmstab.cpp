@@ -298,7 +298,7 @@ void BnmsTab::loadComponents()
 		return;
 
 	auto &io = windowState->io();
-	auto fn = io.chooseFile(FileIO::OpenComponents, parentWidget());
+	auto fn = io.chooseFile(FileIO::OpenComponents, widget->window());
 	if (fn.isEmpty())
 		return;
 	QFile f(fn);
