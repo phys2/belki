@@ -118,7 +118,6 @@ void GuiState::addWindow()
 	connect(target, &MainWindow::openProjectRequested, this, &GuiState::openProject);
 	connect(target, &MainWindow::quitApplicationRequested, this, &GuiState::quitRequested);
 	connect(target, &MainWindow::markerFlipped, this, &GuiState::flipMarker);
-	connect(target, &MainWindow::markerToggled, this, &GuiState::toggleMarker);
 
 	connect(&hub, &DataHub::projectNameChanged, target, &MainWindow::setName);
 	connect(&hub, &DataHub::datasetRemoved, target, &MainWindow::removeDataset);
@@ -237,11 +236,6 @@ void GuiState::flipMarker(QModelIndex i)
 	if (!item->isEnabled())
 		return;
 	item->setCheckState(item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked);
-}
-
-void GuiState::toggleMarker(ProteinId id, bool present)
-{
-	markers.items.at(id)->setCheckState(present ? Qt::Checked : Qt::Unchecked);
 }
 
 void GuiState::handleMarkerChange(QStandardItem *item)

@@ -45,7 +45,6 @@ public slots:
 	void removeDataset(unsigned id);
 	void addProtein(ProteinId id, const Protein &protein);
 	void flipMarker(QModelIndex i);
-	void toggleMarker(ProteinId id, bool present);
 
 	void handleMarkerChange(QStandardItem *item);
 

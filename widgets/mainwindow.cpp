@@ -427,7 +427,6 @@ void MainWindow::addTab(MainWindow::Tab type)
 	connect(this, &MainWindow::datasetDeselected, v, &Viewer::deselectDataset);
 
 	// connect signalling out of view
-	connect(v, &Viewer::markerToggled, this, &MainWindow::markerToggled);
 	connect(v, &Viewer::proteinsHighlighted, profiles,
 	        qOverload<std::vector<ProteinId>, const QString&>(&ProfileWidget::updateDisplay));
 

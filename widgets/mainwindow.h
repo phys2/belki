@@ -48,7 +48,6 @@ signals:
 	void datasetSelected(unsigned id);
 	void datasetDeselected();
 	void markerFlipped(QModelIndex i);
-	void markerToggled(ProteinId id, bool present);
 
 protected:
 	enum class Input {
