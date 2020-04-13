@@ -31,6 +31,7 @@ protected:
 	};
 
 	bool updateIsEnabled() override;
+	bool isAvailable();
 
 	DataState &selected() { return selectedAs<DataState>(); }
 };

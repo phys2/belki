@@ -7,7 +7,8 @@ FAMSControl::FAMSControl(QWidget *parent) :
 	setupUi(widget);
 
 	stopButton->setVisible(false);
-    connect(runButton, &QToolButton::clicked, this, &FAMSControl::configure);
+	connect(kSelect, qOverload<double>(&QDoubleSpinBox::valueChanged), [this] { configure(); });
+	connect(runButton, &QToolButton::clicked, this, &FAMSControl::run);
 }
 
 FAMSControl::~FAMSControl()
@@ -17,7 +18,7 @@ FAMSControl::~FAMSControl()
 
 void FAMSControl::selectDataset(unsigned id)
 {
-	selectData(id);
+	selectData(id); // triggers updateIsEnabled()
 	if (windowState->annotations.type == Annotations::Meta::MEANSHIFT)
 		run();
 }
@@ -26,7 +27,8 @@ void FAMSControl::addDataset(Dataset::Ptr data)
 {
 	auto &state = addData<DataState>(data);
 	connect(state.data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
-		// TODO react
+		if (touched & Dataset::Touch::CLUSTERS)
+			updateIsEnabled();
 	});
 }
 
@@ -45,33 +47,33 @@ void FAMSControl::configure()
 		}
 	}
 
-	/* trigger calculation */
-	run();
+	updateIsEnabled(); // checks if already available
 }
 
 void FAMSControl::run()
 {
-	bool mayRun = runButton->isEnabled();
-	if (!mayRun)
+	if (!runButton->isEnabled())
 		return;
 
-	/* check if already available */
 	auto desc = windowState->annotations;
 	auto data = selected().data;
-	if (data->peek<Dataset::Structure>()->fetch(desc))
-		return;
-
-	/* start computation and track it */
 	// note: prepareAnnotations in our case (type MEANSHIFT) always also computes order
-	Task task({[s=windowState,d=data] { d->prepareAnnotations(s->annotations); },
+	Task task({[desc,data] { data->prepareAnnotations(desc); },
 	           Task::Type::COMPUTE_FAMS, {QString::number(desc.k, 'f', 2), data->config().name}});
 	JobRegistry::run(task, windowState->jobMonitors); // TODO add ourselves
+}
+
+bool FAMSControl::isAvailable()
+{
+	if (!haveData())
+		return false;
+	return selected().data->peek<Dataset::Structure>()->fetch(windowState->annotations);
 }
 
 bool FAMSControl::updateIsEnabled()
 {
 	/* we exploit this mechanism to update our general state, not only enabled state */
-	bool mayRun = haveData() && selected().step == DataState::IDLE;
+	bool mayRun = haveData() && selected().step == DataState::IDLE && !isAvailable();
 	runButton->setEnabled(mayRun);
 	return true;
 }

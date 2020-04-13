@@ -579,6 +579,7 @@ void MainWindow::selectStructure(int id)
 	} else if (id == -1) { // Mean shift
 		toolbarActions.fams->setVisible(true);
 		famsControl->configure();
+		famsControl->run();
 		// TODO: can we avoid enabling this early?
 		actionPersistAnnotations->setEnabled(true);
 		return;
