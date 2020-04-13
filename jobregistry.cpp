@@ -21,7 +21,7 @@ void JobRegistry::pipeline(const std::vector<Task> &tasks,
 	QtConcurrent::run([tasks,monitors] {
 		auto reg = JobRegistry::get();
 		for (auto &task : tasks) {
-			reg->startCurrentJob(task.type, task.fields);
+			reg->startCurrentJob(task.type, task.fields, task.userData);
 			for (auto i : monitors)
 				reg->addCurrentJobMonitor(i);
 			task.fun();
@@ -49,7 +49,8 @@ JobRegistry::Entry JobRegistry::getCurrentJob()
 	return {};
 }
 
-void JobRegistry::startCurrentJob(Task::Type type, const std::vector<QString> &fields)
+void JobRegistry::startCurrentJob(Task::Type type, const std::vector<QString> &fields,
+                                  const QVariant &userData)
 {
 	QWriteLocker _(&lock);
 	auto it = threadToEntry();
@@ -57,7 +58,7 @@ void JobRegistry::startCurrentJob(Task::Type type, const std::vector<QString> &f
 		// TODO: this should not happen, so complain
 		eraseEntry(it);
 	}
-	createEntry(type, fields);
+	createEntry(type, fields, userData);
 }
 
 void JobRegistry::addCurrentJobMonitor(QPointer<QObject> monitor)
@@ -90,7 +91,8 @@ JobRegistry::JobMap::iterator JobRegistry::threadToEntry()
 	return jobs.find(QThread::currentThread());
 }
 
-void JobRegistry::createEntry(Task::Type type, const std::vector<QString> &fields)
+void JobRegistry::createEntry(Task::Type type, const std::vector<QString> &fields,
+                              const QVariant &userData)
 {
 	// caller needs to hold lock
 	using T = Task::Type;
@@ -120,7 +122,7 @@ void JobRegistry::createEntry(Task::Type type, const std::vector<QString> &field
 	for (auto i : fields)
 		name = name.arg(i);
 	// TODO: check for nullptr & complain
-	jobs[QThread::currentThread()] = {id, name};
+	jobs[QThread::currentThread()] = {id, name, userData};
 }
 
 void JobRegistry::eraseEntry(JobMap::iterator entry)

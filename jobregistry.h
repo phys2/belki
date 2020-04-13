@@ -6,6 +6,7 @@
 #include <QReadWriteLock>
 #include <QString>
 #include <QPointer>
+#include <QVariant>
 #include <unordered_map>
 #include <memory>
 
@@ -40,6 +41,7 @@ struct Task {
 	std::function<void()> fun;
 	Type type = Type::GENERIC;
 	std::vector<QString> fields = {};
+	QVariant userData = {};
 };
 
 /**
@@ -71,16 +73,19 @@ public:
 
 		unsigned id = 0; // empty job
 		QString name;
+		QVariant userData;
 	};
 
 	static std::shared_ptr<JobRegistry> get(); // singleton
 	static void run(const Task &task, const std::vector<QPointer<QObject>> &monitors);
-	static void pipeline(const std::vector<Task> &tasks, const std::vector<QPointer<QObject>> &monitors);
+	static void pipeline(const std::vector<Task> &tasks,
+	                     const std::vector<QPointer<QObject>> &monitors);
 
 	Entry job(unsigned id);
 	Entry getCurrentJob();
 
-	void startCurrentJob(Task::Type type, const std::vector<QString> &fields);
+	void startCurrentJob(Task::Type type, const std::vector<QString> &fields,
+	                     const QVariant &userData = {});
 	void addCurrentJobMonitor(QPointer<QObject> monitor);
 	void endCurrentJob();
 
@@ -88,7 +93,7 @@ protected:
 	using JobMap = std::unordered_map<QThread*, Entry>;
 
 	JobMap::iterator threadToEntry();
-	void createEntry(Task::Type type, const std::vector<QString> &fields);
+	void createEntry(Task::Type type, const std::vector<QString> &fields, const QVariant &userData);
 	void eraseEntry(JobMap::iterator entry);
 
 	unsigned nextJobId = 1; // 0 is no job
