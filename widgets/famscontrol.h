@@ -15,8 +15,14 @@ public:
 	void selectDataset(unsigned id) override;
 	void addDataset(Dataset::Ptr data) override;
 
+public slots:
 	void configure();
 	void run();
+
+	// job monitor interface
+	void addJob(unsigned jobId);
+	void updateJob(unsigned jobId);
+	void removeJob(unsigned jobId);
 
 protected:
 	struct DataState : public Viewer::DataState {
@@ -24,7 +30,7 @@ protected:
 
 		enum Step {
 			IDLE,
-			COMPUTING,
+			RUNNING,
 			ABORTING
 		} step = IDLE;
 		unsigned job = 0;
@@ -33,6 +39,7 @@ protected:
 	bool updateIsEnabled() override;
 	bool isAvailable();
 
+	DataState *byJob(unsigned jobId, bool fresh=false);
 	DataState &selected() { return selectedAs<DataState>(); }
 };
 

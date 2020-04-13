@@ -60,7 +60,34 @@ void FAMSControl::run()
 	// note: prepareAnnotations in our case (type MEANSHIFT) always also computes order
 	Task task({[desc,data] { data->prepareAnnotations(desc); },
 	           Task::Type::COMPUTE_FAMS, {QString::number(desc.k, 'f', 2), data->config().name}});
-	JobRegistry::run(task, windowState->jobMonitors); // TODO add ourselves
+	task.userData = data->config().id;
+	auto monitors = windowState->jobMonitors;
+	monitors.push_back(this);
+	JobRegistry::run(task, monitors);
+}
+
+void FAMSControl::addJob(unsigned jobId) {
+	auto state = byJob(jobId, true);
+	if (!state)
+		return;
+
+	state->step = DataState::RUNNING;
+	state->job = jobId;
+	updateIsEnabled();
+}
+
+void FAMSControl::updateJob(unsigned) {
+	// TODO progress updates with a progress bar
+}
+
+void FAMSControl::removeJob(unsigned jobId) {
+	auto state = byJob(jobId);
+	if (!state)
+		return;
+
+	state->step = DataState::IDLE;
+	state->job = 0;
+	updateIsEnabled();
 }
 
 bool FAMSControl::isAvailable()
@@ -70,10 +97,30 @@ bool FAMSControl::isAvailable()
 	return selected().data->peek<Dataset::Structure>()->fetch(windowState->annotations);
 }
 
+FAMSControl::DataState *FAMSControl::byJob(unsigned jobId, bool fresh)
+{
+	if (fresh) { // use this only on job start where chances are high the job is still there
+		auto it = states().find(JobRegistry::get()->job(jobId).userData.toUInt());
+		return (it != states().end() ? dynamic_cast<DataState*>(it->second.get()) : nullptr);
+	}
+	for (auto &[_, state] : states()) {
+		auto s = dynamic_cast<DataState*>(state.get());
+		if (s && s->job == jobId)
+			return s;
+	}
+	return nullptr;
+}
+
 bool FAMSControl::updateIsEnabled()
 {
 	/* we exploit this mechanism to update our general state, not only enabled state */
 	bool mayRun = haveData() && selected().step == DataState::IDLE && !isAvailable();
+	// small attempt to avoid some confusion by the user by disabling selection while computing
+	// so the user does not select something else and wonders if that changes the computation or
+	// later wonders where the result went. note that the user can circumvent this by selecting
+	// another dataset. tough luck for the user then.
+	bool maySelect = !haveData() || (selected().step != DataState::RUNNING);
 	runButton->setEnabled(mayRun);
+	kSelect->setEnabled(maySelect);
 	return true;
 }
