@@ -50,7 +50,7 @@ MainWindow::MainWindow(GuiState &owner)
 	auto p = state->hub().projectMeta();
 	setName(p.name, p.path);
 
-	// initialize widgets to be empty & most-restrictive
+	// initialize widgets to no-dataset-selected state
 	updateState(Dataset::Touch::BASE);
 }
 
@@ -158,33 +158,36 @@ void MainWindow::setupModelViews()
 
 void MainWindow::setupToolbar()
 {
-	// put datasets and some space before partition area
+	/* put datasets and some space before structure area */
 	auto anchor = actionShowStructure;
 	toolBar->insertWidget(anchor, datasetLabel);
 	toolbarActions.datasets = toolBar->insertWidget(anchor, datasetSelect);
 	toolBar->insertSeparator(anchor);
 
-	// fill-up partition area
-	toolBar->insertWidget(anchor, structureLabel);
-	toolbarActions.structure = toolBar->insertWidget(anchor, structureSelect);
-	toolbarActions.granularity = toolBar->addWidget(granularitySlider);
+	/* fill-up structure area */
 	famsControl = new FAMSControl(this);
 	famsControl->setWindowState(state);
 	connect(this, &MainWindow::datasetSelected, famsControl, &Viewer::selectDataset,
 	        Qt::QueuedConnection);
 	connect(this, &MainWindow::datasetDeselected, famsControl, &Viewer::deselectDataset);
+
+	toolBar->insertWidget(anchor, structureLabel);
+	toolbarActions.structure = toolBar->insertWidget(anchor, structureSelect);
+	toolbarActions.granularity = toolBar->addWidget(granularitySlider);
+	toolbarActions.granularity->setVisible(false);
 	toolbarActions.fams = toolBar->addWidget(famsControl->getWidget());
+	toolbarActions.fams->setVisible(false);
 
-	// remove container we picked from
-	topBar->deleteLater();
-
-	// add background job indicator
+	/* add background job indicator */
 	auto* spacer = new QWidget();
 	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	toolBar->addWidget(spacer);
 	jobWidget = new JobStatus();
 	toolBar->addWidget(jobWidget);
 	state->jobMonitors.push_back(jobWidget);
+
+	// remove container we picked from
+	topBar->deleteLater();
 }
 
 void MainWindow::setupTabs()
@@ -461,18 +464,12 @@ void MainWindow::updateState(Dataset::Touched affected)
 		protList->reset();
 	}
 
+	actionSplice->setEnabled((bool)data);
 	if (!data) {
-		/* hide and disable data-dependent actions */
-		for (auto i : {actionSplice, actionShowStructure, actionExportAnnotations,
-		               actionPersistAnnotations})
+		/* disable data-dependent actions that also depend on other things (so we don't enable) */
+		for (auto i : {actionShowStructure, actionExportAnnotations, actionPersistAnnotations})
 			i->setEnabled(false);
-		for (auto i : {toolbarActions.granularity, toolbarActions.fams})
-			i->setVisible(false);
-		return;
 	}
-
-	/* re-enable actions that depend only on data */
-	actionSplice->setEnabled(true);
 }
 
 void MainWindow::setDataset(Dataset::Ptr selected)
