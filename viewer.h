@@ -51,6 +51,8 @@ protected:
 	using ContentMap = std::map<unsigned, DataState::Ptr>;
 
 	virtual bool updateIsEnabled();
+
+	const ContentMap& states() const { return dataStates; }
 	bool haveData(); // have a selected dataset → current datastate
 	bool selectData(unsigned id); // select dataset/state
 	template<typename State>
