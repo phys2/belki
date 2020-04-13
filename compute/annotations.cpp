@@ -3,7 +3,6 @@
 
 #include "meanshift/fams.h"
 
-#include <QThread>
 #include <QCollator>
 #include <iostream>
 #include <unordered_set>
