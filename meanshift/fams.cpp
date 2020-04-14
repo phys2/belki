@@ -131,7 +131,7 @@ void FAMS::ComputePilotPoint::operator()(const tbb::blocked_range<int> &r)
 		dbg_acc += fams.datapoints[j].window;
 
 		if (fams.n_ < 50 || (++done % (fams.n_ / 50)) == 0) {
-			bool cont = fams.progressUpdate((float)done/(float)fams.n_ * 20.f,
+			bool cont = fams.progressUpdate((float)done/(float)fams.n_ * 10.f,
 				false);
 			if (!cont) {
 				bgLog("ComputePilot aborted.\n");
@@ -140,7 +140,7 @@ void FAMS::ComputePilotPoint::operator()(const tbb::blocked_range<int> &r)
 			done = 0;
 		}
 	}
-	fams.progressUpdate((float)done/(float)fams.n_ * 20.f, false);
+	fams.progressUpdate((float)done/(float)fams.n_ * 10.f, false);
 }
 
 // compute the pilot h_i's for the data points
@@ -258,10 +258,10 @@ const
 		}
 
 		// progress reporting
-		if (fams.startPoints.size() < 320 ||
-		    (++done % (fams.startPoints.size() / 320)) == 0) {
+		if (fams.startPoints.size() < 90*4 ||
+		    (++done % (fams.startPoints.size() / 90*4)) == 0) {
 			bool cont = fams.progressUpdate((float)done/
-											(float)fams.startPoints.size()*80.f,
+											(float)fams.startPoints.size()*90.f,
 											false);
 			if (!cont) {
 				bgLog("FinishFAMS aborted.\n");
@@ -270,7 +270,7 @@ const
 			done = 0;
 		}
 	}
-	fams.progressUpdate((float)done/(float)fams.startPoints.size()*80.f, false);
+	fams.progressUpdate((float)done/(float)fams.startPoints.size()*90.f, false);
 }
 
 // perform FAMS starting from a subset of the data points.
