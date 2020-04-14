@@ -9,6 +9,7 @@ FAMSControl::FAMSControl(QWidget *parent) :
 	stopButton->setVisible(false);
 	connect(kSelect, qOverload<double>(&QDoubleSpinBox::valueChanged), [this] { configure(); });
 	connect(runButton, &QToolButton::clicked, this, &FAMSControl::run);
+	connect(stopButton, &QToolButton::clicked, this, &FAMSControl::stop);
 }
 
 FAMSControl::~FAMSControl()
@@ -18,7 +19,7 @@ FAMSControl::~FAMSControl()
 
 void FAMSControl::selectDataset(unsigned id)
 {
-	selectData(id); // triggers updateIsEnabled()
+	selectData(id); // triggers updateUi()
 	if (windowState->annotations.type == Annotations::Meta::MEANSHIFT)
 		run();
 }
@@ -28,7 +29,7 @@ void FAMSControl::addDataset(Dataset::Ptr data)
 	auto &state = addData<DataState>(data);
 	connect(state.data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
 		if (touched & Dataset::Touch::CLUSTERS)
-			updateIsEnabled();
+			updateUi();
 	});
 }
 
@@ -46,8 +47,7 @@ void FAMSControl::configure()
 			emit windowState->orderChanged();
 		}
 	}
-
-	updateIsEnabled(); // checks if already available
+	updateUi(); // checks if already available
 }
 
 void FAMSControl::run()
@@ -66,6 +66,16 @@ void FAMSControl::run()
 	JobRegistry::run(task, monitors);
 }
 
+void FAMSControl::stop()
+{
+	if (!haveData())
+		return;
+
+	JobRegistry::get()->cancelJob(selected().job);
+	selected().step = DataState::ABORTING;
+	updateUi();
+}
+
 void FAMSControl::addJob(unsigned jobId) {
 	auto state = byJob(jobId, true);
 	if (!state)
@@ -73,11 +83,20 @@ void FAMSControl::addJob(unsigned jobId) {
 
 	state->step = DataState::RUNNING;
 	state->job = jobId;
-	updateIsEnabled();
+	state->progress = 0;
+	updateUi();
 }
 
-void FAMSControl::updateJob(unsigned) {
-	// TODO progress updates with a progress bar
+void FAMSControl::updateJob(unsigned jobId) {
+	auto state = byJob(jobId);
+	if (!state)
+		return;
+
+	auto job = JobRegistry::get()->job(jobId);
+	if (job.isValid()) {
+		state->progress = std::ceil(job.progress);
+		updateUi();
+	}
 }
 
 void FAMSControl::removeJob(unsigned jobId) {
@@ -87,7 +106,7 @@ void FAMSControl::removeJob(unsigned jobId) {
 
 	state->step = DataState::IDLE;
 	state->job = 0;
-	updateIsEnabled();
+	updateUi();
 }
 
 bool FAMSControl::isAvailable()
@@ -111,16 +130,28 @@ FAMSControl::DataState *FAMSControl::byJob(unsigned jobId, bool fresh)
 	return nullptr;
 }
 
-bool FAMSControl::updateIsEnabled()
+void FAMSControl::updateUi()
 {
-	/* we exploit this mechanism to update our general state, not only enabled state */
 	bool mayRun = haveData() && selected().step == DataState::IDLE && !isAvailable();
+	bool mayStop = haveData() && selected().step == DataState::RUNNING;
 	// small attempt to avoid some confusion by the user by disabling selection while computing
 	// so the user does not select something else and wonders if that changes the computation or
 	// later wonders where the result went. note that the user can circumvent this by selecting
 	// another dataset. tough luck for the user then.
 	bool maySelect = !haveData() || (selected().step != DataState::RUNNING);
-	runButton->setEnabled(mayRun);
+	runButton->setEnabled(mayRun); // do this even if not shown; we use enabled state internally
 	kSelect->setEnabled(maySelect);
-	return true;
+	stopButton->setEnabled(mayStop);
+
+	// update progress bar before showing it
+	if (haveData()) {
+		progressBar->setMaximum(selected().step == DataState::RUNNING ? 100 : 0); // 0 shows 'busy'
+		progressBar->setValue(selected().progress);
+	}
+
+	// now to visibilities
+	bool showProgress = haveData() && selected().step != DataState::IDLE;
+	runButton->setVisible(!showProgress);
+	progressBar->setVisible(showProgress);
+	stopButton->setVisible(showProgress);
 }

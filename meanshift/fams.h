@@ -291,6 +291,7 @@ public:
 
 protected:
 	bool cancelled = false;
+	unsigned jobId = 0;
 	float progress = 0.f, progress_old = 0.f;
 	tbb::mutex progressMutex;
 };

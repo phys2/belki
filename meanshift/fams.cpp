@@ -16,6 +16,8 @@
 
 #include "fams.h"
 
+#include "jobregistry.h"
+
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
@@ -44,6 +46,7 @@ FAMS::~FAMS() {
 
 void FAMS::resetState() {
 	progress = progress_old = 0.;
+	jobId = JobRegistry::get()->getCurrentJob().id; // 0 if there is no job
 	cancelled = false;
 	modes = std::vector<Mode>(modes.size());
 	prunedModes = {};
@@ -152,7 +155,7 @@ bool FAMS::ComputePilot(vector<double> *weights) {
 	bgLog("No kNN found for %2.2f%% of all points\n",
 		  (float) comp.dbg_noknn / n_ * 100);
 
-	return !(progress < 0.f); // in case of abort, progress is set to -1
+	return !(cancelled);
 }
 
 // compute real bandwiths for selected points
@@ -279,7 +282,7 @@ bool FAMS::finishFAMS() {
 	                  MeanShiftPoint(*this));
 
 	bgLog("done.\n");
-	return !(progress < 0.f); // in case of abort, progress is set to -1
+	return !(cancelled);
 }
 
 // initialize bandwidths
@@ -334,8 +337,11 @@ bool FAMS::prepareFAMS(vector<double> *bandwidths, vector<double> *factors) {
 
 bool FAMS::progressUpdate(float percent, bool absolute)
 {
+	auto job = JobRegistry::get()->job(jobId);
+	if (job.isValid() && job.isCancelled)
+		cancelled = true;
+
 	if (cancelled) {
-		progress = -1;
 		return false;
 	}
 
@@ -347,10 +353,15 @@ bool FAMS::progressUpdate(float percent, bool absolute)
 		progress = percent;
 	else
 		progress += percent;
+
 	if (progress > progress_old + 0.5f) {
-		std::cerr << "\r" << progress << " %          \r";
-		std::cerr.flush();
 		progress_old = progress;
+		if (job.isValid()) {
+			JobRegistry::get()->setJobProgress(jobId, progress);
+		} else {
+			std::cerr << "\r" << progress << " %          \r";
+			std::cerr.flush();
+		}
 	}
 
 	return true;

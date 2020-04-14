@@ -18,6 +18,7 @@ public:
 public slots:
 	void configure();
 	void run();
+	void stop();
 
 	// job monitor interface
 	void addJob(unsigned jobId);
@@ -34,9 +35,11 @@ protected:
 			ABORTING
 		} step = IDLE;
 		unsigned job = 0;
+		unsigned progress = 0;
 	};
 
-	bool updateIsEnabled() override;
+	bool updateIsEnabled() override { updateUi(); return true; }
+	void updateUi();
 	bool isAvailable();
 
 	DataState *byJob(unsigned jobId, bool fresh=false);
