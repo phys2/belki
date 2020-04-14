@@ -145,7 +145,8 @@ void FAMSControl::updateUi()
 
 	// update progress bar before showing it
 	if (haveData()) {
-		progressBar->setMaximum(selected().step == DataState::RUNNING ? 100 : 0); // 0 shows 'busy'
+		bool haveProgress = selected().step == DataState::RUNNING && selected().progress;
+		progressBar->setMaximum(haveProgress ? 100 : 0); // 0 shows 'busy' animation
 		progressBar->setValue(selected().progress);
 	}
 
