@@ -74,6 +74,8 @@ public:
 		unsigned id = 0; // empty job
 		QString name;
 		QVariant userData;
+		float progress = 0.f;
+		bool isCancelled = false;
 	};
 
 	static std::shared_ptr<JobRegistry> get(); // singleton
@@ -82,19 +84,26 @@ public:
 	                     const std::vector<QPointer<QObject>> &monitors);
 
 	Entry job(unsigned id);
-	Entry getCurrentJob();
+	void cancelJob(unsigned id);
+	void setJobProgress(unsigned id, float progress);
 
+	Entry getCurrentJob();
 	void startCurrentJob(Task::Type type, const std::vector<QString> &fields,
 	                     const QVariant &userData = {});
 	void addCurrentJobMonitor(QPointer<QObject> monitor);
+	void setCurrentJobProgress(float progress);
 	void endCurrentJob();
 
 protected:
 	using JobMap = std::unordered_map<QThread*, Entry>;
 
+	JobMap::iterator idToEntry(unsigned id);
 	JobMap::iterator threadToEntry();
 	void createEntry(Task::Type type, const std::vector<QString> &fields, const QVariant &userData);
-	void eraseEntry(JobMap::iterator entry);
+	void erase(JobMap::iterator entry);
+	void updateProgress(JobMap::iterator entry, float progress);
+
+	void notifyMonitors(unsigned jobId, const char *signal);
 
 	unsigned nextJobId = 1; // 0 is no job
 	JobMap jobs;

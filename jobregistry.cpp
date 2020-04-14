@@ -33,20 +33,34 @@ void JobRegistry::pipeline(const std::vector<Task> &tasks,
 JobRegistry::Entry JobRegistry::job(unsigned id)
 {
 	QReadLocker _(&lock);
-	for (auto &[k, v] : jobs) {
-		if (v.id == id)
-			return v;
+	auto it = idToEntry(id);
+	return (it != jobs.end() ? it->second : Entry{});
+}
+
+void JobRegistry::cancelJob(unsigned id)
+{
+	QWriteLocker _(&lock);
+	auto it = idToEntry(id);
+	if (it != jobs.end()) {
+		it->second.isCancelled = true;
+		notifyMonitors(id, "updateJob");
 	}
-	return {};
+}
+
+void JobRegistry::setJobProgress(unsigned id, float progress)
+{
+	QWriteLocker _(&lock);
+	auto it = idToEntry(id);
+	if (it == jobs.end())
+		return; // TODO complain
+	updateProgress(it, progress);
 }
 
 JobRegistry::Entry JobRegistry::getCurrentJob()
 {
 	QReadLocker _(&lock);
 	auto it = threadToEntry();
-	if (it != jobs.end())
-		return it->second;
-	return {};
+	return (it != jobs.end() ? it->second : Entry{});
 }
 
 void JobRegistry::startCurrentJob(Task::Type type, const std::vector<QString> &fields,
@@ -56,7 +70,7 @@ void JobRegistry::startCurrentJob(Task::Type type, const std::vector<QString> &f
 	auto it = threadToEntry();
 	if (it != jobs.end()) {
 		// TODO: this should not happen, so complain
-		eraseEntry(it);
+		erase(it);
 	}
 	createEntry(type, fields, userData);
 }
@@ -76,13 +90,29 @@ void JobRegistry::addCurrentJobMonitor(QPointer<QObject> monitor)
 	// TODO complain else
 }
 
+void JobRegistry::setCurrentJobProgress(float progress)
+{
+	QWriteLocker _(&lock);
+	auto it = threadToEntry();
+	if (it != jobs.end())
+		updateProgress(it, progress);
+	// TODO complain else
+}
+
 void JobRegistry::endCurrentJob()
 {
 	QWriteLocker _(&lock);
 	auto it = threadToEntry();
 	if (it != jobs.end())
-		eraseEntry(it);
+		erase(it);
 	// TODO complain else
+}
+
+JobRegistry::JobMap::iterator JobRegistry::idToEntry(unsigned id)
+{
+	// caller needs to hold lock
+	return std::find_if(jobs.begin(), jobs.end(),
+	                    [id] (const auto &i) { return i.second.id == id; });
 }
 
 JobRegistry::JobMap::iterator JobRegistry::threadToEntry()
@@ -125,17 +155,31 @@ void JobRegistry::createEntry(Task::Type type, const std::vector<QString> &field
 	jobs[QThread::currentThread()] = {id, name, userData};
 }
 
-void JobRegistry::eraseEntry(JobMap::iterator entry)
+void JobRegistry::erase(JobMap::iterator entry)
 {
 	// caller needs to hold lock
 	auto jobId = entry->second.id;
+	jobs.erase(entry);
+
+	// notify monitors after the fact. avoid race condition if they call job()
+	notifyMonitors(jobId, "removeJob");
+	monitors.erase(jobId);
+}
+
+void JobRegistry::updateProgress(JobMap::iterator entry, float progress)
+{
+	// caller needs to hold lock
+	entry->second.progress = progress;
+	notifyMonitors(entry->second.id, "updateJob");
+}
+
+void JobRegistry::notifyMonitors(unsigned jobId, const char *signal)
+{
 	auto range = monitors.equal_range(jobId);
 	for (auto it = range.first; it != range.second; ++it) {
 		if (it->second) {
-			QMetaObject::invokeMethod(it->second, "removeJob", Qt::ConnectionType::QueuedConnection,
+			QMetaObject::invokeMethod(it->second, signal, Qt::ConnectionType::QueuedConnection,
 			                          Q_ARG(unsigned, jobId));
 		}
 	}
-	monitors.erase(jobId);
-	jobs.erase(entry);
 }
