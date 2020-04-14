@@ -128,29 +128,10 @@ Meanshift::~Meanshift()
 	std::scoped_lock _(l); // wait for cancel
 }
 
-std::optional<Meanshift::Result> Meanshift::applyK(float newK)
+std::optional<Meanshift::Result> Meanshift::run(float k)
 {
-	if (k == newK)
-		return {};
-
-	k = newK;
 	fams->cancel();
-	return compute();
-}
-
-void Meanshift::cancel()
-{
-	k = 0;
-	fams->cancel(); // note: asynchronous, non-blocking for us
-}
-
-std::optional<Meanshift::Result> Meanshift::compute()
-{
 	std::scoped_lock _(l); // wait for any other threads to finish
-
-	/* Don't compute if cancelled (invalid k) */
-	if (!k)
-		return {};
 
 	fams->resetState();
 	fams->config.k = k;
@@ -167,6 +148,11 @@ std::optional<Meanshift::Result> Meanshift::compute()
 
 	fams->pruneModes();
 	return {{fams->exportModes(), fams->getModePerPoint()}};
+}
+
+void Meanshift::cancel()
+{
+	fams->cancel(); // note: asynchronous, non-blocking for us
 }
 
 }

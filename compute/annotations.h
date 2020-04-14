@@ -27,13 +27,10 @@ public:
 	explicit Meanshift(const Features::Vec &input);
 	~Meanshift();
 
-	std::optional<Result> applyK(float k);
+	std::optional<Result> run(float k);
 	void cancel();
 
 protected:
-	std::optional<Result> compute();
-
-	float k = 0; // the currently desired k, 0 means cancel
 	std::unique_ptr<seg_meanshift::FAMS> fams;
 	std::mutex l;
 };

@@ -179,7 +179,7 @@ Annotations Dataset::computeFAMS(float k)
 		b.l.unlock();
 	}
 
-	auto result = meanshift->applyK(k);
+	auto result = meanshift->run(k);
 	if (!result)
 		return {};
 
