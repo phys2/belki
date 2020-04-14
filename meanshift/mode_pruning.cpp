@@ -25,7 +25,7 @@ double FAMS::MergedMode::distTo(const Mode &m) const
 {
 	double ret = 0.;
 	for (size_t i = 0; i < data.size(); ++i)
-		ret += std::abs(data[i] / members - m.data[i]);
+		ret += (double)std::abs(data[i] / members - m.data[i]);
 	return ret;
 }
 
