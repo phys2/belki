@@ -51,6 +51,11 @@ public slots:
 	void displayMessage(const GuiMessage &message);
 	void displayMessageAt(const GuiMessage &message, QWidget *parent = nullptr);
 
+	// job monitor interface
+	void addJob(unsigned jobId) { runningJobs.insert(jobId); }
+	void updateJob(unsigned) {}
+	void removeJob(unsigned jobId) { runningJobs.erase(jobId); }
+
 public:
 	DataHub &hub;
 	ProteinDB &proteins;
@@ -78,6 +83,8 @@ protected:
 	} markers;
 
 	QStandardItemModel structureModel;
+
+	std::set<unsigned> runningJobs;
 };
 
 #endif

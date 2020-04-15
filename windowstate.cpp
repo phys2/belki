@@ -6,6 +6,10 @@
 WindowState::WindowState(GuiState &global)
     : global(global)
 {
+	/* let GuiState track our jobs */
+	jobMonitors.push_back(&global);
+
+	/* prepare order items */
 	auto addOrderItem = [this] (QString name, QIcon icon, int id) {
 		auto item = new QStandardItem(name);
 		if (!icon.isNull())
@@ -13,8 +17,6 @@ WindowState::WindowState(GuiState &global)
 		item->setData(id, Qt::UserRole);
 		orderModel.appendRow(item);
 	};
-
-	/* prepare order items */
 	addOrderItem("Position in file", QIcon::fromTheme("sort_incr"), Order::FILE);
 	addOrderItem("Protein name", QIcon::fromTheme("sort-name"), Order::NAME);
 	addOrderItem("Hierarchy", QIcon{":/icons/type-hierarchy.svg"}, Order::HIERARCHY);

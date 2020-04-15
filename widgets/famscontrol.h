@@ -10,7 +10,6 @@ class FAMSControl : public Viewer, private Ui::FAMSControl
 
 public:
 	explicit FAMSControl(QWidget *parent = nullptr);
-	~FAMSControl();
 
 	void selectDataset(unsigned id) override;
 	void addDataset(Dataset::Ptr data) override;

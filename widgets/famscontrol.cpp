@@ -12,11 +12,6 @@ FAMSControl::FAMSControl(QWidget *parent) :
 	connect(stopButton, &QToolButton::clicked, this, &FAMSControl::stop);
 }
 
-FAMSControl::~FAMSControl()
-{
-	// cancel all jobs one last time?
-}
-
 void FAMSControl::selectDataset(unsigned id)
 {
 	selectData(id); // triggers updateUi()

@@ -303,12 +303,17 @@ bool GuiState::shutdown(bool withPrompt)
 	if (withPrompt && !promptOnClose())
 		return false;
 
+	/* cancel all jobs related to us */
+	for (auto i : runningJobs)
+		JobRegistry::get()->cancelJob(i);
+
 	/* close all windows, which will lead to our demise */
 	std::vector<unsigned> cache; // cache ids to avoid invalid iterators
 	for (auto &[k, _] : windows)
 		cache.push_back(k);
 	for (auto i : cache)
 		removeWindow(i, false);
+
 	return true;
 }
 
