@@ -1,6 +1,8 @@
 #ifndef JOBSTATUS_H
 #define JOBSTATUS_H
 
+#include "jobregistry.h"
+
 #include <QWidget>
 #include <memory>
 #include <map>
@@ -14,13 +16,15 @@ class JobWidget : public QWidget
 public:
 	JobWidget(unsigned jobId, QSvgRenderer *renderer, QWidget *parent=nullptr);
 
+	void updateJob();
+
 protected:
 	void resizeEvent(QResizeEvent *event) override;
 	void mouseMoveEvent(QMouseEvent *event) override;
 	void paintEvent(QPaintEvent *event) override;
 
 	QSvgRenderer *renderer;
-	unsigned jobId;
+	JobRegistry::Entry job;
 };
 
 class JobStatus : public QWidget
