@@ -91,15 +91,17 @@ void Dataset::spawn(ConstPtr srcholder)
 	auto sIn = srcholder->peek<Structure>();
 	s.fileOrder = sIn->fileOrder;
 	s.nameOrder = sIn->nameOrder;
-	/* we do not keep other structure data; modes may be invalid for registered
+	/* we do not keep other structure data as modes may be invalid for registered
 	 * annotations, and internal clusters (hiercut/meanshift) are fully invalid. */
 }
 
 void Dataset::computeDisplay(const QString& request)
 {
-	b.l.lockForRead();
-	auto result = dimred::compute(request, b.features);
-	b.l.unlock();
+	/* Note: this keeps read lock open for quite a long time.
+	 * In case we actually do lock base for write in the future, we should copy data instead;
+	 * Note that a pending write lock will eventually block GUI when it also tries to read,
+	 * so write should never have to wait for too long. */
+	auto result = dimred::compute(request, peek<Base>()->features);
 
 	r.l.lockForWrite();
 	for (auto name : result.keys()) {
@@ -173,10 +175,12 @@ void Dataset::prepareOrder(const ::Order &desc)
 Annotations Dataset::computeFAMS(float k)
 {
 	if (!meanshift) {
-		b.l.lockForWrite(); // we guard meanshift init with write on base lock (hack)
+		/* we guard meanshift init with write on structure lock (hack);
+		 * don't attempt to lock base for write; see computeDisplay() for the reason why */
+		s.l.lockForWrite();
 		if (!meanshift)
-			meanshift = std::make_unique<annotations::Meanshift>(b.features);
-		b.l.unlock();
+			meanshift = std::make_unique<annotations::Meanshift>(peek<Base>()->features);
+		s.l.unlock();
 	}
 
 	auto result = meanshift->run(k);
