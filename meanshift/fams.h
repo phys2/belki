@@ -14,14 +14,13 @@
 
 #include <opencv2/core.hpp> // for timer functionality
 #include <tbb/blocked_range.h>
-#include <tbb/task_scheduler_init.h>
-#include <tbb/mutex.h>
 
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <limits>
 #include <emmintrin.h>
+#include <mutex>
 
 namespace seg_meanshift {
 
@@ -293,7 +292,7 @@ protected:
 	bool cancelled = false;
 	unsigned jobId = 0;
 	float progress = 0.f, progress_old = 0.f;
-	tbb::mutex progressMutex;
+	std::mutex progressMutex;
 };
 
 }

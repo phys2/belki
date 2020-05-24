@@ -341,14 +341,13 @@ bool FAMS::progressUpdate(float percent, bool absolute)
 	if (job.isValid() && job.isCancelled)
 		cancelled = true;
 
-	if (cancelled) {
+	if (cancelled)
 		return false;
-	}
 
-	if (config.verbosity < 1)
+	if (!job.isValid() && config.verbosity < 1)
 		return true;
 
-	tbb::mutex::scoped_lock l(progressMutex);
+	std::scoped_lock _(progressMutex);
 	if (absolute)
 		progress = percent;
 	else
