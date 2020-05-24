@@ -72,6 +72,22 @@ foreach(plugin ${QT_PLUGINS})
 	list(APPEND DEP_LIBRARIES ${QT_PREFIX}::Q${plugin}Plugin)
 endforeach()
 
+# test for our patched QtCharts version; do this every time to reflect changes in Qt5Charts_DIR
+unset(HAVE_PATCHED_QTCHARTS CACHE)
+set(CMAKE_REQUIRED_LIBRARIES Qt5::Charts)
+include(CheckCXXSourceCompiles)
+check_cxx_source_compiles("
+#include <QChart>
+#include <QLineSeries>
+
+int main() {
+  auto f1 = &QtCharts::QChart::insertSeries;
+  auto f2 = &QtCharts::QLineSeries::setDynamicPointSize;
+}" HAVE_PATCHED_QTCHARTS)
+if (NOT HAVE_PATCHED_QTCHARTS)
+  message(FATAL_ERROR "A patched QtCharts is needed. Please specify path via Qt5Charts_DIR variable!")
+endif()
+
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Instruct CMake to run moc, create ui headers, generate ressources code
