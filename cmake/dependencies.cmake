@@ -14,7 +14,7 @@ pkg_check_modules(ARPACK REQUIRED arpack)
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
 list(APPEND DEP_INCLUDES
-	${PROJECT_SOURCE_DIR}/include # for self-distributed Tapkee
+	${PROJECT_SOURCE_DIR}/tapkee # for self-distributed Tapkee
 	${ARPACK_INCLUDE_DIRS}
 )
 
