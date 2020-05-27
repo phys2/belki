@@ -20,11 +20,10 @@ include(flags)
 
 set(APP_NAME belki)
 
-add_executable(${APP_NAME} MACOSX_BUNDLE main.cpp)
+add_executable(${APP_NAME} MACOSX_BUNDLE src/main.cpp)
 set_target_properties(${APP_NAME} PROPERTIES
 	CXX_STANDARD 17
 	CXX_STANDARD_REQUIRED ON)
-export_version(main.cpp)
 
 ## PLATFORM SUPPORT
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
@@ -51,45 +50,26 @@ if (APPLE)
 	target_sources(${APP_NAME} PRIVATE resources/icon.icns)
 endif()
 
-## SOURCES
-# mean shift
-target_sources(${APP_NAME} PRIVATE
-	meanshift/fams.h meanshift/fams.cpp
-	meanshift/io.cpp meanshift/mode_pruning.cpp
-	)
+## COMPONENTS (they add to target 'belki')
+target_include_directories(${APP_NAME} PRIVATE src/core)
+add_subdirectory(src/core)
+add_subdirectory(src/compute)
+add_subdirectory(src/storage)
+add_subdirectory(src/widgets)
+add_subdirectory(src/profiles)
+add_subdirectory(src/scatterplot)
+add_subdirectory(src/heatmap)
+add_subdirectory(src/distmat)
+add_subdirectory(src/featweights)
 
-# resources
+## RESOURCES
 target_sources(${APP_NAME} PRIVATE
 	resources/index.qrc
 	resources/icons-stock/index.qrc
 	resources/icons-custom/index.qrc
 	)
-
-# main application
-target_sources(${APP_NAME} PRIVATE
-	datahub.h datahub.cpp
-	dataset.h dataset.cpp
-	fileio.h fileio.cpp
-	guistate.h guistate.cpp
-	jobregistry.h jobregistry.cpp
-	model.h
-	proteindb.h proteindb.cpp
-	utils.h
-	viewer.h viewer.cpp
-	windowstate.h windowstate.cpp
-	)
-
-# components (they add to target 'belki')
-add_subdirectory(compute)
-add_subdirectory(storage)
-add_subdirectory(widgets)
-add_subdirectory(profiles)
-add_subdirectory(scatterplot)
-add_subdirectory(heatmap)
-add_subdirectory(distmat)
-add_subdirectory(featweights)
-
-export_version(widgets/mainwindow.cpp) # for About box
+export_version(src/main.cpp)
+export_version(src/widgets/mainwindow.cpp) # for About box
 
 ## link to modules
 target_include_directories(${APP_NAME} SYSTEM PUBLIC ${DEP_INCLUDES})
