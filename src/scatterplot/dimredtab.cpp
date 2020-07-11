@@ -42,7 +42,11 @@ DimredTab::DimredTab(QWidget *parent) :
 	connect(actionSavePlot, &QAction::triggered, [this] {
 		emit exportRequested(view, transformSelect->currentText());
 	});
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
 	connect(transformSelect, qOverload<const QString&>(&QComboBox::activated),
+#else
+	connect(transformSelect, &QComboBox::textActivated,
+#endif
 	        [this] (auto name) {
 		selectDisplay(name);
 		tabState.preferredDisplay = name;

@@ -183,10 +183,15 @@ void ChartView::wheelEvent(QWheelEvent *event)
 	if (event->isAccepted())
 		return;
 
-	auto factor = [&] (qreal strength) { return 1. + 0.001*strength*event->delta(); };
+	auto factor = [&] (qreal strength) { return 1. + 0.001*strength*event->angleDelta().y(); };
 
-	if (event->modifiers() & Qt::ControlModifier)
+	if (event->modifiers() & Qt::ControlModifier) {
 		scaleCursor(factor(2.));
-	else
+	} else {
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
 		chart()->zoomAt(mapToScene(event->pos()), factor(1.));
+#else
+		chart()->zoomAt(mapToScene(event->position().toPoint()), factor(1.));
+#endif
+	}
 }

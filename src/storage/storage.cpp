@@ -41,7 +41,7 @@ void Storage::storeDisplay(const Representations::Pointset& disp, const QString 
 	QByteArray blob;
 	QTextStream out(&blob, QIODevice::WriteOnly);
 	for (auto it = disp.constBegin(); it != disp.constEnd(); ++it)
-		out << it->x() << "\t" << it->y() << endl;
+		out << it->x() << "\t" << it->y() << Qt::endl;
 }
 
 // TODO: this is just a gist
@@ -90,7 +90,11 @@ void Storage::importAnnotations(const QString &filename)
 	target->meta.name = QFileInfo(filename).completeBaseName();
 
 	// we use SkipEmptyParts for chomping at the end, but dangerous…
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
 	auto header = in.readLine().split("\t", QString::SkipEmptyParts);
+#else
+	auto header = in.readLine().split("\t", Qt::SkipEmptyParts);
+#endif
 	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
 	if (header.size() == 2 && header[1].contains("Members")) {
 		/* expect name + list of proteins per-cluster per-line */
@@ -98,7 +102,11 @@ void Storage::importAnnotations(const QString &filename)
 		/* build new clusters */
 		unsigned groupIndex = 0;
 		while (!in.atEnd()) {
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
 			auto line = in.readLine().split("\t", QString::SkipEmptyParts);
+#else
+			auto line = in.readLine().split("\t", Qt::SkipEmptyParts);
+#endif
 			if (line.size() < 2)
 				continue;
 
@@ -205,7 +213,7 @@ void Storage::exportAnnotations(const QString &filename, const Annotations& sour
 
 	QTextStream out(&f);
 	// write header
-	out << "Name\tMembers" << endl;
+	out << "Name\tMembers" << Qt::endl;
 
 	// write clusters
 	auto p = proteins.peek();
@@ -216,7 +224,7 @@ void Storage::exportAnnotations(const QString &filename, const Annotations& sour
 			auto protein = p->proteins[protId];
 			out << "\t" << protein.name << "_" << protein.species;
 		}
-		out << endl;
+		out << Qt::endl;
 	}
 }
 
@@ -259,7 +267,7 @@ void Storage::exportMarkers(const QString &filename)
 		out << protein.name;
 		if (!protein.species.isEmpty())
 			out << "_" << protein.species;
-		out << endl;
+		out << Qt::endl;
 	}
 }
 
