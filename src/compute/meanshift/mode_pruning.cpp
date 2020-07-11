@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <limits>
+#include <iostream>
 
 namespace seg_meanshift {
 
@@ -79,11 +80,10 @@ void FAMS::trimModes(std::vector<MergedMode> &foomodes,
 			break;
 	}
 
-	bgLog("ignoring %d modes smaller than %d points\n",
-		  (foomodes.size() - nrel), npmin);
+	std::cerr << "Ignoring " << (foomodes.size() - nrel) << " modes smaller than " <<
+	             npmin << " points" << std::endl;
 	if (nrel > allowance) {
-		bgLog("exceeded allowance, only keeping %d modes\n",
-			  allowance);
+		std::cerr << "exceeded allowance, only keeping " << allowance << " modes" << std::endl;
 	}
 
 	// shorten array accordingly
@@ -108,7 +108,7 @@ void FAMS::pruneModes()
 	foomodes.push_back(MergedMode(modes[0], 1,
 					   (spsizes.empty() ? 1 : spsizes[0])));
 
-	int invalid = 0; // for statistics on invalidated modes
+	int nInvalid = 0; // for statistics on invalidated modes
 
 	for (size_t cm = 1; cm < modes.size(); cm += jm) {
 
@@ -134,17 +134,17 @@ void FAMS::pruneModes()
 		// when mode count gets overboard, invalidate modes with few members
 		if (foomodes.size() > 2000) {
 			for (size_t i = 0; i < foomodes.size(); ++i)
-				invalid += (foomodes[i].invalidateIfSmall(3) ? 1 : 0);
+				nInvalid += (foomodes[i].invalidateIfSmall(3) ? 1 : 0);
 		}
 	}
-	bgLog("done (%d modes left, %d of them have been invalidated)\n",
-		  foomodes.size(), invalid);
+	std::cerr << "done (" << foomodes.size() << " modes left, " <<
+	             nInvalid << " of them have been invalidated)" << std::endl;
 
 	/* Trim modes */
 	trimModes(foomodes, npmin, true, FAMS_PRUNE_MAXM);
 
 	//** PASS TWO **//
-	bgLog("            pass 2 ");
+	std::cerr << "Pass 2: ";
 
 	/* Note: This code does not reset the mode information. Some pixels were
 	 * added to the same modes before, some were added to modes that were cut
@@ -187,7 +187,7 @@ void FAMS::pruneModes()
 		prunedIndex[cm] = closest.second;
 	}
 
-	bgLog("done pruning\n");
+	std::cerr << "done pruning" << std::endl;
 }
 
 }

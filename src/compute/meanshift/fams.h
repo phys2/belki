@@ -233,18 +233,6 @@ public:
 		return {(dist < thresh), dist};
 	}
 
-	inline static void bgLog(const char *varStr, ...)
-	{
-		//obtain argument list using ANSI standard...
-		va_list argList;
-		va_start(argList, varStr);
-
-		//print the output string to stderr using
-		vfprintf(stderr, varStr, argList);
-		va_end(argList);
-		fflush(stderr);
-	}
-
 	unsigned int n_, d_; // number of points, number of dimensions
 
 protected:
