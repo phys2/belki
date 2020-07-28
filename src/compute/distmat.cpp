@@ -1,12 +1,14 @@
 #include "distmat.h"
-#include "../compute/colors.h"
+#include "colors.h"
 
 #include <tbb/parallel_for.h>
 
-void Distmat::computeMatrix(const std::vector<std::vector<double>> &features)
+namespace distmat {
+
+cv::Mat1f computeMatrix(const std::vector<std::vector<double>> &features, Distance measure)
 {
 	auto sidelen = features.size();
-	matrix = cv::Mat1f(sidelen, sidelen);
+	cv::Mat1f ret(sidelen, sidelen);
 
 	/* amass all the combinations we need for filling a symmetric matrix */
 	std::vector<cv::Point2i> coords; // use int for matrix() indexing later on
@@ -20,20 +22,21 @@ void Distmat::computeMatrix(const std::vector<std::vector<double>> &features)
 	tbb::parallel_for((size_t)0, coords.size(), [&] (size_t i) {
 		auto c = coords[i];
 		const auto &a = features[(size_t)c.x], &b = features[(size_t)c.y];
-		matrix(c) = matrix(c.x, c.y) = (float)dist(a, b);
+		ret(c) = ret(c.x, c.y) = (float)dist(a, b);
 	});
+	return ret;
 }
 
-void Distmat::computeImage(const TranslateFun &translate)
+QPixmap computeImage(const cv::Mat1f &matrix, Distance measure, const TranslateFun &translate)
 {
 	/* determine shift & scale to fit into uchar */
 	double minVal, maxVal;
 	switch (measure) {
-	case features::Distance::PEARSON:
+	case Distance::PEARSON:
 		minVal = -1.;
 		maxVal = 1.;
 		break;
-	case features::Distance::CROSSCORREL:
+	case Distance::CROSSCORREL:
 		minVal = 0.;
 		maxVal = 1.;
 		break;
@@ -50,5 +53,12 @@ void Distmat::computeImage(const TranslateFun &translate)
 			        = (uchar)((matrix(translate(y, x)) - (float)minVal)*scale);
 	});
 
-	image = Colormap::pixmap(Colormap::magma.apply(matrixB));
+	return Colormap::pixmap(Colormap::magma.apply(matrixB));
+}
+
+QPixmap computeImage(const cv::Mat1f &matrix, Distance measure)
+{
+	return computeImage(matrix, measure, [] (int y, int x) { return cv::Point(x, y); });
+}
+
 }

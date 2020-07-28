@@ -17,8 +17,8 @@ DistmatTab::DistmatTab(QWidget *parent) :
 
 	/* connect toolbar actions */
 	connect(actionToggleDistdir, &QAction::toggled, [this] (bool toggle) {
-		tabState.direction = toggle ? Dataset::Direction::PER_DIMENSION
-		                            : Dataset::Direction::PER_PROTEIN;
+		tabState.direction = toggle ? DistDirection::PER_DIMENSION
+		                            : DistDirection::PER_PROTEIN;
 		if (haveData())
 			selected().scene->setDirection(tabState.direction);
 	});
@@ -27,7 +27,7 @@ DistmatTab::DistmatTab(QWidget *parent) :
 	});
 
 	/* propagate initial state */
-	actionToggleDistdir->setChecked(tabState.direction == Dataset::Direction::PER_DIMENSION);
+	actionToggleDistdir->setChecked(tabState.direction == DistDirection::PER_DIMENSION);
 
 	updateIsEnabled();
 }
@@ -90,7 +90,7 @@ void DistmatTab::setupOrderUI()
 	connect(orderSelect, QOverload<int>::of(&QComboBox::activated), [this] {
 		windowState->setOrder(orderSelect->currentData().value<Order::Type>());
 		if (haveData()) {
-			Task task{[s=windowState,d=selected().data] { d->prepareOrder(s->order); },
+			Task task{[s=windowState,d=selected().data] { d->computeOrder(s->order); },
 				      Task::Type::ORDER,
 				      {orderSelect->currentText(), selected().data->config().name}};
 			JobRegistry::run(task, windowState->jobMonitors);

@@ -89,7 +89,7 @@ void HeatmapTab::setupOrderUI()
 	connect(orderSelect, QOverload<int>::of(&QComboBox::activated), [this] {
 		windowState->setOrder(orderSelect->currentData().value<Order::Type>());
 		if (haveData()) {
-			Task task{[s=windowState,d=selected().data] { d->prepareOrder(s->order); },
+			Task task{[s=windowState,d=selected().data] { d->computeOrder(s->order); },
 				      Task::Type::ORDER,
 				      {orderSelect->currentText(), selected().data->config().name}};
 			JobRegistry::run(task, windowState->jobMonitors);

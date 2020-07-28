@@ -3,7 +3,7 @@
 
 #include "../widgets/graphicsscene.h"
 #include "dataset.h"
-#include "distmat.h"
+#include "../compute/distmat.h"
 #include "utils.h"
 
 #include <QGraphicsRectItem>
@@ -18,9 +18,10 @@ class WindowState;
 class DistmatScene : public GraphicsScene
 {
 	Q_OBJECT
-public:
-	using Direction = Dataset::Direction;
 
+	const Distance measure = Distance::CROSSCORREL;
+
+public:
 	struct LegendItem
 	{
 		LegendItem(DistmatScene* scene, qreal coord, QString label);
@@ -73,7 +74,7 @@ signals:
 	void selectionChanged(const std::vector<bool> &dimensionSelected);
 
 public slots:
-	void setDirection(Direction direction);
+	void setDirection(DistDirection direction);
 
 	void updateMarkers();
 	void toggleMarkers(const std::vector<ProteinId> &ids, bool present);
@@ -92,8 +93,8 @@ protected:
 	void updateRenderQuality();
 	qreal computeCoord(unsigned sampleIndex);
 
-	Direction currentDirection = Direction::PER_DIMENSION;
-	std::map<Direction, Distmat> matrices;
+	DistDirection currentDirection = DistDirection::PER_DIMENSION;
+	std::map<DistDirection, QPixmap> matrices;
 
 	QGraphicsPixmapItem *display;
 
@@ -104,7 +105,7 @@ protected:
 	Clusterbars clusterbars = {this};
 	bool haveAnnotations = false; // are clusterbars filled with valid stuff?
 	std::unordered_map<ProteinId, Marker> markers;
-	// annotations used in PER_DIRECTION:
+	// annotations used in PER_DIMENSION:
 	std::map<unsigned, LegendItem> dimensionLabels;
 
 	// dialog mode: selectable dimensions

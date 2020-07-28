@@ -32,7 +32,7 @@ protected:
 	void setupOrderUI();
 
 	struct {
-		Dataset::Direction direction = Dataset::Direction::PER_DIMENSION;
+		DistDirection direction = DistDirection::PER_DIMENSION;
 	} tabState;
 };
 

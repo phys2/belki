@@ -74,7 +74,7 @@ void Matcher::matchComponents(Components reference, unsigned topN, unsigned igno
 
 void Matcher::compute()
 {
-	auto distance = features::distfun(features::Distance::COSINE);
+	auto distance = features::distfun(Distance::COSINE);
 	auto b = data->peek<Dataset::Base>();
 
 	/* precompute all distances in parallel */

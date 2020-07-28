@@ -36,12 +36,6 @@ public:
 	using ConstPtr = std::shared_ptr<Dataset const>;
 	using Proteins = ProteinDB::Public;
 
-	enum class Direction {
-		PER_PROTEIN,
-		PER_DIMENSION,
-	};
-	Q_ENUM(Direction)
-
 	/* local (enhanced) copy of global annotations or internal annotations */
 	struct Annotations : ::Annotations {
 		Annotations(const ::Annotations &source, const Features &data);
@@ -85,8 +79,8 @@ public:
 	enum class Touch {
 		BASE = 0x1,
 		DISPLAY = 0x2,
-		// unused HIERARCHY = 0x4,
-		CLUSTERS = 0x8,
+		DISTANCES = 0x4,
+		ANNOTATIONS = 0x8,
 		ORDER = 0x10,
 		ALL = 0xFF
 	};
@@ -105,11 +99,11 @@ public:
 	void spawn(ConstPtr source);
 
 	void computeDisplay(const QString &name);
-	void computeDisplays();
 	void addDisplay(const QString &name, const Representations::Pointset &points);
+	void computeDistances(DistDirection dir, Distance dist);
 
-	void prepareAnnotations(const Annotations::Meta &desc);
-	void prepareOrder(const ::Order &desc);
+	void computeAnnotations(const Annotations::Meta &desc);
+	void computeOrder(const ::Order &desc);
 
 signals:
 	void update(Touched);
@@ -118,7 +112,7 @@ protected:
 	Touched storeAnnotations(const ::Annotations &source, bool withOrder);
 	::Annotations computeFAMS(float k);
 	::Annotations createPartition(unsigned id, unsigned granularity);
-	void computeOrder(const ::Order &desc);
+	void calculateOrder(const ::Order &desc);
 	void computeCentroids(Annotations &target);
 
 	// meta information for this dataset

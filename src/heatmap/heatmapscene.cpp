@@ -74,7 +74,7 @@ void HeatmapScene::wakeup()
 	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
 		if (touched & Dataset::Touch::ORDER)
 			reorder();
-		if (touched & Dataset::Touch::CLUSTERS)
+		if (touched & Dataset::Touch::ANNOTATIONS)
 			recolor();
 	});
 }
