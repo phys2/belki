@@ -14,7 +14,6 @@ namespace annotations {
 void prune(Annotations &data); // remove small clusters
 void order(Annotations &data, bool genericNames);
 void color(Annotations &data, const QVector<QColor> &colors);
-Annotations partition(const HrClustering &in, unsigned granularity);
 
 class Meanshift {
 

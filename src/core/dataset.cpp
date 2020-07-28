@@ -3,6 +3,7 @@
 #include "../compute/dimred.h"
 #include "../compute/distmat.h"
 #include "../compute/annotations.h"
+#include "../compute/hierarchy.h"
 
 #include <QDataStream>
 #include <QTextStream>
@@ -243,7 +244,7 @@ Annotations Dataset::computeFAMS(float k)
 Annotations Dataset::createPartition(unsigned id, unsigned granularity)
 {
 	auto hierarchy = *std::get_if<HrClustering>(&proteins.peek()->structures.at(id)); // Apple no std::get
-	auto ret = annotations::partition(hierarchy, granularity);
+	auto ret = hierarchy::partition(hierarchy, granularity);
 
 	annotations::prune(ret);
 	annotations::order(ret, true);
