@@ -88,6 +88,7 @@ public:
 	void setJobProgress(unsigned id, float progress);
 
 	Entry getCurrentJob();
+	bool isCurrentJobCancelled();
 	void startCurrentJob(Task::Type type, const std::vector<QString> &fields,
 	                     const QVariant &userData = {});
 	void addCurrentJobMonitor(QPointer<QObject> monitor);

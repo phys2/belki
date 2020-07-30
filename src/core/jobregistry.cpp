@@ -63,6 +63,16 @@ JobRegistry::Entry JobRegistry::getCurrentJob()
 	return (it != jobs.end() ? it->second : Entry{});
 }
 
+bool JobRegistry::isCurrentJobCancelled()
+{
+	QReadLocker _(&lock);
+	auto it = threadToEntry();
+	if (it != jobs.end())
+		return it->second.isCancelled;
+	// TODO complain else
+	return false;
+}
+
 void JobRegistry::startCurrentJob(Task::Type type, const std::vector<QString> &fields,
                                   const QVariant &userData)
 {
