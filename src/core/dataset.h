@@ -101,7 +101,7 @@ public:
 	void computeDisplay(const QString &name);
 	void addDisplay(const QString &name, const Representations::Pointset &points);
 	void computeDistances(DistDirection dir, Distance dist);
-
+	void computeHierarchy();
 	void computeAnnotations(const Annotations::Meta &desc);
 	void computeOrder(const ::Order &desc);
 

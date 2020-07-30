@@ -161,6 +161,21 @@ void Dataset::computeDistances(DistDirection direction, Distance dist)
 	emit update(Touch::DISTANCES);
 }
 
+void Dataset::computeHierarchy()
+{
+	auto distance = Distance::COSINE;
+	computeDistances(DistDirection::PER_PROTEIN, distance); // ensure availability
+	auto h = hierarchy::agglomerative(
+	             peek<Representations>()->distances.at(DistDirection::PER_PROTEIN).at(distance),
+	             peek<Base>()->protIds);
+	if (!h) // empty result when operation was cancelled
+		return;
+
+	h->meta.dataset = conf.id;
+	h->meta.name = QString{"Hierarchy on %1"}.arg(conf.name);
+	proteins.addHierarchy(std::move(h), true); // selects
+}
+
 void Dataset::computeAnnotations(const Annotations::Meta &desc)
 {
 	if (peek<Structure>()->fetch(desc))

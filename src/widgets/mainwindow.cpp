@@ -371,6 +371,13 @@ void MainWindow::setupActions()
 			JobRegistry::run(task, state->jobMonitors);
 		});
 	});
+	connect(actionComputeHierarchy, &QAction::triggered, [this] {
+		if (!data)
+			return;
+		Task task{[d=data] { d->computeHierarchy(); },
+			      Task::Type::COMPUTE_HIERARCHY, {data->config().name}};
+		JobRegistry::run(task, state->jobMonitors);
+	});
 
 	connect(actionSave, &QAction::triggered, [this] {
 		Task task{[h=&state->hub()] { h->saveProject(); }, Task::Type::SAVE, {}};
@@ -465,7 +472,8 @@ void MainWindow::updateState(Dataset::Touched affected)
 		protList->reset();
 	}
 
-	actionSplice->setEnabled((bool)data);
+	for (auto i : {actionSplice, actionComputeHierarchy})
+		i->setEnabled((bool)data);
 	if (!data) {
 		/* disable data-dependent actions that also depend on other things (so we don't enable) */
 		for (auto i : {actionShowStructure, actionExportAnnotations, actionPersistAnnotations})

@@ -140,6 +140,7 @@ void JobRegistry::createEntry(Task::Type type, const std::vector<QString> &field
 	    {T::GENERIC, "Background computation running"},
 	    {T::COMPUTE, "Computing %1 on %2"},
 	    {T::COMPUTE_FAMS, "Computing Mean Shift with k=%1 on %2"},
+	    {T::COMPUTE_HIERARCHY, "Computing hierarchy on %1"},
 	    {T::PARTITION_HIERARCHY, "Partitioning %1 on %2"},
 	    {T::ORDER, "Ordering %2 based on %1"},
 	    {T::ANNOTATE, "Annotating %2 with %1"},

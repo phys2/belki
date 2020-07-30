@@ -1,4 +1,5 @@
 #include "hierarchy.h"
+#include "jobregistry.h"
 
 #include <queue>
 #include <unordered_set>
@@ -12,18 +13,23 @@ struct Pair {
 	static float closer(const Pair& a, const Pair& b) { return a.distance > b.distance; }
 };
 
-HrClustering agglomerative(const cv::Mat1f &distances, const std::vector<ProteinId> &proteins) {
+std::unique_ptr<HrClustering> agglomerative(const cv::Mat1f &distances, const std::vector<ProteinId> &proteins) {
 	if (distances.rows != distances.cols || distances.rows != (int)proteins.size())
 		throw std::invalid_argument("Non-square matrix or unmatching protein vector.");
 
-	HrClustering ret;
+	auto jr = JobRegistry::get();
+	if (jr->isCurrentJobCancelled())
+		return {};
+
+	auto ret = std::make_unique<HrClustering>();
+	auto &clusters = ret->clusters;
 	auto total = proteins.size()*2 - 1;
 
 	/* build initial set of clusters */
 	std::vector<std::vector<unsigned>> members(total); // cache for all children of a cluster
-	ret.clusters.resize(total);
+	clusters.resize(total);
 	for (unsigned i = 0; i < proteins.size(); ++i) {
-		auto &cl = ret.clusters[i];
+		auto &cl = clusters[i];
 		cl.protein = proteins[i];
 		members[i] = {i};
 	}
@@ -42,6 +48,11 @@ HrClustering agglomerative(const cv::Mat1f &distances, const std::vector<Protein
 	/* build initial heap of possible pairs for merge */
 	std::priority_queue<Pair, std::vector<Pair>, decltype(&Pair::closer)> pairs(Pair::closer);
 	for (unsigned i = 0; i < proteins.size(); ++i) {
+		if ((i % (proteins.size() / 10)) == 0) {
+			if (jr->isCurrentJobCancelled())
+				return {};
+			jr->setCurrentJobProgress(10. * i / proteins.size());
+		}
 		for (unsigned j = 0; j < i; ++j) {
 			pairs.push({avg_dist(i, j), i, j});
 		}
@@ -49,6 +60,13 @@ HrClustering agglomerative(const cv::Mat1f &distances, const std::vector<Protein
 
 	/* create whole hierarchy starting from initial set */
 	for (unsigned i = proteins.size(); i < total; ++i) {
+		// note: the progress update mechanic is a bit unsatisfactory, as the last 1% takes longest
+		if ((i % (total / 200)) == 0) {
+			if (jr->isCurrentJobCancelled())
+				return {};
+			jr->setCurrentJobProgress(10. + 90. * (i - proteins.size()) / (total - proteins.size()));
+		}
+
 		// find viable pair, remove outdated pairs (whose clusters were merged)
 		Pair candidate;
 		while (true) {
@@ -59,10 +77,10 @@ HrClustering agglomerative(const cv::Mat1f &distances, const std::vector<Protein
 		}
 
 		// create new cluster and double-link
-		auto &target = ret.clusters[i];
+		auto &target = clusters[i];
 		target.children = {candidate.left, candidate.right};
 		for (auto c : target.children)
-			ret.clusters[c].parent = i;
+			clusters[c].parent = i;
 		target.distance = candidate.distance;
 
 		// update members - move all members to new cluster
