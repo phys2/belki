@@ -67,7 +67,10 @@ void ProfileChart::setupAxes(const Features::Range &range)
 	ax->setRange(0, labels.size() - 1);
 	if (small) {
 		ax->setTickCount(2);
-		ax->setMinorTickCount(labels.size() - 2);
+		if (labels.size() < 50)
+			ax->setMinorTickCount(labels.size() - 2);
+		else
+			ax->setMinorTickCount(8);
 	} else {
 		ax->setTickCount(labels.size());
 	}
