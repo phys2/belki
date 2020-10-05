@@ -104,10 +104,7 @@
     <enum>Qt::PreventContextMenu</enum>
    </property>
    <property name="windowTitle">
-    <string>Distance Matrix Tools</string>
-   </property>
-   <property name="movable">
-    <bool>false</bool>
+    <string>Plot Content</string>
    </property>
    <property name="floatable">
     <bool>false</bool>
@@ -120,106 +117,24 @@
    </attribute>
    <addaction name="actionHistoryMenu"/>
    <addaction name="actionMarkerMenu"/>
-   <addaction name="separator"/>
-   <addaction name="actionZoomToggle"/>
-   <addaction name="actionShowAverage"/>
-   <addaction name="actionShowQuantiles"/>
-   <addaction name="separator"/>
-   <addaction name="actionLogarithmic"/>
-   <addaction name="separator"/>
+  </widget>
+  <widget class="QToolBar" name="toolBar_2">
+   <property name="windowTitle">
+    <string>Actions</string>
+   </property>
+   <property name="floatable">
+    <bool>false</bool>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
    <addaction name="actionSplice"/>
    <addaction name="actionComponentToggle"/>
    <addaction name="actionLoadComponents"/>
-   <addaction name="actionSavePlot"/>
   </widget>
-  <action name="actionSavePlot">
-   <property name="icon">
-    <iconset theme="camera-photo">
-     <normaloff>.</normaloff>.</iconset>
-   </property>
-   <property name="text">
-    <string>Capture</string>
-   </property>
-   <property name="toolTip">
-    <string>Save the plot to SVG or PNG file</string>
-   </property>
-   <property name="shortcut">
-    <string>Print</string>
-   </property>
-  </action>
-  <action name="actionShowAverage">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="../../resources/icons-custom/index.qrc">
-     <normaloff>:/icons/show-average.svg</normaloff>:/icons/show-average.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Average Profile</string>
-   </property>
-   <property name="toolTip">
-    <string>Show average profile</string>
-   </property>
-   <property name="shortcut">
-    <string>A</string>
-   </property>
-  </action>
-  <action name="actionShowIndividual">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="../../resources/icons-custom/index.qrc">
-     <normaloff>:/icons/show-individual.svg</normaloff>:/icons/show-individual.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Individual Profiles</string>
-   </property>
-   <property name="toolTip">
-    <string>Show individual profiles</string>
-   </property>
-   <property name="shortcut">
-    <string>I</string>
-   </property>
-  </action>
-  <action name="actionLogarithmic">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="../../resources/icons-custom/index.qrc">
-     <normaloff>:/icons/logspace-off.svg</normaloff>
-     <normalon>:/icons/logspace-on.svg</normalon>:/icons/logspace-off.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Logarithmic</string>
-   </property>
-   <property name="toolTip">
-    <string>Plot data on a log10 axis</string>
-   </property>
-   <property name="shortcut">
-    <string>Shift+L</string>
-   </property>
-  </action>
-  <action name="actionShowQuantiles">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="../../resources/icons-custom/index.qrc">
-     <normaloff>:/icons/show-quantiles.svg</normaloff>:/icons/show-quantiles.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Per-dimension Quantiles</string>
-   </property>
-   <property name="toolTip">
-    <string>Show per-dimension quantiles</string>
-   </property>
-   <property name="shortcut">
-    <string>Q</string>
-   </property>
-  </action>
   <action name="actionMarkerMenu">
    <property name="icon">
     <iconset theme="draw-star">

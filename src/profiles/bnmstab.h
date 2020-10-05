@@ -11,6 +11,7 @@
 #include <memory>
 
 class BnmsChart;
+class PlotActions;
 class ReferenceChart;
 class RangeSelectItem;
 
@@ -62,11 +63,9 @@ protected:
 		ProteinId reference = 0; // first protein
 		bool zoomToRange = false;
 		bool componentMode = false;
-		bool showLabels = true;
-		bool showAverage = false;
-		bool showQuantiles = false;
 	} tabState;
 
+	PlotActions *plotbar;
 	NoCheckstateProxyModel proteinModel;
 	QMenu historyMenu, markerMenu;
 };

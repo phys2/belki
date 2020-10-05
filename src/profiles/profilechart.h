@@ -44,9 +44,11 @@ public:
 	void toggleLogSpace(bool on);
 
 signals:
+	// signals that pass through calls/signals from outside
 	void toggleIndividual(bool on);
 	void toggleAverage(bool on);
 	void toggleQuantiles(bool on);
+	// a regular signal to connect to
 	void menuRequested(ProteinId id);
 
 protected:

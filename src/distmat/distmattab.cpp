@@ -78,6 +78,7 @@ void DistmatTab::addDataset(Dataset::Ptr data)
 }
 
 /* Note: shared code between DistmatTab and HeatmapTab */
+// TODO: "OrderActions" similar to PlotActions?
 void DistmatTab::setupOrderUI()
 {
 	// setup toolbar
