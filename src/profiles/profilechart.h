@@ -74,20 +74,15 @@ protected:
 	void setupSignals();
 	void setupAxes(const Features::Range &range);
 	// helper to finalize()
-	void computeStats();
+	void computeStats(bool global);
 	// helper to setupSeries()
 	void addSeries(QtCharts::QAbstractSeries *s, SeriesCategory cat, bool sticky = false);
 
 	/* indices of proteins shown in the graph, as markers or not */
 	std::vector<std::pair<unsigned, bool>> content;
 	std::unordered_map<unsigned, QtCharts::QLineSeries*> series;
-	/* statistics representing the data */
-	struct {
-		std::vector<qreal> mean;
-		std::vector<qreal> stddev;
-		std::vector<qreal> min, max;
-		std::vector<qreal> quant25, quant50, quant75;
-	} stats;
+	// stats on shown data and/or whole dataset
+	Features::Stats statsLocal, statsGlobal;
 
 	// axes
 	QtCharts::QValueAxis *ax;
@@ -103,7 +98,7 @@ protected:
 	bool small = false;
 	std::set<SeriesCategory> showCategories = {SeriesCategory::INDIVIDUAL};
 	bool logSpace = false;
-	bool globalStats = false;
+	bool useGlobalStats = false;
 	QTimer highlightAnim;
 	QDeadlineTimer highlightAnimDeadline;
 };

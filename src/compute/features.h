@@ -26,6 +26,8 @@ double distance(const std::vector<double> &a, const std::vector<double> &b);
 std::function<double(const std::vector<double> &a, const std::vector<double> &b)>
 distfun(Distance measure);
 
+Features::Stats computeStats(const vec& feats, bool withRange, const std::vector<size_t> &filter = {});
+
 }
 
 #endif

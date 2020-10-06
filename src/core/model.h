@@ -56,6 +56,17 @@ struct Features {
 		double max = 1.;
 	};
 
+	/* statistics representing the data */
+	struct Stats {
+		// per-dimension
+		std::vector<double> mean;
+		std::vector<double> stddev;
+		std::vector<double> min, max;
+		std::vector<double> quant25, quant50, quant75;
+		// overall
+		Range range = {0., 0.}; // we rely on 0, 0 as indicator for unset/invalid
+	};
+
 	bool hasScores() const { return !scores.empty(); }
 	QStringList dimensions;
 
