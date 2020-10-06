@@ -129,7 +129,7 @@ void PlotActions::setupActions(bool labels, bool average, bool quantiles, bool i
 
 	// right-align screenshot button to be consistent with non-profile tabs' ui
 	auto* spacer = new QWidget();
-	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	toolbar->insertWidget(actions.savePlot, spacer);
 }
 
