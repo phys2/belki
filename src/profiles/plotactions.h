@@ -36,6 +36,9 @@ signals:
 	void zoomToVisible();
 	void savePlot();
 
+public slots:
+	void updateZoom(QAction *origin = nullptr);
+
 protected:
 	QToolBar *toolbar;
 

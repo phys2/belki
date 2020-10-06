@@ -28,6 +28,12 @@ class ProfileChart : public QtCharts::QChart
 	Q_OBJECT
 
 public:
+	enum class YRange {
+		KEEP,
+		GLOBAL,
+		LOCAL
+	};
+
 	ProfileChart(std::shared_ptr<Dataset const> data, bool small=true, bool global=false);
 	ProfileChart(ProfileChart *source);
 	virtual ~ProfileChart() {}
@@ -42,6 +48,7 @@ public:
 	virtual void finalize(); // need to be called after addSample calls
 	void toggleLabels(bool on);
 	void toggleLogSpace(bool on);
+	void setYRange(YRange mode);
 
 signals:
 	// signals that pass through calls/signals from outside
@@ -66,6 +73,7 @@ protected:
 	};
 
 	void setupSeries();
+	void adaptYRange();
 	virtual QString titleOf(unsigned index, const QString &name, bool isMarker) const;
 	virtual QColor colorOf(unsigned index, const QColor &color, bool isMarker) const;
 	virtual void animHighlight(int index, qreal step);
@@ -98,6 +106,7 @@ protected:
 	bool small = false;
 	std::set<SeriesCategory> showCategories = {SeriesCategory::INDIVIDUAL};
 	bool logSpace = false;
+	YRange rangeMode = YRange::GLOBAL;
 	bool useGlobalStats = false;
 	QTimer highlightAnim;
 	QDeadlineTimer highlightAnimDeadline;

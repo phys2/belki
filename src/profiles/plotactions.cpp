@@ -23,6 +23,7 @@ void PlotActions::attachTo(ProfileChart *newChart)
 	if (!chart)
 		return;
 
+	// toggle what is shown
 	if (actions.showLabels) {
 		chart->toggleLabels(actions.showLabels->isChecked());
 		connect(actions.showLabels, &QAction::toggled, chart, &ProfileChart::toggleLabels);
@@ -39,7 +40,11 @@ void PlotActions::attachTo(ProfileChart *newChart)
 		chart->toggleIndividual(actions.showIndividual->isChecked());
 		connect(actions.showIndividual, &QAction::toggled, chart, &ProfileChart::toggleIndividual);
 	}
-	// TODO log.scale
+
+	// toggle y-axis zoom; dynamics here are different: we handle the actions' signals ourselves
+	updateZoom();
+
+	// Note: log. scale is synchronized by owner.
 }
 
 void PlotActions::detachFromChart()
@@ -56,19 +61,27 @@ void PlotActions::detachFromChart()
 
 void PlotActions::setupActions(bool labels, bool average, bool quantiles, bool individual)
 {
-	// create action, wire it to signal and also insert it into toolbar
-	auto add_action = [this] (QIcon icon, QString title, QString tooltip,
+	// create action with given parent
+	auto create_action = [] (QObject *parent, QIcon icon, QString title, QString tooltip,
 	        bool isToggle, QString shortcut = {}) {
-		auto action = new QAction(icon, title, this);
+		auto action = new QAction(icon, title, parent);
 	    action->setCheckable(isToggle);
 		action->setIcon(icon);
 		action->setToolTip(tooltip);
 		if (!shortcut.isEmpty())
 			action->setShortcut({shortcut});
+		return action;
+	};
+
+	// create action and also insert it into toolbar
+	auto add_action = [&] (QIcon icon, QString title, QString tooltip,
+	        bool isToggle, QString shortcut = {}) {
+		auto action = create_action(this, icon, title, tooltip, isToggle, shortcut);
 		toolbar->addAction(action);
 		return action;
 	};
 
+	/* selection of what to display */
 	if (labels) {
 		actions.showLabels = add_action(QIcon{":/icons/show-labels.svg"}, "Labels",
 		                                 "Show sample labels", true, "L");
@@ -87,15 +100,7 @@ void PlotActions::setupActions(bool labels, bool average, bool quantiles, bool i
 	// we assume that one of the three above are always enabled
 	toolbar->addSeparator();
 
-	auto zoomGroup = new QActionGroup(this);
-	zoomGroup->setExclusionPolicy(QActionGroup::ExclusionPolicy::ExclusiveOptional);
-	// TODO
-	/*actions.zoomToGlobal = new QAction("global", zoomGroup);
-	/actions.zoomToVisible = new QAction("visible", zoomGroup);
-	for (auto i : {actions.zoomToGlobal, actions.zoomToVisible}) {
-		i->setCheckable(true);
-	}*/
-
+	/* Log-scale and zoom */
 	{
 		QIcon icon;
 		icon.addFile(":/icons/logspace-off.svg", {}, QIcon::Normal, QIcon::Off);
@@ -104,12 +109,23 @@ void PlotActions::setupActions(bool labels, bool average, bool quantiles, bool i
 		                                  true, "Shift+L");
 		connect(actions.logarithmic, &QAction::toggled, this, &PlotActions::toggleLogarithmic);
 	}
+	auto zoomGroup = new QActionGroup(this);
+	zoomGroup->setExclusionPolicy(QActionGroup::ExclusionPolicy::ExclusiveOptional);
+	actions.zoomToGlobal = create_action(zoomGroup, QIcon{":/icons/auto-scale-global.svg"},
+	                                     "Scale to dataset",
+	                                     "Set zoom to fit data range of whole dataset",
+	                                     true, "Shift+Z");
+	actions.zoomToVisible = create_action(zoomGroup, QIcon{":/icons/auto-scale-individual.svg"},
+	                                      "Scale to selection",
+	                                      "Set zoom to fit data range of shown profiles",
+	                                      true, "Z");
+	toolbar->addActions(zoomGroup->actions());
+	connect(zoomGroup, &QActionGroup::triggered, this, &PlotActions::updateZoom);
 
+	/* screenshot button */
 	actions.savePlot = add_action(QIcon::fromTheme("camera-photo"), "Capture",
 	                               "Save the plot to SVG or PNG file", false, "Print");
 	connect(actions.savePlot, &QAction::triggered, this, &PlotActions::savePlot);
-
-	toolbar->addActions(zoomGroup->actions());
 
 	// right-align screenshot button to be consistent with non-profile tabs' ui
 	auto* spacer = new QWidget();
@@ -133,4 +149,18 @@ void PlotActions::setAverageIndividual(bool averageEnabled, bool averageOn, bool
 	actions.showAverage->setEnabled(averageEnabled);
 	actions.showAverage->setChecked(averageOn);
 	actions.showIndividual->setChecked(individualOn);
+}
+
+void PlotActions::updateZoom(QAction *)
+{
+	if (!chart)
+		return;
+
+	ProfileChart::YRange rangeMode = ProfileChart::YRange::KEEP;
+	if (actions.zoomToGlobal->isChecked()) {
+		rangeMode = ProfileChart::YRange::GLOBAL;
+	} else if (actions.zoomToVisible->isChecked()) {
+		rangeMode = ProfileChart::YRange::LOCAL;
+	}
+	chart->setYRange(rangeMode);
 }

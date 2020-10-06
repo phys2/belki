@@ -107,18 +107,41 @@ void ProfileChart::setupAxes(const Features::Range &range)
 		font.setPointSizeF(font.pointSizeF()*0.75);
 		ay->setLabelsFont(font);
 	}
-	ay->setRange(range.min, range.max);
 
 	ayL = new QtCharts::QLogValueAxis;
 	// use sanitized range for logscale axis
-	auto lrange = features::log_valid(range);
-	ayL->setRange(lrange.min, lrange.max);
 	ayL->setBase(10.);
 	ayL->setLabelFormat("%.2g");
 	ayL->setLabelsFont(ay->labelsFont());
 
+	adaptYRange();
+
 	addAxis(logSpace ? (QtCharts::QAbstractAxis*)ayL : ay,
 	        small ? Qt::AlignRight : Qt::AlignLeft);
+}
+
+void ProfileChart::adaptYRange()
+{
+	auto apply = [this] (const Features::Range &range) {
+		auto lrange = features::log_valid(range);
+		ay->setRange(range.min, range.max);
+		ayL->setRange(lrange.min, lrange.max);
+	};
+
+	// update (if unset) stored ranges and apply them
+	if (rangeMode == YRange::GLOBAL) {
+		auto &range = statsGlobal.range;
+		if (range.min == range.max) {
+			range = data->peek<Dataset::Base>()->featureRange;
+		}
+		apply(range);
+	} else if (rangeMode == YRange::LOCAL) {
+		auto &range = statsLocal.range;
+		if (range.min == range.max) {
+			computeStats(false);
+		}
+		apply(range);
+	}
 }
 
 void ProfileChart::clear()
@@ -435,6 +458,11 @@ void ProfileChart::toggleLogSpace(bool on)
 	setupSeries();
 }
 
+void ProfileChart::setYRange(ProfileChart::YRange mode)
+{
+	rangeMode = mode;
+	adaptYRange();
+}
 
 void ProfileChart::computeStats(bool global)
 {
