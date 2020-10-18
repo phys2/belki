@@ -129,16 +129,24 @@ void ProfileChart::adaptYRange()
 	};
 
 	// update (if unset) stored ranges and apply them
-	if (rangeMode == YRange::GLOBAL) {
+	bool fallback = false;
+	if (rangeMode == YRange::LOCAL) {
+	   auto &range = statsLocal.range;
+	   if (range.min == 0. && range.max == 0.) {
+		   computeStats(false);
+	   }
+	   // maybe it is still empty, because there is only flat profiles shown
+	   if (range.min == range.max) {
+		   fallback = true;
+	   } else {
+		   apply(range);
+	   }
+	}
+
+	if (fallback || rangeMode == YRange::GLOBAL) {
 		auto &range = statsGlobal.range;
-		if (range.min == range.max) {
+		if (range.min == 0. && range.max == 0.) {
 			range = data->peek<Dataset::Base>()->featureRange;
-		}
-		apply(range);
-	} else if (rangeMode == YRange::LOCAL) {
-		auto &range = statsLocal.range;
-		if (range.min == range.max) {
-			computeStats(false);
 		}
 		apply(range);
 	}
