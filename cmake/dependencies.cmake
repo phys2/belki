@@ -74,7 +74,7 @@ endforeach()
 
 # test for our patched QtCharts version; do this every time to reflect changes in Qt5Charts_DIR
 unset(HAVE_PATCHED_QTCHARTS CACHE)
-set(CMAKE_REQUIRED_LIBRARIES Qt5::Charts)
+set(CMAKE_REQUIRED_LIBRARIES ${QT_PREFIX}::Charts)
 include(CheckCXXSourceCompiles)
 check_cxx_source_compiles("
 #include <QChart>
