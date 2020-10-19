@@ -80,7 +80,7 @@ protected:
 	void toggleHighlight(int index = -1);
 	// helpers to constructors
 	void setupSignals();
-	void setupAxes(const Features::Range &range);
+	void setupAxes();
 	// helper to finalize()
 	void computeStats(bool global);
 	// helper to setupSeries()

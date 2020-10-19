@@ -220,12 +220,12 @@ Features::Stats computeStats(const vec &feats, bool withRange, const std::vector
 	auto nFeats = filtered ? filter.size() : feats.size();
 	auto statsPerDim = [&] (unsigned dim) {
 		std::vector<double> f(nFeats);
-		if (filter.empty()) {
-			for (size_t j = 0; j < nFeats; ++j)
-				f[j] = feats[j][dim];
-		} else {
+		if (filtered) {
 			for (size_t j = 0; j < nFeats; ++j)
 				f[j] = feats[filter[j]][dim];
+		} else {
+			for (size_t j = 0; j < nFeats; ++j)
+				f[j] = feats[j][dim];
 		}
 
 		cv::Scalar m, s;

@@ -29,7 +29,7 @@ ProfileChart::ProfileChart(Dataset::ConstPtr data, bool small, bool global)
 	}
 	auto d = data->peek<Dataset::Base>();
 	labels = d->dimensions;
-	setupAxes(d->featureRange);
+	setupAxes();
 	setupSignals();
 }
 
@@ -41,7 +41,7 @@ ProfileChart::ProfileChart(ProfileChart *source)
 {
 	setTitle(source->title());
 	legend()->setAlignment(Qt::AlignLeft);
-	setupAxes({source->ay->min(), source->ay->max()});
+	setupAxes();
 	setupSignals();
 }
 
@@ -59,7 +59,7 @@ void ProfileChart::setupSignals()
 	connect(this, &ProfileChart::toggleQuantiles, [toggler] (bool on) { toggler(SeriesCategory::QUANTILE, on); });
 }
 
-void ProfileChart::setupAxes(const Features::Range &range)
+void ProfileChart::setupAxes()
 {
 	/* X axis – used for ticks */
 	ax = new QtCharts::QValueAxis;
@@ -109,7 +109,6 @@ void ProfileChart::setupAxes(const Features::Range &range)
 	}
 
 	ayL = new QtCharts::QLogValueAxis;
-	// use sanitized range for logscale axis
 	ayL->setBase(10.);
 	ayL->setLabelFormat("%.2g");
 	ayL->setLabelsFont(ay->labelsFont());
@@ -123,6 +122,7 @@ void ProfileChart::setupAxes(const Features::Range &range)
 void ProfileChart::adaptYRange()
 {
 	auto apply = [this] (const Features::Range &range) {
+		// use sanitized range for logscale axis
 		auto lrange = features::log_valid(range);
 		ay->setRange(range.min, range.max);
 		ayL->setRange(lrange.min, lrange.max);
@@ -211,6 +211,7 @@ void ProfileChart::setupSeries()
 	if (sort != Sorting::NONE)
 		std::sort(content.begin(), content.end(), sorters.at(sort));
 
+	/* adjust, if necessary, values so they don't fall below logspace minimum value */
 	std::function<double(double)> adjusted;
 	if (logSpace)
 		adjusted = [&] (qreal v) { return std::max(v, ayL->min()); };

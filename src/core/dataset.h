@@ -50,7 +50,7 @@ public:
 	};
 
 	struct Base : Features, RWLockable {
-		const auto& lookup(View<ProteinDB::Public> &v, unsigned index) const {
+		const auto& lookup(View<Proteins> &v, unsigned index) const {
 			return v->proteins[protIds[index]];
 		}
 		// pre-cached set of points
