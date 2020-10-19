@@ -6,6 +6,7 @@
 #include <QGraphicsPixmapItem>
 #include <QGraphicsSceneMouseEvent>
 #include <QCursor>
+#include <QApplication>
 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <tbb/parallel_for.h>
@@ -272,7 +273,7 @@ void FeatweightsScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 	// shrink width/height to avoid index out of bounds later
 	auto inside = display->boundingRect().adjusted(0,0,-0.01,-0.01).contains(pos);
 	if (!inside) {
-		if (event->buttons() & Qt::RightButton)
+		if (event->buttons() & Qt::LeftButton)
 			emit cursorChanged({});
 		return;
 	}
@@ -284,7 +285,7 @@ void FeatweightsScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 	display->setToolTip(QString::number((double)matrix(idx), 'f', 0));
 
 	/* emit cursor change */
-	if (!(event->buttons() & Qt::RightButton))
+	if (!(event->buttons() & Qt::LeftButton))
 		return;
 
 	auto d = data->peek<Dataset::Base>();
@@ -301,8 +302,18 @@ void FeatweightsScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 
 void FeatweightsScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
-	if (event->button() == Qt::RightButton)
-		mouseMoveEvent(event);
+	if (event->button() != Qt::LeftButton)
+		return;
+
+	/* for whatever reason, the graphics view overrides display's cursor now. So we do the same */
+	QApplication::setOverrideCursor(Qt::CursorShape::CrossCursor);
+	mouseMoveEvent(event);
+}
+
+void FeatweightsScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
+{
+	if (event->button() == Qt::LeftButton) // undo what we did on press
+		QApplication::restoreOverrideCursor();
 }
 
 void FeatweightsScene::updateColorset(QVector<QColor> colors)

@@ -105,14 +105,14 @@
       <property name="renderHints">
        <set>QPainter::TextAntialiasing</set>
       </property>
-      <property name="dragMode">
-       <enum>QGraphicsView::ScrollHandDrag</enum>
-      </property>
       <property name="transformationAnchor">
        <enum>QGraphicsView::AnchorUnderMouse</enum>
       </property>
       <property name="viewportUpdateMode">
        <enum>QGraphicsView::FullViewportUpdate</enum>
+      </property>
+      <property name="scrollingEnabled" stdset="0">
+       <bool>false</bool>
       </property>
      </widget>
     </item>

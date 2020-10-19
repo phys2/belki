@@ -61,6 +61,7 @@ public slots:
 protected:
 	void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
 	void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
+	void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
 
 	void setDisplay();
 	void computeWeights();
