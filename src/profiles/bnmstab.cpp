@@ -1,5 +1,6 @@
 #include "bnmstab.h"
 #include "bnmschart.h"
+#include "plotactions.h"
 #include "referencechart.h"
 #include "rangeselectitem.h"
 #include "datahub.h" // for splice
@@ -19,9 +20,15 @@
 #include <QToolButton>
 
 BnmsTab::BnmsTab(QWidget *parent) :
-    Viewer(new QMainWindow, parent)
+    Viewer(new QMainWindow, parent),
+    plotbar(new PlotActions(this))
 {
-	setupUi(qobject_cast<QMainWindow*>(widget));
+	auto window = qobject_cast<QMainWindow*>(widget);
+	setupUi(window);
+	plotbar->addAction(actionZoomToggle); // zoomToggle belongs to "Plot Display" toolbar
+	plotbar->setupActions(false, true, true, false);
+	plotbar->attachTo(window);
+
 	referenceSelect->setModel(&proteinModel);
 	auto anchor = actionHistoryMenu;
 	toolBar->insertWidget(anchor, proteinBox);
@@ -37,13 +44,8 @@ BnmsTab::BnmsTab(QWidget *parent) :
 		btn->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);
 	}
 
-	// right-align screenshot button
-	auto* spacer = new QWidget();
-	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	toolBar->insertWidget(actionSavePlot, spacer);
-
 	/* connect toolbar actions */
-	connect(actionSavePlot, &QAction::triggered, [this] {
+	connect(plotbar, &PlotActions::savePlot, [this] {
 		emit exportRequested(view, "Selected Profiles");
 	});
 	connect(actionComponentToggle, &QAction::toggled,
@@ -52,18 +54,7 @@ BnmsTab::BnmsTab(QWidget *parent) :
 		tabState.zoomToRange = on;
 		if (haveData()) selected().scene->toggleZoom(on);
 	});
-	connect(actionShowAverage, &QAction::toggled, [this] (bool on) {
-		tabState.showAverage = on;
-		if (haveData()) selected().scene->toggleAverage(on);
-	});
-	connect(actionShowQuantiles, &QAction::toggled, [this] (bool on) {
-		tabState.showQuantiles = on;
-		if (haveData()) selected().scene->toggleQuantiles(on);
-	});
-	connect(actionShowIndividual, &QAction::toggled, [this] (bool on) {
-		if (haveData()) selected().scene->toggleIndividual(on);
-	});
-	connect(actionLogarithmic, &QAction::toggled, [this] (bool on) {
+	connect(plotbar, &PlotActions::toggleLogarithmic, [this] (bool on) {
 		if (!haveData())
 			return;
 		auto &current = selected();
@@ -130,12 +121,10 @@ void BnmsTab::selectDataset(unsigned id)
 
 	// pass guiState onto chart
 	auto scene = current.scene.get();
+	plotbar->attachTo(scene);
 	scene->setReference(tabState.reference);
 	scene->toggleComponentMode(tabState.componentMode); // TODO redundant rebuild
 	scene->toggleZoom(tabState.zoomToRange);
-	scene->toggleLabels(tabState.showLabels);
-	scene->toggleAverage(tabState.showAverage);
-	scene->toggleQuantiles(tabState.showQuantiles);
 	auto refScene = current.refScene.get();
 	refScene->setReference(tabState.reference);
 	// TODO: refScene toggleComponentMode
@@ -143,7 +132,7 @@ void BnmsTab::selectDataset(unsigned id)
 		current.rangeSelect->setSubtle(tabState.componentMode);
 
 	// apply datastate
-	actionLogarithmic->setChecked(current.logSpace);
+	plotbar->setLogarithmic(current.logSpace);
 
 	view->setChart(scene);
 	referenceView->setChart(refScene);
@@ -154,6 +143,7 @@ void BnmsTab::selectDataset(unsigned id)
 
 void BnmsTab::deselectDataset()
 {
+	plotbar->detachFromChart();
 	// release ownerships
 	view->setChart(new QtCharts::QChart());
 	referenceView->setChart(new QtCharts::QChart());
@@ -166,6 +156,7 @@ void BnmsTab::addDataset(Dataset::Ptr data)
 	state.components.resize(data->peek<Dataset::Base>()->features.size());
 	state.scene = std::make_unique<BnmsChart>(data, state.components);
 	state.refScene = std::make_unique<ReferenceChart>(data, state.components);
+	state.scene->toggleLabels(true); // always show labels in lower chart
 	if (data->peek<Dataset::Base>()->logSpace) {
 		state.logSpace = true;
 		state.scene->toggleLogSpace(true);

@@ -1,5 +1,6 @@
 #include "profiletab.h"
 #include "profilechart.h"
+#include "plotactions.h"
 
 #include <QMainWindow>
 #include <QStandardItemModel>
@@ -12,41 +13,20 @@
 
 ProfileTab::ProfileTab(QWidget *parent) :
     Viewer(new QMainWindow, parent),
+    plotbar(new PlotActions(this)),
 	proteinModel(tabState.extras)
 {
-	setupUi(qobject_cast<QMainWindow*>(widget));
-	view->setRubberBand(QtCharts::QChartView::RectangleRubberBand); // TODO: issue #5
+	auto window = qobject_cast<QMainWindow*>(widget);
+	setupUi(window);
+	plotbar->setupActions(true, true, true, false);
+	plotbar->attachTo(window);
 	setupProteinBox();
 
-	auto anchor = actionShowLabels;
-	toolBar->insertWidget(anchor, proteinBox);
-	toolBar->insertSeparator(anchor);
-
-	// right-align screenshot button
-	auto* spacer = new QWidget();
-	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	toolBar->insertWidget(actionSavePlot, spacer);
-
 	/* connect toolbar actions */
-	connect(actionSavePlot, &QAction::triggered, [this] {
+	connect(plotbar, &PlotActions::savePlot, [this] {
 		emit exportRequested(view, "Selected Profiles");
 	});
-	connect(actionShowLabels, &QAction::toggled, [this] (bool on) {
-		tabState.showLabels = on;
-		if (haveData()) selected().scene->toggleLabels(on);
-	});
-	connect(actionShowAverage, &QAction::toggled, [this] (bool on) {
-		tabState.showAverage = on;
-		if (haveData()) selected().scene->toggleAverage(on);
-	});
-	connect(actionShowQuantiles, &QAction::toggled, [this] (bool on) {
-		tabState.showQuantiles = on;
-		if (haveData()) selected().scene->toggleQuantiles(on);
-	});
-	connect(actionShowIndividual, &QAction::toggled, [this] (bool on) {
-		if (haveData()) selected().scene->toggleIndividual(on);
-	});
-	connect(actionLogarithmic, &QAction::toggled, [this] (bool on) {
+	connect(plotbar, &PlotActions::toggleLogarithmic, [this] (bool on) {
 		if (haveData()) {
 			selected().logSpace = on;
 			selected().scene->toggleLogSpace(on);
@@ -88,21 +68,20 @@ void ProfileTab::selectDataset(unsigned id)
 	if (!enabled)
 		return;
 
-	// pass guiState onto chart
+	// wire gui w/ state to chart
 	auto scene = selected().scene.get();
-	rebuildPlot();  // TODO temporary hack
-	scene->toggleLabels(tabState.showLabels);
-	scene->toggleAverage(tabState.showAverage);
-	scene->toggleQuantiles(tabState.showQuantiles);
+	rebuildPlot(); // TODO temporary hack
+	plotbar->attachTo(scene);
 
 	// apply datastate
-	actionLogarithmic->setChecked(selected().logSpace);
+	plotbar->setLogarithmic(selected().logSpace);
 
 	view->setChart(scene);
 }
 
 void ProfileTab::deselectDataset()
 {
+	plotbar->detachFromChart();
 	view->setChart(new QtCharts::QChart()); // release ownership
 	Viewer::deselectDataset();
 }
@@ -178,6 +157,8 @@ void ProfileTab::toggleExtra(ProteinId id)
 
 void ProfileTab::setupProteinBox()
 {
+	toolBar->addWidget(proteinBox);
+
 	/* setup completer with empty model */
 	auto m = &proteinModel;
 	auto cpl = new QCompleter(m, this);

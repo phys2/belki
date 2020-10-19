@@ -5,7 +5,6 @@
 
 #include <QCollator>
 #include <iostream>
-#include <unordered_set>
 
 namespace annotations {
 
@@ -56,62 +55,6 @@ void prune(Annotations &data)
 	erase_if(data.groups, [minSize] (auto it) {
 		return it->second.members.size() < minSize;
 	});
-}
-
-Annotations partition(const HrClustering &in, unsigned granularity)
-{
-	auto &hrclusters = in.clusters;
-
-	granularity = std::min(granularity, (unsigned)hrclusters.size());
-	unsigned lowBound = hrclusters.size() - granularity - 1;
-
-	/* determine clusters to be displayed */
-	std::unordered_set<unsigned> candidates;
-	// we use the fact that input is sorted by distance, ascending
-	for (auto i = lowBound; i < hrclusters.size(); ++i) {
-		auto &current = hrclusters[i];
-
-		// add either parent or childs, if any of them is eligible by-itself
-		auto useChildrenInstead =
-		        std::any_of(current.children.begin(), current.children.end(),
-		                    [lowBound] (auto c) { return c >= lowBound; });
-		if (useChildrenInstead) {
-			for (auto c : current.children) {
-				if (c < lowBound) // only add what's not covered by granularity
-					candidates.insert(c);
-			}
-		} else {
-			candidates.insert(i);
-		}
-	}
-
-	Annotations ret;
-
-	// helper to recursively assign all proteins to clusters
-	std::function<void(unsigned, unsigned)> flood;
-	flood = [&] (unsigned hIndex, unsigned cIndex) {
-		auto &current = hrclusters[hIndex];
-		if (current.protein)
-			// would use std::optional::value(), but not available on MacOS 10.13
-			ret.groups.at(cIndex).members.push_back(current.protein.value_or(0));
-		for (auto c : current.children)
-			flood(c, cIndex);
-	};
-
-	ret.groups.reserve(candidates.size());
-	for (auto i : candidates) {
-		auto name = QString("Cluster #%1").arg(hrclusters.size() - i);
-		// use index in hierarchy as cluster index as well
-		ret.groups[i].name = name; // initializes
-		flood(i, i);
-	}
-
-	auto name = QString("%2 at granularity %1").arg(granularity).arg(in.meta.name);
-	ret.meta = {Annotations::Meta::HIERCUT, 0, name};
-	ret.meta.dataset = in.meta.dataset;
-	ret.meta.hierarchy = in.meta.id;
-	ret.meta.granularity = granularity;
-	return ret;
 }
 
 Meanshift::Meanshift(const Features::Vec &input)

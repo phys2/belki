@@ -55,7 +55,7 @@ if (STATIC_BUILD AND ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 endif()
 
 # include core explicitely for AUTOMOC etc
-# for the version: 5.12 is an LTS and we also use 5.12 functionality
+# for the version: 5.12 is an LTS and we also use 5.12 functionality (e.g. CBOR)
 find_package(Qt5Core CONFIG 5.12 REQUIRED)
 if (STATIC_BUILD)
 	set(QT_PREFIX StaticQt5)

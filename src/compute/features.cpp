@@ -202,4 +202,62 @@ distfun(Distance measure)
 	}
 }
 
+Features::Stats computeStats(const vec &feats, bool withRange, const std::vector<size_t> &filter)
+{
+	if (feats.empty())
+		return {};
+
+	Features::Stats ret;
+
+	auto len = feats.front().size();
+	for (auto v : {&ret.mean, &ret.stddev,
+		           &ret.min, &ret.max,
+		           &ret.quant25, &ret.quant50, &ret.quant75})
+		v->resize(len);
+
+	/* compute statistics per-dimension */
+	bool filtered = !filter.empty();
+	auto nFeats = filtered ? filter.size() : feats.size();
+	auto statsPerDim = [&] (unsigned dim) {
+		std::vector<double> f(nFeats);
+		if (filter.empty()) {
+			for (size_t j = 0; j < nFeats; ++j)
+				f[j] = feats[j][dim];
+		} else {
+			for (size_t j = 0; j < nFeats; ++j)
+				f[j] = feats[filter[j]][dim];
+		}
+
+		cv::Scalar m, s;
+		cv::meanStdDev(f, m, s);
+		ret.mean[dim] = m[0];
+		ret.stddev[dim] = s[0];
+
+		std::sort(f.begin(), f.end());
+		ret.min[dim] = f.front();
+		ret.max[dim] = f.back();
+		ret.quant25[dim] = f[nFeats / 4];
+		ret.quant50[dim] = f[nFeats / 2];
+		ret.quant75[dim] = f[(nFeats * 3) / 4];
+	};
+
+	if (nFeats < 1000) {
+		for (size_t i = 0; i < len; ++i)
+			statsPerDim(i);
+	} else {
+		tbb::parallel_for(size_t(0), len, [&] (size_t i) { statsPerDim(i); });
+	}
+
+	// compute overall range afterwards, not to disturb parallel computation above
+	if (withRange) {
+		ret.range = {ret.min[0], ret.max[0]};
+		for (size_t i = 1; i < len; ++i) {
+			ret.range.min = std::min(ret.min[i], ret.range.min);
+			ret.range.max = std::max(ret.max[i], ret.range.max);
+		}
+	}
+
+	return ret;
+}
+
 }

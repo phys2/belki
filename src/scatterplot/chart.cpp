@@ -113,7 +113,7 @@ void Chart::wakeup()
 
 	/* get updates from dataset (specify receiver so signal is cleaned up!) */
 	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
-		if (touched & Dataset::Touch::CLUSTERS)
+		if (touched & Dataset::Touch::ANNOTATIONS)
 			updatePartitions();
 	});
 }

@@ -358,6 +358,7 @@
     </property>
     <addaction name="actionImportStructure"/>
     <addaction name="actionExportAnnotations"/>
+    <addaction name="actionComputeHierarchy"/>
     <addaction name="separator"/>
     <addaction name="actionShowStructure"/>
     <addaction name="separator"/>
@@ -699,6 +700,18 @@
    </property>
    <property name="toolTip">
     <string>Copy protein names to clipboard</string>
+   </property>
+  </action>
+  <action name="actionComputeHierarchy">
+   <property name="icon">
+    <iconset theme="document-new">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>Compute &amp;hierarchy on dataset</string>
+   </property>
+   <property name="toolTip">
+    <string>Perform agglomerative hierarchical clustering</string>
    </property>
   </action>
  </widget>

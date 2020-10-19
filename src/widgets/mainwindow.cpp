@@ -371,6 +371,13 @@ void MainWindow::setupActions()
 			JobRegistry::run(task, state->jobMonitors);
 		});
 	});
+	connect(actionComputeHierarchy, &QAction::triggered, [this] {
+		if (!data)
+			return;
+		Task task{[d=data] { d->computeHierarchy(); },
+			      Task::Type::COMPUTE_HIERARCHY, {data->config().name}};
+		JobRegistry::run(task, state->jobMonitors);
+	});
 
 	connect(actionSave, &QAction::triggered, [this] {
 		Task task{[h=&state->hub()] { h->saveProject(); }, Task::Type::SAVE, {}};
@@ -465,7 +472,8 @@ void MainWindow::updateState(Dataset::Touched affected)
 		protList->reset();
 	}
 
-	actionSplice->setEnabled((bool)data);
+	for (auto i : {actionSplice, actionComputeHierarchy})
+		i->setEnabled((bool)data);
 	if (!data) {
 		/* disable data-dependent actions that also depend on other things (so we don't enable) */
 		for (auto i : {actionShowStructure, actionExportAnnotations, actionPersistAnnotations})
@@ -490,13 +498,13 @@ void MainWindow::setDataset(Dataset::Ptr selected)
 		// tell dataset what we need
 		std::vector<Task> tasks; // use a pipeline to avoid redundant order computation
 		if (state->annotations.id) { // simple case
-			tasks.push_back({[s=state,d=data] { d->prepareAnnotations(s->annotations); },
+			tasks.push_back({[s=state,d=data] { d->computeAnnotations(s->annotations); },
 		                     Task::Type::ANNOTATE, {state->annotations.name, data->config().name}});
 		} else if (state->annotations.type == Annotations::Meta::HIERCUT) {
-			tasks.push_back({[s=state,d=data] { d->prepareAnnotations(s->annotations); },
+			tasks.push_back({[s=state,d=data] { d->computeAnnotations(s->annotations); },
 			                 Task::Type::PARTITION_HIERARCHY, {state->hierarchy.name, data->config().name}});
 		} // note: MEANSHIFT case is handled by FAMSControl
-		tasks.push_back({[s=state,d=data] { d->prepareOrder(s->order); },
+		tasks.push_back({[s=state,d=data] { d->computeOrder(s->order); },
 		                 Task::Type::ORDER, {"preference", data->config().name}});
 		JobRegistry::pipeline(tasks, state->jobMonitors);
 		// wire updates
@@ -677,7 +685,7 @@ void MainWindow::selectAnnotations(const Annotations::Meta &desc)
 	// compute if not the null case (we are not called for special cases)
 	if (data && desc.id) {
 		// note: prepareAnnotations in our case (types SIMPLE) always also computes order
-		Task task({[s=state,d=data] { d->prepareAnnotations(s->annotations); },
+		Task task({[s=state,d=data] { d->computeAnnotations(s->annotations); },
 		           Task::Type::ANNOTATE, {desc.name, data->config().name}});
 		JobRegistry::run(task, state->jobMonitors);
 	}
@@ -697,7 +705,7 @@ void MainWindow::selectHierarchy(unsigned id, unsigned granularity)
 	state->order = {Order::HIERARCHY, state->hierarchy};
 	emit state->orderChanged();
 	if (data) {
-		Task task{[s=state,d=data] { d->prepareOrder(s->order); },
+		Task task{[s=state,d=data] { d->computeOrder(s->order); },
 			      Task::Type::ORDER, {state->hierarchy.name, data->config().name}};
 		JobRegistry::run(task, state->jobMonitors);
 	}
@@ -710,7 +718,7 @@ void MainWindow::switchHierarchyPartition(unsigned granularity)
 	state->annotations.granularity = granularity;
 	emit state->annotationsChanged();
 	if (data) {
-		Task task{[s=state,d=data] { d->prepareAnnotations(s->annotations); },
+		Task task{[s=state,d=data] { d->computeAnnotations(s->annotations); },
 			      Task::Type::PARTITION_HIERARCHY, {state->hierarchy.name, data->config().name}};
 		JobRegistry::run(task, state->jobMonitors);
 	}

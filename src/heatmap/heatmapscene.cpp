@@ -74,7 +74,7 @@ void HeatmapScene::wakeup()
 	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
 		if (touched & Dataset::Touch::ORDER)
 			reorder();
-		if (touched & Dataset::Touch::CLUSTERS)
+		if (touched & Dataset::Touch::ANNOTATIONS)
 			recolor();
 	});
 }
@@ -194,8 +194,10 @@ HeatmapScene::Profile::Profile(unsigned index, View<Dataset::Base> &d)
 	auto feat = cv::Mat(d->features[index]);
 	auto range = d->featureRange;
 	if (d->logSpace) {
+		// important: need to operate on a copy of the data!
+		feat = feat.clone();
 		range = features::log_valid(range);
-		cv::log(cv::max(feat, range.min), feat);
+		cv::log(cv::max(feat, range.min), feat); // clamp & log features
 		range.min = cv::log(range.min); range.max = cv::log(range.max);
 	}
 	features = Colormap::prepare(feat, range.scale(), range.min);

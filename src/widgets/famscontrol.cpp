@@ -23,7 +23,7 @@ void FAMSControl::addDataset(Dataset::Ptr data)
 {
 	auto &state = addData<DataState>(data);
 	connect(state.data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
-		if (touched & Dataset::Touch::CLUSTERS)
+		if (touched & Dataset::Touch::ANNOTATIONS)
 			updateUi();
 	});
 }
@@ -53,7 +53,7 @@ void FAMSControl::run()
 	auto desc = windowState->annotations;
 	auto data = selected().data;
 	// note: prepareAnnotations in our case (type MEANSHIFT) always also computes order
-	Task task({[desc,data] { data->prepareAnnotations(desc); },
+	Task task({[desc,data] { data->computeAnnotations(desc); },
 	           Task::Type::COMPUTE_FAMS, {QString::number(desc.k, 'f', 2), data->config().name}});
 	task.userData = data->config().id;
 	auto monitors = windowState->jobMonitors;

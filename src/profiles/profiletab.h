@@ -10,6 +10,7 @@
 #include <set>
 
 class ProfileChart;
+class PlotActions;
 class QMenu;
 
 class ProfileTab : public Viewer, private Ui::ProfileTab
@@ -53,14 +54,12 @@ protected:
 	void toggleExtra(ProteinId id);
 	void setupProteinBox();
 
-	CustomCheckedProxyModel proteinModel;
-
 	struct {
 		std::set<ProteinId> extras;
-		bool showLabels = false;
-		bool showAverage = false;
-		bool showQuantiles = false;
 	} tabState;
+
+	PlotActions *plotbar;
+	CustomCheckedProxyModel proteinModel;
 };
 
 #endif

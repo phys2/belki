@@ -1,7 +1,9 @@
 #include "dataset.h"
-#include "../compute/annotations.h"
 #include "../compute/features.h"
 #include "../compute/dimred.h"
+#include "../compute/distmat.h"
+#include "../compute/annotations.h"
+#include "../compute/hierarchy.h"
 
 #include <QDataStream>
 #include <QTextStream>
@@ -58,8 +60,8 @@ void Dataset::spawn(Features::Ptr base, std::unique_ptr<::Representations> repr)
 	b.featurePoints = features::pointify(b.features);
 
 	/* calculate default orders */
-	computeOrder({Order::FILE});
-	computeOrder({Order::NAME});
+	calculateOrder({Order::FILE});
+	calculateOrder({Order::NAME});
 }
 
 void Dataset::spawn(ConstPtr srcholder)
@@ -119,15 +121,6 @@ void Dataset::computeDisplay(const QString& request)
 	emit update(Touch::DISPLAY);
 }
 
-void Dataset::computeDisplays()
-{
-	/* compute PCA displays as a fast starting point */
-	r.l.lockForWrite(); // proactive write lock, avoid gap that may lead to double computation
-	if (!r.displays.count("PCA 12"))
-		computeDisplay("PCA");
-	r.l.unlock();
-}
-
 void Dataset::addDisplay(const QString& name, const Representations::Pointset &points)
 {
 	r.l.lockForWrite();
@@ -137,7 +130,53 @@ void Dataset::addDisplay(const QString& name, const Representations::Pointset &p
 	emit update(Touch::DISPLAY);
 }
 
-void Dataset::prepareAnnotations(const Annotations::Meta &desc)
+void Dataset::computeDistances(DistDirection direction, Distance dist)
+{
+	if (peek<Representations>()->distances.at(direction).count(dist))
+		return; // already there
+
+	cv::Mat1f result;
+	switch (direction) {
+	case DistDirection::PER_PROTEIN:
+		result = distmat::computeMatrix(peek<Base>()->features, dist);
+		break;
+	case DistDirection::PER_DIMENSION:
+		auto d = peek<Base>();
+		// re-arrange data to obtain per-dimension feature vectors
+		std::vector<std::vector<double>>
+		        features((size_t)d->dimensions.size(), std::vector<double>(d->features.size()));
+		for (size_t i = 0; i < d->features.size(); ++i) {
+			for (size_t j = 0; j < d->features[i].size(); ++j) {
+				features[j][i] = d->features[i][j];
+			}
+		}
+		d.unlock();
+		result = distmat::computeMatrix(features, dist);
+	}
+
+	r.l.lockForWrite();
+	r.distances[direction][dist] = result;
+	r.l.unlock();
+
+	emit update(Touch::DISTANCES);
+}
+
+void Dataset::computeHierarchy()
+{
+	auto distance = Distance::COSINE;
+	computeDistances(DistDirection::PER_PROTEIN, distance); // ensure availability
+	auto h = hierarchy::agglomerative(
+	             peek<Representations>()->distances.at(DistDirection::PER_PROTEIN).at(distance),
+	             peek<Base>()->protIds);
+	if (!h) // empty result when operation was cancelled
+		return;
+
+	h->meta.dataset = conf.id;
+	h->meta.name = QString{"Hierarchy on %1"}.arg(conf.name);
+	proteins.addHierarchy(std::move(h), true); // selects
+}
+
+void Dataset::computeAnnotations(const Annotations::Meta &desc)
 {
 	if (peek<Structure>()->fetch(desc))
 		return; // already there
@@ -167,13 +206,13 @@ void Dataset::prepareAnnotations(const Annotations::Meta &desc)
 	emit update(touched);
 }
 
-void Dataset::prepareOrder(const ::Order &desc)
+void Dataset::computeOrder(const ::Order &desc)
 {
 	if (peek<Structure>()->fetch(desc).type == desc.type) // didn't fall back
 		return; // already there
 
 	s.l.lockForWrite();
-	computeOrder(desc);
+	calculateOrder(desc);
 	s.l.unlock();
 	emit update(Touch::ORDER);
 }
@@ -220,7 +259,7 @@ Annotations Dataset::computeFAMS(float k)
 Annotations Dataset::createPartition(unsigned id, unsigned granularity)
 {
 	auto hierarchy = *std::get_if<HrClustering>(&proteins.peek()->structures.at(id)); // Apple no std::get
-	auto ret = annotations::partition(hierarchy, granularity);
+	auto ret = hierarchy::partition(hierarchy, granularity);
 
 	annotations::prune(ret);
 	annotations::order(ret, true);
@@ -243,9 +282,9 @@ Dataset::Touched Dataset::storeAnnotations(const ::Annotations &source, bool wit
 	if (needCentroids)
 		computeCentroids(target);
 
-	Touched touched = Touch::CLUSTERS;
+	Touched touched = Touch::ANNOTATIONS;
 	if (withOrder) {
-		computeOrder({Order::CLUSTERING, target.meta});
+		calculateOrder({Order::CLUSTERING, target.meta});
 		touched |= Touch::ORDER;
 	}
 
@@ -277,7 +316,7 @@ void Dataset::computeCentroids(Annotations &target)
 	}
 }
 
-void Dataset::computeOrder(const ::Order &desc)
+void Dataset::calculateOrder(const ::Order &desc)
 {
 	/* Note: caller has locked s for us for writing */
 

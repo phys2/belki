@@ -18,6 +18,7 @@
 
 #include "jobregistry.h"
 
+#include <iomanip>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
@@ -28,8 +29,6 @@
 #include <functional>
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_reduce.h>
-
-using namespace std;
 
 namespace seg_meanshift {
 
@@ -134,7 +133,7 @@ void FAMS::ComputePilotPoint::operator()(const tbb::blocked_range<int> &r)
 			bool cont = fams.progressUpdate((float)done/(float)fams.n_ * 10.f,
 				false);
 			if (!cont) {
-				bgLog("ComputePilot aborted.\n");
+				std::cerr << "ComputePilot aborted." << std::endl;
 				return;
 			}
 			done = 0;
@@ -144,16 +143,16 @@ void FAMS::ComputePilotPoint::operator()(const tbb::blocked_range<int> &r)
 }
 
 // compute the pilot h_i's for the data points
-bool FAMS::ComputePilot(vector<double> *weights) {
-	bgLog("compute bandwidths...\n");
+bool FAMS::ComputePilot(std::vector<double> *weights) {
+	std::cerr << "compute bandwidths..." << std::endl;
 
 	ComputePilotPoint comp(*this, weights);
 	tbb::parallel_reduce(tbb::blocked_range<int>(0, n_),
 						 comp);
 
-	cout << "Avg. window size: " << comp.dbg_acc / n_ << endl;
-	bgLog("No kNN found for %2.2f%% of all points\n",
-		  (float) comp.dbg_noknn / n_ * 100);
+	std::cerr << "Avg. window size: " << comp.dbg_acc / n_ << std::endl;
+	std::cerr << "No kNN found for " << std::setprecision(2) <<
+	             comp.dbg_noknn / n_ * 100.f << "% of all points" << std::endl;
 
 	return !(cancelled);
 }
@@ -264,7 +263,7 @@ const
 											(float)fams.startPoints.size()*90.f,
 											false);
 			if (!cont) {
-				bgLog("FinishFAMS aborted.\n");
+				std::cerr << "FinishFAMS aborted." << std::endl;
 				return;
 			}
 			done = 0;
@@ -276,31 +275,29 @@ const
 // perform FAMS starting from a subset of the data points.
 // return true on successful finish (not cancelled by user through update feedback)
 bool FAMS::finishFAMS() {
-	bgLog(" Start MS iterations\n");
+	std::cerr << " Start MS iterations" << std::endl;
 
 	tbb::parallel_for(tbb::blocked_range<int>(0, startPoints.size()),
 	                  MeanShiftPoint(*this));
 
-	bgLog("done.\n");
+	std::cerr << "done." << std::endl;
 	return !(cancelled);
 }
 
 // initialize bandwidths
-bool FAMS::prepareFAMS(vector<double> *bandwidths, vector<double> *factors) {
+bool FAMS::prepareFAMS(std::vector<double> *bandwidths, std::vector<double> *factors) {
 	assert(!datapoints.empty());
 
 	//Compute pilot if necessary
-	bgLog(" Run pilot ");
+	std::cerr << " Run pilot ";
 	bool cont = true;
 	bool adaptive = (config.bandwidth <= 0. && bandwidths == nullptr);
 	if (adaptive) {  // adaptive bandwidths
-		bgLog(bandwidths ? "adaptive using weights..." : "adaptive...");
+		std::cerr << (bandwidths ? "adaptive using weights..." : "adaptive...");
 		cont = ComputePilot(bandwidths);
 	} else if (bandwidths != nullptr) {  // preset bandwidths
-		bgLog("fixed bandwidth (local value)...");
+		std::cerr << "fixed bandwidth (local value)...";
 		assert(bandwidths->size() == n_);
-		cout << "maxVal_ = " << maxVal_ << endl;
-		cout << "minVal_ = " << minVal_ << endl;
 		for (unsigned int i = 0; i < n_; i++) {
 			double width = bandwidths->at(i) * config.bandwidth;
 			unsigned int hWidth = value2ushort<unsigned int>(width);
@@ -311,10 +308,9 @@ bool FAMS::prepareFAMS(vector<double> *bandwidths, vector<double> *factors) {
 						(d_ + 2) * FAMS_ALPHA);
 		}
 	} else {  // fixed bandwidth for all points
-		bgLog("fixed bandwidth (global value)...");
 		int hWidth = value2ushort<int>(config.bandwidth);
 		unsigned int hwd = (unsigned int)(hWidth * d_);
-		cout << "Window size: " << hwd << endl;
+		std::cerr << "fixed bandwidth (global value), window size " << hwd << std::endl;
 		for (unsigned int i = 0; i < n_; i++) {
 			datapoints[i].window    = hwd;
 			datapoints[i].weightdp2 = 1;
@@ -323,7 +319,7 @@ bool FAMS::prepareFAMS(vector<double> *bandwidths, vector<double> *factors) {
 
 	/* Set factors */
 	if (factors) {
-		bgLog(" *** using factors *** ");
+		std::cerr << " *** using factors *** ";
 		for (unsigned int i = 0; i < n_; i++)
 			datapoints[i].factor = factors->at(i);
 	} else {
@@ -331,7 +327,7 @@ bool FAMS::prepareFAMS(vector<double> *bandwidths, vector<double> *factors) {
 			datapoints[i].factor = 1.;
 	}
 
-	bgLog("done.\n");
+	std::cerr <<  "done." << std::endl;
 	return cont;
 }
 

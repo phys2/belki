@@ -28,6 +28,12 @@ class ProfileChart : public QtCharts::QChart
 	Q_OBJECT
 
 public:
+	enum class YRange {
+		KEEP,
+		GLOBAL,
+		LOCAL
+	};
+
 	ProfileChart(std::shared_ptr<Dataset const> data, bool small=true, bool global=false);
 	ProfileChart(ProfileChart *source);
 	virtual ~ProfileChart() {}
@@ -42,11 +48,14 @@ public:
 	virtual void finalize(); // need to be called after addSample calls
 	void toggleLabels(bool on);
 	void toggleLogSpace(bool on);
+	void setYRange(YRange mode);
 
 signals:
+	// signals that pass through calls/signals from outside
 	void toggleIndividual(bool on);
 	void toggleAverage(bool on);
 	void toggleQuantiles(bool on);
+	// a regular signal to connect to
 	void menuRequested(ProteinId id);
 
 protected:
@@ -64,6 +73,7 @@ protected:
 	};
 
 	void setupSeries();
+	void adaptYRange();
 	virtual QString titleOf(unsigned index, const QString &name, bool isMarker) const;
 	virtual QColor colorOf(unsigned index, const QColor &color, bool isMarker) const;
 	virtual void animHighlight(int index, qreal step);
@@ -72,20 +82,15 @@ protected:
 	void setupSignals();
 	void setupAxes(const Features::Range &range);
 	// helper to finalize()
-	void computeStats();
+	void computeStats(bool global);
 	// helper to setupSeries()
 	void addSeries(QtCharts::QAbstractSeries *s, SeriesCategory cat, bool sticky = false);
 
 	/* indices of proteins shown in the graph, as markers or not */
 	std::vector<std::pair<unsigned, bool>> content;
 	std::unordered_map<unsigned, QtCharts::QLineSeries*> series;
-	/* statistics representing the data */
-	struct {
-		std::vector<qreal> mean;
-		std::vector<qreal> stddev;
-		std::vector<qreal> min, max;
-		std::vector<qreal> quant25, quant50, quant75;
-	} stats;
+	// stats on shown data and/or whole dataset
+	Features::Stats statsLocal, statsGlobal;
 
 	// axes
 	QtCharts::QValueAxis *ax;
@@ -101,7 +106,8 @@ protected:
 	bool small = false;
 	std::set<SeriesCategory> showCategories = {SeriesCategory::INDIVIDUAL};
 	bool logSpace = false;
-	bool globalStats = false;
+	YRange rangeMode = YRange::GLOBAL;
+	bool useGlobalStats = false;
 	QTimer highlightAnim;
 	QDeadlineTimer highlightAnimDeadline;
 };

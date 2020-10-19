@@ -81,14 +81,14 @@ void DistmatScene::wakeup()
 	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
 		if (touched & Dataset::Touch::ORDER)
 			reorder(); // calls recolor()
-		else if (touched & Dataset::Touch::CLUSTERS && !haveAnnotations)
+		else if (touched & Dataset::Touch::ANNOTATIONS && !haveAnnotations)
 			recolor();
 	});
 }
 
 void DistmatScene::setDisplay()
 {
-	display->setPixmap(matrices[currentDirection].image);
+	display->setPixmap(matrices[currentDirection]);
 
 	/* normalize display size on screen and also flip Y-axis */
 	auto scale = 1./display->boundingRect().width();
@@ -96,7 +96,7 @@ void DistmatScene::setDisplay()
 	updateRenderQuality();
 }
 
-void DistmatScene::setDirection(DistmatScene::Direction direction)
+void DistmatScene::setDirection(DistDirection direction)
 {
 	if (direction == currentDirection && matrices.count(direction))
 		return;
@@ -111,27 +111,15 @@ void DistmatScene::setDirection(DistmatScene::Direction direction)
 	}
 
 	/* otherwise compute it */
-	matrices[direction] = Distmat();
-	auto &m = matrices[direction];
-
+	// TODO: better use a Task and watch out for Dataset::Touched::DISTANCES
+	data->computeDistances(direction, measure);
 	switch (direction) {
-	case Direction::PER_PROTEIN:
-		m.computeMatrix(data->peek<Dataset::Base>()->features);
-		reorder(); // calls setDisplay()
+	case DistDirection::PER_PROTEIN:
+		reorder(); // sets matrices[] and calls setDisplay()
 		break;
-	case Direction::PER_DIMENSION:
-		auto d = data->peek<Dataset::Base>();
-		// re-arrange data to obtain per-dimension feature vectors
-		std::vector<std::vector<double>>
-		        features((size_t)d->dimensions.size(), std::vector<double>(d->features.size()));
-		for (size_t i = 0; i < d->features.size(); ++i) {
-			for (size_t j = 0; j < d->features[i].size(); ++j) {
-				features[j][i] = d->features[i][j];
-			}
-		}
-		d.unlock();
-		m.computeMatrix(features);
-		m.computeImage([] (int y, int x) { return cv::Point(x, y); });
+	case DistDirection::PER_DIMENSION:
+		matrices[direction] = distmat::computeImage(data->peek<Dataset::Representations>()
+		                                            ->distances.at(direction).at(measure), measure);
 		setDisplay();
 	}
 }
@@ -141,17 +129,22 @@ void DistmatScene::reorder()
 	// note: although we have nothing to do here for PER_DIMENSION, we keep the
 	// state consistent for a future switch to PER_PROTEIN
 
-	if (matrices.count(Direction::PER_PROTEIN)) {
+	auto r = data->peek<Dataset::Representations>();
+	if (r->distances.at(DistDirection::PER_PROTEIN).count(measure)) {
 		/* re-do display with current ordering */
 		auto d = data->peek<Dataset::Structure>(); // keep while we use order
 		auto &order = d->fetch(state->order);
-		matrices[Direction::PER_PROTEIN].computeImage([&order] (int y, int x) {
+		matrices[DistDirection::PER_PROTEIN] =
+		        distmat::computeImage(r->distances.at(DistDirection::PER_PROTEIN).at(measure),
+		                              measure, [&order] (int y, int x) {
 			return cv::Point(order.index[x], order.index[y]);
 		});
+		r.unlock();
 
-		if (currentDirection == Direction::PER_PROTEIN)
+		if (currentDirection == DistDirection::PER_PROTEIN)
 			setDisplay();
 	}
+	r.unlock();
 
 	/* reflect new order in markers */
 	for (auto& [_, m] : markers)
@@ -216,11 +209,11 @@ void DistmatScene::rearrange()
 void DistmatScene::updateVisibilities()
 {
 	for (auto &[i, l] : dimensionLabels)
-		l.setVisible(currentDirection == Direction::PER_DIMENSION && dimensionSelected[i]);
+		l.setVisible(currentDirection == DistDirection::PER_DIMENSION && dimensionSelected[i]);
 	for (auto &[_, m] : markers)
-		m.setVisible(currentDirection == Direction::PER_PROTEIN);
+		m.setVisible(currentDirection == DistDirection::PER_PROTEIN);
 	clusterbars.setVisible(state->showAnnotations && haveAnnotations &&
-	                       currentDirection == Direction::PER_PROTEIN);
+	                       currentDirection == DistDirection::PER_PROTEIN);
 }
 
 void DistmatScene::updateRenderQuality()
@@ -279,14 +272,14 @@ void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 	// shrink width/height to avoid index out of bounds later
 	auto inside = display->boundingRect().adjusted(0,0,-0.01,-0.01).contains(pos);
 	if (!inside) {
-		if (currentDirection == Direction::PER_PROTEIN)
+		if (currentDirection == DistDirection::PER_PROTEIN)
 			emit cursorChanged({});
 		return;
 	}
 
 	// use floored coordinates, as everything in [0,1[ lies over pixel 0
 	cv::Point_<unsigned> idx = {(unsigned)pos.x(), (unsigned)pos.y()};
-	if (currentDirection == Direction::PER_PROTEIN) {
+	if (currentDirection == DistDirection::PER_PROTEIN) {
 		// need to back-translate
 		auto d = data->peek<Dataset::Structure>();
 		auto &order = d->fetch(state->order);
@@ -294,10 +287,13 @@ void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 	}
 
 	/* display current value */
-	auto &m = matrices[currentDirection].matrix;
-	display->setToolTip(QString::number((double)m(idx), 'f', 2));
+	auto r = data->peek<Dataset::Representations>();
+	auto it = r->distances.at(currentDirection).find(measure);
+	if (it != r->distances.at(currentDirection).end()) {
+		display->setToolTip(QString::number((double)it->second(idx), 'f', 2));
+	}
 
-	if (currentDirection == Direction::PER_DIMENSION)
+	if (currentDirection == DistDirection::PER_DIMENSION)
 		return;
 
 	/* emit cursor change */
@@ -309,7 +305,7 @@ void DistmatScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 
 void DistmatScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
-	if (dialogMode && display->scene() && currentDirection == Direction::PER_DIMENSION) {
+	if (dialogMode && display->scene() && currentDirection == DistDirection::PER_DIMENSION) {
 		// see mouseMoveEvent()
 		auto y = (unsigned)display->mapFromScene(event->scenePos()).y();
 		if (y < dimensionSelected.size()) {
@@ -372,7 +368,7 @@ DistmatScene::Marker::Marker(DistmatScene *scene, unsigned sampleIndex, ProteinI
 {
 	const auto protein = scene->data->peek<Dataset::Proteins>()->proteins[id];
 	setup(scene, protein.name, protein.color);
-	setVisible(scene->currentDirection == Direction::PER_PROTEIN);
+	setVisible(scene->currentDirection == DistDirection::PER_PROTEIN);
 }
 
 void DistmatScene::LegendItem::setVisible(bool visible)

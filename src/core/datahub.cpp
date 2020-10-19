@@ -101,10 +101,8 @@ void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config)
 	/* also compute displays expected by the user – TODO initiate in dimredtab */
 	if (target->peek<Dataset::Base>()->dimensions.size() < 3)
 		return;
-
-	// standard set
-	target->computeDisplays();
-
+	// standard set PCA
+	target->computeDisplay("PCA");
 	// current display TODO dead code
 	/*if (!initialDisplay.isEmpty() &&
 		!target->peek<Dataset::Representations>()->displays.count(initialDisplay))
@@ -139,7 +137,7 @@ void DataHub::importDataset(const QString &filename, const QString featureCol)
 	/* compute intial set of displays – TODO initiate in dimredtab */
 	if (target->peek<Dataset::Base>()->dimensions.size() < 3)
 		return;
-	target->computeDisplays();
+	target->computeDisplay("PCA");
 }
 
 void DataHub::removeDataset(unsigned id)

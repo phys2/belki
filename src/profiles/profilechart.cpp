@@ -12,14 +12,13 @@
 #include <QCategoryAxis>
 #include <QLegendMarker>
 
-#include <opencv2/core/core.hpp>
 #include <tbb/parallel_for_each.h>
 
 /* small, inset plot constructor */
 ProfileChart::ProfileChart(Dataset::ConstPtr data, bool small, bool global)
     : data(data),
       small(small),
-      globalStats(global)
+      useGlobalStats(global)
 {
 	if (small) {
 		setMargins({0, 10, 0, 0});
@@ -36,7 +35,7 @@ ProfileChart::ProfileChart(Dataset::ConstPtr data, bool small, bool global)
 
 /* big, labelled plot constructor */
 ProfileChart::ProfileChart(ProfileChart *source)
-    : content(source->content), stats(source->stats),
+    : content(source->content), statsLocal(source->statsLocal), statsGlobal(source->statsGlobal),
       data(source->data), labels(source->labels),
       small(false), logSpace(source->logSpace)
 {
@@ -67,7 +66,10 @@ void ProfileChart::setupAxes(const Features::Range &range)
 	ax->setRange(0, labels.size() - 1);
 	if (small) {
 		ax->setTickCount(2);
-		ax->setMinorTickCount(labels.size() - 2);
+		if (labels.size() < 50)
+			ax->setMinorTickCount(labels.size() - 2);
+		else
+			ax->setMinorTickCount(8);
 	} else {
 		ax->setTickCount(labels.size());
 	}
@@ -105,24 +107,54 @@ void ProfileChart::setupAxes(const Features::Range &range)
 		font.setPointSizeF(font.pointSizeF()*0.75);
 		ay->setLabelsFont(font);
 	}
-	ay->setRange(range.min, range.max);
 
 	ayL = new QtCharts::QLogValueAxis;
 	// use sanitized range for logscale axis
-	auto lrange = features::log_valid(range);
-	ayL->setRange(lrange.min, lrange.max);
 	ayL->setBase(10.);
 	ayL->setLabelFormat("%.2g");
 	ayL->setLabelsFont(ay->labelsFont());
+
+	adaptYRange();
 
 	addAxis(logSpace ? (QtCharts::QAbstractAxis*)ayL : ay,
 	        small ? Qt::AlignRight : Qt::AlignLeft);
 }
 
+void ProfileChart::adaptYRange()
+{
+	auto apply = [this] (const Features::Range &range) {
+		auto lrange = features::log_valid(range);
+		ay->setRange(range.min, range.max);
+		ayL->setRange(lrange.min, lrange.max);
+	};
+
+	// update (if unset) stored ranges and apply them
+	bool fallback = false;
+	if (rangeMode == YRange::LOCAL) {
+	   auto &range = statsLocal.range;
+	   if (range.min == 0. && range.max == 0.) {
+		   computeStats(false);
+	   }
+	   // maybe it is still empty, because there is only flat profiles shown
+	   if (range.min == range.max) {
+		   fallback = true;
+	   } else {
+		   apply(range);
+	   }
+	}
+
+	if (fallback || rangeMode == YRange::GLOBAL) {
+		auto &range = statsGlobal.range;
+		if (range.min == 0. && range.max == 0.) {
+			range = data->peek<Dataset::Base>()->featureRange;
+		}
+		apply(range);
+	}
+}
+
 void ProfileChart::clear()
 {
-	if (!globalStats)
-		stats = {};
+	statsLocal = {};
 	content.clear();
 	series.clear();
 	removeAllSeries();
@@ -142,12 +174,13 @@ void ProfileChart::addSampleByIndex(unsigned index, bool marker)
 }
 
 void ProfileChart::finalize() {
+	adaptYRange();
 	setupSeries();
 }
 
 void ProfileChart::setupSeries()
 {
-	if (content.empty() && !globalStats)
+	if (content.empty() && !useGlobalStats) // nothing to show
 		return;
 
 	/* TODO: rework this so we only setup what is seen on screen, and use
@@ -157,15 +190,11 @@ void ProfileChart::setupSeries()
 	 * stats-only plots of a huge number of proteins.
 	 */
 
+	const auto &stats = (useGlobalStats ? statsGlobal : statsLocal);
+
 	// compute stats always for large plots, but also when avg. is shown in small plot
-	if ((showCategories.count(SeriesCategory::AVERAGE) || !small) && stats.mean.empty()) {
-		computeStats();
-		// if we couldn't compute, just disable. GUI should have it disabled already
-		if (stats.mean.empty())
-			showCategories.erase(SeriesCategory::AVERAGE);
-		if (stats.quant25.empty())
-			showCategories.erase(SeriesCategory::QUANTILE);
-	}
+	if ((showCategories.count(SeriesCategory::AVERAGE) || !small) && stats.mean.empty())
+		computeStats(useGlobalStats);
 
 	auto d = data->peek<Dataset::Base>();
 	auto p = data->peek<Dataset::Proteins>();
@@ -437,51 +466,25 @@ void ProfileChart::toggleLogSpace(bool on)
 	setupSeries();
 }
 
-void ProfileChart::computeStats()
+void ProfileChart::setYRange(ProfileChart::YRange mode)
 {
-	if (!globalStats && content.size() < 2)
-		return;
-
-	auto d = data->peek<Dataset::Base>();
-	auto len = (size_t)d->dimensions.size();
-
-	for (auto v : {&stats.mean, &stats.stddev,
-		           &stats.min, &stats.max,
-		           &stats.quant25, &stats.quant50, &stats.quant75})
-		v->resize(len);
-
-	/* compute statistics per-dimension */
-	auto nFeats = globalStats ? d->features.size() : content.size();
-	auto statsPerDim = [&] (unsigned dim) {
-		std::vector<double> f(nFeats);
-		if (globalStats) {
-			for (size_t j = 0; j < nFeats; ++j)
-				f[j] = d->features[j][dim];
-		} else {
-			for (size_t j = 0; j < nFeats; ++j)
-				f[j] = d->features[content[j].first][dim];
-		}
-
-		cv::Scalar m, s;
-		cv::meanStdDev(f, m, s);
-		stats.mean[dim] = m[0];
-		stats.stddev[dim] = s[0];
-
-		//cv::minMaxLoc(f, &stats.min[dim], &stats.max[dim]);
-		std::sort(f.begin(), f.end());
-		stats.min[dim] = f.front();
-		stats.max[dim] = f.back();
-		stats.quant25[dim] = f[nFeats / 4];
-		stats.quant50[dim] = f[nFeats / 2];
-		stats.quant75[dim] = f[(nFeats * 3) / 4];
-	};
-
-	if (nFeats < 1000) {
-		for (size_t i = 0; i < len; ++i)
-			statsPerDim(i);
-	} else {
-		tbb::parallel_for(size_t(0), len, [&] (size_t i) { statsPerDim(i); });
+	rangeMode = mode;
+	adaptYRange();
 }
+
+void ProfileChart::computeStats(bool global)
+{
+	// TODO: should we store global stats with dataset (precompute)?
+	auto d = data->peek<Dataset::Base>();
+	if (global) {
+		statsGlobal = features::computeStats(d->features, false);
+		statsGlobal.range = d->featureRange;
+	} else {
+		std::vector<size_t> filter;
+		for (auto &[i, _] : content)
+			filter.push_back(i);
+		statsLocal = features::computeStats(d->features, true, filter);
+	}
 }
 
 void ProfileChart::addSeries(QtCharts::QAbstractSeries *s, ProfileChart::SeriesCategory cat, bool sticky)

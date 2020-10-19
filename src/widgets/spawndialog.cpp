@@ -38,7 +38,7 @@ SpawnDialog::SpawnDialog(Dataset::Ptr data, std::shared_ptr<WindowState> state, 
 	// setup scene
 	scene = std::make_unique<DistmatScene>(data, true);
 	scene->setState(state);
-	scene->setDirection(Dataset::Direction::PER_DIMENSION);
+	scene->setDirection(DistDirection::PER_DIMENSION);
 	view->setScene(scene.get());
 
 	// get enough space

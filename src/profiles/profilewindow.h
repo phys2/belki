@@ -6,6 +6,7 @@
 #include <QMainWindow>
 #include <memory>
 
+class PlotActions;
 class ProfileChart;
 class WindowState;
 
@@ -18,6 +19,7 @@ public:
 	explicit ProfileWindow(std::shared_ptr<WindowState> state, ProfileChart *source, QWidget *parent);
 
 protected:
+	PlotActions *plotbar;
 	ProfileChart *chart;
 };
 

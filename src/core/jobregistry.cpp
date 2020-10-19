@@ -63,6 +63,16 @@ JobRegistry::Entry JobRegistry::getCurrentJob()
 	return (it != jobs.end() ? it->second : Entry{});
 }
 
+bool JobRegistry::isCurrentJobCancelled()
+{
+	QReadLocker _(&lock);
+	auto it = threadToEntry();
+	if (it != jobs.end())
+		return it->second.isCancelled;
+	// TODO complain else
+	return false;
+}
+
 void JobRegistry::startCurrentJob(Task::Type type, const std::vector<QString> &fields,
                                   const QVariant &userData)
 {
@@ -130,6 +140,7 @@ void JobRegistry::createEntry(Task::Type type, const std::vector<QString> &field
 	    {T::GENERIC, "Background computation running"},
 	    {T::COMPUTE, "Computing %1 on %2"},
 	    {T::COMPUTE_FAMS, "Computing Mean Shift with k=%1 on %2"},
+	    {T::COMPUTE_HIERARCHY, "Computing hierarchy on %1"},
 	    {T::PARTITION_HIERARCHY, "Partitioning %1 on %2"},
 	    {T::ORDER, "Ordering %2 based on %1"},
 	    {T::ANNOTATE, "Annotating %2 with %1"},

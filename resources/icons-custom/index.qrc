@@ -1,5 +1,7 @@
 <RCC>
 	<qresource prefix="/icons">
+		<file>auto-scale-global.svg</file>
+		<file>auto-scale-individual.svg</file>
 		<file>components.svg</file>
 		<file>show-partition.svg</file>
 		<file>show-average.svg</file>

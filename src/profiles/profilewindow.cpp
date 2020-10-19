@@ -1,47 +1,37 @@
 #include "profilewindow.h"
+#include "plotactions.h"
 #include "profilechart.h"
 #include "windowstate.h"
 #include "dataset.h"
 #include "fileio.h"
 
 ProfileWindow::ProfileWindow(std::shared_ptr<WindowState> state, ProfileChart *source, QWidget *parent) :
-    QMainWindow(parent), chart(new ProfileChart(source))
+    QMainWindow(parent),
+    plotbar(new PlotActions(this)),
+    chart(new ProfileChart(source))
 {
 	setupUi(this);
+	plotbar->setupActions(true, true, false, true);
+	auto nProfiles = chart->numProfiles();
+	plotbar->setLogarithmic(chart->isLogSpace());
+	plotbar->setAverageIndividual(nProfiles >= 2, nProfiles >= 10, nProfiles < 50);
+	plotbar->attachTo(this);
+	plotbar->attachTo(chart); // also applies avg./indv. settings to chart
 
-	/* toolbar */
-	// right-align screenshot button
-	auto* spacer = new QWidget();
-	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	toolBar->insertWidget(actionSavePlot, spacer);
-
-	/* chart */
 	/* note: we do not use OpenGL as it has drawing bugs / does not support our
 	 * customizations for score points */
 	chartView->setChart(chart);
 	chartView->setRenderHint(QPainter::Antialiasing);
 
 	/* actions */
-	connect(actionSavePlot, &QAction::triggered, [this,state] {
+	connect(plotbar, &PlotActions::savePlot, [this,state] {
 		auto title = chart->dataset()->config().name;
 		auto desc = chart->title();
 		if (desc.isEmpty())
 			desc = "Selected Profiles";
 		state->io().renderToFile(chartView, {title, desc});
 	});
-	connect(actionShowLabels, &QAction::toggled, chart, &ProfileChart::toggleLabels);
-	connect(actionShowIndividual, &QAction::toggled, chart, &ProfileChart::toggleIndividual);
-	connect(actionShowAverage, &QAction::toggled, chart, &ProfileChart::toggleAverage);
-	connect(actionLogarithmic, &QAction::toggled, chart, &ProfileChart::toggleLogSpace);
-
-	actionShowAverage->setEnabled(chart->numProfiles() >= 2);
-	actionShowAverage->setChecked(chart->numProfiles() >= 10);
-	actionShowIndividual->setChecked(chart->numProfiles() < 50);
-
-	chart->toggleAverage(actionShowAverage->isChecked());
-	chart->toggleIndividual(actionShowIndividual->isChecked());
-
-	actionLogarithmic->setChecked(chart->isLogSpace());
+	connect(plotbar, &PlotActions::toggleLogarithmic, chart, &ProfileChart::toggleLogSpace);
 
 	chart->finalize();
 

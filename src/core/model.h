@@ -1,6 +1,7 @@
 #ifndef MODEL_H
 #define MODEL_H
 
+#include <opencv2/core/core.hpp>
 #include <QMetaType>
 #include <QString>
 #include <QColor>
@@ -18,6 +19,20 @@
 #endif
 
 using ProteinId = unsigned; // for semantic distinction
+
+enum class Distance {
+	EUCLIDEAN,
+	COSINE,
+	CROSSCORREL, // note: higher is better
+	PEARSON, // note: higher is better
+	EMD, // Earth Mover's Distance
+};
+
+enum class DistDirection { // note: see initializer of Representations::distances
+	PER_PROTEIN,
+	PER_DIMENSION,
+};
+Q_DECLARE_METATYPE(DistDirection)
 
 struct Protein {
 	// first part of protein name, used as identifier
@@ -39,6 +54,17 @@ struct Features {
 
 		double min = 0.;
 		double max = 1.;
+	};
+
+	/* statistics representing the data */
+	struct Stats {
+		// per-dimension
+		std::vector<double> mean;
+		std::vector<double> stddev;
+		std::vector<double> min, max;
+		std::vector<double> quant25, quant50, quant75;
+		// overall
+		Range range = {0., 0.}; // we rely on 0, 0 as indicator for unset/invalid
 	};
 
 	bool hasScores() const { return !scores.empty(); }
@@ -63,7 +89,11 @@ struct Representations {
 	// feature reduced point sets
 	using Pointset = QVector<QPointF>;
 	std::map<QString, Pointset> displays;
-	// TODO: put distmats here
+	// distance/correlation matrices
+	std::map<DistDirection, std::map<Distance, cv::Mat1f>> distances = {
+	    {{DistDirection::PER_PROTEIN}, {}},
+	    {{DistDirection::PER_DIMENSION}, {}}
+	};
 };
 
 struct Annotations {
