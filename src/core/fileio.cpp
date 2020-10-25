@@ -7,6 +7,8 @@
 #include <QPainter>
 #include <QGraphicsScene>
 #include <QGraphicsView>
+#include <QClipboard>
+#include <QGuiApplication>
 
 QString FileIO::chooseFile(FileIO::Role purpose, QWidget *window)
 {
@@ -123,4 +125,25 @@ void FileIO::renderToFile(QObject *source, const RenderMeta &meta, QString filen
 	}
 	if (s)
 		filerender(s, s->sceneRect(), parent->logicalDpiX(), filename, filetype->second, meta);
+}
+
+void FileIO::renderToClipboard(QObject *source)
+{
+	auto *v = qobject_cast<QGraphicsView*>(source);
+	auto *s = qobject_cast<QGraphicsScene*>(source);
+	// note: this method can easily be augmented with support for QWidget*
+
+	QPixmap pixmap;
+	if (v) {
+		auto b = v->backgroundBrush();
+		v->setBackgroundBrush(QBrush(Qt::BrushStyle::NoBrush));
+		pixmap = pixmaprender(v, v->contentsRect());
+		v->setBackgroundBrush(b);
+	}
+	if (s)
+		pixmap = pixmaprender(s, s->sceneRect());
+
+	auto clipboard = QGuiApplication::clipboard();
+	clipboard->setPixmap(pixmap);
+	// TODO: notification?
 }

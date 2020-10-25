@@ -47,6 +47,8 @@ signals:
 public slots:
 	// use source::render() to create image file (source may be QWidget or QGraphicsScene)
 	void renderToFile(QObject *source, const RenderMeta &meta, QString filename = {});
+	// likewise, but put result in clipboard
+	void renderToClipboard(QObject *source);
 
 protected:
 	std::map<QString, FileType> filetypes = {
