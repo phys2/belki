@@ -3,11 +3,13 @@
 #include <QFileDialog>
 #include <QMap>
 #include <QSvgGenerator>
+#include <QBuffer>
 //#include <QPrinter> // for PDF support
 #include <QPainter>
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QClipboard>
+#include <QMimeData>
 #include <QGuiApplication>
 
 QString FileIO::chooseFile(FileIO::Role purpose, QWidget *window)
@@ -52,7 +54,7 @@ void render(Q *source, QPaintDevice *target) {
 };
 
 template<typename Q>
-QPixmap pixmaprender(Q *source, QRectF rect) {
+QPixmap pixmaprender(Q *source, const QRectF &rect) {
 	const qreal scale = 1.; // 2.; // render in higher resolution
 	QPixmap target((rect.size()*scale).toSize());
 	target.fill(Qt::transparent);
@@ -62,18 +64,25 @@ QPixmap pixmaprender(Q *source, QRectF rect) {
 };
 
 template<typename Q>
-void filerender(Q *source, QRectF rect, int dpi, const QString &filename, FileIO::FileType filetype, const FileIO::RenderMeta &meta)
+void svgrender(Q *source, QSvgGenerator *dest, const QRectF &rect, int dpi,
+               const FileIO::RenderMeta &meta = {}) {
+	dest->setSize(rect.size().toSize());
+	dest->setViewBox(rect);
+	dest->setTitle(meta.title);
+	dest->setDescription(meta.description);
+	dest->setResolution(dpi);
+	render(source, dest);
+};
+
+template<typename Q>
+void filerender(Q *source, QRectF rect, int dpi, const QString &filename, FileIO::FileType filetype,
+                const FileIO::RenderMeta &meta)
 {
 	switch (filetype) {
 	case FileIO::FileType::SVG: {
 		QSvgGenerator svg;
 		svg.setFileName(filename);
-		svg.setSize(rect.size().toSize());
-		svg.setViewBox(rect);
-		svg.setTitle(meta.title);
-		svg.setDescription(meta.description);
-		svg.setResolution(dpi);
-		render(source, &svg);
+		svgrender(source, &svg, rect, dpi, meta);
 	} break;
 	case FileIO::FileType::PDF: { // TODO: this produces only a bitmap, so we disabled it for now
 		// maybe use QPicture trick. also need to adapt page size
@@ -88,18 +97,24 @@ void filerender(Q *source, QRectF rect, int dpi, const QString &filename, FileIO
 	}
 }
 
-void FileIO::renderToFile(QObject *source, const RenderMeta &meta, QString filename)
+QWidget *getParent(QGraphicsView *v, QGraphicsScene *s)
 {
 	QWidget *parent = nullptr;
-	auto *v = qobject_cast<QGraphicsView*>(source);
-	auto *s = qobject_cast<QGraphicsScene*>(source);
-	// note: this method can easily be augmented with support for QWidget*
 	if (v)
 		parent = v->window();
 	if (s)
 		parent = s->views().first()->window();
 	if (!parent)
-		std::runtime_error("renderToFile() called with invalid source object!");
+		std::runtime_error("renderTo*() called with invalid source object!");
+	return parent;
+}
+
+void FileIO::renderToFile(QObject *source, const RenderMeta &meta, QString filename)
+{
+	// note: this method can easily be augmented with support for QWidget* instead of these:
+	auto *v = qobject_cast<QGraphicsView*>(source);
+	auto *s = qobject_cast<QGraphicsScene*>(source);
+	QWidget *parent = getParent(v, s);
 
 	if (filename.isEmpty())
 		filename = chooseFile(SavePlot, parent);
@@ -131,19 +146,29 @@ void FileIO::renderToClipboard(QObject *source)
 {
 	auto *v = qobject_cast<QGraphicsView*>(source);
 	auto *s = qobject_cast<QGraphicsScene*>(source);
-	// note: this method can easily be augmented with support for QWidget*
+	QWidget *parent = getParent(v, s);
 
 	QPixmap pixmap;
+	QBuffer svgbuffer;
+	QSvgGenerator svg;
+	svg.setOutputDevice(&svgbuffer);
+
 	if (v) {
 		auto b = v->backgroundBrush();
 		v->setBackgroundBrush(QBrush(Qt::BrushStyle::NoBrush));
+		svgrender(v, &svg, v->contentsRect(), parent->logicalDpiX());
 		pixmap = pixmaprender(v, v->contentsRect());
 		v->setBackgroundBrush(b);
 	}
-	if (s)
+	if (s) {
+		svgrender(s, &svg, s->sceneRect(), parent->logicalDpiX());
 		pixmap = pixmaprender(s, s->sceneRect());
+	}
 
 	auto clipboard = QGuiApplication::clipboard();
-	clipboard->setPixmap(pixmap);
+	auto package = new QMimeData;
+	package->setImageData(pixmap);
+	package->setData("image/svg+xml", svgbuffer.buffer());
+	clipboard->setMimeData(package);
 	// TODO: notification?
 }
