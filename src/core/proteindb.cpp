@@ -61,7 +61,7 @@ ProteinId ProteinDB::add(const QString &fullname)
 	Protein p;
 	auto parts = fullname.split("_");
 	p.name = parts.front();
-	p.species = (parts.size() > 1 ? parts.back() : "RAT"); // wild guess
+	p.species = (parts.size() > 1 ? parts.back() : "MOUSE"); // wild guess, good Uniprot coverage
 	p.color = colorFor(p);
 
 	/* insert */
