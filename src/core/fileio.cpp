@@ -41,15 +41,27 @@ QString FileIO::chooseFile(FileIO::Role purpose, QWidget *window)
 }
 
 template<typename Q>
-void render(Q *source, QRectF rect, int dpi, const QString &filename, FileIO::FileType filetype, const FileIO::RenderMeta &meta)
-{
-	auto renderer = [source] (QPaintDevice *target) {
-		QPainter p;
-		p.begin(target);
-		source->render(&p);
-		p.end();
-	};
+void render(Q *source, QPaintDevice *target) {
+	QPainter p;
+	p.begin(target);
+	p.setRenderHints(QPainter::Antialiasing);
+	source->render(&p);
+	p.end();
+};
 
+template<typename Q>
+QPixmap pixmaprender(Q *source, QRectF rect) {
+	const qreal scale = 1.; // 2.; // render in higher resolution
+	QPixmap target((rect.size()*scale).toSize());
+	target.fill(Qt::transparent);
+	target.setDevicePixelRatio(scale);
+	render(source, &target);
+	return target;
+};
+
+template<typename Q>
+void filerender(Q *source, QRectF rect, int dpi, const QString &filename, FileIO::FileType filetype, const FileIO::RenderMeta &meta)
+{
 	switch (filetype) {
 	case FileIO::FileType::SVG: {
 		QSvgGenerator svg;
@@ -59,7 +71,7 @@ void render(Q *source, QRectF rect, int dpi, const QString &filename, FileIO::Fi
 		svg.setTitle(meta.title);
 		svg.setDescription(meta.description);
 		svg.setResolution(dpi);
-		renderer(&svg);
+		render(source, &svg);
 	} break;
 	case FileIO::FileType::PDF: { // TODO: this produces only a bitmap, so we disabled it for now
 		// maybe use QPicture trick. also need to adapt page size
@@ -69,12 +81,7 @@ void render(Q *source, QRectF rect, int dpi, const QString &filename, FileIO::Fi
 		renderer(&pdf);*/
 	} break;
 	case FileIO::FileType::RASTERIMG: {
-		const qreal scale = 1.; // 2.; // render in higher resolution
-		QPixmap pixmap((rect.size()*scale).toSize());
-		pixmap.fill(Qt::transparent);
-		pixmap.setDevicePixelRatio(scale);
-		renderer(&pixmap);
-		pixmap.save(filename);
+		pixmaprender(source, rect).save(filename);
 	}
 	}
 }
@@ -111,9 +118,9 @@ void FileIO::renderToFile(QObject *source, const RenderMeta &meta, QString filen
 	if (v) {
 		auto b = v->backgroundBrush();
 		v->setBackgroundBrush(QBrush(Qt::BrushStyle::NoBrush));
-		render(v, v->contentsRect(), parent->logicalDpiX(), filename, filetype->second, meta);
+		filerender(v, v->contentsRect(), parent->logicalDpiX(), filename, filetype->second, meta);
 		v->setBackgroundBrush(b);
 	}
 	if (s)
-		render(s, s->sceneRect(), parent->logicalDpiX(), filename, filetype->second, meta);
+		filerender(s, s->sceneRect(), parent->logicalDpiX(), filename, filetype->second, meta);
 }
