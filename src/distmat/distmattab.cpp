@@ -1,6 +1,7 @@
 #include "distmattab.h"
 #include "distmatscene.h"
 #include "jobregistry.h"
+#include "../profiles/plotactions.h"
 
 #include <QMainWindow>
 
@@ -10,10 +11,8 @@ DistmatTab::DistmatTab(QWidget *parent) :
 	setupUi(qobject_cast<QMainWindow*>(widget));
 	setupOrderUI();
 
-	// right-align screenshot button
-	auto* spacer = new QWidget();
-	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	toolBar->insertWidget(actionSavePlot, spacer);
+	auto capturePlot = PlotActions::createCapturePlotActions(toolBar);
+	PlotActions::addCaptureButton(capturePlot, toolBar);
 
 	/* connect toolbar actions */
 	connect(actionToggleDistdir, &QAction::toggled, [this] (bool toggle) {
@@ -22,9 +21,13 @@ DistmatTab::DistmatTab(QWidget *parent) :
 		if (haveData())
 			selected().scene->setDirection(tabState.direction);
 	});
-	connect(actionSavePlot, &QAction::triggered, [this] {
-		emit exportRequested(view, "Distance Matrix");
-	});
+	auto requestExport = [this] (bool toFile) {
+		emit exportRequested(view, "Distance Matrix", toFile);
+	};
+	for (auto act : {capturePlot.head, capturePlot.toFile})
+		connect(act, &QAction::triggered, this, [requestExport] { requestExport(true); });
+	connect(capturePlot.toClipboard, &QAction::triggered,
+	        this, [requestExport] { requestExport(false); });
 
 	/* propagate initial state */
 	actionToggleDistdir->setChecked(tabState.direction == DistDirection::PER_DIMENSION);

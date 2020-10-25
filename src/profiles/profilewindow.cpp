@@ -24,12 +24,16 @@ ProfileWindow::ProfileWindow(std::shared_ptr<WindowState> state, ProfileChart *s
 	chartView->setRenderHint(QPainter::Antialiasing);
 
 	/* actions */
-	connect(plotbar, &PlotActions::savePlot, [this,state] {
-		auto title = chart->dataset()->config().name;
-		auto desc = chart->title();
-		if (desc.isEmpty())
-			desc = "Selected Profiles";
-		state->io().renderToFile(chartView, {title, desc});
+	connect(plotbar, &PlotActions::capturePlot, [this,state] (bool toFile) {
+		if (toFile) {
+			auto title = chart->dataset()->config().name;
+			auto desc = chart->title();
+			if (desc.isEmpty())
+				desc = "Selected Profiles";
+			state->io().renderToFile(chartView, {title, desc});
+		} else {
+			state->io().renderToClipboard(chartView);
+		}
 	});
 	connect(plotbar, &PlotActions::toggleLogarithmic, chart, &ProfileChart::toggleLogSpace);
 

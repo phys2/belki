@@ -45,8 +45,8 @@ BnmsTab::BnmsTab(QWidget *parent) :
 	}
 
 	/* connect toolbar actions */
-	connect(plotbar, &PlotActions::savePlot, [this] {
-		emit exportRequested(view, "Selected Profiles");
+	connect(plotbar, &PlotActions::capturePlot, [this] (bool toFile) {
+		emit exportRequested(view, "Selected Profiles", toFile);
 	});
 	connect(actionComponentToggle, &QAction::toggled,
 	        this, &BnmsTab::toggleComponentMode);

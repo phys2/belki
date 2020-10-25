@@ -2,7 +2,53 @@
 #include "profilechart.h"
 #include <QActionGroup>
 #include <QToolBar>
+#include <QToolButton>
+#include <QMenu>
 #include <QMainWindow>
+
+QAction* PlotActions::createAction(QObject *parent, QIcon icon, QString title, QString tooltip, bool isToggle, QString shortcut)
+{
+	auto action = new QAction(icon, title, parent);
+    action->setCheckable(isToggle);
+	action->setIcon(icon);
+	action->setToolTip(tooltip);
+	if (!shortcut.isEmpty())
+		action->setShortcut({shortcut});
+	return action;
+}
+
+PlotActions::CapturePlotActions PlotActions::createCapturePlotActions(QWidget *parent)
+{
+	CapturePlotActions ret;
+	/* capture button w/ menu */
+	ret.head = createAction(parent, QIcon::fromTheme("camera-photo"), "Capture",
+	                        "Save the plot to SVG or PNG file", false);
+	ret.toClipboard = createAction(parent, QIcon::fromTheme("edit-copy"), "Copy to clipboard",
+	                               "Copy the plot to clipboard", false, "Print");
+	ret.toFile = createAction(parent, QIcon::fromTheme("document-save"), "Save to file",
+	                          "Save the plot to SVG or PNG file", false);
+	auto snapshotMenu = new QMenu(parent);
+	snapshotMenu->addAction(ret.toClipboard);
+	snapshotMenu->addAction(ret.toFile);
+	ret.head->setMenu(snapshotMenu);
+	return ret;
+}
+
+void PlotActions::addCaptureButton(const PlotActions::CapturePlotActions &actions, QToolBar *target)
+{
+	/* add a button to plot capture actions in a consistent way throughout views */
+
+	// right-align capture button
+	auto* spacer = new QWidget();
+	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	target->addWidget(spacer);
+
+	// the button itself
+	auto button = new QToolButton(target);
+	button->setDefaultAction(actions.head);
+	button->setPopupMode(QToolButton::ToolButtonPopupMode::MenuButtonPopup);
+	target->addWidget(button);
+}
 
 PlotActions::PlotActions(QObject *parent) : QObject(parent)
 {
@@ -61,22 +107,10 @@ void PlotActions::detachFromChart()
 
 void PlotActions::setupActions(bool labels, bool average, bool quantiles, bool individual)
 {
-	// create action with given parent
-	auto create_action = [] (QObject *parent, QIcon icon, QString title, QString tooltip,
-	        bool isToggle, QString shortcut = {}) {
-		auto action = new QAction(icon, title, parent);
-	    action->setCheckable(isToggle);
-		action->setIcon(icon);
-		action->setToolTip(tooltip);
-		if (!shortcut.isEmpty())
-			action->setShortcut({shortcut});
-		return action;
-	};
-
 	// create action and also insert it into toolbar
 	auto add_action = [&] (QIcon icon, QString title, QString tooltip,
 	        bool isToggle, QString shortcut = {}) {
-		auto action = create_action(this, icon, title, tooltip, isToggle, shortcut);
+		auto action = createAction(this, icon, title, tooltip, isToggle, shortcut);
 		toolbar->addAction(action);
 		return action;
 	};
@@ -111,26 +145,24 @@ void PlotActions::setupActions(bool labels, bool average, bool quantiles, bool i
 	}
 	auto zoomGroup = new QActionGroup(this);
 	zoomGroup->setExclusionPolicy(QActionGroup::ExclusionPolicy::ExclusiveOptional);
-	actions.zoomToGlobal = create_action(zoomGroup, QIcon{":/icons/auto-scale-global.svg"},
-	                                     "Scale to dataset",
-	                                     "Set zoom to fit data range of whole dataset",
-	                                     true, "Shift+Z");
-	actions.zoomToVisible = create_action(zoomGroup, QIcon{":/icons/auto-scale-individual.svg"},
-	                                      "Scale to selection",
-	                                      "Set zoom to fit data range of shown profiles",
-	                                      true, "Z");
+	actions.zoomToGlobal = createAction(zoomGroup, QIcon{":/icons/auto-scale-global.svg"},
+	                                    "Scale to dataset",
+	                                    "Set zoom to fit data range of whole dataset",
+	                                    true, "Shift+Z");
+	actions.zoomToVisible = createAction(zoomGroup, QIcon{":/icons/auto-scale-individual.svg"},
+	                                     "Scale to selection",
+	                                     "Set zoom to fit data range of shown profiles",
+	                                     true, "Z");
 	toolbar->addActions(zoomGroup->actions());
 	connect(zoomGroup, &QActionGroup::triggered, this, &PlotActions::updateZoom);
 
-	/* screenshot button */
-	actions.savePlot = add_action(QIcon::fromTheme("camera-photo"), "Capture",
-	                               "Save the plot to SVG or PNG file", false, "Print");
-	connect(actions.savePlot, &QAction::triggered, this, &PlotActions::savePlot);
-
-	// right-align screenshot button to be consistent with non-profile tabs' ui
-	auto* spacer = new QWidget();
-	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-	toolbar->insertWidget(actions.savePlot, spacer);
+	/* capture button w/ menu */
+	actions.capturePlot = createCapturePlotActions(toolbar);
+	for (auto act : {actions.capturePlot.head, actions.capturePlot.toFile})
+		connect(act, &QAction::triggered, this, [this] { emit capturePlot(true); });
+	connect(actions.capturePlot.toClipboard, &QAction::triggered,
+	        this, [this] { emit capturePlot(false); });
+	addCaptureButton(actions.capturePlot, toolbar);
 }
 
 void PlotActions::addAction(QAction *action)

@@ -37,8 +37,8 @@ public slots:
 
 signals:
 	void proteinsHighlighted(std::vector<ProteinId> proteins, const QString &title = {});
-	void exportRequested(QGraphicsView *source, QString description);
-	void exportRequested(QGraphicsScene *source, QString description);
+	void exportRequested(QGraphicsView *source, QString description, bool toFile);
+	void exportRequested(QGraphicsScene *source, QString description, bool toFile);
 
 protected:
 	struct DataState {

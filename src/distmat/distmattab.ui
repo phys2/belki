@@ -112,7 +112,6 @@
    </attribute>
    <addaction name="actionToggleDistdir"/>
    <addaction name="actionLockOrder"/>
-   <addaction name="actionSavePlot"/>
   </widget>
   <action name="actionToggleDistdir">
    <property name="checkable">
@@ -133,21 +132,6 @@
    </property>
    <property name="shortcut">
     <string>D</string>
-   </property>
-  </action>
-  <action name="actionSavePlot">
-   <property name="icon">
-    <iconset theme="camera-photo">
-     <normaloff>.</normaloff>.</iconset>
-   </property>
-   <property name="text">
-    <string>Capture</string>
-   </property>
-   <property name="toolTip">
-    <string>Save the plot to SVG or PNG file</string>
-   </property>
-   <property name="shortcut">
-    <string>Print</string>
    </property>
   </action>
   <action name="actionLockOrder">

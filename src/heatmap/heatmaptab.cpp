@@ -1,6 +1,7 @@
 #include "heatmaptab.h"
 #include "heatmapscene.h"
 #include "jobregistry.h"
+#include "../profiles/plotactions.h"
 
 #include <QMainWindow>
 
@@ -10,10 +11,8 @@ HeatmapTab::HeatmapTab(QWidget *parent) :
 	setupUi(qobject_cast<QMainWindow*>(widget));
 	setupOrderUI();
 
-	// right-align screenshot button
-	auto* spacer = new QWidget();
-	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	toolBar->insertWidget(actionSavePlot, spacer);
+	auto capturePlot = PlotActions::createCapturePlotActions(toolBar);
+	PlotActions::addCaptureButton(capturePlot, toolBar);
 
 	/* connect toolbar actions */
 	connect(actionToggleSingleCol, &QAction::toggled, [this] (bool toggle) {
@@ -21,10 +20,14 @@ HeatmapTab::HeatmapTab(QWidget *parent) :
 		if (haveData())
 			view->setColumnMode(toggle);
 	});
-	connect(actionSavePlot, &QAction::triggered, [this] {
+	auto requestExport = [this] (bool toFile) {
 		if (haveData())
-			emit exportRequested(selected().scene.get(), "Heatmap");
-	});
+			emit exportRequested(selected().scene.get(), "Heatmap", toFile);
+	};
+	for (auto act : {capturePlot.head, capturePlot.toFile})
+		connect(act, &QAction::triggered, this, [requestExport] { requestExport(true); });
+	connect(capturePlot.toClipboard, &QAction::triggered,
+	        this, [requestExport] { requestExport(false); });
 
 	/* propagate initial state */
 	actionToggleSingleCol->setChecked(tabState.singleColumn);

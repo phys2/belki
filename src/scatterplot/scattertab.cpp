@@ -1,6 +1,7 @@
 #include "scattertab.h"
 #include "chart.h"
 #include "../compute/features.h"
+#include "../profiles/plotactions.h"
 
 #include <QMainWindow>
 
@@ -14,15 +15,12 @@ ScatterTab::ScatterTab(QWidget *parent) :
 	toolBar->insertWidget(anchor, dimensionLabel);
 	toolBar->insertWidget(anchor, dimXSelect);
 
-	anchor = actionSavePlot;
-	toolBar->insertSeparator(anchor);
-	toolBar->insertWidget(anchor, dimensionLabel_2);
-	toolBar->insertWidget(anchor, dimYSelect);
+	toolBar->addSeparator();
+	toolBar->addWidget(dimensionLabel_2);
+	toolBar->addWidget(dimYSelect);
 
-	// right-align screenshot button
-	auto* spacer = new QWidget();
-	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	toolBar->insertWidget(anchor, spacer);
+	auto capturePlot = PlotActions::createCapturePlotActions(toolBar);
+	PlotActions::addCaptureButton(capturePlot, toolBar);
 
 	// remove container we picked from
 	topBar->deleteLater();
@@ -36,11 +34,15 @@ ScatterTab::ScatterTab(QWidget *parent) :
 		auto s = dimXSelect;
 		selectDimension((s->count() + s->currentIndex() - 1) % s->count());
 	});
-	connect(actionSavePlot, &QAction::triggered, [this] {
-		auto descript = QString("%1 – %2")
-		        .arg(dimXSelect->currentText(), dimYSelect->currentText());
-		emit exportRequested(view, descript);
-	});
+	auto requestExport = [this] (bool toFile) {
+		auto descript = QString("%1 – %2").arg(dimXSelect->currentText(),
+		                                       dimYSelect->currentText());
+		emit exportRequested(view, descript, toFile);
+	};
+	for (auto act : {capturePlot.head, capturePlot.toFile})
+		connect(act, &QAction::triggered, this, [requestExport] { requestExport(true); });
+	connect(capturePlot.toClipboard, &QAction::triggered,
+	        this, [requestExport] { requestExport(false); });
 	connect(dimXSelect, qOverload<int>(&QComboBox::activated),
 	        this, &ScatterTab::selectDimension);
 	connect(dimYSelect, qOverload<int>(&QComboBox::activated),

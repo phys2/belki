@@ -23,8 +23,8 @@ ProfileTab::ProfileTab(QWidget *parent) :
 	setupProteinBox();
 
 	/* connect toolbar actions */
-	connect(plotbar, &PlotActions::savePlot, [this] {
-		emit exportRequested(view, "Selected Profiles");
+	connect(plotbar, &PlotActions::capturePlot, [this] (bool toFile) {
+		emit exportRequested(view, "Selected Profiles", toFile);
 	});
 	connect(plotbar, &PlotActions::toggleLogarithmic, [this] (bool on) {
 		if (haveData()) {

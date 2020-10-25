@@ -437,12 +437,16 @@ void MainWindow::addTab(MainWindow::Tab type)
 	connect(this, &MainWindow::datasetDeselected, v, &Viewer::deselectDataset);
 	connect(v, &Viewer::proteinsHighlighted, profiles,
 	        qOverload<std::vector<ProteinId>, const QString&>(&ProfileWidget::updateDisplay));
-	auto renderSlot = [this] (auto r, auto d) {
-		auto title = (data ? data->config().name : windowTitle());
-		state->io().renderToFile(r, {title, d});
+	auto renderSlot = [this] (auto source, auto desc, bool toFile) {
+		if (toFile) {
+			auto title = (data ? data->config().name : windowTitle());
+			state->io().renderToFile(source, {title, desc});
+		} else {
+			state->io().renderToClipboard(source);
+		}
 	};
-	connect(v, qOverload<QGraphicsView*, QString>(&Viewer::exportRequested), renderSlot);
-	connect(v, qOverload<QGraphicsScene*, QString>(&Viewer::exportRequested), renderSlot);
+	connect(v, qOverload<QGraphicsView*,  QString, bool>(&Viewer::exportRequested), renderSlot);
+	connect(v, qOverload<QGraphicsScene*, QString, bool>(&Viewer::exportRequested), renderSlot);
 
 	/* propagate data selection */
 	if (data)

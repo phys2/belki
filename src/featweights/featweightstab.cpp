@@ -1,5 +1,6 @@
 #include "featweightstab.h"
 #include "featweightsscene.h"
+#include "../profiles/plotactions.h"
 
 #include <QMainWindow>
 
@@ -9,17 +10,13 @@ FeatweightsTab::FeatweightsTab(QWidget *parent) :
 	setupUi(qobject_cast<QMainWindow*>(widget));
 	setupWeightingUI();
 
-	auto anchor = actionSavePlot;
-
 	// plug-in score stuff
-	toolBar->insertSeparator(anchor);
-	scoreActions.push_back(toolBar->insertWidget(anchor, scoreLabel));
-	scoreActions.push_back(toolBar->insertWidget(anchor, scoreSlider));
+	toolBar->addSeparator();
+	scoreActions.push_back(toolBar->addWidget(scoreLabel));
+	scoreActions.push_back(toolBar->addWidget(scoreSlider));
 
-	// right-align screenshot button
-	auto* spacer = new QWidget();
-	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	toolBar->insertWidget(actionSavePlot, spacer);
+	auto capturePlot = PlotActions::createCapturePlotActions(toolBar);
+	PlotActions::addCaptureButton(capturePlot, toolBar);
 
 	stockpile->deleteLater();
 
@@ -42,9 +39,13 @@ FeatweightsTab::FeatweightsTab(QWidget *parent) :
 		tabState.weighting = weightingSelect->currentData().value<FeatweightsScene::Weighting>();
 		if (haveData()) selected().scene->setWeighting(tabState.weighting);
 	});
-	connect(actionSavePlot, &QAction::triggered, [this] {
-		emit exportRequested(view, "Distance Matrix");
-	});
+	auto requestExport = [this] (bool toFile) {
+		emit exportRequested(view, "Feature Weighting", toFile);
+	};
+	for (auto act : {capturePlot.head, capturePlot.toFile})
+		connect(act, &QAction::triggered, this, [requestExport] { requestExport(true); });
+	connect(capturePlot.toClipboard, &QAction::triggered,
+	        this, [requestExport] { requestExport(false); });
 
 	/* propagate initial state */
 	actionToggleChart->setChecked(tabState.useAlternate);
@@ -104,10 +105,9 @@ void FeatweightsTab::addDataset(Dataset::Ptr data)
 
 void FeatweightsTab::setupWeightingUI()
 {
-	auto anchor = actionSavePlot;
-	toolBar->insertSeparator(anchor);
-	toolBar->insertWidget(anchor, weightingLabel);
-	toolBar->insertWidget(anchor, weightingSelect);
+	toolBar->addSeparator();
+	toolBar->addWidget(weightingLabel);
+	toolBar->addWidget(weightingSelect);
 
 	for (auto &[v, n] : std::map<FeatweightsScene::Weighting, QString>{
 	    {FeatweightsScene::Weighting::UNWEIGHTED, "Unweighted"},

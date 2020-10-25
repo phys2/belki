@@ -2,6 +2,7 @@
 #include "chart.h"
 
 #include "jobregistry.h"
+#include "../profiles/plotactions.h"
 
 #include <QMainWindow>
 #include <QMenu>
@@ -17,10 +18,8 @@ DimredTab::DimredTab(QWidget *parent) :
 	toolBar->insertWidget(anchor, transformLabel);
 	toolBar->insertWidget(anchor, transformSelect);
 
-	// right-align screenshot button
-	auto* spacer = new QWidget();
-	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	toolBar->insertWidget(actionSavePlot, spacer);
+	auto capturePlot = PlotActions::createCapturePlotActions(toolBar);
+	PlotActions::addCaptureButton(capturePlot, toolBar);
 
 	// initialize compute menu and let button display menu without holding mouse
 	actionComputeDisplay->setMenu(new QMenu(widget));
@@ -39,9 +38,13 @@ DimredTab::DimredTab(QWidget *parent) :
 		auto s = transformSelect;
 		selectDisplay(s->itemText((s->count() + s->currentIndex() - 1) % s->count()));
 	});
-	connect(actionSavePlot, &QAction::triggered, [this] {
-		emit exportRequested(view, transformSelect->currentText());
-	});
+	auto requestExport = [this] (bool toFile) {
+		emit exportRequested(view, transformSelect->currentText(), toFile);
+	};
+	for (auto act : {capturePlot.head, capturePlot.toFile})
+		connect(act, &QAction::triggered, this, [requestExport] { requestExport(true); });
+	connect(capturePlot.toClipboard, &QAction::triggered,
+	        this, [requestExport] { requestExport(false); });
 #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
 	connect(transformSelect, qOverload<const QString&>(&QComboBox::activated),
 #else
