@@ -78,7 +78,7 @@ void FeatweightsScene::computeWeights()
 		/* setup weighters */
 		std::map<Weighting, std::function<void(size_t)>> weighters;
 		weighters[Weighting::ABSOLUTE] = [&] (size_t dim) {
-			for (auto f : voters) {
+			for (auto &f : voters) {
 				weights[dim] += (*f)[dim];
 			}
 		};
@@ -89,17 +89,17 @@ void FeatweightsScene::computeWeights()
 				return a += p[dim] * n;
 			});
 
-			for (auto f : voters) {
+			for (auto &f : voters) {
 				auto value = (*f)[dim];
 				if (value > baseline)
 					weights[dim] += value / baseline;
 			}
 		};
 		weighters[Weighting::OFFSET] = [&] (size_t dim) { // weight against competition's baseline
-			for (auto f : voters) {
+			auto n = 1./(weights.size() - 1); // count of all other dims in denominator
+			for (auto &f : voters) {
 				// collect per-marker baseline first
 				double baseline = 0;
-				auto n = 1./(weights.size() - 1);
 				for (unsigned i = 0; i < weights.size(); ++i) {
 					if (i != dim)
 						baseline = std::max(baseline, (*f)[i] * n);
