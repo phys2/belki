@@ -68,10 +68,13 @@ std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
 {
 	auto p = proteins.peek();
 	auto name = p->proteins[id].name;
+	auto species = p->proteins[id].species;
+	auto title = QString{"<b>%1</b> <small>%2</small>"}.arg(name, species);
+	auto url = QString{"https://uniprot.org/uniprot/%1_%2"}.arg(name, species);
+
 	auto ret = std::make_unique<QMenu>(name);
-	// TODO icon based on color
-	auto label = new QLabel(name);
-	QString style{"QLabel {background-color: %2; color: white; font-weight: bold}"};
+	auto label = new QLabel(title);
+	QString style{"QLabel {background-color: %2; color: white}"};
 	label->setStyleSheet(style.arg(p->proteins[id].color.name()));
 	label->setAlignment(Qt::AlignCenter);
 	label->setMargin(2);
@@ -92,8 +95,6 @@ std::unique_ptr<QMenu> GuiState::proteinMenu(ProteinId id)
 	ret->addAction(QIcon::fromTheme("edit-copy"), "Copy name to clipboard", [name] {
 		QGuiApplication::clipboard()->setText(name);
 	});
-	auto url = QString{"https://uniprot.org/uniprot/%1_%2"}
-	           .arg(p->proteins[id].name, p->proteins[id].species);
 	ret->addAction(QIcon::fromTheme("globe"), "Lookup in Uniprot", [url] {
 		QDesktopServices::openUrl(url);
 	});
