@@ -159,11 +159,9 @@ void MainWindow::setupModelViews()
 
 void MainWindow::setupToolbar()
 {
-	/* put datasets and some space before structure area */
-	auto anchor = actionShowStructure;
-	toolBar->insertWidget(anchor, datasetLabel);
-	toolbarActions.datasets = toolBar->insertWidget(anchor, datasetSelect);
-	toolBar->insertSeparator(anchor);
+	/* put datasets into main toolbar */
+	mainToolbar->addWidget(datasetLabel);
+	toolbarActions.datasets = mainToolbar->addWidget(datasetSelect);
 
 	/* fill-up structure area */
 	famsControl = new FAMSControl(this);
@@ -172,23 +170,24 @@ void MainWindow::setupToolbar()
 	        Qt::QueuedConnection);
 	connect(this, &MainWindow::datasetDeselected, famsControl, &Viewer::deselectDataset);
 
-	toolBar->insertWidget(anchor, structureLabel);
-	toolbarActions.structure = toolBar->insertWidget(anchor, structureSelect);
-	toolbarActions.granularity = toolBar->addWidget(granularitySlider);
+	auto anchor = actionShowStructure;
+	structToolbar->insertWidget(anchor, structureLabel);
+	toolbarActions.structure = structToolbar->insertWidget(anchor, structureSelect);
+	toolbarActions.granularity = structToolbar->addWidget(granularitySlider);
 	toolbarActions.granularity->setVisible(false);
-	toolbarActions.fams = toolBar->addWidget(famsControl->getWidget());
+	toolbarActions.fams = structToolbar->addWidget(famsControl->getWidget());
 	toolbarActions.fams->setVisible(false);
 
-	/* add background job indicator */
+	/* add background job indicator in job toolbar, right-aligned with spacer trick */
 	auto* spacer = new QWidget();
-	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-	toolBar->addWidget(spacer);
+	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	jobToolbar->addWidget(spacer);
 	jobWidget = new JobStatus();
-	toolBar->addWidget(jobWidget);
+	jobToolbar->addWidget(jobWidget);
 	state->jobMonitors.push_back(jobWidget);
 
 	// remove container we picked from
-	topBar->deleteLater();
+	stockpile->deleteLater();
 }
 
 void MainWindow::setupTabs()
