@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.9...3.17)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X deployment version")
 
 project(Belki
-	VERSION 1.9
+	VERSION 2.0
 	DESCRIPTION "Interactive Protein Profile Visualization")
 
 # use our cmake dir for include(…) statements
