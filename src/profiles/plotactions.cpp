@@ -24,9 +24,14 @@ PlotActions::CapturePlotActions PlotActions::createCapturePlotActions(QWidget *p
 	ret.head = createAction(parent, QIcon::fromTheme("camera-photo"), "Capture",
 	                        "Save the plot to SVG or PNG file", false);
 	ret.toClipboard = createAction(parent, QIcon::fromTheme("edit-copy"), "Copy to clipboard",
-	                               "Copy the plot to clipboard", false, "Print");
+	                               "Copy the plot to clipboard", false, "Ctrl+Shift+C");
 	ret.toFile = createAction(parent, QIcon::fromTheme("document-save"), "Save to file",
-	                          "Save the plot to SVG or PNG file", false);
+	                          "Save the plot to SVG or PNG file", false, "Ctrl+Shift+S");
+	/* use print key as primary shortcut where available */
+#if !defined(Q_OS_MAC)
+	ret.toClipboard->setShortcuts({{"Print"}, {"Ctrl+Shift+C"}});
+#endif
+
 	auto snapshotMenu = new QMenu(parent);
 	snapshotMenu->addAction(ret.toClipboard);
 	snapshotMenu->addAction(ret.toFile);
