@@ -51,7 +51,7 @@ std::unique_ptr<HrClustering> agglomerative(const cv::Mat1f &distances, const st
 		if ((i % (proteins.size() / 10)) == 0) {
 			if (jr->isCurrentJobCancelled())
 				return {};
-			jr->setCurrentJobProgress(10. * i / proteins.size());
+			jr->setCurrentJobProgress(5. * i / proteins.size());
 		}
 		for (unsigned j = 0; j < i; ++j) {
 			pairs.push({avg_dist(i, j), i, j});
@@ -64,7 +64,7 @@ std::unique_ptr<HrClustering> agglomerative(const cv::Mat1f &distances, const st
 		if ((i % (total / 200)) == 0) {
 			if (jr->isCurrentJobCancelled())
 				return {};
-			jr->setCurrentJobProgress(10. + 90. * (i - proteins.size()) / (total - proteins.size()));
+			jr->setCurrentJobProgress(5. + 91. * (i - proteins.size()) / (total - proteins.size()));
 		}
 
 		// find viable pair, remove outdated pairs (whose clusters were merged)
@@ -96,6 +96,9 @@ std::unique_ptr<HrClustering> agglomerative(const cv::Mat1f &distances, const st
 			pairs.push({avg_dist(i, j), i, j});
 		}
 	}
+
+	// we only went up to 96% before as the last percent is very slow based on algorithm design
+	jr->setCurrentJobProgress(100.f);
 
 	return ret;
 }
