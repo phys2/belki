@@ -51,7 +51,7 @@ void render(Q *source, QPaintDevice *target) {
 	p.setRenderHints(QPainter::Antialiasing);
 	source->render(&p);
 	p.end();
-};
+}
 
 template<typename Q>
 QPixmap pixmaprender(Q *source, const QRectF &rect) {
@@ -61,7 +61,7 @@ QPixmap pixmaprender(Q *source, const QRectF &rect) {
 	target.setDevicePixelRatio(scale);
 	render(source, &target);
 	return target;
-};
+}
 
 template<typename Q>
 void svgrender(Q *source, QSvgGenerator *dest, const QRectF &rect, int dpi,
@@ -72,7 +72,7 @@ void svgrender(Q *source, QSvgGenerator *dest, const QRectF &rect, int dpi,
 	dest->setDescription(meta.description);
 	dest->setResolution(dpi);
 	render(source, dest);
-};
+}
 
 template<typename Q>
 void filerender(Q *source, QRectF rect, int dpi, const QString &filename, FileIO::FileType filetype,

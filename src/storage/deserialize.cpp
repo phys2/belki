@@ -61,7 +61,7 @@ Structure Storage::deserializeStructure<2>(const QCborMap &source, unsigned id)
 		ret.meta.hierarchy = meta.value("hierarchy").toInteger(0);
 		ret.meta.granularity = meta.value("granularity").toInteger(0);
 
-		for (const auto &[k, v] : source.value("groups").toMap())
+		for (const auto [k, v] : source.value("groups").toMap())
 			ret.groups[k.toInteger()] = unpackGroup(v.toMap());
 		annotations::order(ret, (type != Annotations::Meta::SIMPLE));
 
@@ -168,7 +168,7 @@ std::vector<std::shared_ptr<Dataset>> Storage::deserializeProject<2>(const QCbor
 
 	auto datasets = top.value("datasets").toArray();
 	std::vector<std::shared_ptr<Dataset>> ret;
-	for (auto &i : qAsConst(datasets))
+	for (auto i : qAsConst(datasets))
 		ret.push_back(deserializeDataset<2>(i.toMap()));
 	return ret;
 }
