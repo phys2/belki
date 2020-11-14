@@ -28,7 +28,7 @@
      <number>0</number>
     </property>
     <item>
-     <widget class="QWidget" name="topBar" native="true">
+     <widget class="QWidget" name="stockpile" native="true">
       <layout class="QHBoxLayout" name="horizontalLayout_3">
        <property name="leftMargin">
         <number>0</number>
@@ -115,7 +115,7 @@
     <string>Cycle Forward</string>
    </property>
    <property name="toolTip">
-    <string>Cycle dimension forward</string>
+    <string>Cycle visualization forward</string>
    </property>
    <property name="shortcut">
     <string>Right</string>
@@ -130,7 +130,7 @@
     <string>Cycle Backward</string>
    </property>
    <property name="toolTip">
-    <string>Cycle dimension backwards</string>
+    <string>Cycle visualization backwards</string>
    </property>
    <property name="shortcut">
     <string>Left</string>

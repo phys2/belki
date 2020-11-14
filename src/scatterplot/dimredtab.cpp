@@ -28,7 +28,7 @@ DimredTab::DimredTab(QWidget *parent) :
 	btn->setPopupMode(QToolButton::ToolButtonPopupMode::InstantPopup);
 
 	// remove container we picked from
-	topBar->deleteLater();
+	stockpile->deleteLater();
 
 	/* connect toolbar actions */
 	connect(actionCycleForward, &QAction::triggered, [this] {
