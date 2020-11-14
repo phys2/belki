@@ -372,8 +372,12 @@ void FeatweightsScene::WeightBar::paint(QPainter *painter, const QStyleOptionGra
 	painter->scale(ratio*scale, scale);
 	auto t = QTransform::fromScale(1./(scale*ratio), 1./scale);
 	loop([&] (auto, auto rect) {
-		auto text = (rect.width() < 0.01 ? "/"
-		                                 : QString::number(rect.width(), 'f', 2).mid(1));
+		auto text = QString::number(rect.width(), 'f', 2).mid(1);
+		if (rect.width() < 0.01)
+			text = "/";
+		if (rect.width() > 0.99)
+			text = "1.00 (single winner)";
+
 		auto drawRect = t.mapRect(rect).adjusted(-20, 0, 20, 0); // let text overflow
 		painter->drawText(drawRect, Qt::AlignCenter, text);
 	});
