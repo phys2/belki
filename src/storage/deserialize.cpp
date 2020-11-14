@@ -83,7 +83,7 @@ void Storage::deserializeProteinDB<2>(const QCborMap &source)
 		return ret;
 	};
 
-	auto target = std::make_unique<ProteinDB::Public>();
+	auto target = std::make_unique<ProteinRegister>();
 	for (auto i : source.value("proteins").toArray()) {
 		auto protein = unpackProtein(i.toMap());
 		target->index[protein.name] = target->proteins.size();
