@@ -245,7 +245,9 @@ void ProfileChart::setupSeries()
 	// setup and add QAreaSeries for range and stddev
 	auto addBgAreas = [&] (const std::set<SeriesCategory> &categories) {
 		auto create = [&] (auto source, SeriesCategory cat) {
-			auto upper = new QtCharts::QLineSeries, lower = new QtCharts::QLineSeries;
+			// note upper+lower are memory leaks until the chart is cleaned up
+			auto upper = new QtCharts::QLineSeries(this);
+			auto lower = new QtCharts::QLineSeries(this);
 			for (unsigned i = 0; i < stats.mean.size(); ++i) {
 				auto [u, l] = source(i);
 				upper->append(i, adjusted(u));

@@ -193,7 +193,7 @@ void MainWindow::setupToolbar()
 void MainWindow::setupTabs()
 {
 	// "add tab" menu
-	auto *menu = new QMenu("Add tab");
+	auto menu = new QMenu("Add tab", this);
 	for (const auto &[type, name] : tabTitles)
 		menu->addAction(name, [this, t=type] { addTab(t); });
 
