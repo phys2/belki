@@ -26,7 +26,7 @@ PlotActions::CapturePlotActions PlotActions::createCapturePlotActions(QWidget *p
 	ret.toClipboard = createAction(parent, QIcon::fromTheme("edit-copy"), "Copy to clipboard",
 	                               "Copy the plot to clipboard", false, "Ctrl+Shift+C");
 	ret.toFile = createAction(parent, QIcon::fromTheme("document-save"), "Save to file",
-	                          "Save the plot to SVG or PNG file", false, "Ctrl+Shift+S");
+	                          "Save the plot to SVG or PNG file", false, "Ctrl+p");
 	/* use print key as primary shortcut where available */
 #if !defined(Q_OS_MAC)
 	ret.toClipboard->setShortcuts({{"Print"}, {"Ctrl+Shift+C"}});
