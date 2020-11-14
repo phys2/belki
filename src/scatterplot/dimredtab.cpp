@@ -2,6 +2,7 @@
 #include "chart.h"
 
 #include "jobregistry.h"
+#include "../compute/features.h"
 #include "../profiles/plotactions.h"
 
 #include <QMainWindow>
@@ -83,12 +84,26 @@ void DimredTab::selectDataset(unsigned id)
 	if (!enabled)
 		return;
 
+	auto &data = selected().data;
+
 	/* hook into dataset updates (specify receiver so signal is cleaned up!) */
-	connect(selected().data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
+	connect(data.get(), &Dataset::update, this, [this] (Dataset::Touched touched) {
 		if (!(touched & Dataset::Touch::DISPLAY))
 			return;
 		updateMenus();
 	});
+
+	/* special handling for datasets w/ only two dimensions: fall back to scatter plot.
+	 * code taken from ScatterTab:selectSecondaryDimension() */
+	if (data->peek<Dataset::Base>()->dimensions.size() == 2) {
+		auto d = data->peek<Dataset::Base>();
+		auto points = features::scatter(d->features, 0, d->features, 1);
+		auto labelX = d->dimensions.at(0), labelY = d->dimensions.at(1);
+		d.unlock();
+		auto &scene = selected().scene;
+		scene->display(points);
+		scene->setTitles(labelX, labelY);
+	}
 
 	view->switchChart(selected().scene.get());
 }
@@ -189,10 +204,21 @@ void DimredTab::updateMenus() {
 bool DimredTab::updateIsEnabled()
 {
 	bool on = Viewer::updateIsEnabled();
-	on = on && selected().data->peek<Dataset::Base>()->dimensions.count() > 2;
+	if (!on)
+		return false; // return early to avoid access on selected()
+
+	auto dims = selected().data->peek<Dataset::Base>()->dimensions.size();
+	on = dims > 1;
 
 	widget->setEnabled(on);
 	view->setVisible(on);
+
+	bool enoughDims = dims > 2;
+	// if not enough dimensions, we fall back to a scatter plot; disable anything transform-related
+	for (auto action : {actionComputeDisplay, actionCycleBackward, actionCycleForward})
+		action->setEnabled(enoughDims);
+	transformLabel->setEnabled(enoughDims);
+	transformSelect->setEnabled(enoughDims);
 
 	return on;
 }
