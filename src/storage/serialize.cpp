@@ -191,11 +191,13 @@ QCborValue Storage::serializeStructure(const Structure &src)
 		case Annotations::Meta::MEANSHIFT:
 			meta.insert({"type", "meanshift"});
 			meta.insert({"k", cl->meta.k});
+			meta.insert({"pruned", cl->meta.pruned});
 			break;
 		case Annotations::Meta::HIERCUT:
 			meta.insert({"type", "hiercut"});
 			meta.insert({"hierarchy", cl->meta.hierarchy});
 			meta.insert({"granularity", cl->meta.granularity});
+			meta.insert({"pruned", cl->meta.pruned});
 			break;
 		}
 		if (cl->meta.dataset)

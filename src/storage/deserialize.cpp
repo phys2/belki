@@ -60,6 +60,7 @@ Structure Storage::deserializeStructure<2>(const QCborMap &source, unsigned id)
 		ret.meta.k = meta.value("k").toDouble(1.);
 		ret.meta.hierarchy = meta.value("hierarchy").toInteger(0);
 		ret.meta.granularity = meta.value("granularity").toInteger(0);
+		ret.meta.pruned = meta.value("pruned").toBool(true);
 
 		for (const auto [k, v] : source.value("groups").toMap())
 			ret.groups[k.toInteger()] = unpackGroup(v.toMap());
