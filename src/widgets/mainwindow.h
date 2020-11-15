@@ -98,8 +98,8 @@ protected:
 	void setSelectedDataset(unsigned id);
 
 	void selectAnnotations(const Annotations::Meta &desc);
-	void selectHierarchy(unsigned id, unsigned granularity);
-	void switchHierarchyPartition(unsigned granularity);
+	void selectHierarchy(unsigned id, unsigned granularity, bool pruned);
+	void switchHierarchyPartition(unsigned granularity, bool pruned);
 	std::optional<Annotations> currentAnnotations();
 
 	Dataset::Ptr data;
@@ -113,7 +113,7 @@ protected:
 	struct {
 		QAction *datasets;
 		QAction *structure;
-		QAction *granularity;
+		QActionGroup *hierarchy;
 		QAction *fams;
 	} toolbarActions;
 	std::unique_ptr<QMenu> tabMenu;

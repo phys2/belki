@@ -11,6 +11,8 @@ class FAMS;
 
 namespace annotations {
 
+bool equal(const Annotations::Meta &a, const Annotations::Meta &b);
+
 void prune(Annotations &data); // remove small clusters
 void order(Annotations &data, bool genericNames);
 void color(Annotations &data, const QVector<QColor> &colors);

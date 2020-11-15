@@ -191,14 +191,14 @@ void Dataset::computeAnnotations(const Annotations::Meta &desc)
 	} else {
 		/* special case: meanshift */
 		if (desc.type == Annotations::Meta::MEANSHIFT) {
-			auto src = computeFAMS(desc.k);
+			auto src = computeFAMS(desc.k, desc.pruned);
 			if (!src.groups.empty())
 				touched |= storeAnnotations(src, true);
 		}
 
 		/* special case: hierarchy cut */
 		if (desc.type == Annotations::Meta::HIERCUT) {
-			auto src = createPartition(desc.hierarchy, desc.granularity);
+			auto src = createPartition(desc.hierarchy, desc.granularity, desc.pruned);
 			touched |= storeAnnotations(src, false);
 		}
 	}
@@ -217,7 +217,7 @@ void Dataset::computeOrder(const ::Order &desc)
 	emit update(Touch::ORDER);
 }
 
-Annotations Dataset::computeFAMS(float k)
+Annotations Dataset::computeFAMS(float k, bool prune)
 {
 	if (!meanshift) {
 		/* we guard meanshift init with write on structure lock (hack);
@@ -239,6 +239,7 @@ Annotations Dataset::computeFAMS(float k)
 	ret.meta.name = QString("Mean Shift, k=%1").arg((double)k, 0, 'f', 2);
 	ret.meta.dataset = conf.id;
 	ret.meta.k = k;
+	ret.meta.pruned = prune;
 
 	auto d = peek<Base>();
 	for (unsigned i = 0; i < result->modes.size(); ++i)
@@ -249,19 +250,23 @@ Annotations Dataset::computeFAMS(float k)
 		ret.groups[m].members.push_back(d->protIds[i]);
 	}
 
-	annotations::prune(ret);
+	if (prune)
+		annotations::prune(ret);
 	annotations::order(ret, true);
 	annotations::color(ret, proteins.groupColors());
 
 	return ret;
 }
 
-Annotations Dataset::createPartition(unsigned id, unsigned granularity)
+Annotations Dataset::createPartition(unsigned id, unsigned granularity, bool prune)
 {
 	auto hierarchy = *std::get_if<HrClustering>(&proteins.peek()->structures.at(id)); // Apple no std::get
 	auto ret = hierarchy::partition(hierarchy, granularity);
+	// ret.meta is initialized by hierarchy::partition (except pruning)
+	ret.meta.pruned = prune;
 
-	annotations::prune(ret);
+	if (prune)
+		annotations::prune(ret);
 	annotations::order(ret, true);
 	annotations::color(ret, proteins.groupColors());
 
@@ -455,16 +460,8 @@ const Dataset::Annotations *Dataset::Structure::fetch(const Annotations::Meta &d
 	auto candidates = annotations.equal_range(0);
 	for (auto it = candidates.first; it != candidates.second; ++it) {
 		const auto &meta = it->second.meta;
-		if (meta.type != desc.type)
-			continue;
-		if (meta.type == Annotations::Meta::MEANSHIFT) {
-			if (meta.k == desc.k)
-				return &it->second;
-		}
-		if (meta.type == Annotations::Meta::HIERCUT) {
-			if (meta.hierarchy == desc.hierarchy && meta.granularity == desc.granularity)
-				return &it->second;
-		}
+		if (annotations::equal(meta, desc))
+			return &it->second;
 	}
 	return nullptr;
 }

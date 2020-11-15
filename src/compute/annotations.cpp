@@ -8,6 +8,29 @@
 
 namespace annotations {
 
+bool equal(const Annotations::Meta &a, const Annotations::Meta &b)
+{
+	if (a.id != b.id) // compare stored meta only by id as it should be projectwide-unique
+		return false;
+	if (a.id == 0) {
+		// special cases, non-stored, go through type & settings
+		if (a.type != b.type)
+			return false;
+		if (a.pruned != b.pruned) // currently shared by all types (MS, HIERCUT)
+			return false;
+		if (a.type == Annotations::Meta::MEANSHIFT) {
+			if (a.k != b.k)
+				return false;
+		} else if (a.type == Annotations::Meta::HIERCUT) {
+			if (a.hierarchy != b.hierarchy)
+				return false;
+			if (a.granularity != b.granularity)
+				return false;
+		}
+	}
+	return true;
+}
+
 void order(Annotations &data, bool genericNames)
 {
 	auto &gr = data.groups;

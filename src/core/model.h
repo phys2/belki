@@ -116,6 +116,9 @@ struct Annotations {
 		unsigned hierarchy = 0; // 0 means none
 		// HIERCUT: granularity of the cut (#clusters as split criteria)
 		unsigned granularity = 2;
+
+		// MEANSHIFT & HIERCUT: prune tiny clusters
+		bool pruned = true;
 	};
 
 	struct Group {

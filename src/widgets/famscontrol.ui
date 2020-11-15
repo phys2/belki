@@ -49,6 +49,13 @@
     </widget>
    </item>
    <item>
+    <widget class="QToolButton" name="pruneButton">
+     <property name="text">
+      <string>...</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QToolButton" name="runButton">
      <property name="text">
       <string>run</string>
@@ -87,7 +94,27 @@
     </widget>
    </item>
   </layout>
+  <action name="actionPruneClusters">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../../resources/icons-custom/index.qrc">
+     <normaloff>:/icons/prune-clusters.svg</normaloff>:/icons/prune-clusters.svg</iconset>
+   </property>
+   <property name="text">
+    <string>prune small clusters</string>
+   </property>
+   <property name="toolTip">
+    <string>Prune clusters containing less than 0.5% of all proteins</string>
+   </property>
+  </action>
  </widget>
- <resources/>
+ <resources>
+  <include location="../../resources/icons-custom/index.qrc"/>
+ </resources>
  <connections/>
 </ui>

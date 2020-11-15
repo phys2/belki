@@ -1,13 +1,17 @@
 #include "famscontrol.h"
 #include "jobregistry.h"
 
+#include "../compute/annotations.h"
+
 FAMSControl::FAMSControl(QWidget *parent) :
     Viewer(new QWidget, parent)
 {
 	setupUi(widget);
+	pruneButton->setDefaultAction(actionPruneClusters);
 
 	stopButton->setVisible(false);
 	connect(kSelect, qOverload<double>(&QDoubleSpinBox::valueChanged), [this] { configure(); });
+	connect(actionPruneClusters, &QAction::toggled, [this] { configure(); });
 	connect(runButton, &QToolButton::clicked, this, &FAMSControl::run);
 	connect(stopButton, &QToolButton::clicked, this, &FAMSControl::stop);
 }
@@ -33,8 +37,8 @@ void FAMSControl::configure()
 	/* setup desired annotations and communicate through windowState */
 	Annotations::Meta desc{Annotations::Meta::MEANSHIFT};
 	desc.k = kSelect->value();
-	if (windowState->annotations.type != Annotations::Meta::MEANSHIFT
-	    || windowState->annotations.k != desc.k) {
+	desc.pruned = actionPruneClusters->isChecked();
+	if (!annotations::equal(windowState->annotations, desc)) {
 		windowState->annotations = desc;
 		emit windowState->annotationsChanged();
 		if (windowState->orderSynchronizing && windowState->preferredOrder == Order::CLUSTERING) {

@@ -110,8 +110,8 @@ signals:
 
 protected:
 	Touched storeAnnotations(const ::Annotations &source, bool withOrder);
-	::Annotations computeFAMS(float k);
-	::Annotations createPartition(unsigned id, unsigned granularity);
+	::Annotations computeFAMS(float k, bool prune);
+	::Annotations createPartition(unsigned id, unsigned granularity, bool prune);
 	void calculateOrder(const ::Order &desc);
 	void computeCentroids(Annotations &target);
 

@@ -173,8 +173,19 @@ void MainWindow::setupToolbar()
 	auto anchor = actionShowStructure;
 	structToolbar->insertWidget(anchor, structureLabel);
 	toolbarActions.structure = structToolbar->insertWidget(anchor, structureSelect);
-	toolbarActions.granularity = structToolbar->addWidget(granularitySlider);
-	toolbarActions.granularity->setVisible(false);
+
+	// hierarchy part, bit complicated
+	auto &hgrp = toolbarActions.hierarchy;
+	hgrp = new QActionGroup(structToolbar);
+	hgrp->setVisible(false); // not shown by default
+	hgrp->setExclusive(false);
+	auto granularityAction = new QWidgetAction(structToolbar);
+	granularityAction->setDefaultWidget(granularitySlider);
+	for (auto i : {(QAction*)granularityAction, actionPruneClusters})
+		hgrp->addAction(i);
+	structToolbar->addActions(hgrp->actions());
+
+	// FAMS part
 	toolbarActions.fams = structToolbar->addWidget(famsControl->getWidget());
 	toolbarActions.fams->setVisible(false);
 
@@ -253,7 +264,10 @@ void MainWindow::setupSignals()
 	});
 	connect(granularitySlider, &QSlider::valueChanged, [this] (int v) {
 		granularitySlider->setToolTip(QString("Granularity: %1").arg(v));
-		switchHierarchyPartition((unsigned)v);
+		switchHierarchyPartition((unsigned)v, actionPruneClusters->isChecked());
+	});
+	connect(actionPruneClusters, &QAction::toggled, [this] (bool on) {
+		switchHierarchyPartition((unsigned)granularitySlider->value(), on);
 	});
 }
 
@@ -581,7 +595,7 @@ void MainWindow::selectStructure(int id)
 	actionShowStructure->setEnabled(id != 0);
 	actionExportAnnotations->setEnabled(id != 0);
 	actionPersistAnnotations->setEnabled(false);
-	toolbarActions.granularity->setVisible(false);
+	toolbarActions.hierarchy->setVisible(false);
 	toolbarActions.fams->setVisible(false);
 
 	/* special items */
@@ -604,9 +618,9 @@ void MainWindow::selectStructure(int id)
 		auto reasonable = source->clusters.size() / 4;
 		granularitySlider->setMaximum(reasonable);
 		granularitySlider->setTickInterval(reasonable / 20);
-		toolbarActions.granularity->setVisible(true);
+		toolbarActions.hierarchy->setVisible(true);
 		actionPersistAnnotations->setEnabled(true);
-		selectHierarchy(id, granularitySlider->value());
+		selectHierarchy(id, granularitySlider->value(), actionPruneClusters->isChecked());
 	} else {
 		selectAnnotations({Annotations::Meta::SIMPLE, (unsigned)id});
 	}
@@ -694,11 +708,11 @@ void MainWindow::selectAnnotations(const Annotations::Meta &desc)
 	}
 }
 
-void MainWindow::selectHierarchy(unsigned id, unsigned granularity)
+void MainWindow::selectHierarchy(unsigned id, unsigned granularity, bool pruned)
 {
 	state->hierarchy = HrClustering::Meta{id};
 	emit state->hierarchyChanged();
-	switchHierarchyPartition(granularity);
+	switchHierarchyPartition(granularity, pruned);
 
 	// note: the hierarchy-based order is independent of the hierarchy partition
 	if (!state->orderSynchronizing ||
@@ -714,11 +728,12 @@ void MainWindow::selectHierarchy(unsigned id, unsigned granularity)
 	}
 }
 
-void MainWindow::switchHierarchyPartition(unsigned granularity)
+void MainWindow::switchHierarchyPartition(unsigned granularity, bool pruned)
 {
 	state->annotations = {Annotations::Meta::HIERCUT};
 	state->annotations.hierarchy = state->hierarchy.id;
 	state->annotations.granularity = granularity;
+	state->annotations.pruned = pruned;
 	emit state->annotationsChanged();
 	if (data) {
 		Task task{[s=state,d=data] { d->computeAnnotations(s->annotations); },

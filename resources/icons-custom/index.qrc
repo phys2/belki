@@ -10,6 +10,7 @@
 		<file>show-quantiles.svg</file>
 		<file>logspace-on.svg</file>
 		<file>logspace-off.svg</file>
+		<file>prune-clusters.svg</file>
 		<file>type-annotations.svg</file>
 		<file>type-hierarchy.svg</file>
 		<file>type-meanshift.svg</file>
