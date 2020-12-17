@@ -46,6 +46,7 @@ QCborValue Storage::serializeDataset(std::shared_ptr<const Dataset> src)
 			{"id", config.id},
 			{"name", config.name},
 			{"parent", config.parent},
+			{"normalized", config.normalized},
 			{"bands", bands},
 			{"scoreThreshold", config.scoreThresh}
 		};

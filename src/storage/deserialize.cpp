@@ -109,6 +109,7 @@ std::shared_ptr<Dataset> Storage::deserializeDataset<2>(const QCborMap &source)
 		ret.id = src.value("id").toInteger();
 		ret.parent = src.value("parent").toInteger();
 		ret.name = src.value("name").toString();
+		ret.normalized = src.value("normalized").toBool(false);
 		for (auto i : bands)
 			ret.bands.push_back(i.toInteger());
 		ret.scoreThresh = src.value("scoreThreshold").toDouble();

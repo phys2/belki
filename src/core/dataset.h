@@ -22,6 +22,7 @@ struct DatasetConfiguration {
 	QString name; // user-specified identifier
 	unsigned id = 0; // index of dataset (given by hub, starts from 1)
 	unsigned parent = 0; // index of dataset this one was spawned from (0 == none)
+	bool normalized = false; // true if data was normalized to [0, 1] range
 	std::vector<unsigned> bands; // the feature bands that were kept
 	double scoreThresh = 0.; // score cutoff that was applied
 };

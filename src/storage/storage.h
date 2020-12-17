@@ -21,12 +21,17 @@ class Storage : public QObject
 {
 	Q_OBJECT
 public:
+	struct ReadConfig {
+		QString featureColName = "Dist";
+		bool normalize = false;
+	};
+
 	Storage(ProteinDB &proteins, QObject *parent = nullptr);
 
 	std::vector<std::shared_ptr<Dataset>> openProject(const QString &filename);
 	void saveProject(const QString &filename, std::vector<std::shared_ptr<const Dataset> > snapshot);
 
-	Features::Ptr openDataset(const QString &filename, const QString &featureColName = "Dist");
+	Features::Ptr openDataset(const QString &filename, const ReadConfig &config);
 
 signals: // IMPORTANT: always provide target object pointer for thread-affinity
 	void nameChanged(const QString &name, const QString &path);
@@ -44,7 +49,7 @@ protected:
 	void updateFilename(const QString &filename);
 
 	// see storage/parse_dataset.cpp
-	Features::Ptr readSource(QTextStream in, const QString &featureColName);
+	Features::Ptr readSource(QTextStream in, const ReadConfig &config);
 	Features::Ptr readSimpleSource(QTextStream &in, bool normalize);
 	void finalizeRead(Features &data, bool normalize);
 

@@ -111,7 +111,9 @@ void DataHub::spawn(ConstDataPtr source, const DatasetConfiguration& config)
 
 void DataHub::importDataset(const QString &filename, const QString featureCol)
 {
-	auto dataset = storage->openDataset(filename, featureCol);
+	// TODO: using feature column name as normalize decision is a hack
+	Storage::ReadConfig readCfg{featureCol, featureCol.isEmpty() || featureCol == "Dist"};
+	auto dataset = storage->openDataset(filename, readCfg);
 	if (!dataset)
 		return;
 
@@ -126,8 +128,10 @@ void DataHub::importDataset(const QString &filename, const QString featureCol)
 	name.append(f.completeBaseName()); // hack
 	if (!featureCol.isEmpty() && featureCol != "Dist")
 		name += " " + featureCol;
+
 	DatasetConfiguration config;
 	config.name = name;
+	config.normalized = readCfg.normalize;
 
 	auto target = createDataset(config);
 	target->spawn(std::move(dataset));

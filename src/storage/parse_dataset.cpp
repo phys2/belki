@@ -6,17 +6,14 @@
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
 
-Features::Ptr Storage::readSource(QTextStream in, const QString &featureColName)
+Features::Ptr Storage::readSource(QTextStream in, const ReadConfig &config)
 {
-	// TODO: the featureColName argument is a hack. We probably want some "Config" struct instead
-	bool normalize = featureColName.isEmpty() || featureColName == "Dist";
-
 	auto header = in.readLine().split("\t");
 
 	/* simple source files have first header field blank (first column is still proteins) */
 	if (!header.empty() && header.first().isEmpty()) {
 		in.seek(0);
-		return readSimpleSource(in, normalize);
+		return readSimpleSource(in, config.normalize);
 	}
 
 	if (header.contains("") || header.removeDuplicates()) {
@@ -28,7 +25,8 @@ Features::Ptr Storage::readSource(QTextStream in, const QString &featureColName)
 		return {};
 	}
 	int nameCol = header.indexOf("Pair");
-	int featureCol = header.indexOf(featureColName.isEmpty() ? "Dist" : featureColName);
+	int featureCol = header.indexOf(config.featureColName.isEmpty() ?
+	                                    "Dist" : config.featureColName);
 	int scoreCol = header.indexOf("Score");
 	if (nameCol == -1 || featureCol == -1 || scoreCol == -1) {
 		emit message({"Could not parse file!", "Not all necessary columns found."});
@@ -106,7 +104,7 @@ Features::Ptr Storage::readSource(QTextStream in, const QString &featureColName)
 		return {};
 	}
 
-	finalizeRead(*ret, normalize);
+	finalizeRead(*ret, config.normalize);
 	return ret;
 }
 
@@ -187,7 +185,8 @@ void Storage::finalizeRead(Features &data, bool normalize)
 	// TODO future work, be resilient to outliers
 	// auto range = features::range_of(data.features, 0.99f);
 	auto range = features::range_of(data.features);
-	// normalize, if needed
+	/* normalize, if needed
+	   if all data is within [0, 1] we expect it to be normalized already */
 	if (normalize && (range.min < 0 || range.max > 1)) {
 		QString format{"Values outside expected range (instead [%1, %2])."};
 		emit message({format.arg(range.min).arg(range.max),

@@ -68,10 +68,10 @@ void Storage::readDisplay(const QString&, QTextStream &in)
 	// TODO: what to do with the data
 }
 
-Features::Ptr Storage::openDataset(const QString &filename, const QString &featureColName)
+Features::Ptr Storage::openDataset(const QString &filename, const ReadConfig &config)
 {
 	QFile f(filename); // keep in scope
-	return readSource(openToStream(&f), featureColName); // see parse_dataset.cpp
+	return readSource(openToStream(&f), config); // see parse_dataset.cpp
 }
 
 
