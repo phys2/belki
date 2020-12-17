@@ -94,7 +94,7 @@ bool ProteinDB::readDescriptions(QTextStream in)
 	QRegularExpression re("^Protein$|Name$", QRegularExpression::CaseInsensitiveOption);
 	if (header.size() != 2 || !header[0].contains(re)) {
 		emit message({"Could not parse file!",
-		              "The first column must contain protein names, second descriptions.</p>"});
+		              "The first column must contain protein names, second descriptions."});
 		return false;
 	}
 
@@ -161,18 +161,28 @@ void ProteinDB::toggleMarkers(const std::vector<ProteinId> &ids, bool on)
 
 size_t ProteinDB::importMarkers(const std::vector<QString> &names)
 {
+	QWriteLocker l(&data.l);
 	std::vector<ProteinId> wanted;
-	for (const auto &name : names)
-		wanted.push_back(add(name));
+	for (const auto &name : names) {
+		try {
+			wanted.push_back(data.find(name));
+		} catch (std::out_of_range&) {}
+	}
+
+	if (wanted.size() > 500) {
+		emit message({"Too many markers. Not marking proteins.",
+		              QString("%1 names in file, %2 found in project, limit %3.")
+		              .arg(names.size()).arg(wanted.size()).arg(500)});
+		return 0;
+	}
 
 	std::vector<ProteinId> affected;
-	data.l.lockForWrite();
 	for (const auto id : wanted) {
 		auto [_, isnew] = data.markers.insert(id);
 		if (isnew)
 			affected.push_back(id);
 	}
-	data.l.unlock();
+	l.unlock();
 
 	if (!affected.empty())
 		emit markersToggled(affected, true);
