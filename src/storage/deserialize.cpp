@@ -55,7 +55,7 @@ Structure Storage::deserializeStructure<2>(const QCborMap &source, unsigned id)
 		ret.meta.type = typeMap.at(meta.value("type").toString());
 		ret.meta.id = id;
 		ret.meta.name = meta.value("name").toString();
-		ret.meta.dataset = meta.value("parent").toInteger(0); // optional, default 0
+		ret.meta.dataset = meta.value("dataset").toInteger(0); // optional, default 0
 		// individual parameters are set depending on type, but we can just default
 		ret.meta.k = meta.value("k").toDouble(1.);
 		ret.meta.hierarchy = meta.value("hierarchy").toInteger(0);
