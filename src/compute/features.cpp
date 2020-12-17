@@ -2,6 +2,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp> // for calchist
 #include <tbb/parallel_for.h>
+#include <tbb/parallel_for_each.h>
 #include <tbb/parallel_reduce.h>
 
 namespace features {
@@ -77,6 +78,16 @@ Features::Range log_valid(const Features::Range &range)
 	else
 		lb = 0.0001;
 	return {std::max(range.min, lb), std::max(range.max, lb)};
+}
+
+void normalize(vec &feats, const Features::Range &inputRange)
+{
+	double scale = 1. / (inputRange.max - inputRange.min);
+	tbb::parallel_for_each(feats, [&] (std::vector<double> &v) {
+		std::for_each(v.begin(), v.end(), [min=inputRange.min, scale] (double &e) {
+			e = std::max(e - min, 0.) * scale;
+		});
+	});
 }
 
 unsigned cutoff_effect(const vec &source, double threshold)

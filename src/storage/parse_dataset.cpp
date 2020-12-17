@@ -184,7 +184,8 @@ Features::Ptr Storage::readSimpleSource(QTextStream &in, bool normalize)
 void Storage::finalizeRead(Features &data, bool normalize)
 {
 	/* setup ranges */
-	//auto range = features::range_of(data.features, 0.99f);
+	// TODO future work, be resilient to outliers
+	// auto range = features::range_of(data.features, 0.99f);
 	auto range = features::range_of(data.features);
 	// normalize, if needed
 	if (normalize && (range.min < 0 || range.max > 1)) {
@@ -197,12 +198,7 @@ void Storage::finalizeRead(Features &data, bool normalize)
 		range.min = 0.;
 
 		// normalize
-		double scale = 1. / (range.max - range.min);
-		for (auto &v : data.features) {
-			std::for_each(v.begin(), v.end(), [min=range.min, scale] (double &e) {
-				e = std::max(e - min, 0.) * scale;
-			});
-		}
+		features::normalize(data.features, range);
 	}
 	data.featureRange = (normalize ? Features::Range{0., 1.} : range);
 	data.logSpace = (data.featureRange.min >= 0 && data.featureRange.max > 10000);
