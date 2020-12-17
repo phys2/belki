@@ -170,9 +170,14 @@ size_t ProteinDB::importMarkers(const std::vector<QString> &names)
 	}
 
 	if (wanted.size() > 500) {
-		emit message({"Too many markers. Not marking proteins.",
-		              QString("%1 names in file, %2 found in project, limit %3.")
-		              .arg(names.size()).arg(wanted.size()).arg(500)});
+		emit message({"Too many protein names in marker file.",
+		              QString("The maximum number of markers is %2, but the file contains %1 "
+		              "proteins from the project.").arg(wanted.size()).arg(500)});
+		return 0;
+	}
+
+	if (wanted.empty()) {
+		emit message({"No proteins from the project found in marker file.", {}, GuiMessage::INFO});
 		return 0;
 	}
 
