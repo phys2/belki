@@ -196,6 +196,8 @@ void Chart::updatePartitions()
 			connect(lm, &QtCharts::QLegendMarker::hovered, [this, series] (bool active) {
 				if (!active)
 					return;
+				if (cursorLocked) // do not override locked-in user selection
+					return;
 				emit cursorChanged(series->proteins, series->name());
 				for (auto& [_, p] : partitions)
 					p->redecorate(false, series == p.get());
@@ -235,7 +237,7 @@ void Chart::moveCursor(const QPointF &pos)
 		return;
 
 	cursorCenter = pos;
-	if (pos.isNull() || !plotArea().contains(pos)) {
+	if (cursorCenter.isNull() || !plotArea().contains(cursorCenter)) {
 		nearestProtein = -1;
 		tracker->hide();
 
@@ -256,6 +258,13 @@ void Chart::resetCursor()
 
 void Chart::toggleCursorLock()
 {
+	if (cursorCenter.isNull() || !plotArea().contains(cursorCenter)) {
+		/* do not enable lock while cursor is invisible:
+		 * user would not see the lock is on, and the lock would be on empty selection → useless */
+		cursorLocked = false;
+		return;
+	}
+
 	cursorLocked = !cursorLocked;
 }
 
