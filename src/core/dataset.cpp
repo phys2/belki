@@ -93,7 +93,14 @@ void Dataset::spawn(ConstPtr srcholder)
 		b.scoreRange = features::range_of(b.scores);
 	}
 
-	b.featureRange = features::range_of(b.features);
+	/* re-normalize, if needed, otherwise recalculate range */
+	if (conf.normalized) {
+		features::normalize(b.features, features::range_of(b.features));
+		b.featureRange = Features::Range{0., 1.};
+	} else {
+		b.featureRange = features::range_of(b.features);
+	}
+
 	b.featurePoints = features::pointify(b.features);
 
 	auto sIn = srcholder->peek<Structure>();

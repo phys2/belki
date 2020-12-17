@@ -21,6 +21,7 @@ SpawnDialog::SpawnDialog(Dataset::Ptr data, std::shared_ptr<WindowState> state, 
 	okButton = buttonBox->button(QDialogButtonBox::StandardButton::Ok);
 	setModal(true);
 	setSizeGripEnabled(true);
+	normalizeToggle->setChecked(data->config().normalized);
 	if (d->hasScores()) {
 		scoreSpinBox->setMaximum(d->scoreRange.max);
 		connect(scoreSpinBox, qOverload<double>(&QDoubleSpinBox::valueChanged), [this] {
@@ -63,6 +64,7 @@ void SpawnDialog::submit()
 	if (conf.name.isEmpty())
 	    conf.name = nameEdit->placeholderText();
 	conf.parent = source_id;
+	conf.normalized = normalizeToggle->isChecked();
 
 	for (unsigned i = 0; i < selected.size(); ++i)
 		if (selected[i])
