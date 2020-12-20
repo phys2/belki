@@ -321,6 +321,7 @@
     <property name="title">
      <string>&amp;Project</string>
     </property>
+    <addaction name="actionNewProject"/>
     <addaction name="actionOpenProject"/>
     <addaction name="separator"/>
     <addaction name="actionLoadDataset"/>
@@ -767,6 +768,17 @@
    </property>
    <property name="toolTip">
     <string>Prune clusters containing less than 0.5% of all proteins</string>
+   </property>
+  </action>
+  <action name="actionNewProject">
+   <property name="icon">
+    <iconset theme="document-new"/>
+   </property>
+   <property name="text">
+    <string>&amp;New Project</string>
+   </property>
+   <property name="toolTip">
+    <string>Start new project in new window</string>
    </property>
   </action>
  </widget>

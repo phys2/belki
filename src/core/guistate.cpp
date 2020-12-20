@@ -115,8 +115,9 @@ void GuiState::addWindow()
 	connect(target, &MainWindow::newWindowRequested, this, &GuiState::addWindow);
 	connect(target, &MainWindow::closeWindowRequested, this,
 	        [this,id=it->first] { removeWindow(id); });
-	connect(target, &MainWindow::closeProjectRequested, this, [this] { GuiState::shutdown(); });
+	connect(target, &MainWindow::newProjectRequested, this, [this] { emit instanceRequested(); });
 	connect(target, &MainWindow::openProjectRequested, this, &GuiState::openProject);
+	connect(target, &MainWindow::closeProjectRequested, this, [this] { shutdown(); });
 	connect(target, &MainWindow::quitApplicationRequested, this, &GuiState::quitRequested);
 	connect(target, &MainWindow::markerFlipped, this, &GuiState::flipMarker);
 

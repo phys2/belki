@@ -32,7 +32,7 @@ public:
 	bool eventFilter(QObject *watched, QEvent *event) override;
 
 signals:
-	void instanceRequested(const QString &filename);
+	void instanceRequested(const QString &filename = {});
 	void quitRequested();
 	void closed();
 

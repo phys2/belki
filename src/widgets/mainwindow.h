@@ -43,8 +43,9 @@ signals:
 	void message(const GuiMessage &message);
 	void newWindowRequested();
 	void closeWindowRequested();
-	void closeProjectRequested();
+	void newProjectRequested();
 	void openProjectRequested(QString filename);
+	void closeProjectRequested();
 	void quitApplicationRequested();
 	void datasetSelected(unsigned id);
 	void datasetDeselected();

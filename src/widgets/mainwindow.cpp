@@ -274,6 +274,7 @@ void MainWindow::setupSignals()
 void MainWindow::setupActions()
 {
 	/* Shortcuts (standard keys not available in UI Designer) */
+	actionNewProject->setShortcut(QKeySequence::StandardKey::New);
 	actionOpenProject->setShortcut(QKeySequence::StandardKey::Open);
 	actionSave->setShortcut(QKeySequence::StandardKey::Save);
 	actionSaveAs->setShortcut(QKeySequence::StandardKey::SaveAs);
@@ -306,6 +307,7 @@ void MainWindow::setupActions()
 		QGuiApplication::clipboard()->setText(list.join("\r\n"));
 	});
 
+	connect(actionNewProject, &QAction::triggered, this, &MainWindow::newProjectRequested);
 	connect(actionCloseProject, &QAction::triggered, this, &MainWindow::closeProjectRequested);
 	connect(actionQuit, &QAction::triggered, this, &MainWindow::quitApplicationRequested);
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
