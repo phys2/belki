@@ -30,13 +30,13 @@ bool Storage::saveProject(const QString &filename,
 {
 	QSaveFile f(filename);
 	if (!f.open(QIODevice::WriteOnly)) {
-		fileError(filename, true);
+		fileError(&f, true);
 		return false;
 	}
 	writeProject(&f, snapshot);
 	bool success = f.commit();
 	if (!success) {
-		fileError(filename, true);
+		fileError(&f, true);
 		return false;
 	}
 	updateFilename(filename); // file must exist here, so do this after writing the file
@@ -166,7 +166,7 @@ void Storage::importHierarchy(const QString &filename)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::ReadOnly)) {
-		fileError(filename);
+		fileError(&f);
 		return;
 	}
 
@@ -217,7 +217,7 @@ void Storage::exportAnnotations(const QString &filename, const Annotations& sour
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::WriteOnly))
-		return fileError(filename, true);
+		return fileError(&f, true);
 
 	QTextStream out(&f);
 	// write header
@@ -254,7 +254,7 @@ void Storage::exportMarkers(const QString &filename)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::WriteOnly))
-		return fileError(filename, true);
+		return fileError(&f, true);
 
 	auto p = proteins.peek();
 	QTextStream out(&f);
@@ -270,7 +270,7 @@ void Storage::exportMarkers(const QString &filename)
 QTextStream Storage::openToStream(QFileDevice *handler)
 {
 	if (!handler->open(QIODevice::ReadOnly)) {
-		fileError(handler->fileName());
+		fileError(handler);
 		return {};
 	}
 	return QTextStream(handler);
@@ -284,8 +284,8 @@ void Storage::updateFilename(const QString &filename)
 	emit nameChanged(name, path);
 }
 
-void Storage::fileError(const QString &filename, bool write)
+void Storage::fileError(QFileDevice *f, bool write)
 {
 	QString format(write? "Could not write file %1!" : "Could not read file %1!");
-	emit message({format.arg(filename)});
+	emit message({format.arg(f->fileName()), f->errorString()});
 }

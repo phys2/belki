@@ -75,7 +75,7 @@ protected:
 	void readDisplay(const QString& name, QTextStream &in);
 
 	QTextStream openToStream(QFileDevice *handler);
-	void fileError(const QString &filename, bool write = false);
+	void fileError(QFileDevice *f, bool write = false);
 	static QStringList trimCrap(QStringList values);
 
 	ProteinDB &proteins;
