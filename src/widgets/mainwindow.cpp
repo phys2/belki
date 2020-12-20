@@ -308,6 +308,8 @@ void MainWindow::setupActions()
 	});
 
 	connect(actionNewProject, &QAction::triggered, this, &MainWindow::newProjectRequested);
+	// we do not connect actionSave, which is connected by setName()
+	connect(actionSaveAs, &QAction::triggered, [this] { saveProject(true); });
 	connect(actionCloseProject, &QAction::triggered, this, &MainWindow::closeProjectRequested);
 	connect(actionQuit, &QAction::triggered, this, &MainWindow::quitApplicationRequested);
 	connect(actionHelp, &QAction::triggered, this, &MainWindow::showHelp);
@@ -391,18 +393,6 @@ void MainWindow::setupActions()
 			return;
 		Task task{[d=data] { d->computeHierarchy(); },
 			      Task::Type::COMPUTE_HIERARCHY, {data->config().name}};
-		JobRegistry::run(task, state->jobMonitors);
-	});
-
-	connect(actionSave, &QAction::triggered, [this] {
-		Task task{[h=&state->hub()] { h->saveProject(); }, Task::Type::SAVE, {}};
-		JobRegistry::run(task, state->jobMonitors);
-	});
-	connect(actionSaveAs, &QAction::triggered, [this] {
-		auto filename = state->io().chooseFile(FileIO::SaveProject, this);
-		if (filename.isEmpty())
-			return;
-		Task task{[h=&state->hub(),filename] { h->saveProject(filename); }, Task::Type::SAVE, {}};
 		JobRegistry::run(task, state->jobMonitors);
 	});
 }
@@ -552,7 +542,20 @@ void MainWindow::setName(const QString &name, const QString &path)
 		setWindowTitle(QString("%1 – Belki").arg(name));
 		setWindowFilePath(path);
 	}
-	actionSave->setDisabled(name.isEmpty());
+	actionSave->disconnect(this);
+	connect(actionSave, &QAction::triggered, this, [=] { saveProject(name.isEmpty()); });
+}
+
+void MainWindow::saveProject(bool saveAs)
+{
+	QString filename; // optional argument
+	if (saveAs) {
+		filename = state->io().chooseFile(FileIO::SaveProject, this);
+		if (filename.isEmpty()) // user cancel
+			return;
+	}
+	Task task{[h=&state->hub(),filename] { h->saveProject(filename); }, Task::Type::SAVE, {}};
+	JobRegistry::run(task, state->jobMonitors);
 }
 
 void MainWindow::setSelectedDataset(unsigned id)

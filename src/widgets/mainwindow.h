@@ -35,6 +35,7 @@ public:
 public slots:
 	void showHelp();
 	void setName(const QString &name, const QString &path);
+	void saveProject(bool saveAs = false);
 	void setDataset(Dataset::Ptr data);
 	void removeDataset(unsigned id);
 	void selectStructure(int id);
