@@ -42,7 +42,7 @@ public slots:
 	void importDataset(const QString &filename, const QString featureCol = {});
 	void removeDataset(unsigned id);
 	void openProject(const QString &filename);
-	void saveProject(QString filename = {});
+	bool saveProject(QString filename = {});
 
 public:
 	ProteinDB proteins;

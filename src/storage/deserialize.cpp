@@ -179,7 +179,7 @@ std::vector<std::shared_ptr<Dataset>> Storage::readProject(const QString &filena
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::ReadOnly)) {
-		fopenError(filename);
+		fileError(filename);
 		return {};
 	}
 	QCborStreamReader r(&f);

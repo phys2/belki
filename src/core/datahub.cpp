@@ -170,18 +170,20 @@ void DataHub::openProject(const QString &filename)
 	init(datasets);
 }
 
-void DataHub::saveProject(QString filename)
+bool DataHub::saveProject(QString filename)
 {
 	QReadLocker l(&data.l);
 	if (filename.isEmpty()) {
 		filename = data.project.path;
-		if (filename.isEmpty()) // should not happen
-			return message({"Could not save project!", "No filename specified."});
+		if (filename.isEmpty()) { // should not happen
+			message({"Could not save project!", "No filename specified."});
+			return false;
+		}
 	}
 	std::vector<Dataset::ConstPtr> snapshot;
 	for (auto &[k, v] : data.sets)
 		snapshot.push_back(v);
 	l.unlock();
 
-	storage->saveProject(filename, snapshot); // might lock for write to update filename
+	return storage->saveProject(filename, snapshot); // might lock for write to update filename
 }

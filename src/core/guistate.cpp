@@ -133,8 +133,12 @@ void GuiState::addWindow()
 
 void GuiState::removeWindow(unsigned id, bool withPrompt)
 {
-	/* prompt first on last windows*/
-	if (withPrompt && windows.size() < 2 && !promptOnClose())
+	bool proceed = true;
+	if (withPrompt && windows.size() < 2) { // prompt first on last window
+		proceed = promptOnClose();
+	}
+
+	if (!proceed)
 		return;
 
 	auto w = windows.at(id);
@@ -274,34 +278,48 @@ void GuiState::displayMessageAt(const GuiMessage &message, QWidget *parent)
 
 bool GuiState::promptOnClose(QWidget *parent)
 {
+	if (!parent)
+		parent = focused();
+
 	if (proteins.peek()->proteins.empty())
 		return true; // no need to ask, empty project
 
 	/* Lazy way: If no filename set, only provide Ok/Cancel, otherwise Save/Discard/Cancel */
-	QMessageBox dialog(parent ? parent : focused());
+	QMessageBox dialog(parent);
 	auto name = hub.projectMeta().name;
 	if (name.isEmpty()) {
 		dialog.setText("Close project?");
 		dialog.setInformativeText("The project has not been saved.");
-		dialog.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
 	} else {
 		dialog.setText(QString("Close project %1?").arg(name));
 		dialog.setInformativeText("The project might have unsaved changes."
 		                          "<br>Would you like to save it first?");
-		dialog.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
 	}
-	dialog.setDefaultButton(QMessageBox::Cancel);
-	dialog.setEscapeButton(QMessageBox::Cancel);
+	dialog.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
 	int ret = dialog.exec();
-	if (ret == QMessageBox::Save)
-		hub.saveProject();
-	return (ret != QMessageBox::Cancel);
+
+	bool proceed = (ret != QMessageBox::Cancel);
+	if (ret == QMessageBox::Save) {
+		if (name.isEmpty()) {
+			// do a "Save as…" dialog thing
+			auto filename = io->chooseFile(FileIO::SaveProject, parent);
+			proceed = !filename.isEmpty() && hub.saveProject(filename); // only close if successfully saved
+		} else {
+			proceed = hub.saveProject(); // only close if successfully saved
+		}
+	}
+	return proceed;
 }
 
 bool GuiState::shutdown(bool withPrompt)
 {
-	/* prompt first */
-	if (withPrompt && !promptOnClose())
+	bool proceed = true;
+
+	if (withPrompt) { // prompt first
+		proceed = promptOnClose();
+	}
+
+	if (!proceed)
 		return false;
 
 	/* cancel all jobs related to us */

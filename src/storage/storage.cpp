@@ -25,14 +25,22 @@ std::vector<std::shared_ptr<Dataset>> Storage::openProject(const QString &filena
 	return ret;
 }
 
-void Storage::saveProject(const QString &filename, std::vector<std::shared_ptr<const Dataset> > snapshot)
+bool Storage::saveProject(const QString &filename,
+                          std::vector<std::shared_ptr<const Dataset>> snapshot)
 {
 	QSaveFile f(filename);
-	if (!f.open(QIODevice::WriteOnly))
-		return fopenError(filename, true);
+	if (!f.open(QIODevice::WriteOnly)) {
+		fileError(filename, true);
+		return false;
+	}
 	writeProject(&f, snapshot);
-	f.commit();
+	bool success = f.commit();
+	if (!success) {
+		fileError(filename, true);
+		return false;
+	}
 	updateFilename(filename); // file must exist here, so do this after writing the file
+	return true;
 }
 
 // TODO: make this export method that writes .tsv file directly for user pleasure
@@ -158,7 +166,7 @@ void Storage::importHierarchy(const QString &filename)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::ReadOnly)) {
-		fopenError(filename);
+		fileError(filename);
 		return;
 	}
 
@@ -209,7 +217,7 @@ void Storage::exportAnnotations(const QString &filename, const Annotations& sour
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::WriteOnly))
-		return fopenError(filename, true);
+		return fileError(filename, true);
 
 	QTextStream out(&f);
 	// write header
@@ -226,14 +234,6 @@ void Storage::exportAnnotations(const QString &filename, const Annotations& sour
 		}
 		out << Qt::endl;
 	}
-}
-
-void Storage::updateFilename(const QString &filename)
-{
-	auto fi = QFileInfo(filename);
-	auto name = fi.completeBaseName();
-	auto path = fi.canonicalFilePath(); // expects file to exist
-	emit nameChanged(name, path);
 }
 
 void Storage::importMarkers(const QString &filename)
@@ -254,7 +254,7 @@ void Storage::exportMarkers(const QString &filename)
 {
 	QFile f(filename);
 	if (!f.open(QIODevice::WriteOnly))
-		return fopenError(filename, true);
+		return fileError(filename, true);
 
 	auto p = proteins.peek();
 	QTextStream out(&f);
@@ -270,13 +270,21 @@ void Storage::exportMarkers(const QString &filename)
 QTextStream Storage::openToStream(QFileDevice *handler)
 {
 	if (!handler->open(QIODevice::ReadOnly)) {
-		fopenError(handler->fileName());
+		fileError(handler->fileName());
 		return {};
 	}
 	return QTextStream(handler);
 }
 
-void Storage::fopenError(const QString &filename, bool write)
+void Storage::updateFilename(const QString &filename)
+{
+	auto fi = QFileInfo(filename);
+	auto name = fi.completeBaseName();
+	auto path = fi.canonicalFilePath(); // expects file to exist
+	emit nameChanged(name, path);
+}
+
+void Storage::fileError(const QString &filename, bool write)
 {
 	QString format(write? "Could not write file %1!" : "Could not read file %1!");
 	emit message({format.arg(filename)});

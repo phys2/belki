@@ -29,7 +29,7 @@ public:
 	Storage(ProteinDB &proteins, QObject *parent = nullptr);
 
 	std::vector<std::shared_ptr<Dataset>> openProject(const QString &filename);
-	void saveProject(const QString &filename, std::vector<std::shared_ptr<const Dataset> > snapshot);
+	bool saveProject(const QString &filename, std::vector<std::shared_ptr<const Dataset>> snapshot);
 
 	Features::Ptr openDataset(const QString &filename, const ReadConfig &config);
 
@@ -75,7 +75,7 @@ protected:
 	void readDisplay(const QString& name, QTextStream &in);
 
 	QTextStream openToStream(QFileDevice *handler);
-	void fopenError(const QString &filename, bool write = false);
+	void fileError(const QString &filename, bool write = false);
 	static QStringList trimCrap(QStringList values);
 
 	ProteinDB &proteins;
