@@ -25,7 +25,7 @@ const std::vector<dimred::Method> &availableMethods()
 		{"MDS NL2", "MDS NL2/12", "Multi-dimensional Scaling, Normalized L2"},
 		{"MDS EMD", "MDS EMD/12", "Multi-dimensional Scaling, EMD"},
 #endif
-		{"tSNE", "tSNE", "t-distributed stochastic neighbor embedding, Euclidean"},
+		{"tSNE", "tSNE", "t-distributed stochastic neighbor embedding"},
 #ifdef EXPERIMENTAL
 		{"tSNE 10", "tSNE 10", "t-SNE with perplexity 10"},
 		{"tSNE 20", "tSNE 20", "t-SNE with perplexity 20"},
@@ -35,10 +35,10 @@ const std::vector<dimred::Method> &availableMethods()
 		{"tSNE 50", "tSNE 50", "t-SNE with perplexity 50"},
 		{"tSNE 60", "tSNE 60", "t-SNE with perplexity 60"},
 		{"tSNE 70", "tSNE 70", "t-SNE with perplexity 70"},
-		{"Diffusion Map", "Diff", "Diffusion Map, Euclidean"},
+		{"Diffusion Map", "Diffusion Map", "Diffusion Map"},
 #ifdef EXPERIMENTAL
-		{"Diff. Map L1", "Diff L1", "Diffusion Map, Manhattan"},
-		{"Diff. Map EMD", "Diff EMD", "Diffusion Map, EMD"},
+		{"Diff. Map L1", "Diff. Map L1", "Diffusion Map, Manhattan"},
+		{"Diff. Map EMD", "Diff. Map EMD", "Diffusion Map, EMD"},
 #endif
 	};
 	return ret;
@@ -130,7 +130,7 @@ QMap<QString, QVector<QPointF>> compute(QString m, const std::vector<std::vector
 
 	TapkeeOutput output;
 	// custom distance
-	if (m.startsWith("MDS") || m.startsWith("Diff ")) {
+	if (m.startsWith("MDS") || m.startsWith("Diff. Map")) {
 		auto [indices, distances] = precomputeDistances(distFun[m.split(" ").last()]);
 		precomputed_distance_callback d(distances);
 		output = parametrized.withDistance(d).embedUsing(indices);
