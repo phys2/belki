@@ -17,23 +17,29 @@ const std::vector<dimred::Method> &availableMethods()
 {
 	static std::vector<dimred::Method> ret{
 		{"PCA", "PCA/12", "Principal Component Analysis"},
+#ifdef EXPERIMENTAL
 		{"kPCA EMD", "kPCA EMD/12", "Kernel-PCA, EMD"},
 		{"kPCA L1", "kPCA L1/12", "Kernel-PCA, Manhattan"},
 		{"kPCA L2", "kPCA L2/12", "Kernel-PCA, Euclidean"},
 		{"MDS L1", "MDS L1/12", "Multi-dimensional Scaling, Manhattan"},
 		{"MDS NL2", "MDS NL2/12", "Multi-dimensional Scaling, Normalized L2"},
 		{"MDS EMD", "MDS EMD/12", "Multi-dimensional Scaling, EMD"},
-		{"Diff. Map L1", "Diff L1", "Diffusion Map, Manhattan"},
-		{"Diffusion Map", "Diff", "Diffusion Map, Euclidean"},
-		{"Diff. Map EMD", "Diff EMD", "Diffusion Map, EMD"},
+#endif
 		{"tSNE", "tSNE", "t-distributed stochastic neighbor embedding, Euclidean"},
+#ifdef EXPERIMENTAL
 		{"tSNE 10", "tSNE 10", "t-SNE with perplexity 10"},
 		{"tSNE 20", "tSNE 20", "t-SNE with perplexity 20"},
+#endif
 		{"tSNE 30", "tSNE 30", "t-SNE with perplexity 30"},
 		{"tSNE 40", "tSNE 40", "t-SNE with perplexity 40"},
 		{"tSNE 50", "tSNE 50", "t-SNE with perplexity 50"},
 		{"tSNE 60", "tSNE 60", "t-SNE with perplexity 60"},
 		{"tSNE 70", "tSNE 70", "t-SNE with perplexity 70"},
+		{"Diffusion Map", "Diff", "Diffusion Map, Euclidean"},
+#ifdef EXPERIMENTAL
+		{"Diff. Map L1", "Diff L1", "Diffusion Map, Manhattan"},
+		{"Diff. Map EMD", "Diff EMD", "Diffusion Map, EMD"},
+#endif
 	};
 	return ret;
 }

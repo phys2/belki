@@ -70,6 +70,7 @@ target_sources(${APP_NAME} PRIVATE
 	)
 export_version(src/main.cpp)
 export_version(src/widgets/mainwindow.cpp) # for About box
+export_experimental(src/compute/dimred.cpp) # for expansion of avail. methods
 
 ## link to modules
 target_include_directories(${APP_NAME} SYSTEM PUBLIC ${DEP_INCLUDES})

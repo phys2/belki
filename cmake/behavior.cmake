@@ -26,3 +26,13 @@ if (STATIC_BUILD)
 	set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" CONFIG)
 	set(BUILD_SHARED_LIBS OFF)
 endif()
+
+# EXPERIMENTAL features
+option(EXPERIMENTAL "Enable experimental features" FALSE)
+function (export_experimental SOURCEFILE)
+	if (EXPERIMENTAL)
+		set_property(SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCEFILE} APPEND PROPERTY COMPILE_DEFINITIONS
+			EXPERIMENTAL
+			)
+	endif()
+endfunction()
