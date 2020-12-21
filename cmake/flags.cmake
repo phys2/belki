@@ -10,9 +10,6 @@ set(FLAGS_DEBUG
     -g -Og -fno-omit-frame-pointer
     # -Werror
 
-    # Sanitizers:
-    -fsanitize=address,leak,undefined
-
     # All kinds of pedantic warnings:
     -pedantic -Wall -Wextra
     -Wnull-dereference -Wdouble-promotion -Wformat=2 #-Wshadow
@@ -38,12 +35,18 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
         )
 endif()
 
+set(FLAGS_SANITIZE
+	${FLAGS_DEBUG} # start with debug flag set
+	# Add sanitizers:
+	-fsanitize=address,leak,undefined
+	)
+
 # Note: it is discouraged in CMake to alter these variables, but instead you
 # should set flags on the target. However, those flags are hidden from the
 # user. In our case, we want the user to be able to see and alter the
 # flags of the build type.
 set(TYPES CXX;EXE_LINKER)
-set(BUILDS DEBUG;RELEASE)
+set(BUILDS DEBUG;RELEASE;SANITIZE)
 foreach (BUILD ${BUILDS})
 	string(REPLACE ";" " " FLAGS_${BUILD} "${FLAGS_${BUILD}}")
 	foreach (TYPE ${TYPES})
