@@ -51,7 +51,7 @@ set(QT_MODULES Concurrent Widgets Charts Svg)
 if (STATIC_BUILD AND ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	# include plugins into static build on windows
 	# (we lack support for static on other platforms right now)
-	set(QT_PLUGINS SvgIcon WindowsIntegration WindowsVistaStyle)
+	set(QT_PLUGINS SvgIcon ICO WindowsIntegration WindowsVistaStyle)
 endif()
 
 # include core explicitely for AUTOMOC etc

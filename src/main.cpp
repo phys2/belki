@@ -14,9 +14,10 @@
 
 #if defined(QT_STATIC) && defined(_WIN32)
 # include <QtPlugin>
+Q_IMPORT_PLUGIN(QSvgIconPlugin)
+Q_IMPORT_PLUGIN(QICOPlugin)
 Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)
 Q_IMPORT_PLUGIN(QWindowsVistaStylePlugin)
-Q_IMPORT_PLUGIN(QSvgIconPlugin)
 #endif
 
 /* all instances, for proper cleanup */
