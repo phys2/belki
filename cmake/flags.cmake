@@ -59,6 +59,7 @@ foreach (BUILD ${BUILDS})
 		if (NOT ${VAR} OR "${ISDEFAULT}")
 			set(${VAR} "${FLAGS_${BUILD}}" CACHE STRING
 				"Flags used during ${BUILD} builds." FORCE)
+			set_property(CACHE ${VAR} PROPERTY ADVANCED TRUE)
 		endif()
 	endforeach()
 endforeach()
